@@ -397,8 +397,9 @@
         const OFFICIAL_ROOM_HASH = CryptoJS.SHA256("公式部屋").toString();
         const chatTimeline = $('chatTimeline');
 
-        window.playYoutubeInline = function(vid) {
-            const container = $(`yt-placeholder-${vid}`);
+        // 🛠️ 修正：IDへの依存を排除し、ボタンのコンテキストから対象のプレースホルダーを直に書き換える
+        window.playYoutubeInline = function(buttonElement, vid) {
+            const container = buttonElement.closest('.msg-card').querySelector('.yt-placeholder');
             if (container) {
                 container.innerHTML = `<iframe class="w-full h-full aspect-video" src="https://www.youtube.com/embed/${vid}?autoplay=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
             }
@@ -547,11 +548,12 @@
                     if (ytMatch && ytMatch[1]) {
                         const vid = ytMatch[1];
                         cleanText = cleanText.replace(word, "");
+                        // 🛠️ 修正：id="yt-placeholder-${vid}" から class="yt-placeholder" へ変更。onclickの引数に this を追加
                         mediaHtml += `
                             <div class="mt-2 rounded-lg overflow-hidden border border-slate-700 bg-black max-w-sm w-full">
-                                <div id="yt-placeholder-${vid}" class="relative aspect-video bg-cover bg-center" style="background-image: url('https://img.youtube.com/vi/${vid}/mqdefault.jpg');"></div>
+                                <div class="yt-placeholder relative aspect-video bg-cover bg-center" style="background-image: url('https://img.youtube.com/vi/${vid}/mqdefault.jpg');"></div>
                                 <div class="bg-slate-900/90 p-2 flex justify-between gap-2 text-xs border-t border-slate-800">
-                                    <button onclick="playYoutubeInline('${vid}')" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-2 rounded transition text-center">その場で再生</button>
+                                    <button onclick="playYoutubeInline(this, '${vid}')" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-2 rounded transition text-center">その場で再生</button>
                                     <a href="https://www.youtube.com/watch?v=${vid}" target="_blank" rel="noopener noreferrer" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-1 px-2 rounded transition text-center flex items-center justify-center">YouTube公式へ</a>
                                 </div>
                             </div>`;
@@ -623,7 +625,10 @@
         }, { passive: true });
 
         $("imageModal").addEventListener("touchmove", (e) => {
-            e.preventDefault();
+            // 🛠️ 修正：スケールが1より大きい（ズーム中）、またはマルチタッチ時のみスクロール等の標準動作を止めるよう安全弁を設置
+            if (scale > 1 || e.touches.length > 1) {
+                if (e.cancelable) e.preventDefault();
+            }
             if (isDragging && e.touches.length === 1 && scale > 1) {
                 const dx = e.touches[0].clientX - startX; const dy = e.touches[0].clientY - startY;
                 translateX = baseTranslateX + dx; translateY = baseTranslateY + dy;

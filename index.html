@@ -3,36 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>NEZU ONETIME CHAT - Multi-Trigger Pro</title>
+    <title>NEZU ONETIME CHAT - Ultimate Theater Pro</title>
     <script src="https://cdn.tailwindcss.com/"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         :root {
             --primary: #4f46e5;
             --primary-hover: #4338ca;
-            --bg: #1a1a1a;
-            --panel-bg: rgba(30, 30, 30, 0.85);
-            --text-color: #ffffff;
+            --bg: #111111;
+            --panel-bg: rgba(23, 23, 23, 0.95);
+            --text-color: #f8fafc;
             --accent-color: #00ff66;
-            --border: #333333;
+            --border: #262626;
             --success: #10b981;
             --danger: #ef4444;
             --warning: #f59e0b;
         }
         
         html, body {
-            height: 100vh;
             height: 100dvh;
             width: 100vw;
             margin: 0;
             padding: 0;
             overflow: hidden;
-            background-color: #111;
+            background-color: var(--bg);
             color: var(--text-color);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             -webkit-user-select: none;
             user-select: none;
             -webkit-text-size-adjust: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
         }
 
         .select-text {
@@ -43,48 +47,15 @@
         .user-chip {
             display: inline-flex;
             align-items: center;
-            background: #2d3748;
-            color: #cbd5e0;
-            padding: 2px 8px;
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 2px 10px;
             border-radius: 9999px;
             font-size: 11px;
             font-weight: 600;
             margin-right: 4px;
             margin-bottom: 4px;
-            border: 1px solid #4a5568;
-        }
-        
-        #ytArea {
-            display: none;
-            position: fixed;
-            top: 140px;
-            left: 20px;
-            width: 320px;
-            height: auto;
-            background: #000;
-            border-radius: 16px;
-            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7);
-            border: 2px solid var(--primary);
-            z-index: 100;
-            overflow: hidden;
-            touch-action: none;
-            transform-origin: center center;
-            will-change: transform, top, left, width;
-        }
-
-        .inline-zoom-container {
-            position: relative;
-            width: 100%;
-            padding-top: 56.25%;
-        }
-        .inline-zoom-container iframe {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border: 0;
-            pointer-events: none;
+            border: 1px solid #334155;
         }
         
         #ytLockOverlay {
@@ -97,397 +68,298 @@
             background: rgba(0,0,0,0);
             pointer-events: auto;
         }
+        #ytLockOverlay.interactive {
+            pointer-events: none;
+        }
         
-        @keyframes flashPlay { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.9); } 100% { box-shadow: 0 0 0 20px rgba(16, 185, 129, 0); } }
-        @keyframes flashPause { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.9); } 100% { box-shadow: 0 0 0 20px rgba(239, 68, 68, 0); } }
-        .flash-play { animation: flashPlay 0.4s ease-out; }
-        .flash-pause { animation: flashPause 0.4s ease-out; }
+        @keyframes flashPlay { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.9); } 100% { box-shadow: 0 0 0 25px rgba(16, 185, 129, 0); } }
+        @keyframes flashPause { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.9); } 100% { box-shadow: 0 0 0 25px rgba(239, 68, 68, 0); } }
+        .flash-play { animation: flashPlay 0.5s cubic-bezier(0.1, 0.8, 0.3, 1); }
+        .flash-pause { animation: flashPause 0.5s cubic-bezier(0.1, 0.8, 0.3, 1); }
 
         #ytSearchResults {
             display: none;
             max-height: 150px;
             overflow-y: auto;
-            background: #1e293b;
+            background: #0f172a;
             border: 1px solid var(--border);
-            border-top: none;
             position: absolute;
+            bottom: 100%;
+            left: 0;
             width: 100%;
             z-index: 50;
+            border-radius: 12px 12px 0 0;
+            box-shadow: 0 -10px 25px -5px rgba(0,0,0,0.5);
         }
         .search-item {
-            padding: 8px 12px;
+            padding: 10px 12px;
             cursor: pointer;
             font-size: 12px;
-            border-bottom: 1px solid #334155;
+            border-bottom: 1px solid #1e293b;
             display: flex;
             align-items: center;
-            gap: 8px;
-            color: #f8fafc;
+            gap: 10px;
+            color: #f1f5f9;
+            transition: background 0.2s;
         }
-        .search-item:hover { background: #334155; }
-        .search-item img { width: 44px; height: 33px; object-fit: cover; border-radius: 4px; }
+        .search-item:hover { background: #1e293b; }
+        .search-item img { width: 56px; height: 42px; object-fit: cover; border-radius: 6px; }
 
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fade-in { animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
         #chatTimeline {
-            flex: 1 1 0%;
+            flex: 1;
             overflow-y: auto;
-            padding: 16px;
+            padding: 10px 16px;
             display: flex;
-            flex-direction: column; 
-            gap: 12px;
-            background-color: #141414;
+            flex-direction: column;
+            gap: 10px;
+            background-color: #0a0a0a;
             -webkit-overflow-scrolling: touch;
         }
 
-        #chatTimeline::-webkit-scrollbar { width: 6px; }
-        #chatTimeline::-webkit-scrollbar-track { background: transparent; }
-        #chatTimeline::-webkit-scrollbar-thumb { background: #2d3748; border-radius: 9999px; }
+        #chatTimeline::-webkit-scrollbar, .embedded-scrollbar::-webkit-scrollbar { width: 6px; }
+        #chatTimeline::-webkit-scrollbar-track, .embedded-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        #chatTimeline::-webkit-scrollbar-thumb, .embedded-scrollbar::-webkit-scrollbar-thumb { background: #262626; border-radius: 9999px; }
 
         .msg-wrap { width: 100%; display: flex; flex-direction: column; align-items: flex-start; }
         .msg-card {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(4px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(23, 23, 23, 0.85);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
             border-left: 4px solid #4f46e5;
-            will-change: transform, opacity;
+            transition: all 0.2s ease;
         }
         .msg-card.new-alert {
             border-left-color: var(--accent-color);
-            background: rgba(0, 255, 102, 0.04);
+            background: rgba(0, 255, 102, 0.03);
         }
 
-        #floating-nav {
+        summary.search-summary::-webkit-details-marker { display: none; }
+        summary.search-summary { list-style: none; }
+
+        .fixed-viewport {
             position: absolute;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            z-index: 40;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100dvh;
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            pointer-events: none;
-        }
-        #floating-nav button { pointer-events: auto; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5); }
-
-        #ytResizeHandle {
-            position: absolute;
-            bottom: 0;
-            right: 0;
-            width: 24px;
-            height: 24px;
-            cursor: se-resize;
-            background: linear-gradient(135deg, transparent 50%, rgba(255, 255, 255, 0.3) 50%);
-            z-index: 120;
-            border-bottom-right-radius: 14px;
-            touch-action: none;
-        }
-        #ytResizeHandle::after {
-            content: "◢";
-            position: absolute;
-            bottom: 2px;
-            right: 4px;
-            font-size: 10px;
-            color: rgba(255, 255, 255, 0.6);
-        }
-
-        #ytMessageOverlay {
-            position: absolute;
-            top: 36px;
-            left: 8px;
-            right: 8px;
-            z-index: 25;
-            pointer-events: none;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-        .overlay-msg-item {
-            background: rgba(15, 23, 42, 0.75);
-            backdrop-filter: blur(4px);
-            border-left: 3px solid var(--primary);
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            color: #fff;
-            max-width: 90%;
-            animation: fadeIn 0.15s ease-out forwards;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            overflow: hidden;
         }
     </style>
 </head>
-<body class="flex flex-col items-center justify-start pt-4 p-0 m-0 text-slate-100 h-screen w-screen overflow-hidden">
+<body class="flex flex-col items-center justify-start text-slate-100 bg-black fixed inset-0 overflow-hidden">
 
     <!-- 🚪 ロビー画面 -->
-    <div id="lobby" class="w-full max-w-md p-4 bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 flex flex-col gap-2.5 m-2 select-text max-h-[calc(100vh-2rem)] overflow-y-auto overflow-x-hidden">
-        <h1 class="text-lg font-black text-center text-indigo-400 tracking-tight shrink-0">NEZU ONETIME CHAT</h1>
+    <div id="lobby" class="w-full max-w-md p-5 bg-neutral-900 rounded-2xl shadow-2xl border border-neutral-800 flex flex-col gap-4 my-auto select-text max-h-[calc(100dvh-2rem)] overflow-y-auto z-50">
+        <h1 class="text-xl font-black text-center text-indigo-400 tracking-wider shrink-0">NEZU ONETIME CHAT</h1>
         
-        <div class="bg-indigo-950/40 border border-indigo-900/60 rounded-xl p-2 text-[11px] space-y-0.5 text-slate-300 shrink-0">
-            <p class="font-bold text-indigo-300 flex items-center gap-1">🛡️ 高い安全性を確保した暗号化通信空間</p>
-            <p class="leading-relaxed text-slate-400">本システムは端末間（E2EE）で完全にメッセージを暗号化します。退出すればすべてのログが痕跡なく自動消滅します。</p>
+        <div class="bg-indigo-950/30 border border-indigo-900/50 rounded-xl p-3 text-[11px] space-y-1 text-slate-300 shrink-0">
+            <p class="font-bold text-indigo-300 flex items-center gap-1">🛡️ 次世代セキュア・エンドツーエンド暗号化空間</p>
+            <p class="leading-relaxed text-slate-400">通信データはAES-256で完全暗号化。YouTubeシンクロシアター機能を統合した次世代の使い捨てマルチメディアチャットです。</p>
         </div>
         
-        <div id="errMsg" class="bg-red-950 text-red-400 text-xs p-2 rounded-lg font-bold border border-red-900 hidden shrink-0"></div>
+        <div id="errMsg" class="bg-red-950/80 text-red-400 text-xs p-2.5 rounded-xl font-bold border border-red-900 hidden shrink-0"></div>
         
-        <!-- ✍️ 縦並び4段 of 入力フォームエリア -->
-        <div class="flex flex-col gap-2 shrink-0">
-            <!-- 1段目 -->
+        <div class="flex flex-col gap-3 shrink-0">
             <div>
-                <label class="block text-[11px] font-bold text-slate-400 mb-0.5">あなたの表示名 <span class="text-red-500">*</span></label>
-                <input type="text" id="ni" placeholder="名前を入力してください（必須）" maxlength="14" class="w-full px-2.5 py-1.5 border border-slate-700 bg-slate-800 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <label class="block text-[11px] font-bold text-slate-400 mb-1">あなたの表示名 <span class="text-red-500">*</span></label>
+                <input type="text" id="ni" placeholder="名前を入力してください（必須）" maxlength="14" class="w-full px-3 py-2 border border-neutral-700 bg-neutral-800 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
             </div>
-            <!-- 2段目 -->
             <div>
-                <label class="block text-[11px] font-bold text-slate-400 mb-0.5">トリップ暗号（秘密のキー） <span class="text-red-500">*必須</span></label>
-                <div class="flex gap-1.5 items-center">
-                    <input type="text" id="tk" placeholder="本人証明用のキーワード（日本語可・必須）" autocomplete="on" spellcheck="true" class="flex-1 px-2.5 py-1.5 border border-slate-700 bg-slate-800 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    <span id="tp" class="text-[10px] font-mono text-green-400 bg-slate-950 px-2 py-1 rounded-lg border border-slate-800 hidden shrink-0"></span>
+                <label class="block text-[11px] font-bold text-slate-400 mb-1">トリップ暗号（秘密のキー） <span class="text-red-500">*必須</span></label>
+                <div class="flex gap-2 items-center">
+                    <input type="text" id="tk" placeholder="本人証明用のキーワード（日本語可）" autocomplete="on" class="flex-1 px-3 py-2 border border-neutral-700 bg-neutral-800 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                    <span id="tp" class="text-[10px] font-mono text-green-400 bg-black px-2.5 py-1.5 rounded-lg border border-neutral-800 hidden shrink-0"></span>
                 </div>
             </div>
-            <!-- 3段目 -->
             <div>
-                <label class="block text-[11px] font-bold text-slate-400 mb-0.5">部屋ID <span class="text-red-500">*</span></label>
-                <input type="text" id="ri" placeholder="例: 秘密の裏部屋、room-abc" class="w-full px-2.5 py-1.5 border border-slate-700 bg-slate-800 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <label class="block text-[11px] font-bold text-slate-400 mb-1">部屋ID <span class="text-red-500">*</span></label>
+                <input type="text" id="ri" placeholder="例: シネマルーム、room-xyz" class="w-full px-3 py-2 border border-neutral-700 bg-neutral-800 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
             </div>
-            <!-- 4段目 -->
             <div>
-                <label class="block text-[11px] font-bold text-slate-400 mb-0.5">部屋パスワード <span class="text-red-500">*</span></label>
-                <input type="text" id="pi" placeholder="会話の解読鍵（入室者全員で共通のもの）" autocomplete="off" autocapitalize="off" spellcheck="false" class="w-full px-2.5 py-1.5 border border-slate-700 bg-slate-800 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <label class="block text-[11px] font-bold text-slate-400 mb-1">部屋パスワード <span class="text-red-500">*</span></label>
+                <input type="text" id="pi" placeholder="会話と映像の共通解読鍵" autocomplete="off" class="w-full px-3 py-2 border border-neutral-700 bg-neutral-800 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
             </div>
         </div>
 
-        <details class="text-[11px] text-slate-400 bg-slate-950 p-2.5 rounded-xl border border-slate-800 shrink-0">
-            <summary class="cursor-pointer font-bold select-none text-slate-300">⚙️ 部屋の最適化構成</summary>
-            <div class="grid grid-cols-2 gap-2 mt-2">
+        <details class="text-[11px] text-slate-400 bg-black p-3 rounded-xl border border-neutral-800 shrink-0">
+            <summary class="cursor-pointer font-bold select-none text-slate-300">⚙️ シアター・ルーム詳細構成</summary>
+            <div class="grid grid-cols-2 gap-2.5 mt-2.5">
                 <div>
-                    <label class="block font-semibold mb-0.5 text-slate-400">部屋人数制限</label>
-                    <select id="maxUsers" class="w-full p-1.5 border border-slate-700 rounded-lg bg-slate-800 text-white font-bold text-xs">
-                        <option value="2">2名</option><option value="3">3名</option><option value="4" selected>4名</option><option value="5">5名</option><option value="6">6名</option><option value="7">7名</option><option value="8">8名</option><option value="9">9名</option><option value="10">10名</option>
+                    <label class="block font-semibold mb-1 text-slate-400">最大同時入室制限</label>
+                    <select id="maxUsers" class="w-full p-2 border border-neutral-700 rounded-lg bg-neutral-800 text-white font-bold text-xs">
+                        <option value="2">2名</option><option value="3">3名</option><option value="4" selected>4名</option><option value="6">6名</option><option value="8">8名</option><option value="12">12名</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block font-semibold mb-0.5 text-slate-400">ROM切断タイマー</label>
-                    <select id="romTime" class="w-full p-1.5 border border-slate-700 rounded-lg bg-slate-800 text-white font-bold text-xs">
-                        <option value="5">5分</option><option value="10">10分</option><option value="15">15分</option><option value="30" selected>30分</option><option value="45">45分</option><option value="60">1時間</option>
+                    <label class="block font-semibold mb-1 text-slate-400">ROM切断タイマー</label>
+                    <select id="romTime" class="w-full p-2 border border-neutral-700 rounded-lg bg-neutral-800 text-white font-bold text-xs">
+                        <option value="5">5分</option><option value="15">15分</option><option value="30" selected>30分</option><option value="60">1時間</option>
                     </select>
                 </div>
                 <div class="col-span-2">
-                    <label class="block font-semibold mb-0.5 text-slate-400">無言部屋の自動消滅（クリーンアップ）</label>
-                    <select id="roomCleanTime" class="w-full p-1.5 border border-slate-700 rounded-lg bg-slate-800 text-white font-bold text-xs">
-                        <option value="10">10分</option><option value="20">20分</option><option value="30">30分</option><option value="40">40分</option><option value="60" selected>1時間</option>
+                    <label class="block font-semibold mb-1 text-slate-400">無言部屋のクリーンアップ自動消滅</label>
+                    <select id="roomCleanTime" class="w-full p-2 border border-neutral-700 rounded-lg bg-neutral-800 text-white font-bold text-xs">
+                        <option value="15">15分</option><option value="30">30分</option><option value="60" selected>1時間</option><option value="120">2時間</option>
                     </select>
                 </div>
             </div>
         </details>
 
-        <div class="flex gap-2 mt-0.5 shrink-0">
-            <button id="masterGenBtn" class="w-1/3 text-xs bg-slate-800 text-slate-200 rounded-xl hover:bg-slate-700 transition font-bold py-2">自動生成</button>
-            <button id="enterBtn" class="flex-1 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition py-2">入室する</button>
+        <div class="flex gap-2 shrink-0">
+            <button id="masterGenBtn" class="w-1/3 text-xs bg-neutral-800 text-slate-200 rounded-xl hover:bg-neutral-700 transition font-bold py-2.5">ランダム生成</button>
+            <button id="enterBtn" class="flex-1 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition py-2.5">入室・シアター構築</button>
         </div>
 
-        <div class="flex justify-center text-[10px] text-slate-500 mt-0.5 px-1 shrink-0">
-            <button id="openGuideBtn" class="hover:text-indigo-400 font-bold flex items-center gap-1 transition">📖 使い方ガイドと注意点（必読）</button>
+        <div class="flex justify-center text-[10px] text-slate-500 px-1 shrink-0">
+            <button id="openGuideBtn" class="hover:text-indigo-400 font-bold flex items-center gap-1 transition">📖 使い方ガイド・仕様・注意事項（必読）</button>
         </div>
     </div>
 
-    <!-- 💬 メインアプリ画面 -->
-    <div id="mainApp" class="w-full h-full max-w-lg bg-transparent flex flex-col relative hidden">
+    <!-- 💻 メインアプリ全画面表示空間 -->
+    <div id="mainApp" class="fixed-viewport hidden bg-black md:flex-row min-h-0">
         
-        <!-- 🔝 上部固定コントロールパネル -->
-        <div id="header-panel" class="border-b border-slate-800 bg-slate-900/95 backdrop-filter backdrop-blur-md z-30 shrink-0 flex flex-col shadow-lg sticky top-0">
-            <div class="px-4 py-2 border-b border-slate-800/50 flex items-center justify-between gap-2">
+        <!-- 📺 左側：動画プレイヤー & コントロールエリア -->
+        <div class="w-full md:w-[50%] lg:w-[55%] flex flex-col bg-black border-b md:border-b-0 md:border-r border-neutral-900 shrink-0 max-h-[40vh] md:max-h-full min-h-0">
+            
+            <!-- 参加者リスト -->
+            <div id="presenceList" class="flex flex-wrap items-center px-3 py-1 bg-neutral-950 border-b border-neutral-900 text-xs gap-1 h-7 overflow-y-auto select-none shrink-0"></div>
+
+            <!-- YouTube映像メインコア -->
+            <div class="bg-black flex items-center justify-center relative group aspect-video w-full flex-1 min-h-0" id="ytPlayerContainer">
+                <div id="ytLockOverlay"></div>
+                
+                <!-- 映像がロードされていない時のダミー画面 -->
+                <div id="ytPlaceholder" class="absolute inset-0 flex flex-col items-center justify-center text-neutral-600 font-bold text-xs p-4 text-center select-none bg-neutral-950 z-20">
+                    <p class="text-indigo-500/80 text-sm mb-1">CINEMA OSCILLATOR</p>
+                    <p>最下部の「🔍動画検索パネル」から動画を同期再生してください</p>
+                </div>
+
+                <div class="w-full h-full">
+                    <div id="ytPlayer" class="w-full h-full"></div>
+                </div>
+            </div>
+            
+            <!-- 🎛️ プレイヤー直下ミニコントローラー -->
+            <div id="ytEmbeddedControls" class="bg-neutral-950 p-2 flex flex-col gap-2 select-none border-t border-neutral-900 text-xs shrink-0">
+                <!-- 上段：シークバー、時間表示 -->
+                <div class="flex items-center gap-2 w-full">
+                    <button id="ytMiniPlayPauseBtn" class="font-bold text-slate-300 hover:text-white bg-neutral-900 px-2 py-1 rounded border border-neutral-800 min-w-[34px] text-center transition">▶</button>
+                    <span id="ytMiniTimeDisplay" class="font-mono text-slate-400 tracking-tight shrink-0">00:00</span>
+                    <input type="range" id="ytMiniSlider" min="0" max="100" value="0" step="1" class="flex-1 h-1 bg-neutral-800 rounded appearance-none cursor-pointer accent-indigo-500 min-w-0">
+                </div>
+                <!-- 下段：バッジ、音量調整、外部リンク -->
+                <div class="flex flex-wrap items-center justify-between gap-2 w-full pt-0.5 border-t border-neutral-900/40">
+                    <div class="flex items-center gap-1.5 min-w-0">
+                        <span id="ytBadge" class="border px-1.5 py-0.5 rounded text-[10px] font-bold text-neutral-400 border-neutral-800 bg-black max-w-[100px] truncate">待機中</span>
+                        <a id="ytOfficialLinkBtn" href="https://www.youtube.com" target="_blank" rel="noopener noreferrer" class="bg-red-950/60 hover:bg-red-900 text-red-400 border border-red-900/40 px-1.5 py-0.5 rounded text-[10px] font-bold transition whitespace-nowrap hidden">🔗 公式</a>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0 ml-auto">
+                        <button id="ytMiniMuteBtn" class="text-slate-400 hover:text-white transition px-1 text-sm">🔊</button>
+                        <input type="range" id="ytMiniVolume" min="0" max="100" value="50" step="1" class="w-16 md:w-20 h-1 bg-neutral-800 rounded appearance-none cursor-pointer accent-emerald-500">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 💬 右側：統合チャット・制御コンソールスペース -->
+        <div class="flex-1 flex flex-col bg-neutral-950 min-w-0 min-h-0 overflow-hidden relative">
+            
+            <!-- 上部ヘッダーコントロール -->
+            <div class="px-3 py-1.5 border-b border-neutral-900 flex items-center justify-between gap-2 bg-neutral-900 shrink-0 select-none">
                 <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-1.5">
-                        <span id="topLiveIndicator" class="w-2 h-2 bg-green-500 rounded-full animate-pulse shrink-0"></span>
-                        <h2 id="roomDisplay" class="font-black text-sm text-slate-200 tracking-tight truncate select-text"></h2>
-                        <span id="presenceCount" class="text-xs text-slate-500 font-bold shrink-0">[-]</span>
+                        <span id="topLiveIndicator" class="w-2 h-2 bg-neutral-600 rounded-full shrink-0"></span>
+                        <h2 id="roomDisplay" class="font-black text-xs text-slate-300 tracking-wide truncate select-text"></h2>
+                        <span id="presenceCount" class="text-[10px] text-slate-500 font-mono font-bold shrink-0">[-]</span>
                     </div>
                 </div>
-                <div class="flex gap-1.5 shrink-0 items-center">
-                    <button id="openPlayerNavBtn" class="bg-gradient-to-r from-red-600 to-pink-600 text-white font-black text-xs px-2.5 py-1.5 rounded-xl shadow-md hover:opacity-90 transition flex items-center gap-1">
-                        <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93 .502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
-                        <span>プレイヤー</span>
-                    </button>
-                    <button id="copyBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs px-2.5 py-1.5 rounded-xl transition">招待</button>
-                    <button id="exitBtn" class="bg-red-950 hover:bg-red-900 text-red-400 font-bold text-xs px-2.5 py-1.5 rounded-xl transition">退出</button>
+                <div class="flex gap-1 shrink-0 items-center">
+                    <button id="ytClaimHostBtn" class="bg-indigo-950 text-indigo-400 border border-indigo-900 px-2 py-1 rounded text-[10px] font-bold hover:bg-indigo-900 transition active:scale-95">👑 権限奪還</button>
+                    <button id="ytGuestModeBtn" class="px-2 py-1 rounded text-[10px] font-bold border border-neutral-700 transition active:scale-95 hidden"></button>
+                    <button id="copyBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[10px] px-2 py-1 rounded transition flex items-center gap-0.5 shadow">🔗 招待</button>
+                    <button id="exitBtn" class="bg-red-950/40 hover:bg-red-900 text-red-400 font-bold text-[10px] px-2 py-1 rounded transition border border-red-900/30">退出</button>
                 </div>
             </div>
-            <div id="presenceList" class="flex flex-wrap px-4 py-1.5 max-h-12 overflow-y-auto bg-slate-950/40 border-b border-slate-800/30"></div>
-            
-            <!-- ✍️ 発言入力エリア -->
-            <div class="p-3 flex items-center gap-1.5 w-full relative bg-slate-900 border-b border-slate-800">
-                <button id="clearBtn" class="absolute left-5 text-slate-500 hover:text-slate-300 p-1 opacity-0 transition-opacity pointer-events-none z-10">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
-                </button>
-                <textarea id="mi" placeholder="メッセージを入力... (Enterで送信)" rows="1" class="flex-1 pl-8 pr-3 py-2 border border-slate-800 bg-slate-950 rounded-xl text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none max-h-24 leading-relaxed select-text"></textarea>
+
+            <!-- ✍️ 統合発言入力エリア -->
+            <div class="p-2 flex items-center gap-2 w-full relative bg-neutral-900 border-b border-neutral-950 shrink-0">
+                <div class="relative flex-1 flex items-center">
+                    <button id="clearBtn" class="absolute left-2.5 text-neutral-500 hover:text-neutral-300 p-1 opacity-0 transition-opacity pointer-events-none z-10">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                    <textarea id="mi" placeholder="メッセージを入力..." rows="1" class="w-full pl-8 pr-3 py-1.5 border border-neutral-800 bg-black rounded-xl text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none max-h-16 leading-normal select-text"></textarea>
+                </div>
                 <button id="sendBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-xl transition shadow-md shrink-0">
-                    <svg class="w-5 h-5 transform rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                    <svg class="w-4 h-4 transform rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
                 </button>
             </div>
-        </div>
 
-        <!-- 🗺️ チャットタイムライン -->
-        <div id="chatTimeline" class="select-text"></div>
+            <!-- チャットメインタイムライン -->
+            <div id="chatTimeline" class="select-text flex-1 min-h-0"></div>
 
-        <!-- 🎯 固定ナビゲーションアシスタントボタン -->
-        <div id="floating-nav">
-            <button id="toTopBtn" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700 flex flex-col items-center justify-center transition" title="最上部（過去ログ）へ">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 11l7-7 7 7M5 19l7-7 7 7"/></svg>
-                <span class="text-[9px] font-bold mt-0.5">過去</span>
-            </button>
-            <button id="toBottomBtn" class="p-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl border border-indigo-500 flex flex-col items-center justify-center transition" title="最下部（最新発言）へ">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 13l-7 7-7-7M19 5l-7 7-7-7"/></svg>
-                <span class="text-[9px] font-bold mt-0.5">最新</span>
-            </button>
-            <button id="focusBtn" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-700 flex flex-col items-center justify-center transition" title="入力欄へフォーカス">
-                <span class="text-base leading-none">⌨️</span>
-                <span class="text-[9px] font-bold mt-0.5">入力</span>
-            </button>
-        </div>
-
-        <!-- 📥 下部固定フッター -->
-        <div id="footer-panel" class="w-full shrink-0 z-30 bg-slate-900/95 backdrop-filter backdrop-blur-md flex flex-col shadow-inner">
-            <!-- YouTubeコントロールセンター -->
-            <div id="ytControlConsole" class="hidden p-3 bg-slate-950 text-white flex flex-col gap-2 transition-all border-t-2 border-slate-800">
-                <div class="flex items-center justify-between text-xs border-b border-slate-800/80 pb-1.5">
-                    <div class="flex flex-col gap-0.5 min-w-0 flex-1">
-                        <div class="flex items-center gap-1.5 flex-wrap">
-                            <span id="ytBadge" class="border px-1.5 py-0.5 rounded text-[10px] tracking-wider font-bold transition-all duration-300">Loading...</span>
-                            <span id="ytSyncStatusIndicator" class="px-1.5 py-0.5 rounded text-[10px] font-bold border transition-all duration-300">同期判定中</span>
-                            <span id="ytSyncTimeDisplay" class="text-[10px] font-mono text-slate-400 font-bold">00:00 / 00:00</span>
-                        </div>
-                        <div id="ytLagMeter" class="text-[9px] font-mono mt-0.5 hidden"></div>
-                    </div>
-                    <div class="flex items-center gap-1 shrink-0">
-                        <button id="ytGuestModeBtn" class="px-2.5 py-1 rounded text-[10px] font-black tracking-wide shadow-md transition-all duration-300 active:scale-95 hidden"></button>
-                        <button id="ytHostPlayBtn" class="bg-green-600 text-white px-2 py-0.5 rounded text-[10px] font-bold hover:bg-green-700 transition hidden">▶ 再生発信</button>
-                        <button id="ytHostPauseBtn" class="bg-red-600 text-white px-2 py-0.5 rounded text-[10px] font-bold hover:bg-red-700 transition hidden">⏸ 停止発信</button>
-                    </div>
-                </div>
-
-                <!-- 再生位置シークスライダー -->
-                <div class="flex items-center gap-2 w-full">
-                    <input type="range" id="ytSyncSlider" min="0" max="100" value="0" step="1" class="flex-1 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500">
-                </div>
-
-                <!-- 🔊 音量調整コントロールバー -->
-                <div class="flex items-center gap-2 bg-slate-900/60 px-2 py-1 rounded-lg border border-slate-800/40 w-full">
-                    <button id="ytVolumeMuteBtn" class="text-slate-400 hover:text-white transition text-xs shrink-0 focus:outline-none select-none px-0.5">
-                        <span id="ytVolumeIcon">🔊</span>
-                    </button>
-                    <input type="range" id="ytVolumeSlider" min="0" max="100" value="50" step="1" class="flex-1 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500">
-                    <span id="ytVolumeDisplay" class="text-[10px] font-mono font-bold text-slate-400 w-7 text-right shrink-0">50%</span>
-                </div>
-
-                <div class="grid grid-cols-12 gap-1.5 items-center mt-0.5">
-                    <div class="col-span-8 relative">
-                        <input type="text" id="ytSearchInput" placeholder="キーワード、または動画URLをここにペースト..." class="w-full px-2 py-1 border border-slate-800 rounded-lg text-xs bg-slate-900 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 select-text">
-                        <div id="ytSearchResults" class="shadow-2xl rounded-b-lg text-slate-200"></div>
-                    </div>
-                    <button id="ytSearchBtn" class="col-span-4 bg-indigo-600 text-white py-1 rounded-lg text-xs font-bold hover:bg-indigo-700 transition">検索 / 再生</button>
-                </div>
+            <!-- 📥 下部固定フッターエリア -->
+            <div id="footer-panel" class="w-full flex flex-col justify-end bg-neutral-900 border-t border-neutral-800 shadow-inner shrink-0 pb-[env(safe-area-inset-bottom)]">
                 
-                <div class="grid grid-cols-12 gap-1.5 items-center">
-                    <div class="col-span-12 flex gap-1">
-                        <button id="ytPrevVideoBtn" class="flex-1 bg-slate-900 border border-slate-800 text-slate-400 py-1 px-1 rounded-lg text-[10px] font-semibold hover:bg-slate-800 transition">⏮ 前の候補</button>
-                        <button id="ytNextVideoBtn" class="flex-1 bg-slate-900 border border-slate-800 text-slate-400 py-1 px-1 rounded-lg text-[10px] font-semibold hover:bg-slate-800 transition">次の候補 ⏭</button>
+                <!-- 🔍 スマート動画検索・URL同期パネル -->
+                <details id="ytSearchAccordion" class="w-full bg-neutral-950 border-b border-neutral-900 group">
+                    <summary class="search-summary px-3 py-2 text-[11px] font-bold text-neutral-400 hover:text-neutral-200 cursor-pointer select-none flex items-center justify-between bg-neutral-950 transition">
+                        <span class="flex items-center gap-1">🔍 動画検索・URL同期パネル を開く</span>
+                        <span class="text-[9px] font-mono transform group-open:rotate-180 transition-transform">▼</span>
+                    </summary>
+                    
+                    <div class="p-2 pt-0 flex flex-col gap-1.5 relative border-t border-neutral-900/40 bg-neutral-950/50">
+                        <div class="flex items-center gap-1 w-full text-xs">
+                            <span id="ytSyncStatusIndicator" class="px-1.5 py-0.5 rounded text-[10px] font-bold border border-neutral-800 bg-neutral-900 text-slate-400 shrink-0 select-none">同期未接続</span>
+                            <span id="ytSyncTimeDisplay" class="text-[10px] font-mono text-slate-500 font-bold shrink-0 mr-auto pl-1 select-none">00:00 / 00:00</span>
+                            <div id="ytLagMeter" class="text-[9px] font-mono text-slate-400 hidden select-none"></div>
+                            <div class="flex gap-0.5 shrink-0 select-none">
+                                <button id="ytPrevVideoBtn" class="bg-neutral-900 border border-neutral-800 text-slate-400 px-1.5 py-0.5 rounded text-[9px] font-medium hover:bg-neutral-800 transition">⏮ 前</button>
+                                <button id="ytNextVideoBtn" class="bg-neutral-900 border border-neutral-800 text-slate-400 px-1.5 py-0.5 rounded text-[9px] font-medium hover:bg-neutral-800 transition">次 ⏭</button>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-12 gap-1.5 items-center relative">
+                            <div class="col-span-9 relative">
+                                <input type="text" id="ytSearchInput" placeholder="検索ワード、またはYouTubeのURL..." class="w-full px-2.5 py-1.5 border border-neutral-800 rounded-lg text-xs bg-neutral-900 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 select-text">
+                                <div id="ytSearchResults" class="shadow-2xl text-slate-200"></div>
+                            </div>
+                            <button id="ytSearchBtn" class="col-span-3 bg-indigo-600 text-white py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-700 transition text-center">検索/同期</button>
+                        </div>
                     </div>
+                </details>
+
+                <!-- ⌨️ キーボード起動ボタンエリア -->
+                <div class="p-2 bg-neutral-900 border-t border-neutral-950 shrink-0">
+                    <button id="openKeyboardButton" class="w-full bg-indigo-600/90 hover:bg-indigo-600 text-white py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow active:scale-[0.99]">
+                        <span>⌨️ メッセージを入力する</span>
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 📺 変形・ドラッグ対応ビデオプレイヤー -->
-    <div id="ytArea" class="transition-shadow duration-300 flex flex-col">
-        <div id="ytDragBar" class="px-3 py-1.5 bg-slate-950 text-slate-200 flex items-center justify-between text-[11px] font-bold select-none shrink-0 border-b border-slate-900">
-            <span class="text-slate-400 tracking-wider flex items-center gap-1">
-                <span id="ytLiveIndicator" class="inline-block w-2 h-2 rounded-full bg-slate-500"></span> SYSTEM SCREEN
-            </span>
-            <button id="ytClosePlayerBtn" class="text-slate-500 hover:text-white p-0.5"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
-        </div>
-        <div class="relative w-full bg-black select-none flex-1" id="ytPlayerContainer">
-            <div id="ytMessageOverlay"></div>
-            <div id="ytLockOverlay"></div>
-            <div class="inline-zoom-container">
-                <div id="ytPlayer" class="absolute inset-0 w-full h-full"></div>
-            </div>
-        </div>
-        
-        <div id="ytEmbeddedControls" class="bg-slate-950 border-t border-slate-900 p-1.5 flex items-center gap-2 select-none relative z-30 shrink-0">
-            <button id="ytMiniPlayPauseBtn" class="text-xs font-bold text-slate-300 hover:text-white bg-slate-900 px-2 py-0.5 rounded border border-slate-800 min-w-[36px] transition">▶</button>
-            <span id="ytMiniTimeDisplay" class="text-[10px] font-mono text-slate-400 tracking-tight shrink-0">00:00</span>
-            <input type="range" id="ytMiniSlider" min="0" max="100" value="0" step="1" class="flex-1 h-1 bg-slate-800 rounded appearance-none cursor-pointer accent-indigo-500">
-            <button id="ytMiniMuteBtn" class="text-[11px] text-slate-400 hover:text-white transition px-0.5">🔊</button>
-            <input type="range" id="ytMiniVolume" min="0" max="100" value="50" step="1" class="w-12 h-1 bg-slate-800 rounded appearance-none cursor-pointer accent-emerald-500">
-        </div>
-
-        <div id="ytResizeHandle"></div>
-    </div>
-
-    <!-- 📑 統合ガイドモーダル -->
+    <!-- 📑 システム説明書モーダル -->
     <div id="guideCard" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-slate-900 p-6 rounded-2xl max-w-md w-full max-h-[85vh] overflow-y-auto shadow-2xl flex flex-col gap-4 border border-slate-800 select-text">
-            <h3 class="font-black text-lg text-indigo-400 border-b border-slate-800 pb-2 flex items-center gap-1">📖 総合ガイド ＆ 規約項目</h3>
+        <div class="bg-neutral-900 p-6 rounded-2xl max-w-md w-full max-h-[85dvh] overflow-y-auto shadow-2xl flex flex-col gap-4 border border-neutral-800 select-text">
+            <h3 class="font-black text-base text-indigo-400 border-b border-neutral-800 pb-2 flex items-center gap-1.5">📑 総合シアターガイド ＆ 規約条項</h3>
             <div class="text-xs text-slate-300 leading-relaxed space-y-4">
-                <!-- 🚨 最重要警告メッセージ -->
-                <div class="bg-red-950/50 p-3 rounded-xl border border-red-900/40 text-red-200 space-y-1">
-                    <p class="font-bold flex items-center gap-1">⚠️ ログデータに関する重要な注意（必読）</p>
+                <div class="bg-red-950/40 p-3 rounded-xl border border-red-900/30 text-red-200 space-y-1">
+                    <p class="font-bold flex items-center gap-1">⚠️ ログデータの揮発性に関する警告（重要）</p>
                     <p class="text-[11px] text-slate-400 leading-normal">
-                        本チャットは、サーバーにログを一切残さない<strong class="text-slate-200">完全端末間暗号化（E2EE）空間</strong>です。ブラウザの「リロード」「戻る」ボタンを押したり、右上の「退出」ボタンをクリックすると、それまでの会話履歴・シアター状態は<strong class="text-slate-200">すべて永久に消滅し、二度と復元できません。</strong> 重要な情報のバックアップは各自メモ等に控えてください。
+                        当チャットルームは完全使い捨ての暗号化暗室です。サーバー側には一切の通信ログは保管されません。ブラウザの「再読み込み」「戻る」または「退出」を行うと会話および動画の再生同期状態は<strong class="text-slate-200">完全抹消され復元不能</strong>となります。
                     </p>
-                </div>
-
-                <!-- 📘 1. 使い方ガイド -->
-                <div class="space-y-1.5">
-                    <p class="font-bold text-indigo-300 text-sm flex items-center gap-1">📘 1. 使い方ガイド</p>
-                    <ul class="list-disc pl-4 space-y-1 text-slate-400 text-[11px]">
-                        <li><strong class="text-slate-200">部屋の作成と入室：</strong> 「あなたの表示名」「トリップ暗号」「部屋ID」「部屋パスワード」を入力して入室します。「自動生成」ボタンを使うと、ランダムで安全な部屋IDとパスワードが即座にセットされます。</li>
-                        <li><strong class="text-slate-200">友達を招待する：</strong> 入室後、右上にある「招待」ボタンを押すと、現在の部屋IDと部屋パスワードが埋め込まれた「招待用リンク」がクリップボードにコピーされます。これをそのまま友達に共有してください。</li>
-                        <li><strong class="text-slate-200">メッセージ送信：</strong> 入力欄に文字を入力し、Enterキー（スマホは紙飛行機ボタン）で送信できます。URLを貼り付けると自動的にリンク化されます。</li>
-                    </ul>
-                </div>
-
-                <!-- 📺 2. 同時視聴シアター（プレイヤー）の使い方 -->
-                <div class="space-y-1.5">
-                    <p class="font-bold text-red-400 text-sm flex items-center gap-1">📺 2. シンクロシアター機能</p>
-                    <p class="text-[11px] text-slate-400 leading-normal">
-                        チャット内にYouTubeのURLが投稿されると、メッセージの下に「同期起動パネル」が出現します。また、画面右上の「プレイヤー」ボタンから直接シネマコンソールを開くことも可能です。
-                    </p>
-                    <ul class="list-disc pl-4 space-y-1 text-slate-400 text-[11px]">
-                        <li><strong class="text-red-300">📺 同期起動：</strong> 部屋のメンバー全員 of 画面に同じ動画プレイヤーを強制起動し、再生位置をリアルタイムにシンクロさせます。動画を最初に再生・検索した人が「👑ホスト」となり、再生・停止・シークの全権限を持ちます。</li>
-                        <li><strong class="text-emerald-300">▶ 内部再生：</strong> シアタープレイヤー窓を開かず、そのメッセージのタイムライン枠内だけで個別にこっそり再生します。</li>
-                        <li><strong class="text-amber-300">🔓 マイペース再生（ゲスト用）：</strong> ホストとの強制連動を一時的に解除し、自分自身のタイムラインでシークや一時停止を自由に行えます。「ホストに同期する」を押せば、いつでもホストの再生位置へリシークして戻れます。</li>
-                        <li><strong class="text-slate-200">プレイヤーの操作：</strong> ビデオプレイヤー上部のバーをドラッグすると画面上の好きな位置へ移動でき、マウスホイール（スマホは右下のつまみをドラッグ）で自由にプレイヤーの大きさを拡大・縮小できます。</li>
-                    </ul>
-                </div>
-
-                <!-- 🛡️ 3. 高度なセキュリティ仕様 -->
-                <div class="space-y-1.5 bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-                    <p class="font-bold text-green-400 text-xs flex items-center gap-1">🛡️ 3. 本システムのセキュリティ仕様</p>
-                    <ul class="list-none space-y-1 text-slate-400 text-[11px]">
-                        <li><span class="text-green-500">◆</span> <strong class="text-slate-300">エンドツーエンド暗号化（E2EE）：</strong> 送信されるすべての文字情報は、ブラウザからネットワークに出る前に部屋パスワードによって「AES-256」規格で暗号化されます。データベースを管理するサーバーであっても、あなたの会話を解読することは絶対に不可能です。</li>
-                        <li><span class="text-green-500">◆</span> <strong class="text-slate-300">なりすまし防止（トリップ機能）：</strong> あなたの名前と「トリップ暗号（秘密のキー）」を掛け合わせて算出した固有の文字列（例：◆a1b2c3）が名前の横に表示されます。キーを知らない他人があなたの名前を騙っても、このトリップ文字列が変化するため、一目で偽物だと見破ることができます。</li>
-                        <li><span class="text-green-500">◆</span> <strong class="text-slate-300">データ自動消滅（クリーンアップ）：</strong> 部屋の全員が退出するか、部屋の作成時に設定した「無言クリーンアップタイマー」の間、誰も発言や操作を行わなかった場合、サーバー上の部屋データ・映像同期データは痕跡を残さず完全自動消滅します。</li>
-                    </ul>
-                </div>
-
-                <!-- 🚫 4. 禁止事項および利用上の注意 -->
-                <div class="space-y-1.5">
-                    <p class="font-bold text-amber-400 text-xs flex items-center gap-1">🚫 4. 禁止事項・注意事項</p>
-                    <ul class="list-disc pl-4 space-y-1 text-slate-400 text-[11px]">
-                        <li>部屋パスワードは無関係な第三者に漏洩しないよう管理してください（パスワードが漏れると、その部屋の通信はすべて傍受・解読可能になります）。</li>
-                        <li>サーバーへの攻撃行為、スクリプトを用いた大量の自動連投、部屋の不当な乱造・占有は禁止します。</li>
-                        <li>著作権を侵害する動画や、公序良俗に反するYouTube動画を部屋内で同期・拡散する行為はお控えください。</li>
-                        <li>当システムは「一時的な使い捨ての連絡空間」を提供するものです。永続的なデータ保存や、ミッションクリティカルな業務連絡への利用には適していません。</li>
-                    </ul>
                 </div>
             </div>
-            <button id="closeGuideBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-md mt-2">内容を確認しました</button>
+            <button id="closeGuideBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-md mt-2">システム仕様を承諾しました</button>
         </div>
     </div>
 
-    <!-- 💻 アプリケーションロジック -->
+    <!-- 💻 アプリケーションマスターロジック -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import {
@@ -496,14 +368,14 @@
         } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
         const $ = id => document.getElementById(id);
+        
         const DB_URL = "https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app";
         const YT_API_KEY = "AIzaSyDIJ1xyCEHBSkpSvntbsJrtmwBl03juoCw"; 
 
-        const firebaseApp = initializeApp({
-            apiKey: "AIzaSyApju_6KuGq8EkXQPI0aTOysFmZ22vL5HQ",
-            databaseURL: DB_URL
-        });
-        const db = getDatabase(firebaseApp, DB_URL);
+        // 🌟 【修正箇所】Firebase初期化ロジックの適正化
+        // Realtime Databaseモジュールを安全に読み込ませるため、ConfigオブジェクトにdatabaseURLを内包して初期化します。
+        const firebaseApp = initializeApp({ databaseURL: DB_URL });
+        const db = getDatabase(firebaseApp);
 
         let isTimelineScrolledUp = false; 
         let ytPlayer = null, isYtReady = false;
@@ -517,9 +389,8 @@
         let lastLoadedVideoId = null;
         let isLocalAction = false;
         let syncIntervalId = null;
-        let amIOwner = true; 
+        let amIOwner = false; 
         let isUserApprovedSync = false;
-        let lastSavedTime = 0;
         let lastSavedStatus = "";
         let lastResetSeed = 0;
         let isExplicitlyClosedByGuest = false;
@@ -528,79 +399,81 @@
         let savedVolumeLevel = 50;
         let isMutedLocal = false;
 
-        window.__jumpToYtVideo = function(vId) {
-            if (!vId) return;
-            if ($("ytArea").style.display !== "block") {
-                $("ytArea").style.display = "block";
-                $("ytControlConsole").style.display = "flex";
-                setupPlayerTransformationController($("ytArea"), 180, 1200);
+        let curR, curP, curN, curT, rawR, serverTimeOffset = 0, isOffsetLoaded = false;
+        let unsubscribeChat = null, unsubscribePres = null, unsubscribeRoomConfig = null, unsubscribeConn = null;
+        let isProcessingExit = false, USER_TIMEOUT = 30 * 60 * 1000, ROOM_LIFETIME = 60 * 60 * 1000;
+
+        const uid = (() => {
+            let id = localStorage.getItem("nez_uid");
+            if (!id) { id = crypto.randomUUID(); localStorage.setItem("nez_uid", id); }
+            return id;
+        })();
+
+        onValue(ref(db, ".info/connected"), (snap) => {
+            if (snap.val() === true) {
+                onValue(ref(db, ".info/serverTimeOffset"), (offsetSnap) => { 
+                    serverTimeOffset = offsetSnap.val() || 0; isOffsetLoaded = true;
+                }, { onlyOnce: true });
             }
-            isUserApprovedSync = true;
-            isExplicitlyClosedByGuest = false;
-            isGuestFreeMode = false;
-            
-            setTimeout(async () => {
-                amIOwner = true; 
-                isLocalAction = true;
-                if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; }
-                
-                const NOW = getServerNow();
-                await set(ref(db, `rooms/${curR}/videoState`), { 
-                    videoId: vId, 
-                    status: "playing", 
-                    currentTime: 0, 
-                    timestamp: NOW, 
-                    owner: uid, 
-                    ownerName: enc(curN, curP),
-                    resetSeed: Date.now()
-                });
-                lastLoadedVideoId = vId;
-                await update(ref(db, `rooms/${curR}`), { lastActivity: NOW });
-                setTimeout(() => { isLocalAction = false; }, 400);
-            }, 150);
-        };
+        });
 
-        window.__inlinePlayVideo = function(containerId, vId) {
-            const container = $(containerId);
-            if (!container) return;
-            container.innerHTML = `
-            <div class="relative w-full aspect-video rounded-lg overflow-hidden border border-slate-800 bg-black">
-                <iframe class="absolute inset-0 w-full h-full border-0" 
-                        src="https://www.youtube.com/embed/${vId}?autoplay=1&playsinline=1" 
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                        allowfullscreen>
-                </iframe>
-            </div>`;
-        };
+        const getServerNow = () => Date.now() + (isOffsetLoaded ? serverTimeOffset : 0);
 
-        function pushMessageToOverlay(senderName, textMessage) {
-            const container = $("ytMessageOverlay");
-            if (!container) return;
-            const item = document.createElement("div");
-            item.className = "overlay-msg-item";
-            item.innerText = `${senderName}: ${textMessage}`;
-            container.appendChild(item);
-            
-            if (container.children.length > 3) { container.removeChild(container.firstChild); }
-            setTimeout(() => {
-                if (item && item.parentNode) {
-                    item.style.transition = "opacity 0.3s ease"; item.style.opacity = "0";
-                    setTimeout(() => { if (item && item.parentNode) item.parentNode.removeChild(item); }, 300);
-                }
-            }, 4500);
+        const enc = (t, k) => t ? CryptoJS.AES.encrypt(t, k).toString() : "";
+        const textDec = (c, k) => { try { return c ? (CryptoJS.AES.decrypt(c, k).toString(CryptoJS.enc.Utf8) || null) : null; } catch { return null; } };
+        const esc = t => (t || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+        const linkify = t => esc(t).replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:underline break-all">$1</a>');
+
+        function generateTripString(name, key) {
+            if (!name || !key) return "";
+            try {
+                const targetStr = CryptoJS.enc.Utf8.parse(`${name}:${key}`);
+                const hashVal = CryptoJS.SHA256(targetStr).toString();
+                return "◆" + hashVal.slice(0, 6);
+            } catch(e) { return ""; }
+        }
+
+        function updateTripPreview() { 
+            const n = $("ni").value.replace(/[\s\u3000]+/g, "").trim(); 
+            const tk = $("tk").value.trim(); 
+            if (n && tk) {
+                const tripStr = generateTripString(n, tk);
+                $("tp").innerText = tripStr; $("tp").style.display = "inline-block";
+            } else {
+                $("tp").innerText = ""; $("tp").style.display = "none";
+            }
         }
 
         const chatTimeline = $('chatTimeline');
         chatTimeline.addEventListener('scroll', () => {
-            const distanceFromBottom = chatTimeline.scrollHeight - chatTimeline.scrollTop - chatTimeline.clientHeight;
-            isTimelineScrolledUp = (distanceFromBottom > 45);
+            isTimelineScrolledUp = (chatTimeline.scrollTop > 60);
         }, { passive: true });
 
-        window.scrollToLatest = function() { chatTimeline.scrollTop = chatTimeline.scrollHeight; isTimelineScrolledUp = false; };
-        window.scrollToOldest = function() { chatTimeline.scrollTop = 0; isTimelineScrolledUp = true; };
+        const scrollToLatest = () => { 
+            chatTimeline.scrollTop = 0; 
+            isTimelineScrolledUp = false; 
+        };
 
-        $("toTopBtn").onclick = () => { scrollToOldest(); };
-        $("toBottomBtn").onclick = () => { scrollToLatest(); };
+        const toggleClearBtn = (text) => {
+            const hasText = !!(text && text.trim().length > 0);
+            $("clearBtn").style.opacity = hasText ? "1" : "0"; $("clearBtn").style.pointerEvents = hasText ? "auto" : "none";
+        };
+
+        window.__seekPlayerToSeconds = async function(seconds) {
+            if (!ytPlayer || typeof ytPlayer.seekTo !== 'function') return;
+            if (amIOwner) {
+                isLocalAction = true;
+                const status = (typeof ytPlayer.getPlayerState === 'function' && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) ? "playing" : "paused";
+                const currentId = globalVideoStateCache?.videoId || "dQw4w9WgXcQ";
+                await set(ref(db, `rooms/${curR}/videoState`), { 
+                    videoId: currentId, status: status, currentTime: seconds, timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: lastResetSeed || Date.now()
+                });
+                ytPlayer.seekTo(seconds, true);
+                setTimeout(() => { isLocalAction = false; }, 400);
+            } else {
+                ytPlayer.seekTo(seconds, true);
+            }
+        };
 
         const loadYtScript = () => {
             if (window.YT && window.YT.Player) { isYtReady = true; return; }
@@ -624,182 +497,82 @@
             return `${m}:${s}`;
         }
 
-        const uid = (() => {
-            let id = localStorage.getItem("nez_uid");
-            if (!id) { id = crypto.randomUUID(); localStorage.setItem("nez_uid", id); }
-            return id;
-        })();
-
-        let curR, curP, curN, curT, rawR, serverTimeOffset = 0, isOffsetLoaded = false;
-        let unsubscribeChat = null, unsubscribePres = null, unsubscribeRoomConfig = null, unsubscribeConn = null;
-        let isProcessingExit = false, USER_TIMEOUT = 30 * 60 * 1000, ROOM_LIFETIME = 60 * 60 * 1000;
-
-        onValue(ref(db, ".info/serverTimeOffset"), (snap) => { 
-            serverTimeOffset = snap.val() || 0; isOffsetLoaded = true;
-        }, { onlyOnce: true });
-
-        const getServerNow = () => Date.now() + (isOffsetLoaded ? serverTimeOffset : 0);
-
-        const clearSubscriptions = () => {
-            if (unsubscribeChat) unsubscribeChat(); if (unsubscribePres) unsubscribePres(); 
-            if (unsubscribeRoomConfig) unsubscribeRoomConfig(); if (unsubscribeConn) unsubscribeConn();
-            if (sliderIntervalId) { clearInterval(sliderIntervalId); sliderIntervalId = null; }
-            if (heartbeatIntervalId) { clearInterval(heartbeatIntervalId); heartbeatIntervalId = null; }
-            if (syncIntervalId) { clearInterval(syncIntervalId); syncIntervalId = null; }
-        };
-
-        const showLobby = (msg = "") => {
-            curR = null; clearSubscriptions();
-            if (msg) { $("errMsg").innerText = msg; $("errMsg").style.display = "block"; }
-            $("mainApp").style.display = "none"; $("lobby").style.display = "flex"; $("ytArea").style.display = "none";
-            $("ytControlConsole").style.display = "none";
-            if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; lastLoadedVideoId = null; }
-            $("enterBtn").disabled = false; $("enterBtn").innerText = "入室する";
-        };
-
-        const enc = (t, k) => t ? CryptoJS.AES.encrypt(t, k).toString() : "";
-        const textDec = (c, k) => { try { return c ? (CryptoJS.AES.decrypt(c, k).toString(CryptoJS.enc.Utf8) || null) : null; } catch { return null; } };
-        const esc = t => (t || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-        const linkify = t => esc(t).replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:underline">$1</a>');
-
-        const toggleClearBtn = (text) => {
-            const hasText = !!(text && text.trim().length > 0);
-            $("clearBtn").style.opacity = hasText ? "1" : "0"; $("clearBtn").style.pointerEvents = hasText ? "auto" : "none";
-        };
-
-        function generateTripString(name, key) {
-            if (!name || !key) return "";
-            try {
-                const targetStr = CryptoJS.enc.Utf8.parse(`${name}:${key}`);
-                const hashVal = CryptoJS.SHA256(targetStr).toString();
-                return "◆" + hashVal.slice(0, 6);
-            } catch(e) { 
-                return ""; 
-            }
-        }
-
-        function updateTripPreview() { 
-            const n = $("ni").value.replace(/[\s\u3000]+/g, "").trim(); 
-            const tk = $("tk").value.trim(); 
-            if (n && tk) {
-                const tripStr = generateTripString(n, tk);
-                $("tp").innerText = tripStr; 
-                $("tp").style.display = "inline-block";
-            } else {
-                $("tp").innerText = ""; 
-                $("tp").style.display = "none";
-            }
-        }
-
-        async function deleteRoomData(roomHash) {
-            try { await Promise.all([remove(ref(db, `chat/${roomHash}`)), remove(ref(db, `presence/${roomHash}`)), remove(ref(db, `rooms/${roomHash}`))]); } catch (e) {}
-        }
-
         function triggerFlashEffect(type) {
-            const area = $("ytArea"); if (!area) return;
-            area.classList.remove("flash-play", "flash-pause"); void area.offsetWidth; 
-            area.classList.add(type === "playing" ? "flash-play" : "flash-pause");
-            setTimeout(() => area.classList.remove("flash-play", "flash-pause"), 400);
+            const wrap = $("ytPlayerContainer"); if (!wrap) return;
+            wrap.classList.remove("flash-play", "flash-pause"); void wrap.offsetWidth; 
+            wrap.classList.add(type === "playing" ? "flash-play" : "flash-pause");
+            setTimeout(() => wrap.classList.remove("flash-play", "flash-pause"), 500);
         }
 
-        function setupPlayerTransformationController(playerEl, minW = 180, maxW = 1200) {
-            if (!playerEl || playerEl.dataset.transformSetup === "true") return;
-            playerEl.dataset.transformSetup = "true";
-            
-            let currentWidth = 320; let isDragging = false; let isResizing = false;
-            let startTop = 0, startLeft = 0; let startTouchX = 0, startTouchY = 0; let startW = 0;
-
-            playerEl.addEventListener('wheel', (e) => {
-                e.preventDefault();
-                const zoomFactor = e.deltaY < 0 ? 1.05 : 1 / 1.05;
-                let newW = currentWidth * zoomFactor;
-                newW = Math.max(minW, Math.min(newW, maxW, window.innerWidth - 16));
-                currentWidth = newW; playerEl.style.width = currentWidth + "px";
-            }, { passive: false });
-
-            const handle = $("ytResizeHandle");
-            const startResize = (clientX) => { isResizing = true; startW = currentWidth; startTouchX = clientX; };
-            const moveResize = (clientX) => {
-                if (!isResizing) return;
-                const deltaX = clientX - startTouchX;
-                let newW = startW + deltaX;
-                newW = Math.max(minW, Math.min(newW, maxW, window.innerWidth - 16));
-                currentWidth = newW; playerEl.style.width = currentWidth + "px";
-            };
-
-            handle.addEventListener('mousedown', (e) => {
-                e.stopPropagation(); e.preventDefault(); startResize(e.clientX);
-                const onMouseMove = (ev) => moveResize(ev.clientX);
-                const onMouseUp = () => { isResizing = false; document.removeEventListener('mousemove', onMouseMove); };
-                document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onMouseUp, { once: true });
-            });
-
-            handle.addEventListener('touchstart', (e) => {
-                e.stopPropagation(); if (e.touches.length === 1) startResize(e.touches[0].clientX);
-            }, { false: false });
-            handle.addEventListener('touchmove', (e) => { if (!isResizing) return; e.preventDefault(); moveResize(e.touches[0].clientX); }, { passive: false });
-            handle.addEventListener('touchend', () => { isResizing = false; }, { passive: true });
-
-            const dragBar = $("ytDragBar");
-            const startDrag = (clientX, clientY) => { isDragging = true; startTop = playerEl.offsetTop; startLeft = playerEl.offsetLeft; startTouchX = clientX; startTouchY = clientY; };
-            const moveDrag = (clientX, clientY) => {
-                if (!isDragging) return;
-                let newTop = startTop + (clientY - startTouchY); let newLeft = startLeft + (clientX - startTouchX);
-                playerEl.style.top = Math.max(40, Math.min(newTop, window.innerHeight - 100)) + "px"; 
-                playerEl.style.left = Math.max(-100, Math.min(newLeft, window.innerWidth - 50)) + "px";
-            };
-
-            dragBar.addEventListener('mousedown', (e) => {
-                if (e.button !== 0) return; startDrag(e.clientX, e.clientY);
-                const onMouseMove = (ev) => moveDrag(ev.clientX, ev.clientY);
-                const onMouseUp = () => { isDragging = false; document.removeEventListener('mousemove', onMouseMove); };
-                document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onMouseUp, { once: true });
-            });
-
-            dragBar.addEventListener('touchstart', (e) => { if (e.touches.length === 1) startDrag(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
-            dragBar.addEventListener('touchmove', (e) => { if (!isDragging) return; e.preventDefault(); moveDrag(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
-            dragBar.addEventListener('touchend', () => { isDragging = false; }, { passive: true });
-        }
-
-        function applyLocalVolumeFromUI(source = "console") {
-            const activeSlider = source === "console" ? $("ytVolumeSlider") : $("ytMiniVolume");
-            const mirrorSlider = source === "console" ? $("ytMiniVolume") : $("ytVolumeSlider");
-            const vol = parseInt(activeSlider.value, 10);
-            mirrorSlider.value = vol;
-            $("ytVolumeDisplay").innerText = `${vol}%`;
+        function applyLocalVolumeFromUI() {
+            const vol = parseInt($("ytMiniVolume").value, 10);
             savedVolumeLevel = vol;
             if (ytPlayer && typeof ytPlayer.setVolume === 'function') {
                 if (vol === 0) {
-                    ytPlayer.mute(); $("ytVolumeIcon").innerText = "🔇"; $("ytMiniMuteBtn").innerText = "🔇"; isMutedLocal = true;
+                    ytPlayer.mute(); $("ytMiniMuteBtn").innerText = "🔇"; isMutedLocal = true;
                 } else {
                     if (isMutedLocal) { ytPlayer.unMute(); isMutedLocal = false; }
                     ytPlayer.setVolume(vol);
-                    const icon = vol < 40 ? "🔈" : vol < 80 ? "🔉" : "🔊";
-                    $("ytVolumeIcon").innerText = icon; $("ytMiniMuteBtn").innerText = icon;
+                    const icon = vol < 35 ? "🔈" : vol < 75 ? "🔉" : "🔊";
+                    $("ytMiniMuteBtn").innerText = icon;
                 }
             }
         }
 
-        $("ytVolumeSlider").oninput = () => { applyLocalVolumeFromUI("console"); };
-        $("ytMiniVolume").oninput = () => { applyLocalVolumeFromUI("mini"); };
+        $("ytMiniVolume").oninput = () => applyLocalVolumeFromUI();
 
         const toggleLocalMute = () => {
             if (!ytPlayer) return;
             if (isMutedLocal) {
                 isMutedLocal = false; const activeVol = savedVolumeLevel === 0 ? 50 : savedVolumeLevel;
-                $("ytVolumeSlider").value = activeVol; $("ytMiniVolume").value = activeVol; applyLocalVolumeFromUI("console");
+                $("ytMiniVolume").value = activeVol; applyLocalVolumeFromUI();
             } else {
-                isMutedLocal = true; $("ytVolumeIcon").innerText = "🔇"; $("ytMiniMuteBtn").innerText = "🔇";
+                isMutedLocal = true; $("ytMiniMuteBtn").innerText = "🔇";
                 if (typeof ytPlayer.mute === 'function') ytPlayer.mute();
-                $("ytVolumeDisplay").innerText = "0%";
             }
         };
-        $("ytVolumeMuteBtn").onclick = (e) => { e.preventDefault(); toggleLocalMute(); };
         $("ytMiniMuteBtn").onclick = (e) => { e.preventDefault(); toggleLocalMute(); };
+
+        window.__jumpToYtVideo = function(vId) {
+            if (!vId) return;
+            $("ytPlaceholder").style.display = "none";
+            isUserApprovedSync = true;
+            isExplicitlyClosedByGuest = false;
+            isGuestFreeMode = false;
+            
+            setTimeout(async () => {
+                amIOwner = true; isLocalAction = true;
+                if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; }
+                
+                const NOW = getServerNow();
+                await set(ref(db, `rooms/${curR}/videoState`), { 
+                    videoId: vId, status: "playing", currentTime: 0, timestamp: NOW, owner: uid, ownerName: enc(curN, curP), resetSeed: Date.now()
+                });
+                lastLoadedVideoId = vId;
+                await update(ref(db, `rooms/${curR}`), { lastActivity: NOW });
+                setTimeout(() => { isLocalAction = false; }, 400);
+            }, 100);
+        };
+
+        window.__inlinePlayVideo = function(containerId, vId) {
+            const container = $(containerId); if (!container) return;
+            container.innerHTML = `
+            <div class="relative w-full aspect-video rounded-lg overflow-hidden border border-neutral-800 bg-black mt-1.5 shadow-inner">
+                <iframe class="absolute inset-0 w-full h-full border-0" 
+                        src="https://www.youtube.com/embed/${vId}?autoplay=1&playsinline=1" 
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                        allowfullscreen>
+                </iframe>
+            </div>`;
+        };
 
         async function join(rID, pass, name, trip, maxLimit, selectRomMin, selectRoomMin) {
             let waitCounter = 0; 
-            while (!isOffsetLoaded && waitCounter < 20) { await new Promise(r => setTimeout(r, 50)); waitCounter++; }
+            while (!isOffsetLoaded && waitCounter < 25) { 
+                await new Promise(r => setTimeout(r, 100)); 
+                waitCounter++; 
+            }
+            if(!isOffsetLoaded) { isOffsetLoaded = true; serverTimeOffset = 0; }
             
             const hashId = CryptoJS.SHA256(rID).toString();
             curR = hashId; rawR = rID; curP = pass; curN = name; curT = trip;
@@ -808,29 +581,35 @@
             const roomStateRef = ref(db, `rooms/${curR}/videoState`);
 
             try {
-                const NOW = getServerNow(), roomSnap = await get(roomRef);
+                const NOW = getServerNow();
+                let roomSnap = await get(roomRef).catch(() => ({ exists: () => false }));
+                
                 USER_TIMEOUT = selectRomMin * 60 * 1000; ROOM_LIFETIME = selectRoomMin * 60 * 1000;
-                let finalMax = maxLimit;
+                let finalMax = parseInt(maxLimit, 10) || 4;
 
                 if (roomSnap.exists()) {
                     const rData = roomSnap.val();
-                    USER_TIMEOUT = (rData.romMin || selectRomMin) * 60 * 1000; ROOM_LIFETIME = (rData.roomMin || selectRoomMin) * 60 * 1000;
-                    if (rData.max !== undefined) finalMax = Number(rData.max);
+                    if (rData) {
+                        USER_TIMEOUT = (parseInt(rData.romMin, 10) || selectRomMin) * 60 * 1000; 
+                        ROOM_LIFETIME = (parseInt(rData.roomMin, 10) || selectRoomMin) * 60 * 1000;
+                        if (rData.max !== undefined) finalMax = Number(rData.max);
+                    }
                 } else {
-                    await set(roomRef, { max: finalMax, romMin: selectRomMin, roomMin: selectRoomMin, lastActivity: NOW });
+                    await set(roomRef, { max: finalMax, romMin: Number(selectRomMin), roomMin: Number(selectRoomMin), lastActivity: NOW }).catch(()=>{});
                 }
 
-                const pSnap = await get(presRef);
-                if (pSnap.exists()) {
+                const pSnap = await get(presRef).catch(() => null);
+                if (pSnap && pSnap.exists()) {
                     const users = pSnap.val() || {}; let currentActiveCount = 0;
                     Object.keys(users).forEach(k => { if (k !== uid && NOW - (users[k].lastSeen || NOW) <= USER_TIMEOUT) currentActiveCount++; });
-                    if (currentActiveCount >= finalMax) { showLobby(`部屋が満員です（上限 ${finalMax} 名）`); return; }
+                    if (currentActiveCount >= finalMax) { showLobby(`対象の部屋は現在満員です（上限 ${finalMax} 名）`); return; }
                 }
 
-                if (unsubscribeConn) unsubscribeConn = null;
+                if (unsubscribeConn) unsubscribeConn();
                 unsubscribeConn = onValue(ref(db, ".info/connected"), (snap) => {
                     if (snap.val() === true && curR && !isProcessingExit) {
-                        onDisconnect(myRef).remove(); set(myRef, { nEnc: enc(name, pass), tEnc: enc(trip, pass), lastSeen: getServerNow() });
+                        onDisconnect(myRef).remove(); 
+                        set(myRef, { nEnc: enc(name, pass), tEnc: enc(trip, pass), lastSeen: getServerNow() });
                     }
                 });
 
@@ -840,10 +619,13 @@
                 localStorage.setItem("nez_tk", $("tk").value.trim());
                 localStorage.setItem("nez_ri", rID);
 
-                $("roomDisplay").innerText = rID; $("lobby").style.display = "none"; $("mainApp").style.display = "flex";
+                $("roomDisplay").innerText = `ROOM: ${rID}`; $("lobby").style.display = "none"; $("mainApp").style.display = "flex";
                 $("errMsg").style.display = "none";
                 await push(chatRef, { type: "sys", text: enc(`${name}${trip} が入室しました`, pass), time: NOW });
-            } catch (e) { showLobby("通信エラーにより入室できませんでした。"); return; }
+            } catch (e) { 
+                showLobby("入室処理中に例外エラーが発生しました。"); 
+                return; 
+            }
 
             if (sliderIntervalId) clearInterval(sliderIntervalId);
             sliderIntervalId = setInterval(() => {
@@ -851,66 +633,69 @@
                 try {
                     const curTime = ytPlayer.getCurrentTime(); const duration = ytPlayer.getDuration();
                     if (duration > 0) {
-                        $("ytSyncSlider").max = Math.floor(duration); $("ytSyncSlider").value = Math.floor(curTime);
                         $("ytMiniSlider").max = Math.floor(duration); $("ytMiniSlider").value = Math.floor(curTime);
                         $("ytSyncTimeDisplay").innerText = `${formatTime(curTime)} / ${formatTime(duration)}`;
                         $("ytMiniTimeDisplay").innerText = formatTime(curTime);
                     }
 
                     if (typeof ytPlayer.getPlayerState === 'function') {
-                        const pState = ytPlayer.getPlayerState();
-                        $("ytMiniPlayPauseBtn").innerText = pState === YT.PlayerState.PLAYING ? "⏸" : "▶";
+                        $("ytMiniPlayPauseBtn").innerText = ytPlayer.getPlayerState() === YT.PlayerState.PLAYING ? "⏸" : "▶";
                     }
 
                     if (isUserApprovedSync) {
                         if (amIOwner) {
                             $("ytSyncStatusIndicator").innerText = "配信中";
-                            $("ytSyncStatusIndicator").className = "px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-900 text-indigo-200 border border-indigo-500";
+                            $("ytSyncStatusIndicator").className = "px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-950 text-indigo-400 border border-indigo-600";
                             $("ytLagMeter").style.display = "none";
-                            $("ytLiveIndicator").className = "inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse";
                             $("topLiveIndicator").className = "w-2 h-2 bg-indigo-500 rounded-full animate-pulse shrink-0";
-                            $("ytControlConsole").className = "p-3 bg-slate-950 text-white flex flex-col gap-2 transition-all border-t-2 border-indigo-600";
                         } else if (isGuestFreeMode) {
-                            $("ytSyncStatusIndicator").innerText = "単独自由再生";
-                            $("ytSyncStatusIndicator").className = "px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-955 text-amber-400 border border-amber-500 animate-pulse";
+                            $("ytSyncStatusIndicator").innerText = "単独再生";
+                            $("ytSyncStatusIndicator").className = "px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-950 text-amber-400 border border-amber-600 animate-pulse";
                             $("ytLagMeter").style.display = "none";
-                            $("ytLiveIndicator").className = "inline-block w-2 h-2 rounded-full bg-amber-500";
                             $("topLiveIndicator").className = "w-2 h-2 bg-amber-500 rounded-full shrink-0";
-                            $("ytControlConsole").className = "p-3 bg-amber-955/20 text-white flex flex-col gap-2 transition-all border-t-2 border-amber-600";
                         } else {
-                            $("ytControlConsole").className = "p-3 bg-slate-950 text-white flex flex-col gap-2 transition-all border-t-2 border-emerald-600";
                             let hostTargetTime = globalVideoStateCache ? globalVideoStateCache.currentTime : curTime;
                             if (globalVideoStateCache && globalVideoStateCache.status === "playing") {
                                 hostTargetTime += ((getServerNow() - globalVideoStateCache.timestamp) / 1000);
                             }
                             const lag = curTime - hostTargetTime; const absLag = Math.abs(lag);
                             $("ytLagMeter").style.display = "inline-block";
+                            
                             if (absLag <= 1.5) {
-                                $("ytSyncStatusIndicator").innerText = "完全同期中";
+                                $("ytSyncStatusIndicator").innerText = "同期中";
                                 $("ytSyncStatusIndicator").className = "px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-600";
-                                $("ytLagMeter").innerText = `ホストとのズレ: ${(lag >= 0 ? '+' : '')}${lag.toFixed(2)}秒 (良好)`;
+                                $("ytLagMeter").innerText = `ラグ: ${(lag >= 0 ? '+' : '')}${lag.toFixed(2)}s`;
                                 $("ytLagMeter").className = "text-[9px] text-emerald-400 font-mono font-bold";
-                                $("ytLiveIndicator").className = "inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
                                 $("topLiveIndicator").className = "w-2 h-2 bg-emerald-500 rounded-full animate-pulse shrink-0";
-                            } else if (absLag <= 3.0) {
-                                $("ytSyncStatusIndicator").innerText = "許容範囲内";
+                                
+                                if (globalVideoStateCache && globalVideoStateCache.status === "playing") {
+                                    if (lag > 0.4) ytPlayer.setPlaybackRate(0.95);
+                                    else if (lag < -0.4) ytPlayer.setPlaybackRate(1.05);
+                                    else ytPlayer.setPlaybackRate(1.0);
+                                }
+                            } else if (absLag <= 2.8) {
+                                $("ytSyncStatusIndicator").innerText = "微調整";
                                 $("ytSyncStatusIndicator").className = "px-1.5 py-0.5 rounded text-[10px] font-bold bg-yellow-950 text-yellow-400 border border-yellow-600";
-                                $("ytLagMeter").innerText = `ホストとのズレ: ${(lag >= 0 ? '+' : '')}${lag.toFixed(2)}秒 (微調整中)`;
+                                $("ytLagMeter").innerText = `調整: ${(lag >= 0 ? '+' : '')}${lag.toFixed(2)}s`;
                                 $("ytLagMeter").className = "text-[9px] text-yellow-400 font-mono";
-                                $("ytLiveIndicator").className = "inline-block w-2 h-2 rounded-full bg-yellow-500";
                                 $("topLiveIndicator").className = "w-2 h-2 bg-yellow-500 rounded-full shrink-0";
+                                if (globalVideoStateCache && globalVideoStateCache.status === "playing") {
+                                    ytPlayer.setPlaybackRate(lag > 0 ? 0.90 : 1.10);
+                                }
                             } else {
-                                $("ytSyncStatusIndicator").innerText = "同期ズレ検出";
+                                $("ytSyncStatusIndicator").innerText = "自動吸着";
                                 $("ytSyncStatusIndicator").className = "px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-950 text-rose-400 border border-rose-600";
-                                $("ytLagMeter").innerText = `ホストとのズレ: ${(lag >= 0 ? '+' : '')}${lag.toFixed(2)}秒 (シーク待機)`;
+                                $("ytLagMeter").innerText = `吸着中...`;
                                 $("ytLagMeter").className = "text-[9px] text-rose-400 font-mono font-bold animate-pulse";
-                                $("ytLiveIndicator").className = "inline-block w-2 h-2 rounded-full bg-rose-500 shrink-0";
                                 $("topLiveIndicator").className = "w-2 h-2 bg-rose-500 rounded-full shrink-0";
+                                
+                                ytPlayer.setPlaybackRate(1.0);
+                                ytPlayer.seekTo(hostTargetTime, true);
                             }
                         }
                     }
                 } catch(e){}
-            }, 1000);
+            }, 500);
 
             const onSliderChange = async (sliderEl) => {
                 const targetTime = Number(sliderEl.value);
@@ -918,7 +703,7 @@
                 if (amIOwner) {
                     isLocalAction = true;
                     const status = (ytPlayer && typeof ytPlayer.getPlayerState === 'function' && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) ? "playing" : "paused";
-                    const currentId = (globalVideoStateCache && globalVideoStateCache.videoId) ? globalVideoStateCache.videoId : "dQw4w9WgXcQ";
+                    const currentId = globalVideoStateCache?.videoId || "dQw4w9WgXcQ";
                     await set(roomStateRef, { 
                         videoId: currentId, status: status, currentTime: targetTime, timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: lastResetSeed || Date.now()
                     });
@@ -928,19 +713,60 @@
                 isUserDraggingSlider = false;
             };
 
-            $("ytSyncSlider").oninput = () => { isUserDraggingSlider = true; };
             $("ytMiniSlider").oninput = () => { isUserDraggingSlider = true; };
-            $("ytSyncSlider").onchange = () => onSliderChange($("ytSyncSlider"));
             $("ytMiniSlider").onchange = () => onSliderChange($("ytMiniSlider"));
 
             $("ytMiniPlayPauseBtn").onclick = (e) => {
                 e.preventDefault(); if (!ytPlayer || typeof ytPlayer.getPlayerState !== 'function') return;
                 const pState = ytPlayer.getPlayerState();
                 if (pState === YT.PlayerState.PLAYING) {
-                    if (amIOwner) $("ytHostPauseBtn").click(); else ytPlayer.pauseVideo();
+                    if (amIOwner) syncPauseAction(); else ytPlayer.pauseVideo();
                 } else {
-                    if (amIOwner) $("ytHostPlayBtn").click(); else ytPlayer.playVideo();
+                    if (amIOwner) syncPlayAction(); else ytPlayer.playVideo();
                 }
+            };
+
+            async function syncPlayAction() {
+                if (!ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') return;
+                amIOwner = true; isLocalAction = true; lastSavedStatus = "playing"; 
+                const currentPos = ytPlayer.getCurrentTime();
+                try {
+                    await set(roomStateRef, { 
+                        videoId: globalVideoStateCache?.videoId || "dQw4w9WgXcQ", status: "playing", currentTime: currentPos, timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: lastResetSeed || Date.now()
+                    });
+                    if (ytPlayer.getPlayerState() !== YT.PlayerState.PLAYING) ytPlayer.playVideo();
+                    startPeriodicSync();
+                } catch(err){}
+                setTimeout(() => { isLocalAction = false; }, 400);
+            }
+
+            async function syncPauseAction() {
+                if (!ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') return;
+                amIOwner = true; isLocalAction = true; lastSavedStatus = "paused"; 
+                if (syncIntervalId) { clearInterval(syncIntervalId); syncIntervalId = null; }
+                const currentPos = ytPlayer.getCurrentTime();
+                try {
+                    await set(roomStateRef, { 
+                        videoId: globalVideoStateCache?.videoId || "dQw4w9WgXcQ", status: "paused", currentTime: currentPos, timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: lastResetSeed || Date.now()
+                    });
+                    if (ytPlayer.getPlayerState() !== YT.PlayerState.PAUSED) ytPlayer.pauseVideo();
+                } catch(err){}
+                setTimeout(() => { isLocalAction = false; }, 400);
+            }
+
+            $("ytClaimHostBtn").onclick = async (e) => {
+                e.preventDefault();
+                if (!curR) return;
+                const currentId = globalVideoStateCache?.videoId || "dQw4w9WgXcQ";
+                const currentPos = (ytPlayer && typeof ytPlayer.getCurrentTime === 'function') ? ytPlayer.getCurrentTime() : 0;
+                const currentStatus = (ytPlayer && typeof ytPlayer.getPlayerState === 'function' && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) ? "playing" : "paused";
+                
+                amIOwner = true; isGuestFreeMode = false; isExplicitlyClosedByGuest = false; isUserApprovedSync = true;
+                await set(roomStateRef, {
+                    videoId: currentId, status: currentStatus, currentTime: currentPos, timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: Date.now()
+                });
+                updateControlsUI();
+                startPeriodicSync();
             };
 
             unsubscribePres = onValue(presRef, s => {
@@ -953,59 +779,54 @@
                     const span = document.createElement("span"); span.className = "user-chip"; span.innerText = n + (textDec(users[k].tEnc, curP) || ""); frag.appendChild(span);
                 });
                 $("presenceList").innerHTML = ""; $("presenceList").appendChild(frag); $("presenceCount").innerText = `[${count}/${finalMax}]`;
-                if (count === 0 && !isProcessingExit && amIInList) { deleteRoomData(curR); showLobby("全員が退出したため部屋は消滅しました。"); }
+                if (count === 0 && !isProcessingExit && amIInList) { deleteRoomData(curR); showLobby("部屋データを消滅させました。"); }
             });
 
             chatTimeline.innerHTML = ""; 
-            const chatQuery = query(chatRef, orderByChild("time"), limitToLast(40)); 
+
+            if (unsubscribeChat) unsubscribeChat();
+            const chatQuery = query(chatRef, orderByChild("time"), limitToLast(35)); 
             unsubscribeChat = onChildAdded(chatQuery, s => {
                 const m = s.val(); const txt = textDec(m.text, curP); if (!txt) return;
                 const div = document.createElement("div"); div.className = "msg-wrap animate-fade-in";
-                const time = m.time ? new Date(m.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }) : "";
+                const time = m.time ? new Date(m.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }) : "";
                 
                 if (m.type === "sys") {
-                    div.innerHTML = `<div class="sys-msg text-center text-[10px] font-bold text-slate-400 my-1 bg-slate-800/60 border border-slate-700/50 py-1 px-3 rounded-lg inline-block mx-auto">${linkify(txt)}</div>`;
+                    div.innerHTML = `<div class="sys-msg text-center text-[10px] font-bold text-slate-400 my-0.5 bg-neutral-800/50 border border-neutral-700/40 py-0.5 px-2 rounded-lg inline-block mx-auto">${linkify(txt)}</div>`;
                     div.className = "msg-wrap text-center w-full justify-center items-center";
                 } else {
-                    const sN = textDec(m.nEnc, curP) || "???", sT = textDec(m.tEnc, curP) || "";
-                    if ($("ytArea").style.display === "block" && isUserApprovedSync) { pushMessageToOverlay(sN, txt); }
-
                     const extractedId = extractVideoId(txt);
                     let embedMediaHtml = "";
                     
                     if (extractedId) {
                         const containerId = `yt-embed-${s.key}`;
                         embedMediaHtml = `
-                        <div id="${containerId}" class="mt-2 w-full max-w-[280px] bg-slate-950/40 rounded-xl p-1.5 border border-slate-800/60">
-                            <div class="media-preview relative aspect-video rounded-lg overflow-hidden border border-slate-800">
+                        <div id="${containerId}" class="mt-1 w-full max-w-[240px] bg-black/50 rounded-xl p-1.5 border border-neutral-800/80 shadow-inner">
+                            <div class="media-preview relative aspect-video rounded-lg overflow-hidden border border-neutral-800">
                                 <img src="https://img.youtube.com/vi/${extractedId}/mqdefault.jpg" class="w-full h-full object-cover">
-                                <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent pointer-events-none"></div>
                             </div>
-                            
-                            <div class="grid grid-cols-3 gap-1 mt-1.5 text-[10px] font-bold select-none">
-                                <button onclick="window.__jumpToYtVideo('${extractedId}')" 
-                                        class="bg-indigo-600 hover:bg-indigo-500 text-white py-1 px-0.5 rounded transition flex items-center justify-center gap-0.5" title="部屋の全員と同期して起動">
-                                    <span>📺 同期</span>
-                                </button>
-                                <button onclick="window.__inlinePlayVideo('${containerId}', '${extractedId}')" 
-                                        class="bg-emerald-600 hover:bg-emerald-500 text-white py-1 px-0.5 rounded transition flex items-center justify-center gap-0.5" title="この枠内でそのまま再生">
-                                    <span>▶ 内部再生</span>
-                                </button>
-                                <a href="https://www.youtube.com/watch?v=${extractedId}" target="_blank" rel="noopener noreferrer" 
-                                   class="bg-slate-800 hover:bg-slate-700 text-slate-300 py-1 px-0.5 rounded transition flex items-center justify-center gap-0.5 text-center">
-                                    <span>🔗 外部</span>
-                                </a>
+                            <div class="grid grid-cols-3 gap-1 mt-1 text-[9px] font-bold select-none">
+                                <button onclick="window.__jumpToYtVideo('${extractedId}')" class="bg-indigo-600 text-white py-1 rounded transition text-center"><span>📺同期</span></button>
+                                <button onclick="window.__inlinePlayVideo('${containerId}', '${extractedId}')" class="bg-emerald-600 text-white py-1 rounded transition text-center"><span>▶内部</span></button>
+                                <a href="https://www.youtube.com/watch?v=${extractedId}" target="_blank" rel="noopener noreferrer" class="bg-neutral-800 text-slate-300 py-1 rounded border border-neutral-700/50 text-center"><span>🔗外部</span></a>
                             </div>
                         </div>`;
                     }
 
-                    div.innerHTML = `<div class="text-[11px] font-bold text-slate-400 mb-0.5 pl-1">${esc(sN)}<span class="text-green-400 font-mono">${esc(sT)}</span> <span class="text-slate-500 font-normal">${time}</span></div>
-                        <div class="msg-card msg bg-slate-900/90 text-slate-200 px-3 py-2 rounded-xl border border-slate-800 shadow-md max-w-sm inline-block break-all new-alert">
-                            <div class="text-sm leading-relaxed">${linkify(txt)}</div>
+                    let vSecBadgeHtml = "";
+                    if (m.vSec !== undefined && m.vSec !== null && m.vSec >= 0) {
+                        vSecBadgeHtml = `<button onclick="window.__seekPlayerToSeconds(${m.vSec})" class="inline-flex items-center gap-0.5 px-1 py-0.2 ml-1 rounded bg-indigo-950 border border-indigo-700/60 text-[9px] font-mono font-bold text-indigo-400 transition">⏱️ ${formatTime(m.vSec)}</button>`;
+                    }
+
+                    const sN = textDec(m.nEnc, curP) || "???", sT = textDec(m.tEnc, curP) || "";
+                    div.innerHTML = `<div class="text-[10px] font-bold text-slate-400 mb-0.2 pl-1 flex items-center flex-wrap">${esc(sN)}<span class="text-green-400 font-mono text-[9px] ml-0.5">${esc(sT)}</span> ${vSecBadgeHtml} <span class="text-neutral-500 font-normal ml-auto pr-1 text-[9px]">${time}</span></div>
+                        <div class="msg-card msg bg-neutral-900/95 text-slate-200 px-2.5 py-1 rounded-xl border border-neutral-800 shadow-md max-w-sm inline-block break-all new-alert">
+                            <div class="text-xs leading-normal">${linkify(txt)}</div>
                             ${embedMediaHtml}
                         </div>`;
                 }
-                chatTimeline.appendChild(div);
+                
+                chatTimeline.prepend(div);
                 if (!isTimelineScrolledUp) {
                     scrollToLatest();
                     setTimeout(() => { div.querySelector('.msg-card')?.classList.remove('new-alert'); }, 800);
@@ -1014,10 +835,10 @@
 
             onValue(roomStateRef, (snapshot) => {
                 if (!snapshot.exists()) {
-                    if (lastLoadedVideoId === "__NAV_INIT_MODE__" || lastLoadedVideoId === "__SEARCH_MODE__" || !lastLoadedVideoId) {
-                        amIOwner = true; updateControlsUI(); return; 
-                    }
-                    $("ytArea").style.display = "none"; $("ytControlConsole").style.display = "none"; if (syncIntervalId) { clearInterval(syncIntervalId); syncIntervalId = null; }
+                    if (lastLoadedVideoId === "__INIT__" || !lastLoadedVideoId) { amIOwner = false; updateControlsUI(); return; }
+                    $("ytPlaceholder").style.display = "flex";
+                    $("ytOfficialLinkBtn").style.display = "none";
+                    if (syncIntervalId) { clearInterval(syncIntervalId); syncIntervalId = null; }
                     if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; lastLoadedVideoId = null; }
                     isUserApprovedSync = false; isExplicitlyClosedByGuest = false; isGuestFreeMode = false; return;
                 }
@@ -1026,39 +847,34 @@
                 globalVideoStateCache = state;
                 amIOwner = (state.owner === uid);
 
+                $("ytOfficialLinkBtn").href = `https://www.youtube.com/watch?v=${state.videoId}`;
+                $("ytOfficialLinkBtn").style.display = "inline-block";
+
                 if (lastLoadedVideoId !== state.videoId) {
                     isExplicitlyClosedByGuest = false; if (!amIOwner) { isGuestFreeMode = false; } 
                 }
 
                 if (amIOwner) {
                     isUserApprovedSync = true; $("ytGuestModeBtn").style.display = "none"; 
-                    $("ytHostPlayBtn").style.display = "block"; $("ytHostPauseBtn").style.display = "block";
                     updateControlsUI();
                     if (isLocalAction || state.status === "playing") {
                         lastLoadedVideoId = state.videoId; lastSavedStatus = state.status;
-                        if ($("ytArea").style.display !== "block") {
-                            $("ytArea").style.display = "block"; $("ytControlConsole").style.display = "flex";
-                            setupPlayerTransformationController($("ytArea"), 180, 1200);
-                        }
+                        $("ytPlaceholder").style.display = "none";
                     }
                 } else {
-                    $("ytHostPlayBtn").style.display = "none"; $("ytHostPauseBtn").style.display = "none";
                     $("ytGuestModeBtn").style.display = "block"; 
-                    if (isExplicitlyClosedByGuest) { $("ytArea").style.display = "none"; return; }
+                    if (isExplicitlyClosedByGuest) { $("ytPlaceholder").style.display = "flex"; return; }
 
                     if (lastLoadedVideoId !== state.videoId) {
                         isUserApprovedSync = false; 
                         const hostNameDec = state.ownerName ? textDec(state.ownerName, curP) : "誰か";
-                        const conf = confirm(`👑 ${hostNameDec} さんから同時視聴シアターの起動リクエストがあります。\n動画プレイヤーを開いて同期しますか？`);
-                        if (conf) { isUserApprovedSync = true; } else { isExplicitlyClosedByGuest = true; $("ytArea").style.display = "none"; if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; lastLoadedVideoId = state.videoId; } return; }
+                        const conf = confirm(`👑 ${hostNameDec} さんから同時視聴同期要求があります。\n再生を開始しますか？`);
+                        if (conf) { isUserApprovedSync = true; } else { isExplicitlyClosedByGuest = true; $("ytPlaceholder").style.display = "flex"; if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; lastLoadedVideoId = state.videoId; } return; }
                     }
                     if (!isUserApprovedSync) return;
                 }
 
-                if ($("ytArea").style.display !== "block" && isUserApprovedSync) {
-                    $("ytArea").style.display = "block"; $("ytControlConsole").style.display = "flex";
-                    setupPlayerTransformationController($("ytArea"), 180, 1200);
-                }
+                if (isUserApprovedSync) $("ytPlaceholder").style.display = "none";
                 
                 updateControlsUI();
                 if (!amIOwner && isGuestFreeMode) { lastLoadedVideoId = state.videoId; return; }
@@ -1066,11 +882,12 @@
                 
                 const incomingResetSeed = state.resetSeed || 0;
                 const needsForcedRebuild = (lastLoadedVideoId !== state.videoId) || (lastResetSeed !== incomingResetSeed);
-                lastSavedTime = state.currentTime; lastSavedStatus = state.status; lastResetSeed = incomingResetSeed;
+                lastSavedStatus = state.status; lastResetSeed = incomingResetSeed;
 
                 if (needsForcedRebuild || !ytPlayer) {
                     lastLoadedVideoId = state.videoId; 
                     if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; }
+                    
                     const buildPlayer = () => {
                         if (!isYtReady || !window.YT?.Player) { setTimeout(buildPlayer, 100); return; }
                         let startPos = state.currentTime;
@@ -1085,7 +902,7 @@
                             events: { 
                                 'onReady': (e) => { 
                                     if(!amIOwner) { e.target.unMute(); e.target.playVideo(); } 
-                                    applyLocalVolumeFromUI("console"); syncPlayer(state); 
+                                    applyLocalVolumeFromUI(); syncPlayer(state); 
                                 }, 
                                 'onStateChange': onPlayerStateChange 
                             } 
@@ -1098,67 +915,34 @@
             function updateControlsUI() {
                 if (!curR) return;
                 if (amIOwner) {
-                    $("ytGuestModeBtn").style.display = "none"; $("ytHostPlayBtn").style.display = "block"; $("ytHostPauseBtn").style.display = "block";
-                    $("ytSyncSlider").disabled = false; $("ytMiniSlider").disabled = false;
-                    $("ytBadge").innerText = `👑 ホスト配信中`;
-                    $("ytBadge").className = "border px-1.5 py-0.5 rounded text-[10px] tracking-wider font-bold text-indigo-400 border-indigo-500 bg-indigo-950/50 shadow-[0_0_8px_rgba(79,70,229,0.4)]";
+                    $("ytGuestModeBtn").style.display = "none";
+                    $("ytMiniSlider").disabled = false;
+                    $("ytBadge").innerText = `👑 ホスト`;
+                    $("ytBadge").className = "border px-1.5 py-0.5 rounded text-[10px] font-bold text-indigo-400 border-indigo-900 bg-indigo-950/40 truncate shrink-0";
                 } else {
-                    $("ytHostPlayBtn").style.display = "none"; $("ytHostPauseBtn").style.display = "none"; $("ytGuestModeBtn").style.display = "block";
+                    $("ytGuestModeBtn").style.display = "block";
                     if (isGuestFreeMode) {
-                        $("ytGuestModeBtn").innerHTML = `🔗 ホストに同期する`;
-                        $("ytGuestModeBtn").className = "px-2.5 py-1 rounded text-[10px] font-black tracking-wide text-white bg-emerald-600 border border-emerald-400 shadow-md hover:bg-emerald-500 transition-all active:scale-95";
-                        $("ytBadge").innerText = `🔓 マイペース再生中`;
-                        $("ytBadge").className = "border px-1.5 py-0.5 rounded text-[10px] tracking-wider font-bold text-amber-400 border-amber-500 bg-amber-955/60 shadow-[0_0_8px_rgba(245,158,11,0.3)]";
-                        $("ytSyncSlider").disabled = false; $("ytMiniSlider").disabled = false;
-                        $("ytLiveIndicator").className = "inline-block w-2 h-2 rounded-full bg-amber-500";
+                        $("ytGuestModeBtn").innerHTML = `🔗 同期`;
+                        $("ytGuestModeBtn").className = "px-2 py-0.5 rounded text-[10px] font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition-all active:scale-95";
+                        $("ytBadge").innerText = `🔓 自由再生`;
+                        $("ytBadge").className = "border px-1.5 py-0.5 rounded text-[10px] font-bold text-amber-400 border-amber-900 bg-amber-950/40 truncate shrink-0";
+                        $("ytMiniSlider").disabled = false;
                     } else {
-                        $("ytGuestModeBtn").innerHTML = `🔓 マイペース再生`;
-                        $("ytGuestModeBtn").className = "px-2.5 py-1 rounded text-[10px] font-black tracking-wide text-gray-900 bg-amber-400 border border-amber-300 shadow-md hover:bg-amber-300 transition-all active:scale-95";
-                        $("ytSyncSlider").disabled = true; $("ytMiniSlider").disabled = true;
+                        $("ytGuestModeBtn").innerHTML = `🔓 自由`;
+                        $("ytGuestModeBtn").className = "px-2 py-0.5 rounded text-[10px] font-bold text-gray-900 bg-amber-400 hover:bg-amber-300 transition-all active:scale-95";
+                        $("ytMiniSlider").disabled = true;
                         if (globalVideoStateCache) {
-                            $("ytBadge").innerText = `🔒 ホスト連動中 [${globalVideoStateCache.status === "playing" ? "再生" : "停止"}]`;
-                            $("ytBadge").className = "border px-1.5 py-0.5 rounded text-[10px] tracking-wider font-bold text-emerald-400 border-emerald-500 bg-emerald-950/60 shadow-[0_0_8px_rgba(16,185,129,0.3)]";
-                        } else {
-                            $("ytBadge").innerText = `🔒 デモ同期中`; $("ytBadge").className = "border px-1.5 py-0.5 rounded text-[10px] tracking-wider font-bold text-emerald-400 border-emerald-500 bg-emerald-950/60";
+                            $("ytBadge").innerText = `🔒 連動[${globalVideoStateCache.status === "playing" ? "再生" : "停止"}]`;
+                            $("ytBadge").className = "border px-1.5 py-0.5 rounded text-[10px] font-bold text-emerald-400 border-emerald-900 bg-emerald-950/40 truncate shrink-0";
                         }
                     }
                 }
             }
 
-            $("ytHostPlayBtn").onclick = async (e) => {
-                e.preventDefault(); if (!ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') return;
-                const currentId = (globalVideoStateCache && globalVideoStateCache.videoId) ? globalVideoStateCache.videoId : "dQw4w9WgXcQ";
-                amIOwner = true; isLocalAction = true; lastSavedStatus = "playing"; 
-                const currentPos = ytPlayer.getCurrentTime(); lastSavedTime = currentPos;
-                try {
-                    await set(roomStateRef, { 
-                        videoId: currentId, status: "playing", currentTime: currentPos, timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: lastResetSeed || Date.now()
-                    });
-                    if (ytPlayer.getPlayerState() !== YT.PlayerState.PLAYING) ytPlayer.playVideo();
-                    startPeriodicSync();
-                } catch(err){}
-                setTimeout(() => { isLocalAction = false; }, 400);
-            };
-
-            $("ytHostPauseBtn").onclick = async (e) => {
-                e.preventDefault(); if (!ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') return;
-                const currentId = (globalVideoStateCache && globalVideoStateCache.videoId) ? globalVideoStateCache.videoId : "dQw4w9WgXcQ";
-                amIOwner = true; isLocalAction = true; lastSavedStatus = "paused"; 
-                if (syncIntervalId) { clearInterval(syncIntervalId); syncIntervalId = null; }
-                const currentPos = ytPlayer.getCurrentTime(); lastSavedTime = currentPos;
-                try {
-                    await set(roomStateRef, { 
-                        videoId: currentId, status: "paused", currentTime: currentPos, timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: lastResetSeed || Date.now()
-                    });
-                    if (ytPlayer.getPlayerState() !== YT.PlayerState.PAUSED) ytPlayer.pauseVideo();
-                } catch(err){}
-                setTimeout(() => { isLocalAction = false; }, 400);
-            };
-
             $("ytGuestModeBtn").onclick = (e) => {
                 e.preventDefault(); if (!ytPlayer) return;
                 isGuestFreeMode = !isGuestFreeMode; updateControlsUI();
-                const currentId = (globalVideoStateCache && globalVideoStateCache.videoId) ? globalVideoStateCache.videoId : "dQw4w9WgXcQ";
+                const currentId = globalVideoStateCache?.videoId || "dQw4w9WgXcQ";
                 if (isGuestFreeMode) {
                     const curFreeTime = ytPlayer.getCurrentTime ? ytPlayer.getCurrentTime() : 0;
                     rebuildFreePlayer(currentId, curFreeTime);
@@ -1172,7 +956,7 @@
                 if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; }
                 ytPlayer = new YT.Player('ytPlayer', { 
                     videoId: vId, playerVars: { 'autoplay': 1, 'playsinline': 1, 'controls': 0, 'rel': 0, 'modestbranding': 1, 'start': Math.floor(startTime) }, 
-                    events: { 'onReady': () => { applyLocalVolumeFromUI("console"); }, 'onStateChange': onPlayerStateChange } 
+                    events: { 'onReady': () => { applyLocalVolumeFromUI(); }, 'onStateChange': onPlayerStateChange } 
                 });
             }
 
@@ -1181,7 +965,7 @@
                 let targetTime = state.currentTime; if (state.status === "playing") { targetTime += ((getServerNow() - state.timestamp) / 1000); }
                 ytPlayer = new YT.Player('ytPlayer', { 
                     videoId: state.videoId, playerVars: { 'autoplay': (state.status === "paused") ? 0 : 1, 'playsinline': 1, 'controls': 0, 'disablekb': 1, 'rel': 0, 'modestbranding': 1, 'start': Math.max(0, Math.floor(targetTime)), 'mute': 1 }, 
-                    events: { 'onReady': (e) => { e.target.unMute(); e.target.playVideo(); applyLocalVolumeFromUI("console"); syncPlayer(state); }, 'onStateChange': onPlayerStateChange } 
+                    events: { 'onReady': (e) => { e.target.unMute(); e.target.playVideo(); applyLocalVolumeFromUI(); syncPlayer(state); }, 'onStateChange': onPlayerStateChange } 
                 });
             }
 
@@ -1194,10 +978,10 @@
 
                     if (state.status === "playing") {
                         if (ytPlayer.getPlayerState() !== YT.PlayerState.PLAYING) { ytPlayer.playVideo(); }
-                        if (timeDiff > 2.0) { ytPlayer.seekTo(targetTime, true); }
+                        if (timeDiff > 2.5) { ytPlayer.seekTo(targetTime, true); }
                     } else if (state.status === "paused") {
                         if (ytPlayer.getPlayerState() !== YT.PlayerState.PAUSED) { ytPlayer.pauseVideo(); }
-                        if (timeDiff > 1.0) { ytPlayer.seekTo(targetTime, true); }
+                        if (timeDiff > 1.2) { ytPlayer.seekTo(targetTime, true); }
                     }
                 } catch(e){}
             }
@@ -1209,17 +993,24 @@
                     if (ytPlayer.getPlayerState() !== YT.PlayerState.PLAYING) return;
                     const curTime = ytPlayer.getCurrentTime();
                     try {
-                        const currentId = (globalVideoStateCache && globalVideoStateCache.videoId) ? globalVideoStateCache.videoId : "dQw4w9WgXcQ";
                         await set(roomStateRef, { 
-                            videoId: currentId, status: "playing", currentTime: curTime, timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: lastResetSeed || Date.now()
+                            videoId: globalVideoStateCache?.videoId || "dQw4w9WgXcQ", status: "playing", currentTime: curTime, timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: lastResetSeed || Date.now()
                         });
                     } catch(e){}
-                }, 8000);
+                }, 3500);
             }
 
             function onPlayerStateChange(event) {
-                if (!ytPlayer || isGuestFreeMode) return;
+                if (!ytPlayer) return;
                 const pState = event.data;
+                
+                if (pState === YT.PlayerState.ENDED) {
+                    if (amIOwner && currentSearchResults.length > 0) $("ytNextVideoBtn").click();
+                    return;
+                }
+
+                if (isGuestFreeMode) return;
+
                 if (amIOwner) {
                     if (isLocalAction) return;
                     const curTime = ytPlayer.getCurrentTime ? ytPlayer.getCurrentTime() : 0;
@@ -1236,9 +1027,9 @@
                 } else {
                     if (globalVideoStateCache && !isLocalAction) {
                         if (globalVideoStateCache.status === "playing" && pState === YT.PlayerState.PAUSED) {
-                            setTimeout(() => { if (!isGuestFreeMode && globalVideoStateCache?.status === "playing" && ytPlayer?.getPlayerState() === YT.PlayerState.PAUSED) ytPlayer.playVideo(); }, 1200);
+                            setTimeout(() => { if (!isGuestFreeMode && globalVideoStateCache?.status === "playing" && ytPlayer?.getPlayerState() === YT.PlayerState.PAUSED) ytPlayer.playVideo(); }, 1000);
                         } else if (globalVideoStateCache.status === "paused" && pState === YT.PlayerState.PLAYING) {
-                            setTimeout(() => { if (!isGuestFreeMode && globalVideoStateCache?.status === "paused" && ytPlayer?.getPlayerState() === YT.PlayerState.PLAYING) ytPlayer.pauseVideo(); }, 600);
+                            setTimeout(() => { if (!isGuestFreeMode && globalVideoStateCache?.status === "paused" && ytPlayer?.getPlayerState() === YT.PlayerState.PLAYING) ytPlayer.pauseVideo(); }, 400);
                         }
                     }
                 }
@@ -1247,18 +1038,17 @@
             if (heartbeatIntervalId) clearInterval(heartbeatIntervalId);
             heartbeatIntervalId = setInterval(async () => {
                 if (!curR) return;
-                const myPresRef = ref(db, `presence/${curR}/${uid}`);
-                const NOW = getServerNow();
                 try {
-                    await update(myPresRef, { lastSeen: NOW });
-                    await update(roomRef, { lastActivity: NOW });
+                    await update(ref(db, `presence/${curR}/${uid}`), { lastSeen: getServerNow() });
+                    await update(roomRef, { lastActivity: getServerNow() });
                 } catch(e) {}
             }, 15000);
 
+            if (unsubscribeRoomConfig) unsubscribeRoomConfig();
             unsubscribeRoomConfig = onValue(roomRef, async (snap) => {
                 if (!snap.exists()) return; const data = snap.val();
-                if (data.lastActivity && getServerNow() - data.lastActivity > ROOM_LIFETIME) {
-                    await deleteRoomData(curR); showLobby("部屋の有効期限（クリーンアップ時間）が切れたため自動消滅しました。");
+                if (data && data.lastActivity && getServerNow() - data.lastActivity > ROOM_LIFETIME) {
+                    await deleteRoomData(curR); showLobby("部屋の上限時間を超過したため消滅しました。");
                 }
             });
         }
@@ -1266,19 +1056,37 @@
         async function sendMessage() {
             if (!curR) return; const input = $("mi"); const txt = input.value.trim(); if (!txt || isComposing) return;
             toggleClearBtn(""); input.value = ""; input.rows = 1;
+            
+            let currentVideoSeconds = null;
+            if (ytPlayer && typeof ytPlayer.getCurrentTime === 'function' && $("ytPlaceholder").style.display !== "flex") {
+                currentVideoSeconds = Math.floor(ytPlayer.getCurrentTime());
+            }
+
+            input.blur();
+
             try {
-                const chatRef = ref(db, `chat/${curR}`); const NOW = getServerNow();
-                await push(chatRef, { type: "msg", nEnc: enc(curN, curP), tEnc: enc(curT, curP), text: enc(txt, curP), time: NOW });
+                const NOW = getServerNow();
+                const payload = { 
+                    type: "msg", 
+                    nEnc: enc(curN, curP), 
+                    tEnc: enc(curT, curP), 
+                    text: enc(txt, curP), 
+                    time: NOW 
+                };
+                if (currentVideoSeconds !== null && currentVideoSeconds >= 0) payload.vSec = currentVideoSeconds; 
+                
+                await push(ref(db, `chat/${curR}`), payload);
                 await update(ref(db, `rooms/${curR}`), { lastActivity: NOW });
-            } catch (e) { alert("送信に失敗しました。再試行してください。"); }
+            } catch (e) { alert("送信エラー。"); }
         }
+
+        $("openKeyboardButton").onclick = (e) => { e.preventDefault(); $("mi").focus(); };
 
         $("mi").addEventListener("compositionstart", () => { isComposing = true; });
         $("mi").addEventListener("compositionend", (e) => { isComposing = false; toggleClearBtn(e.target.value); });
         $("mi").addEventListener("input", (e) => {
-            toggleClearBtn(e.target.value);
-            e.target.rows = 1;
-            const lineCount = Math.min(4, Math.floor(e.target.scrollHeight / 24)) || 1;
+            toggleClearBtn(e.target.value); e.target.rows = 1;
+            const lineCount = Math.min(2, Math.floor(e.target.scrollHeight / 22)) || 1;
             e.target.rows = lineCount;
         });
 
@@ -1288,113 +1096,113 @@
         $("sendBtn").onclick = (e) => { e.preventDefault(); sendMessage(); };
         $("clearBtn").onclick = (e) => { e.preventDefault(); $("mi").value = ""; $("mi").rows = 1; toggleClearBtn(""); $("mi").focus(); };
 
-        $("enterBtn").onclick = async () => {
-            const rawName = $("ni").value;
-            const tk = $("tk").value.trim();
-            const r = $("ri").value.trim();
-            const p = $("pi").value.trim();
-
+        async function joinFromParams() {
+            const rawName = $("ni").value; const tk = $("tk").value.trim(); const r = $("ri").value.trim(); const p = $("pi").value.trim();
             const cleanName = rawName.replace(/[\s\u3000]+/g, "").trim();
 
-            if (!cleanName) {
-                alert("表示名を入力してください（空白のみの構成は禁止されています）。");
-                return;
-            }
-
-            if (!tk) {
-                alert("トリップ暗号（秘密のキー）の入力は必須です。なりすまし防止のためパスワードを設定してください。");
-                return;
-            }
-
-            if (!r || !p) { 
-                alert("部屋IDおよび部屋パスワードを入力してください。"); 
-                return; 
-            }
+            if (!cleanName || !tk || !r || !p) return;
             
             $("enterBtn").disabled = true; $("enterBtn").innerText = "接続中...";
-            
             const tripStr = generateTripString(cleanName, tk);
             join(r, p, cleanName, tripStr, Number($("maxUsers").value), Number($("romTime").value), Number($("roomCleanTime").value));
-        };
+        }
+
+        $("enterBtn").onclick = async () => { joinFromParams(); };
 
         async function exitRoom() {
             if (isProcessingExit || !curR) return; isProcessingExit = true;
             if (syncIntervalId) { clearInterval(syncIntervalId); syncIntervalId = null; }
             const chatRef = ref(db, `chat/${curR}`), myRef = ref(db, `presence/${curR}/${uid}`), roomStateRef = ref(db, `rooms/${curR}/videoState`);
             try {
-                if (amIOwner) { await remove(roomStateRef); }
+                if (amIOwner) await remove(roomStateRef).catch(()=>{});
                 await push(chatRef, { type: "sys", text: enc(`${curN}${curT} が退出しました`, curP), time: getServerNow() });
-                await remove(myRef);
+                await remove(myRef).catch(()=>{});
             } catch(e){}
             isProcessingExit = false; showLobby();
         }
 
-        $("exitBtn").onclick = () => { if (confirm("本当に退出しますか？会話履歴はすべて消滅します。")) exitRoom(); };
+        $("exitBtn").onclick = () => { if (confirm("本当に退出しますか？")) exitRoom(); };
 
         $("copyBtn").onclick = () => {
             if (!rawR || !curP) return;
             const nameParam = encodeURIComponent($("ni").value.trim());
-            const shareUrl = `${location.protocol}//${location.host}${location.pathname}?r=${encodeURIComponent(rawR)}&p=${encodeURIComponent(curP)}&n=${nameParam}`;
-            navigator.clipboard.writeText(shareUrl).then(() => alert("パスワード付き招待リンクをコピーしました！")).catch(() => alert("コピーに失敗しました。"));
-        };
-
-        $("openPlayerNavBtn").onclick = async (e) => {
-            e.preventDefault();
-            const consolePanel = $("ytControlConsole");
-            if (consolePanel.style.display === "flex") {
-                consolePanel.style.display = "none";
+            const shareUrl = `${window.location.protocol}//${window.location.host}${window.location.pathname}?r=${encodeURIComponent(rawR)}&p=${encodeURIComponent(curP)}&n=${nameParam}`;
+            
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(shareUrl).then(() => {
+                    alert("🔗 招待リンクをコピーしました！");
+                }).catch(() => {
+                    fallbackCopyText(shareUrl);
+                });
             } else {
-                consolePanel.style.display = "flex";
-                if ($("ytArea").style.display !== "block") {
-                    isLocalAction = true; amIOwner = true; isUserApprovedSync = true; isExplicitlyClosedByGuest = false; isGuestFreeMode = false;
-                    $("ytArea").style.display = "block";
-                    setupPlayerTransformationController($("ytArea"), 180, 1200);
-                    
-                    const roomStateRef = ref(db, `rooms/${curR}/videoState`);
-                    const snap = await get(roomStateRef);
-                    if (!snap.exists()) {
-                        await set(roomStateRef, { videoId: "dQw4w9WgXcQ", status: "paused", currentTime: 0, timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: Date.now() });
-                    }
-                    setTimeout(() => { isLocalAction = false; }, 400);
-                }
+                fallbackCopyText(shareUrl);
             }
         };
 
-        $("ytClosePlayerBtn").onclick = async (e) => {
-            e.preventDefault();
-            if (confirm(amIOwner ? "シアターのホスト配信を終了し、全員のプレイヤーを閉じますか？" : "あなたの画面のプレイヤーを閉じますか？")) {
-                if (amIOwner) {
-                    isLocalAction = true; if (syncIntervalId) { clearInterval(syncIntervalId); syncIntervalId = null; }
-                    await remove(ref(db, `rooms/${curR}/videoState`));
-                    setTimeout(() => { isLocalAction = false; }, 400);
+        function fallbackCopyText(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.top = "-9999px";
+            textArea.style.left = "-9999px";
+            document.body.appendChild(textArea);
+            
+            textArea.focus();
+            textArea.select();
+            textArea.setSelectionRange(0, 99999);
+            
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    alert("🔗 招待リンクをコピーしました！");
                 } else {
-                    isExplicitlyClosedByGuest = true; isUserApprovedSync = false; isGuestFreeMode = false;
-                    $("ytArea").style.display = "none"; $("ytControlConsole").style.display = "none";
-                    if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; }
+                    alert("コピーに失敗しました。URLを直接コピーして共有してください。");
                 }
+            } catch (err) {
+                alert("ブラウザがコピー機能を制限しています。URLを直接共有してください。");
             }
+            document.body.removeChild(textArea);
+        }
+
+        const showLobby = (msg = "") => {
+            curR = null; clearSubscriptions();
+            if (msg) { $("errMsg").innerText = msg; $("errMsg").style.display = "block"; } else { $("errMsg").style.display = "none"; }
+            $("mainApp").style.display = "none"; $("lobby").style.display = "flex"; $("ytPlaceholder").style.display = "flex";
+            $("ytOfficialLinkBtn").style.display = "none";
+            if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; lastLoadedVideoId = null; }
+            $("enterBtn").disabled = false; $("enterBtn").innerText = "入室・シアター構築";
         };
+
+        const clearSubscriptions = () => {
+            if (unsubscribeChat) { unsubscribeChat(); unsubscribeChat = null; }
+            if (unsubscribePres) { unsubscribePres(); unsubscribePres = null; } 
+            if (unsubscribeRoomConfig) { unsubscribeRoomConfig(); unsubscribeRoomConfig = null; }
+            if (unsubscribeConn) { unsubscribeConn = null; }
+            if (sliderIntervalId) { clearInterval(sliderIntervalId); sliderIntervalId = null; }
+            if (heartbeatIntervalId) { clearInterval(heartbeatIntervalId); heartbeatIntervalId = null; }
+            if (syncIntervalId) { clearInterval(syncIntervalId); syncIntervalId = null; }
+        };
+
+        async function deleteRoomData(roomHash) {
+            try { await Promise.all([remove(ref(db, `chat/${roomHash}`)), remove(ref(db, `presence/${roomHash}`)), remove(ref(db, `rooms/${roomHash}`))]); } catch (e) {}
+        }
 
         async function executeSearch() {
             const queryStr = $("ytSearchInput").value.trim(); if (!queryStr) return;
             const extractedId = extractVideoId(queryStr);
+            if (extractedId) { window.__jumpToYtVideo(extractedId); return; }
             
-            if (extractedId) {
-                window.__jumpToYtVideo(extractedId); return;
-            }
-            
-            $("ytSearchBtn").disabled = true; $("ytSearchBtn").innerText = "検索中...";
+            $("ytSearchBtn").disabled = true; $("ytSearchBtn").innerText = "...";
             try {
-                const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=5&q=${encodeURIComponent(queryStr)}&type=video&key=${YT_API_KEY}`);
+                const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=4&q=${encodeURIComponent(queryStr)}&type=video&key=${YT_API_KEY}`);
                 const data = await res.json();
                 if (data.items && data.items.length > 0) {
-                    currentSearchResults = data.items; currentSearchIndex = 0;
-                    renderSearchResults();
-                    const targetId = data.items[0].id.videoId;
-                    window.__jumpToYtVideo(targetId);
+                    currentSearchResults = data.items.filter(item => item.id.videoId);
+                    currentSearchIndex = 0; renderSearchResults();
+                    window.__jumpToYtVideo(currentSearchResults[0].id.videoId);
                 } else { alert("動画が見つかりませんでした。"); }
-            } catch(e) { alert("YouTube検索に失敗しました。URLの直貼りをお試しください。"); }
-            $("ytSearchBtn").disabled = false; $("ytSearchBtn").innerText = "検索 / 再生";
+            } catch(e) { alert("API制限。URL直貼りを推奨します。"); }
+            $("ytSearchBtn").disabled = false; $("ytSearchBtn").innerText = "検索/同期";
         }
 
         function renderSearchResults() {
@@ -1404,9 +1212,9 @@
             
             currentSearchResults.forEach((item, index) => {
                 const div = document.createElement("div");
-                div.className = "search-item" + (index === currentSearchIndex ? " bg-indigo-950 border-l-4 border-indigo-500" : "");
+                div.className = "search-item" + (index === currentSearchIndex ? " bg-indigo-950/80 border-l-4 border-indigo-500" : "");
                 div.innerHTML = `<img src="${item.snippet.thumbnails.default.url}">
-                    <div class="flex-1 truncate"><p class="font-bold truncate text-xs text-white">${esc(item.snippet.title)}</p><p class="text-[10px] text-slate-400 truncate">${esc(item.snippet.channelTitle)}</p></div>`;
+                    <div class="flex-1 min-w-0 truncate"><p class="font-bold truncate text-xs text-white">${esc(item.snippet.title)}</p><p class="text-[10px] text-slate-400 truncate">${esc(item.snippet.channelTitle)}</p></div>`;
                 div.onclick = () => { currentSearchIndex = index; renderSearchResults(); window.__jumpToYtVideo(item.id.videoId); };
                 container.appendChild(div);
             });
@@ -1437,32 +1245,45 @@
         $("tk").addEventListener("input", updateTripPreview);
 
         $("masterGenBtn").onclick = () => {
-            const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-            let rGen = ""; for (let i = 0; i < 10; i++) rGen += chars.charAt(Math.floor(Math.random() * chars.length));
-            let pGen = ""; for (let i = 0; i < 12; i++) pGen += chars.charAt(Math.floor(Math.random() * chars.length));
-            
-            $("ri").value = rGen; 
-            $("pi").value = pGen;
-            updateTripPreview();
+            const pool = "abcdefghijklmnopqrstuvwxyz0123456789";
+            let r = ""; let p = "";
+            for (let i = 0; i < 10; i++) r += pool.charAt(Math.floor(Math.random() * pool.length));
+            for (let i = 0; i < 14; i++) p += pool.charAt(Math.floor(Math.random() * pool.length));
+            $("ri").value = r; $("pi").value = p; updateTripPreview();
         };
 
         $("openGuideBtn").onclick = () => $("guideCard").style.display = "flex";
         $("closeGuideBtn").onclick = () => $("guideCard").style.display = "none";
-        $("focusBtn").onclick = () => $("mi").focus();
 
         window.addEventListener("DOMContentLoaded", () => {
-            const savedName = localStorage.getItem("nez_ni");
-            const savedTripKey = localStorage.getItem("nez_tk");
-            const savedRoomId = localStorage.getItem("nez_ri");
-            if (savedName) $("ni").value = savedName;
-            if (savedTripKey) $("tk").value = savedTripKey;
-            if (savedRoomId) $("ri").value = savedRoomId;
+            if (localStorage.getItem("nez_ni")) $("ni").value = localStorage.getItem("nez_ni");
+            if (localStorage.getItem("nez_tk")) $("tk").value = localStorage.getItem("nez_tk");
+            if (localStorage.getItem("nez_ri")) $("ri").value = localStorage.getItem("nez_ri");
 
             const params = new URLSearchParams(window.location.search);
-            const r = params.get("r"), p = params.get("p"), n = params.get("n");
-            if (r) $("ri").value = r; if (p) $("pi").value = p; if (n) $("ni").value = n;
+            if (params.get("r")) $("ri").value = params.get("r");
+            if (params.get("p")) $("pi").value = params.get("p");
+            if (params.get("n")) $("ni").value = params.get("n");
             
             updateTripPreview();
+
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', () => {
+                    const mainApp = $('mainApp');
+                    if (mainApp && mainApp.style.display !== 'none') {
+                        mainApp.style.height = `${window.visualViewport.height}px`;
+                        if (document.activeElement && (document.activeElement.id === 'mi' || document.activeElement.id === 'ytSearchInput')) {
+                            scrollToLatest();
+                        }
+                    }
+                });
+                
+                window.visualViewport.addEventListener('scroll', () => {
+                    if (window.visualViewport.offsetTop > 0) {
+                        window.scrollTo(0, 0);
+                    }
+                });
+            }
         });
     </script>
 </body>

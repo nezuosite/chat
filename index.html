@@ -732,8 +732,16 @@
                 
                 const wasWatcherMode = isWatcherMode;
                 
-                if (isSessionRestore && isOfficial && name) {
-                    isWatcherMode = false;
+                // 🔄 セッション復元時または直接クリック時の覗き見モード判定の修正
+                if (isSessionRestore) {
+                    // セッションデータから直接状態を復元する
+                    const sessionData = localStorage.getItem("active_room_session");
+                    if (sessionData) {
+                        const s = JSON.parse(sessionData);
+                        isWatcherMode = !!s.isWatcherMode;
+                    } else {
+                        isWatcherMode = false;
+                    }
                 } else if (isOfficial && isDirectOfficialClick) {
                     isWatcherMode = true;
                 } else {
@@ -758,8 +766,9 @@
                     $("copyBtn").style.display = "block";
                 }
 
+                // 🔄 セッション保存に isWatcherMode を明示的に含める
                 localStorage.setItem("active_room_session", JSON.stringify({
-                    rawR, curP, curN: isWatcherMode ? "" : curN, curT: isWatcherMode ? "" : curT, maxLimit, selectRomMin, selectRoomMin
+                    rawR, curP, curN: isWatcherMode ? "" : curN, curT: isWatcherMode ? "" : curT, maxLimit, selectRomMin, selectRoomMin, isWatcherMode
                 }));
                 
                 localStorage.setItem("nez_ri", targetRoomID);
@@ -1017,7 +1026,7 @@
             localStorage.setItem("nez_ni", cleanName); localStorage.setItem("nez_tk", tk);
             $("ni").value = cleanName; $("tk").value = tk; updateTripPreview();
             
-            // 🔄 覗き見モードからの正規入室処理の修正 (デフォルト引数の補完)
+            // 🔄 覗き見からのアップグレード時は、強制的に通常入室（isDirectOfficialClick: false, isSessionRestore: false）として呼ぶ
             await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, tk), 10, 30, 999999999, false, false);
         };
 
@@ -1122,6 +1131,7 @@
                     
                     const fullTripString = generateTripString(savedName, savedTripKey);
                     
+                    // 🔄 復元時、s.isWatcherMode の真偽値をそのまま引き継いで join を呼び出す
                     await join(
                         s.rawR, 
                         s.curP, 
@@ -1130,7 +1140,7 @@
                         s.maxLimit, 
                         s.selectRomMin, 
                         s.selectRoomMin,
-                        false,
+                        !!s.isWatcherMode, // セッションの状態をそのまま反映
                         true
                     ); 
                     return true;
@@ -1165,15 +1175,16 @@
             updateTripPreview(); updateWatcherTripPreview();
             setLobbyButtonsState(true);
 
-            // 🔄 ロビー状態でただリロードされた場合（招待リンクや過去のセッション復元対象がない場合）は自動処理をスキップ
-            if (!r && !p && !localStorage.getItem("active_room_session")) {
+            // 🔄 セッションの復元を最初に試みる (覗き見モードのセッション情報があればここで正しく復元される)
+            const restored = await triggerSessionRestore();
+            if (restored) return;
+
+            // 招待リンクや過去のセッション復元対象がない場合は自動処理をスキップ
+            if (!r && !p) {
                 $("lobby").style.display = "flex"; 
                 hideSplash();
                 return;
             }
-
-            const restored = await triggerSessionRestore();
-            if (restored) return;
 
             const checkRi = $("ri").value.trim();
             const checkPi = $("pi").value.trim();
@@ -1183,6 +1194,7 @@
                     const rawName = $("ni").value;
                     const cleanName = rawName.replace(/[\s\u3000]+/g, "").trim();
                     const tk = $("tk").value.trim();
+                    // URL等からの初期ロード時は一貫して覗き見モード(true)で開始
                     await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, tk), 10, 30, 999999999, true);
                     return;
                 } else if ($("ni").value || n) {

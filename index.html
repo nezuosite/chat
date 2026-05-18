@@ -198,7 +198,7 @@
             
             <div>
                 <label class="block font-bold text-slate-400 mb-0.5">部屋パスワード（会話を解読するための共通鍵） <span class="text-red-500">*</span></label>
-                <input type="text" id="pi" placeholder="メンバー共通の暗号化パスワード" autocomplete="off" autocapitalize="off" spellcheck="false" class="w-full px-2.5 py-1.5 border border-slate-700 bg-slate-800 rounded-lg text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <input type="text" id="pi" placeholder="メンバー共通 of 暗号化パスワード" autocomplete="off" autocapitalize="off" spellcheck="false" class="w-full px-2.5 py-1.5 border border-slate-700 bg-slate-800 rounded-lg text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
             </div>
         </div>
 
@@ -333,7 +333,7 @@
                     <p class="font-bold text-red-400 flex items-center gap-1 text-[11.5px]">🚫 絶対禁止事項</p>
                     <p class="text-[10.5px] text-slate-400">当空間は完全匿名の一時利用を想定していますが、以下の行為は固くお断りします。</p>
                     <ul class="list-disc list-inside space-y-0.5 text-red-300 text-[10px] pl-1">
-                        <li>他者の権利を侵害する名誉毀損・誹謗中傷・脅脅迫行為</li>
+                        <li>他者の権利を侵害する名誉毀損・誹謗中傷・脅迫行為</li>
                         <li>公式部屋などパブリック空間での過度な荒らし行為、スパム連投</li>
                         <li>違法コンテンツのリンク共有、または犯罪行為の計画・唆し</li>
                         <li>システムの脆弱性を狙った不正なリクエストやサーバーへの攻撃</li>
@@ -538,7 +538,6 @@
             let mediaHtml = "";
             let cleanText = text;
 
-            // 🔍 強力版YouTube正規表現：ショート、短縮、パラメータ、大文字小文字の表記ゆれに完全対応
             const ytRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/i;
             const imgRegex = /\.(jpeg|jpg|gif|png|webp|bmp)(?:\?.*)?$/i;
 
@@ -762,9 +761,10 @@
 
                 if (unsubscribeConn) unsubscribeConn();
                 
+                let isReentry = false;
+
                 if (!isWatcherMode) {
                     const pSnap = await get(presRef);
-                    let isReentry = false;
                     if (pSnap.exists()) {
                         const users = pSnap.val() || {}; 
                         let currentActiveCount = 0;
@@ -778,9 +778,10 @@
                                 const activeN = textDec(users[k].nEnc, pass, isOfficial);
                                 const activeT = textDec(users[k].tEnc, pass, isOfficial) || "";
 
+                                // 【重要】同一UIDデータが存在する場合の厳格チェック
                                 if (k === myUid) {
                                     if (activeN !== name || activeT !== trip) {
-                                        showLobby(`【認証エラー】セッション情報が一致しません。`);
+                                        showLobby(`【認証エラー】すでにこの部屋にあなたの端末情報(UID)が登録されていますが、入力された名前またはトリップが一致しません。`);
                                         return;
                                     }
                                     isReentry = true;
@@ -804,6 +805,7 @@
 
                     await set(myRef, { nEnc: enc(name, pass, isOfficial), tEnc: enc(trip, pass, isOfficial), lastSeen: NOW });
                     
+                    // 【重要】同一UIDによる再入室時（isReentry === true）はアナウンス（システムメッセージ）を送出しない
                     if (!isReentry) {
                         await push(chatRef, { type: "sys", text: enc(`${name}${trip} が入室しました`, pass, isOfficial), time: NOW });
                     }

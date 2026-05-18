@@ -139,22 +139,37 @@
                 font-size: 11px;
             }
         }
+
+        #imageModal {
+            touch-action: none;
+        }
+        #modalTargetImg {
+            will-change: transform;
+            cursor: grab;
+            transition: none;
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        #modalTargetImg:active {
+            cursor: grabbing;
+        }
     </style>
 </head>
 <body class="flex items-start justify-center p-2 pt-4 text-slate-100 h-full w-screen overflow-hidden">
 
     <!-- 🚪 ロビー画面 -->
-    <div id="lobby" class="w-full max-w-md p-3.5 bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 flex flex-col gap-2.5 select-text max-h-[96dvh] overflow-y-auto overflow-x-hidden">
+    <div id="lobby" class="w-full max-w-md p-3.5 bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 border-t border-slate-800 flex flex-col gap-2.5 select-text max-h-[96dvh] overflow-y-auto overflow-x-hidden">
         <h1 class="text-base font-black text-center text-indigo-400 tracking-tight shrink-0">NEZU ONETIME CHAT</h1>
         
         <!-- 📄 ルーム説明 -->
         <div class="bg-indigo-950/40 border border-indigo-900/60 rounded-xl p-2.5 text-[10px] space-y-1 text-slate-300 shrink-0 leading-normal">
-            <p class="font-bold text-indigo-300 flex items-center gap-1 text-[10.5px]">🔒 エンドツーエンド(E2E) 暗号化空間</p>
+            <p class="font-bold text-indigo-300 flex items-center gap-1 text-[10.5px]">🛡️ エンドツーエンド(E2E) 暗号化空間</p>
             <p class="text-slate-400">
                 共通パスワードを用いてブラウザ側でAES-256暗号化を行う使い捨てチャットです。生データや暗号鍵はサーバーに送信されず、退室や時間経過でログは完全消去されます。
             </p>
             <p class="text-emerald-400 font-bold bg-emerald-950/30 border border-emerald-900/40 p-1 rounded">
-                ⚠️ 公式部屋は常駐されています（ログ100件保存）
+                ⚠️ 公式部屋は常設されています（ログ100件保存）
             </p>
         </div>
         
@@ -268,7 +283,7 @@
             </div>
         </div>
 
-        <!-- 🗺️ チャットタイムライン（上が最新・上寄せ） -->
+        <!-- 🗺️ チャットタイムライン -->
         <div id="chatTimeline" class="select-text"></div>
 
         <!-- 🎯 固定ナビゲーションアシスタントボタン -->
@@ -317,7 +332,7 @@
                     <p class="font-bold text-red-400 flex items-center gap-1 text-[11.5px]">🚫 絶対禁止事項</p>
                     <p class="text-[10.5px] text-slate-400">当空間は完全匿名の一時利用を想定していますが、以下の行為は固くお断りします。</p>
                     <ul class="list-disc list-inside space-y-0.5 text-red-300 text-[10px] pl-1">
-                        <li>他者の権利を侵害する名誉毀損・誹謗中傷・脅脅迫行為</li>
+                        <li>他者の権利を侵害する名誉毀損・誹謗中傷・脅迫行為</li>
                         <li>公式部屋などパブリック空間での過度な荒らし行為、スパム連投</li>
                         <li>違法コンテンツのリンク共有、または犯罪行為の計画・唆し</li>
                         <li>システムの脆弱性を狙った不正なリクエストやサーバーへの攻撃</li>
@@ -330,9 +345,11 @@
     </div>
 
     <!-- 🖼️ 画像拡大用汎用モーダル -->
-    <div id="imageModal" class="fixed inset-0 bg-black/90 backdrop-filter backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-200 pointer-events-none" onclick="closeImageModal()">
-        <img id="modalTargetImg" src="" alt="拡大画像" class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl transition-transform duration-200 scale-95 select-text">
-        <div class="absolute top-4 right-4 text-white bg-slate-900/80 rounded-full p-2 cursor-pointer border border-slate-700">
+    <div id="imageModal" class="fixed inset-0 bg-black/90 backdrop-filter backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-200 pointer-events-none">
+        <div id="modalImgWrapper" class="w-full h-full flex items-center justify-center overflow-hidden relative">
+            <img id="modalTargetImg" src="" alt="拡大画像" class="select-text">
+        </div>
+        <div id="modalCloseBtn" class="absolute top-4 right-4 text-white bg-slate-900/80 rounded-full p-2 cursor-pointer border border-slate-700 z-50">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
         </div>
     </div>
@@ -411,20 +428,15 @@
                     isOffsetLoaded = true;
                     unsubscribe();
                     resolve();
-                });
+                }, { onlyOnce: true });
             });
         };
-
-        onValue(ref(db, ".info/serverTimeOffset"), (snap) => { 
-            serverTimeOffset = snap.val() || 0; 
-            isOffsetLoaded = true;
-        });
 
         const getServerNow = () => Date.now() + serverTimeOffset;
 
         const clearSubscriptions = () => {
             if (unsubscribeChat) { unsubscribeChat(); unsubscribeChat = null; }
-            if (unsubscribePres) { unsubscribePres = null; }
+            if (unsubscribePres) { unsubscribePres(); unsubscribePres = null; }
             if (unsubscribeRoomConfig) { unsubscribeRoomConfig(); unsubscribeRoomConfig = null; }
             if (unsubscribeConn) { unsubscribeConn(); unsubscribeConn = null; }
             if (heartbeatIntervalId) { clearInterval(heartbeatIntervalId); heartbeatIntervalId = null; }
@@ -539,27 +551,101 @@
             }
         };
 
+        let scale = 1;
+        let translateX = 0, translateY = 0;
+        let startX = 0, startY = 0;
+        let startDistance = 0;
+        let isDragging = false;
+        let baseTranslateX = 0, baseTranslateY = 0;
+
+        const modalImg = $("modalTargetImg");
+        const imgWrapper = $("modalImgWrapper");
+
+        function clampTransforms() {
+            if (scale <= 1) {
+                translateX = 0;
+                translateY = 0;
+                return;
+            }
+            const wrapRect = imgWrapper.getBoundingClientRect();
+            const currentWidth = modalImg.offsetWidth * scale;
+            const currentHeight = modalImg.offsetHeight * scale;
+
+            let maxTx = (currentWidth - wrapRect.width) / 2;
+            let maxTy = (currentHeight - wrapRect.height) / 2;
+
+            if (maxTx < 0) maxTx = 0;
+            if (maxTy < 0) maxTy = 0;
+
+            translateX = Math.min(Math.max(translateX, -maxTx), maxTx);
+            translateY = Math.min(Math.max(translateY, -maxTy), maxTy);
+        }
+
         window.openImageModal = function(src) {
             const modal = $("imageModal");
-            const img = $("modalTargetImg");
-            img.src = src;
+            scale = 1; translateX = 0; translateY = 0; baseTranslateX = 0; baseTranslateY = 0;
+            modalImg.style.transform = `translate(0px, 0px) scale(1)`;
+            modalImg.src = src;
             modal.classList.remove("hidden");
-            setTimeout(() => {
-                modal.classList.remove("opacity-0", "pointer-events-none");
-                img.classList.remove("scale-95");
-            }, 10);
+            setTimeout(() => { modal.classList.remove("opacity-0", "pointer-events-none"); }, 10);
         };
 
         window.closeImageModal = function() {
             const modal = $("imageModal");
-            const img = $("modalTargetImg");
             modal.classList.add("opacity-0", "pointer-events-none");
-            img.classList.add("scale-95");
-            setTimeout(() => {
-                modal.classList.add("hidden");
-                img.src = "";
-            }, 200);
+            setTimeout(() => { modal.classList.add("hidden"); modalImg.src = ""; }, 200);
         };
+
+        $("imageModal").addEventListener("click", (e) => {
+            if (e.target.id === "imageModal" || e.target.id === "modalImgWrapper") closeImageModal();
+        });
+        $("modalCloseBtn").onclick = (e) => { e.stopPropagation(); closeImageModal(); };
+
+        function getDistance(t1, t2) { return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY); }
+
+        $("imageModal").addEventListener("touchstart", (e) => {
+            if (e.touches.length === 1) {
+                isDragging = true; startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+                baseTranslateX = translateX; baseTranslateY = translateY;
+            } else if (e.touches.length === 2) {
+                isDragging = false; startDistance = getDistance(e.touches[0], e.touches[1]);
+            }
+        }, { passive: true });
+
+        $("imageModal").addEventListener("touchmove", (e) => {
+            e.preventDefault();
+            if (isDragging && e.touches.length === 1 && scale > 1) {
+                const dx = e.touches[0].clientX - startX; const dy = e.touches[0].clientY - startY;
+                translateX = baseTranslateX + dx; translateY = baseTranslateY + dy;
+                clampTransforms();
+                modalImg.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+            } else if (e.touches.length === 2) {
+                const distance = getDistance(e.touches[0], e.touches[1]);
+                const factor = distance / startDistance;
+                scale = Math.min(Math.max(1, scale * factor), 5);
+                startDistance = distance;
+                clampTransforms();
+                modalImg.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+            }
+        }, { passive: false });
+
+        $("imageModal").addEventListener("touchend", (e) => {
+            if (e.touches.length === 0) {
+                isDragging = false;
+                if (scale <= 1) {
+                    scale = 1; translateX = 0; translateY = 0;
+                    modalImg.style.transition = "transform 0.15s ease-out";
+                    modalImg.style.transform = `translate(0px, 0px) scale(1)`;
+                    setTimeout(() => { modalImg.style.transition = "none"; }, 150);
+                } else {
+                    clampTransforms();
+                    modalImg.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+                }
+            } else if (e.touches.length === 1) {
+                isDragging = true; startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+                baseTranslateX = translateX; baseTranslateY = translateY;
+            }
+        }, { passive: true });
 
         function generateTripString(name, key) {
             if (!name || !key) return "";
@@ -616,21 +702,28 @@
                     rawR, curP, curN, curT, maxLimit, selectRomMin, selectRoomMin
                 }));
 
-                const chatRef = ref(db, `chat/${curR}`), presRef = ref(db, `presence/${curR}`), roomRef = ref(db, `rooms/${curR}`), myRef = ref(db, `presence/${curR}/${uid}`);
+                const chatRef = ref(db, `chat/${curR}`);
+                const presRef = ref(db, `presence/${curR}`);
+                const roomRef = ref(db, `rooms/${curR}`);
+                const myRef = ref(db, `presence/${curR}/${uid}`);
 
                 let finalMax = maxLimit;
-                const roomSnap = await get(roomRef);
                 USER_TIMEOUT = (selectRomMin * 60 + 1) * 1000; 
                 ROOM_LIFETIME = (selectRoomMin * 60) * 1000;
 
-                if (roomSnap.exists()) {
-                    const rData = roomSnap.val();
-                    USER_TIMEOUT = ((isOfficial ? 30 : (rData.romMin || selectRomMin)) * 60 + 1) * 1000; 
-                    ROOM_LIFETIME = (isOfficial ? 999999999 : (rData.roomMin || selectRoomMin)) * 60 * 1000;
-                    if (rData.max !== undefined) finalMax = isOfficial ? 10 : Number(rData.max);
-                    await update(roomRef, { lastActivity: NOW });
-                } else {
-                    await set(roomRef, { max: finalMax, romMin: isOfficial ? 30 : selectRomMin, roomMin: isOfficial ? 999999999 : selectRoomMin, lastActivity: NOW });
+                try {
+                    const roomSnap = await get(roomRef);
+                    if (roomSnap.exists()) {
+                        const rData = roomSnap.val();
+                        USER_TIMEOUT = ((isOfficial ? 30 : (rData.romMin || selectRomMin)) * 60 + 1) * 1000; 
+                        ROOM_LIFETIME = (isOfficial ? 999999999 : (rData.roomMin || selectRoomMin)) * 60 * 1000;
+                        if (rData.max !== undefined) finalMax = isOfficial ? 10 : Number(rData.max);
+                        if (!isOfficial) await update(roomRef, { lastActivity: NOW });
+                    } else {
+                        if (!isOfficial) await set(roomRef, { max: finalMax, romMin: selectRomMin, roomMin: selectRoomMin, lastActivity: NOW });
+                    }
+                } catch (roomErr) {
+                    console.warn("部屋構成の設定をスキップしました:", roomErr);
                 }
 
                 if (unsubscribeConn) unsubscribeConn();
@@ -700,13 +793,17 @@
 
                 chatTimeline.innerHTML = ""; 
                 let chatQuery = isOfficial ? query(chatRef, orderByChild("time"), limitToLast(100)) : query(chatRef, orderByChild("time"));
-                let lastLoadedTime = NOW - 1; 
                 
                 const chatSnap = await get(chatQuery);
                 const initialMsgs = [];
+                let maxTimestampInSnapshot = 0;
+                
                 chatSnap.forEach(s => {
                     const m = s.val();
-                    if (m && m.time) { initialMsgs.push(m); if (m.time > lastLoadedTime) lastLoadedTime = m.time; }
+                    if (m && m.time) { 
+                        initialMsgs.push(m); 
+                        if (m.time > maxTimestampInSnapshot) maxTimestampInSnapshot = m.time;
+                    }
                 });
 
                 initialMsgs.sort((a, b) => b.time - a.time);
@@ -717,16 +814,16 @@
                 
                 scrollToLatest();
 
-                const nextChatQuery = query(chatRef, orderByChild("time"), startAfter(lastLoadedTime));
+                let trackingStartTime = maxTimestampInSnapshot > 0 ? maxTimestampInSnapshot : NOW;
+
+                const nextChatQuery = query(chatRef, orderByChild("time"), startAfter(trackingStartTime));
                 unsubscribeChat = onChildAdded(nextChatQuery, s => {
-                    const m = s.val(); if (!m || m.time <= lastLoadedTime) return;
+                    const m = s.val(); 
+                    if (!m || m.time <= trackingStartTime) return;
                     const div = createMessageElement(m, curP, isOfficial); if (!div) return;
                     
                     chatTimeline.insertBefore(div, chatTimeline.firstChild);
-                    
-                    if (!isTimelineScrolledDown) { 
-                        scrollToLatest(); 
-                    }
+                    if (!isTimelineScrolledDown) { scrollToLatest(); }
                 });
 
                 if (heartbeatIntervalId) clearInterval(heartbeatIntervalId);
@@ -734,7 +831,10 @@
                     heartbeatIntervalId = setInterval(async () => {
                         if (!curR) return;
                         const currentNow = getServerNow();
-                        try { await update(ref(db, `presence/${curR}/${uid}`), { lastSeen: currentNow }); await update(ref(db, `rooms/${curR}`), { lastActivity: currentNow }); } catch(e) {}
+                        try { 
+                            await update(ref(db, `presence/${curR}/${uid}`), { lastSeen: currentNow }); 
+                            if (!isOfficial) await update(ref(db, `rooms/${curR}`), { lastActivity: currentNow }); 
+                        } catch(e) {}
                     }, 15000);
                 }
 
@@ -753,7 +853,6 @@
             
             const isOfficial = (curR === OFFICIAL_ROOM_HASH);
             toggleClearBtn(""); input.value = ""; input.rows = 1; input.style.overflowY = "hidden"; 
-            
             scrollToLatest();
 
             try {
@@ -775,28 +874,16 @@
             e.target.rows = 1; 
             const currentRows = Math.min(4, Math.floor(e.target.scrollHeight / 24)) || 1;
             e.target.rows = currentRows;
-            if (e.target.scrollHeight > 96) {
-                e.target.style.overflowY = "auto";
-            } else {
-                e.target.style.overflowY = "hidden";
-            }
+            if (e.target.scrollHeight > 96) { e.target.style.overflowY = "auto"; } else { e.target.style.overflowY = "hidden"; }
         });
 
-        $("mi").addEventListener("focus", () => {
-            setTimeout(() => {
-                scrollToLatest();
-            }, 150);
-        });
-
+        $("mi").addEventListener("focus", () => { setTimeout(() => { scrollToLatest(); }, 150); });
         $("mi").addEventListener("keydown", (e) => { 
             if (e.key === "Enter" && !e.shiftKey) { 
                 if (isComposing) return; 
-                e.preventDefault(); 
-                sendMessage(); 
+                e.preventDefault(); sendMessage(); 
             } else {
-                if (!isTimelineScrolledDown) {
-                    scrollToLatest();
-                }
+                if (!isTimelineScrolledDown) { scrollToLatest(); }
             }
         });
         
@@ -836,7 +923,6 @@
                     const roomRef = ref(db, `rooms/${curR}`);
                     const myRef = ref(db, `presence/${curR}/${uid}`);
 
-                    // 1. 現在の部屋のアクティブな他ユーザー状況を取得
                     const presSnap = await get(presRef);
                     let otherUsersCount = 0;
                     const currentNow = getServerNow();
@@ -844,22 +930,19 @@
                     if (presSnap.exists()) {
                         const users = presSnap.val() || {};
                         Object.keys(users).forEach(k => {
-                            // 自分以外の生存者（ROMタイムアウト内）をカウント
                             if (k !== uid && (currentNow - (users[k].lastSeen || currentNow) <= USER_TIMEOUT)) {
                                 otherUsersCount++;
                             }
                         });
                     }
 
-                    // 2. 公式部屋ではなく、かつ自分以外にアクティブな人がいない（最後の1人）なら部屋データを全削除
                     if (!isOfficial && otherUsersCount === 0) {
-                        await remove(roomRef);
-                        await remove(chatRef);
-                        await remove(presRef);
+                        await remove(roomRef).catch(()=>{});
+                        await remove(chatRef).catch(()=>{});
+                        await remove(presRef).catch(()=>{});
                     } else {
-                        // 他に人がいる場合は、通常通り退出通知を出して自分のプレゼンスのみを削除
-                        await push(chatRef, { type: "sys", text: enc(`${curN}${curT} が退出しました`, curP, isOfficial), time: currentNow });
-                        await remove(myRef);
+                        await push(chatRef, { type: "sys", text: enc(`${curN}${curT} が退出しました`, curP, isOfficial), time: currentNow }).catch(()=>{});
+                        await remove(myRef).catch(()=>{});
                     }
                 }
             } catch(e){
@@ -872,7 +955,7 @@
 
         $("copyBtn").onclick = () => {
             if (!rawR || !curP) return;
-            const shareUrl = `${window.location.protocol}//${window.location.host}${window.location.pathname}?r=${encodeURIComponent(rawR)}&p=${encodeURIComponent(curP)}&n=${encodeURIComponent(curN || "")}`;
+            const shareUrl = `${window.location.protocol}//${window.location.host}${window.location.pathname}?r=${encodeURIComponent(rawR)}&p=${encodeURIComponent(curP)}`;
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(shareUrl).then(() => alert("招待リンクをコピーしました！")).catch(() => fallbackCopy(shareUrl));
             } else { fallbackCopy(shareUrl); }
@@ -900,10 +983,7 @@
         $("openGuideBtn").onclick = () => $("guideCard").style.display = "flex";
         $("closeGuideBtn").onclick = () => $("guideCard").style.display = "none";
         
-        $("focusBtn").onclick = () => { 
-            $("mi").focus(); 
-            setTimeout(() => { scrollToLatest(); }, 150);
-        };
+        $("focusBtn").onclick = () => { $("mi").focus(); setTimeout(() => { scrollToLatest(); }, 150); };
 
         function triggerSessionRestore() {
             const sessionData = sessionStorage.getItem("active_room_session");
@@ -911,6 +991,11 @@
                 try { const s = JSON.parse(sessionData); join(s.rawR, s.curP, s.curN, s.curT, s.maxLimit, s.selectRomMin, s.selectRoomMin); } catch(e) { sessionStorage.removeItem("active_room_session"); }
             }
         }
+
+        onValue(ref(db, ".info/serverTimeOffset"), (snap) => { 
+            serverTimeOffset = snap.val() || 0; 
+            isOffsetLoaded = true;
+        }, { onlyOnce: true });
 
         window.addEventListener("DOMContentLoaded", async () => {
             const savedName = localStorage.getItem("nez_ni"), savedTripKey = localStorage.getItem("nez_tk");

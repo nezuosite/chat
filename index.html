@@ -158,17 +158,16 @@
 </head>
 <body class="flex items-start justify-center p-2 pt-4 text-slate-100 h-full w-screen overflow-hidden">
 
-    <!-- ⏳ 初期ロード中マスク (チラつき防止用) -->
+    <!-- ⏳ 初期ロード中マスク -->
     <div id="appSplash" class="fixed inset-0 bg-[#111111] z-50 flex flex-col items-center justify-center gap-3">
         <div class="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
         <p class="text-xs font-bold text-slate-500 tracking-wider">CONNECTING...</p>
     </div>
 
-    <!-- 🚪 ロビー画面 (初期状態はhidden) -->
+    <!-- 🚪 ロビー画面 -->
     <div id="lobby" class="w-full max-w-md p-3.5 bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 flex flex-col gap-2.5 select-text max-h-[96dvh] overflow-y-auto overflow-x-hidden hidden">
         <h1 class="text-base font-black text-center text-indigo-400 tracking-tight shrink-0">NEZU ONETIME CHAT</h1>
         
-        <!-- 📄 ルーム説明 -->
         <div class="bg-indigo-950/40 border border-indigo-900/60 rounded-xl p-2.5 text-[10px] space-y-1 text-slate-300 shrink-0 leading-normal">
             <p class="font-bold text-indigo-300 flex items-center gap-1 text-[10.5px]">🛡️ エンドツーエンド(E2E) 暗号化空間</p>
             <p class="text-slate-400">
@@ -179,10 +178,8 @@
             </p>
         </div>
         
-        <!-- 🚨 エラー表示領域 -->
         <div id="errMsg" class="bg-red-950/80 text-red-300 text-xs p-3 rounded-xl font-medium border border-red-800/60 hidden shrink-0 break-all whitespace-pre-wrap leading-relaxed"></div>
         
-        <!-- フォーム入力エリア -->
         <div class="flex flex-col gap-2 shrink-0 text-[11px]">
             <div>
                 <label class="block font-bold text-slate-400 mb-0.5">あなたの表示名 <span class="text-red-500">*</span></label>
@@ -372,7 +369,6 @@
 
         const $ = id => document.getElementById(id);
         
-        // 🔒 Firebaseの構成情報
         const firebaseConfig = {
             apiKey: "AIzaSyCsRidc0smUQDaBwq-oki5NzxSHx6-ljiw",
             authDomain: "nezuochat.firebaseapp.com",
@@ -403,7 +399,6 @@
         const OFFICIAL_ROOM_HASH = CryptoJS.SHA256("公式部屋").toString();
         const chatTimeline = $('chatTimeline');
 
-        // スプラッシュマスクを外すヘルパー
         const hideSplash = () => {
             const splash = $("appSplash");
             if (splash) {
@@ -488,7 +483,7 @@
         const showLobby = (msg = "") => {
             curR = null; 
             clearSubscriptions();
-            sessionStorage.removeItem("active_room_session");
+            localStorage.removeItem("active_room_session");
             if (msg) { 
                 $("errMsg").innerText = msg; 
                 $("errMsg").style.display = "block"; 
@@ -682,7 +677,6 @@
             }
         }, { passive: true });
 
-        // 🔒 トリップ暗号用の固有ソルト設定
         function generateTripString(name, key) {
             if (!name || !key) return "";
             try { 
@@ -711,7 +705,7 @@
             }
         }
 
-        async function join(rID, pass, name, trip, maxLimit, selectRomMin, selectRoomMin, isDirectOfficialClick = false) {
+        async function join(rID, pass, name, trip, maxLimit, selectRomMin, selectRoomMin, isDirectOfficialClick = false, isSessionRestore = false) {
             try {
                 $("errMsg").style.display = "none";
                 await ensureTimeSync(); 
@@ -737,8 +731,16 @@
                 const isOfficial = (hashId === OFFICIAL_ROOM_HASH);
                 
                 const wasWatcherMode = isWatcherMode;
-                // セッション情報に名前がある、もしくはダイレクトクリックでなければ、公式部屋でも通常入室（再入室含む）と判定
-                isWatcherMode = isOfficial && (!name || isDirectOfficialClick);
+                
+                // 🔄 【ロジック修正】セッション復旧かつ名前がある場合のみ公式部屋の直接参加を許可。
+                // セッションが切れている（または初回遷移）ときは、名前の有無に関わらず100%覗き見モードから開始
+                if (isSessionRestore && isOfficial && name) {
+                    isWatcherMode = false;
+                } else if (isOfficial) {
+                    isWatcherMode = true;
+                } else {
+                    isWatcherMode = false;
+                }
 
                 if (curR && (curR !== hashId || wasWatcherMode !== isWatcherMode)) {
                     try { if (!wasWatcherMode) await remove(ref(db, `presence/${curR}/${myUid}`)); } catch(e){}
@@ -758,9 +760,12 @@
                     $("copyBtn").style.display = "block";
                 }
 
-                sessionStorage.setItem("active_room_session", JSON.stringify({
+                localStorage.setItem("active_room_session", JSON.stringify({
                     rawR, curP, curN: isWatcherMode ? "" : curN, curT: isWatcherMode ? "" : curT, maxLimit, selectRomMin, selectRoomMin
                 }));
+                
+                localStorage.setItem("nez_ri", targetRoomID);
+                localStorage.setItem("nez_pi", pass);
 
                 const chatRef = ref(db, `chat/${curR}`);
                 const presRef = ref(db, `presence/${curR}`);
@@ -790,7 +795,6 @@
                 
                 let isReentry = false;
 
-                // 🌟 【修正箇所】通常入室 or 公式部屋のアクティブ再入室時の整合性バリデーション
                 if (!isWatcherMode) {
                     const pSnap = await get(presRef);
                     if (pSnap.exists()) {
@@ -809,7 +813,7 @@
                                         isReentry = true;
                                         continue; 
                                     } else {
-                                        showLobby(`【再入室拒否】以前のセッション情報と「名前」または「トリップ」が一致しません。`);
+                                        showLobby(`【再入室拒否】以前のセッション情報と「名前」または「トリップ」が一致しません。\n公式部屋等へ再入室する場合はしばらく待つか、前と同じ名前・トリップを設定してください。`);
                                         return;
                                     }
                                 }
@@ -854,7 +858,7 @@
                     $("exitBtn").innerText = "退室"; 
                 }
 
-                hideSplash(); // 完全に通信と描画の構築が終わったらマスクを外す
+                hideSplash();
 
                 let trackedUserStates = {};
                 unsubscribePres = onValue(presRef, s => {
@@ -986,7 +990,7 @@
             const rawName = $("ni").value, tk = $("tk").value.trim(), r = $("ri").value.trim(), p = $("pi").value.trim();
             const cleanName = rawName.replace(/[\s\u3000]+/g, "").trim();
             const cleanRoom = r.replace(/[\s\u3000]+/g, "").trim();
-            if (!cleanName || !cleanRoom || !p) { return false; }
+            if (!cleanRoom || !p) { return false; }
             setLobbyButtonsState(false);
             await join(cleanRoom, p, cleanName, generateTripString(cleanName, tk), Number($("maxUsers").value), Number($("romTime").value), Number($("roomCleanTime").value));
             return true;
@@ -1005,6 +1009,7 @@
             const rawName = $("ni").value;
             const cleanName = rawName.replace(/[\s\u3000]+/g, "").trim();
             const tk = $("tk").value.trim();
+            // 第8引数(isDirectOfficialClick)をtrueにし、セッション切れ時は確実に覗き見モードに誘導
             await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, tk), 10, 30, 999999999, true);
         };
 
@@ -1090,15 +1095,30 @@
         $("focusBtn").onclick = () => { $("mi").focus(); setTimeout(() => { scrollToLatest(); }, 150); };
 
         async function triggerSessionRestore() {
-            const sessionData = sessionStorage.getItem("active_room_session");
+            const sessionData = localStorage.getItem("active_room_session");
             if (sessionData) {
                 try { 
                     const s = JSON.parse(sessionData); 
-                    // セッション復元時、s.curN（名前）が書き込まれていれば、公式部屋であっても通常参加（再入室）として扱う
-                    await join(s.rawR, s.curP, s.curN, s.curT, s.maxLimit, s.selectRomMin, s.selectRoomMin); 
+                    const savedName = localStorage.getItem("nez_ni") || "";
+                    const savedTripKey = localStorage.getItem("nez_tk") || "";
+                    
+                    const fullTripString = generateTripString(savedName, savedTripKey);
+                    
+                    // セッション復元時は第9引数（isSessionRestore）に true を指定して通常入室
+                    await join(
+                        s.rawR, 
+                        s.curP, 
+                        savedName, 
+                        fullTripString, 
+                        s.maxLimit, 
+                        s.selectRomMin, 
+                        s.selectRoomMin,
+                        false,
+                        true
+                    ); 
                     return true;
                 } catch(e) { 
-                    sessionStorage.removeItem("active_room_session"); 
+                    localStorage.removeItem("active_room_session"); 
                 }
             }
             return false;
@@ -1110,10 +1130,13 @@
         }, { onlyOnce: true });
 
         window.addEventListener("DOMContentLoaded", async () => {
-            // 初期状態はHTMLに 'hidden' が付与されているため、どちらの画面もまだ見えません (チラつき防止)
             const savedName = localStorage.getItem("nez_ni"), savedTripKey = localStorage.getItem("nez_tk");
+            const savedRoomId = localStorage.getItem("nez_ri"), savedRoomPass = localStorage.getItem("nez_pi");
+
             if (savedName) { $("ni").value = savedName; $("watcher_ni").value = savedName; } 
             if (savedTripKey) { $("tk").value = savedTripKey; $("watcher_tk").value = savedTripKey; }
+            if (savedRoomId) { $("ri").value = savedRoomId; }
+            if (savedRoomPass) { $("pi").value = savedRoomPass; }
 
             const params = new URLSearchParams(window.location.search);
             const r = params.get("r"), p = params.get("p"), n = params.get("n");
@@ -1125,17 +1148,30 @@
             updateTripPreview(); updateWatcherTripPreview();
             setLobbyButtonsState(true);
 
-            // 1. まず最優先でアクティブセッション（リロード）の復元を試みる
+            // 1. アクティブセッションが残っている場合はそれを最優先復帰（通常入室可）
             const restored = await triggerSessionRestore();
-            if (restored) return; // 復元が成功した場合は join 側でスプラッシュが消されるため、ここで終了
+            if (restored) return;
 
-            // 2. クエリパラメータで自動入室が指定されている場合の判定
-            if ($("ri").value.trim() && $("pi").value.trim() && ($("ni").value || n)) {
-                const autoJoined = await executeJoinFromLobbyInputs();
-                if (autoJoined) return;
+            // 2. クエリパラメータ付きの招待リンク処理
+            const checkRi = $("ri").value.trim();
+            const checkPi = $("pi").value.trim();
+            if (checkRi && checkPi) {
+                // 🔄 セッションがない状態で公式部屋のURLを踏んだ、または公式用共通パスワードが入っている場合は
+                // 名前が残っていても強制的に覗き見モード(isDirectOfficialClick=true)で入室させる
+                if (checkRi === "公式部屋" || checkRi === "official-room" || checkPi === "official_public_pass") {
+                    setLobbyButtonsState(false);
+                    const rawName = $("ni").value;
+                    const cleanName = rawName.replace(/[\s\u3000]+/g, "").trim();
+                    const tk = $("tk").value.trim();
+                    await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, tk), 10, 30, 999999999, true);
+                    return;
+                } else if ($("ni").value || n) {
+                    const autoJoined = await executeJoinFromLobbyInputs();
+                    if (autoJoined) return;
+                }
             }
 
-            // 3. どのセッションも復元されなかった場合、ここで初めてロビー画面を表示してスプラッシュを外す
+            // 3. 復旧セッションも自動入室トリガーもない場合はロビーを表示
             $("lobby").style.display = "flex"; 
             hideSplash();
 

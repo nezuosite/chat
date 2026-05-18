@@ -481,6 +481,12 @@
             }
             $("mainApp").style.display = "none"; $("lobby").style.display = "flex";
             setLobbyButtonsState(true);
+
+            // ロビーに戻ってきた際、保存してある名前とトリップキーを再ロードして同期する
+            const savedName = localStorage.getItem("nez_ni"), savedTripKey = localStorage.getItem("nez_tk");
+            if (savedName) { $("ni").value = savedName; $("watcher_ni").value = savedName; } 
+            if (savedTripKey) { $("tk").value = savedTripKey; $("watcher_tk").value = savedTripKey; }
+            updateTripPreview(); updateWatcherTripPreview();
         };
 
         const enc = (t, k, isOfficial = false) => {
@@ -778,15 +784,16 @@
                                 const activeN = textDec(users[k].nEnc, pass, isOfficial);
                                 const activeT = textDec(users[k].tEnc, pass, isOfficial) || "";
 
-                                // 【重要】同一UIDデータが存在する場合の厳格チェック
+                                // 【重要・変更】同一UIDデータが現在生存している場合の整合性チェック
                                 if (k === myUid) {
                                     if (activeN !== name || activeT !== trip) {
-                                        showLobby(`【認証エラー】すでにこの部屋にあなたの端末情報(UID)が登録されていますが、入力された名前またはトリップが一致しません。`);
-                                        return; // ⭐️【修正】ここで関数の実行を終了させ、以降の処理へ進ませない
+                                        showLobby(`【認証エラー】すでにこの部屋にあなたの端末情報(UID)が登録されていますが、名前またはトリップが一致しないため再入室できません。変更は不可能です。`);
+                                        return; 
                                     }
                                     isReentry = true;
                                 }
 
+                                // 【排他制御】自分以外のUIDが、まったく同じ名前でアクティブに滞在している場合は弾く
                                 if (k !== myUid && activeN === name) {
                                     showLobby(`【入室エラー】「${name}」という名前はすでに部屋の中で使用されています。`);
                                     return;
@@ -805,7 +812,7 @@
 
                     await set(myRef, { nEnc: enc(name, pass, isOfficial), tEnc: enc(trip, pass, isOfficial), lastSeen: NOW });
                     
-                    // 【重要】同一UIDによる再入室時（isReentry === true）はアナウンス（システムメッセージ）を送出しない
+                    // 同一UIDによるセッション切れ・接続切れからの再入室時はアナウンスを出さない
                     if (!isReentry) {
                         await push(chatRef, { type: "sys", text: enc(`${name}${trip} が入室しました`, pass, isOfficial), time: NOW });
                     }
@@ -952,13 +959,22 @@
         $("sendBtn").onclick = (e) => { e.preventDefault(); sendMessage(); };
         $("clearBtn").onclick = (e) => { e.preventDefault(); $("mi").value = ""; $("mi").rows = 1; $("mi").style.overflowY = "hidden"; toggleClearBtn(""); $("mi").focus(); };
 
-        $("enterBtn").onclick = async () => {
+        const executeJoinFromLobbyInputs = async () => {
             const rawName = $("ni").value, tk = $("tk").value.trim(), r = $("ri").value.trim(), p = $("pi").value.trim();
             const cleanName = rawName.replace(/[\s\u3000]+/g, "").trim();
             const cleanRoom = r.replace(/[\s\u3000]+/g, "").trim();
-            if (!cleanName || !cleanRoom || !p) { alert("必須項目が入力されていません。"); return; }
+            if (!cleanName || !cleanRoom || !p) { return false; }
             setLobbyButtonsState(false);
             await join(cleanRoom, p, cleanName, generateTripString(cleanName, tk), Number($("maxUsers").value), Number($("romTime").value), Number($("roomCleanTime").value));
+            return true;
+        };
+
+        $("enterBtn").onclick = async () => {
+            const rawName = $("ni").value, r = $("ri").value.trim(), p = $("pi").value.trim();
+            const cleanName = rawName.replace(/[\s\u3000]+/g, "").trim();
+            const cleanRoom = r.replace(/[\s\u3000]+/g, "").trim();
+            if (!cleanName || !cleanRoom || !p) { alert("必須項目が入力されていません。"); return; }
+            await executeJoinFromLobbyInputs();
         };
 
         $("officialRoomBtn").onclick = async () => {
@@ -1050,11 +1066,18 @@
         
         $("focusBtn").onclick = () => { $("mi").focus(); setTimeout(() => { scrollToLatest(); }, 150); };
 
-        function triggerSessionRestore() {
+        async function triggerSessionRestore() {
             const sessionData = sessionStorage.getItem("active_room_session");
             if (sessionData) {
-                try { const s = JSON.parse(sessionData); join(s.rawR, s.curP, s.curN, s.curT, s.maxLimit, s.selectRomMin, s.selectRoomMin); } catch(e) { sessionStorage.removeItem("active_room_session"); }
+                try { 
+                    const s = JSON.parse(sessionData); 
+                    await join(s.rawR, s.curP, s.curN, s.curT, s.maxLimit, s.selectRomMin, s.selectRoomMin); 
+                    return true;
+                } catch(e) { 
+                    sessionStorage.removeItem("active_room_session"); 
+                }
             }
+            return false;
         }
 
         onValue(ref(db, ".info/serverTimeOffset"), (snap) => { 
@@ -1077,19 +1100,18 @@
             updateTripPreview(); updateWatcherTripPreview();
             setLobbyButtonsState(true);
 
-            if (r && p) {
-                const finalName = (n || $("ni").value || "").replace(/[\s\u3000]+/g, "").trim();
-                const currentTripKey = $("tk").value.trim();
-                
-                if (finalName) {
-                    setLobbyButtonsState(false);
-                    const calculatedTrip = generateTripString(finalName, currentTripKey);
-                    await join(r, p, finalName, calculatedTrip, Number($("maxUsers").value), Number($("romTime").value), Number($("roomCleanTime").value));
-                } else {
-                    $("ni").focus();
-                }
-            } else {
-                triggerSessionRestore();
+            // セッション復元を最優先でチェック
+            const restored = await triggerSessionRestore();
+            if (restored) return;
+
+            // URLパラメータによる自動入室、またはロビー展開時の自動再入室判定
+            if ($("ri").value.trim() && $("pi").value.trim() && ($("ni").value || n)) {
+                const autoJoined = await executeJoinFromLobbyInputs();
+                if (autoJoined) return;
+            }
+
+            if (r && p && !$("ni").value) {
+                $("ni").focus();
             }
         });
     </script>

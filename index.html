@@ -170,7 +170,7 @@
                 <input type="text" id="ni" placeholder="名前を入力してください（必須）" maxlength="14" class="w-full px-3 py-2 border border-neutral-700 bg-neutral-800 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
             </div>
             <div>
-                <label class="block text-[11px] font-bold text-slate-400 mb-1">トリップ暗号（秘密のキー） <span class="text-red-500">*必須</span></label>
+                <label class="block text-[11px] font-bold text-slate-400 mb-1">トリップ暗号（秘密のキー） <span class="text-neutral-500">*任意（空欄時は自動補正）</span></label>
                 <div class="flex gap-2 items-center">
                     <input type="text" id="tk" placeholder="本人証明用のキーワード（日本語可）" autocomplete="on" class="flex-1 px-3 py-2 border border-neutral-700 bg-neutral-800 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
                     <span id="tp" class="text-[10px] font-mono text-green-400 bg-black px-2.5 py-1.5 rounded-lg border border-neutral-800 hidden shrink-0"></span>
@@ -288,8 +288,8 @@
                         <a id="ytOfficialLinkBtn" href="https://www.youtube.com" target="_blank" rel="noopener noreferrer" class="bg-red-950/60 hover:bg-red-900 text-red-400 border border-red-900/40 px-1.5 py-0.5 rounded text-[10px] font-bold transition whitespace-nowrap hidden">🔗 公式</a>
                     </div>
                     <div class="flex items-center gap-1 shrink-0 ml-auto">
-                        <button id="ytMiniMuteBtn" class="text-slate-400 hover:text-white transition px-1 text-sm">??</button>
-                        <input type="range" id="ytMiniVolume" min="0" max="100" value="0" step="1" class="w-16 md:w-20 h-1 bg-neutral-800 rounded appearance-none cursor-pointer accent-emerald-500">
+                        <button id="ytMiniMuteBtn" class="text-slate-400 hover:text-white transition px-1 text-sm">🔊</button>
+                        <input type="range" id="ytMiniVolume" min="0" max="100" value="50" step="1" class="w-16 md:w-20 h-1 bg-neutral-800 rounded appearance-none cursor-pointer accent-emerald-500">
                     </div>
                 </div>
             </div>
@@ -409,6 +409,10 @@
             query, orderByChild, get, update, onDisconnect, onChildAdded
         } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
+        // モジュールモード内安全スコープ参照のためのエイリアス
+        const CryptoJS = window.CryptoJS;
+        const YT = window.YT;
+
         const $ = id => document.getElementById(id);
         
         const DB_URL = "https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app";
@@ -438,7 +442,7 @@
         let globalVideoStateCache = null;
         
         let savedVolumeLevel = 50; 
-        let isMutedLocal = false; // 初期状態は音を出す
+        let isMutedLocal = false; 
 
         let stagingVideoId = null; 
 
@@ -480,7 +484,7 @@
 
         const getServerNow = () => Date.now() + (isOffsetLoaded ? serverTimeOffset : 0);
 
-        const activateShield = (duration = 600) => {
+        const activateShield = (duration = 1000) => {
             isLocalAction = true;
             if (actionShieldTimeout) clearTimeout(actionShieldTimeout);
             actionShieldTimeout = setTimeout(() => {
@@ -541,16 +545,15 @@
         window.__seekPlayerToSeconds = async function(seconds) {
             if (!ytPlayer || typeof ytPlayer.seekTo !== 'function') return;
             if (amIOwner && !stagingVideoId) {
-                activateShield(800);
-                const status = (typeof ytPlayer.getPlayerState === 'function' && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) ? "playing" : "paused";
+                activateShield(1200);
+                const status = (typeof ytPlayer.getPlayerState === 'function' && ytPlayer.getPlayerState() === window.YT.PlayerState.PLAYING) ? "playing" : "paused";
                 const currentId = globalVideoStateCache?.videoId || "dQw4w9WgXcQ";
                 await set(ref(db, `rooms/${curR}/videoState`), { 
                     videoId: currentId, status: status, currentTime: seconds, timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: lastResetSeed || Date.now()
                 });
                 ytPlayer.seekTo(seconds, true);
             } else {
-                // ステージング中または一般ユーザー
-                activateShield(800);
+                activateShield(1200);
                 ytPlayer.seekTo(seconds, true);
             }
         };
@@ -582,54 +585,47 @@
         }
 
         function applyLocalVolumeFromUI() {
+            if (!ytPlayer || typeof ytPlayer.setVolume !== 'function') return;
             const vol = parseInt($("ytMiniVolume").value, 10);
-            if (vol > 0) {
-                savedVolumeLevel = vol;
-                isMutedLocal = false; 
-            } else {
-                isMutedLocal = true;
-            }
+            savedVolumeLevel = vol;
             
             if (vol === 0) {
+                isMutedLocal = true;
                 $("ytMiniMuteBtn").innerText = "🔇"; 
+                try { ytPlayer.mute(); } catch(e){}
             } else {
+                isMutedLocal = false;
                 $("ytMiniMuteBtn").innerText = vol < 35 ? "🔈" : vol < 75 ? "🔉" : "🔊";
-            }
-
-            if (ytPlayer && typeof ytPlayer.setVolume === 'function') {
-                if (vol === 0) {
-                    ytPlayer.mute(); 
-                } else {
+                try {
                     ytPlayer.unMute(); 
                     ytPlayer.setVolume(vol);
-                }
+                } catch(e){}
             }
         }
 
         $("ytMiniVolume").oninput = () => applyLocalVolumeFromUI();
 
         const toggleLocalMute = () => {
+            if (!ytPlayer) return;
             if (isMutedLocal) {
                 isMutedLocal = false; 
                 const targetVol = savedVolumeLevel === 0 ? 50 : savedVolumeLevel;
                 $("ytMiniVolume").value = targetVol; 
                 $("ytMiniMuteBtn").innerText = targetVol < 35 ? "🔈" : targetVol < 75 ? "🔉" : "🔊";
-                if (ytPlayer && typeof ytPlayer.unMute === 'function') ytPlayer.unMute();
-                if (ytPlayer && typeof ytPlayer.setVolume === 'function') ytPlayer.setVolume(targetVol);
+                try { ytPlayer.unMute(); ytPlayer.setVolume(targetVol); } catch(e){}
             } else {
                 isMutedLocal = true; 
                 $("ytMiniMuteBtn").innerText = "🔇";
                 $("ytMiniVolume").value = 0;
-                if (ytPlayer && typeof ytPlayer.mute === 'function') ytPlayer.mute();
+                try { ytPlayer.mute(); } catch(e){}
             }
         };
         $("ytMiniMuteBtn").onclick = (e) => { e.preventDefault(); toggleLocalMute(); };
 
-        // 👑 【重要】ホストが自分だけで再生・調整するためのステージング設定
         window.__setupStagingVideo = function(vId, vTitle = "未取得の動画") {
             if (!vId) return;
             stagingVideoId = vId;
-            amIOwner = true; // 動画を設定した時点で自分がホスト権限を持つ
+            amIOwner = true; 
             
             $("ytPlaceholder").style.display = "none";
             $("guestConfirmOverlay").classList.add("hidden");
@@ -640,18 +636,18 @@
             
             const buildStagingPlayer = () => {
                 if (!isYtReady || !window.YT?.Player) { setTimeout(buildStagingPlayer, 100); return; }
-                activateShield(1000);
-                ytPlayer = new YT.Player('ytPlayer', {
+                activateShield(1500);
+                ytPlayer = new window.YT.Player('ytPlayer', {
                     videoId: vId,
                     playerVars: { 'autoplay': 1, 'playsinline': 1, 'controls': 0, 'disablekb': 1, 'rel': 0 },
                     events: {
                         'onReady': () => {
-                            // 自分だけの確認なので最初からミュートせず音を出せるように
                             isMutedLocal = false;
                             $("ytMiniVolume").value = savedVolumeLevel;
                             applyLocalVolumeFromUI();
                             $("ytMiniSlider").disabled = false;
                             updateControlsUI();
+                            try { ytPlayer.playVideo(); } catch(e){}
                         },
                         'onStateChange': onPlayerStateChange
                     }
@@ -660,21 +656,19 @@
             buildStagingPlayer();
         };
 
-        // 👑確定シグナルをFirebaseに送信して部屋全員にブロードキャスト
         async function commitStagingToLive() {
             if (!stagingVideoId || !curR) return;
             const currentPos = (ytPlayer && typeof ytPlayer.getCurrentTime === 'function') ? ytPlayer.getCurrentTime() : 0;
-            const currentStatus = (ytPlayer && typeof ytPlayer.getPlayerState === 'function' && ytPlayer.getPlayerState() === YT.PlayerState.PAUSED) ? "paused" : "playing";
+            const currentStatus = (ytPlayer && typeof ytPlayer.getPlayerState === 'function' && ytPlayer.getPlayerState() === window.YT.PlayerState.PAUSED) ? "paused" : "playing";
             
             amIOwner = true; 
             isUserApprovedSync = true;
             isExplicitlyClosedByGuest = false; 
             isGuestFreeMode = false;
-            activateShield(1200);
+            activateShield(1500);
             $("hostStagingOverlay").classList.add("hidden");
 
             const NOW = getServerNow();
-            // Firebaseに書き込んだ瞬間にゲストのリスナーが起動して完全同期する
             await set(ref(db, `rooms/${curR}/videoState`), { 
                 videoId: stagingVideoId, status: currentStatus, currentTime: currentPos, timestamp: NOW, owner: uid, ownerName: enc(curN, curP), resetSeed: Date.now()
             });
@@ -683,9 +677,9 @@
             await update(ref(db, `rooms/${curR}`), { lastActivity: NOW });
             
             if (currentStatus === "playing" && ytPlayer && typeof ytPlayer.playVideo === 'function') {
-                ytPlayer.playVideo();
+                try { ytPlayer.playVideo(); } catch(e){}
             }
-            stagingVideoId = null; // ステージング終了
+            stagingVideoId = null; 
             
             startPeriodicSync();
             updateControlsUI();
@@ -789,7 +783,7 @@
 
                     if (typeof ytPlayer.getPlayerState === 'function') {
                         const pSt = ytPlayer.getPlayerState();
-                        $("ytMiniPlayPauseBtn").innerText = pSt === YT.PlayerState.PLAYING ? "⏸" : "▶";
+                        $("ytMiniPlayPauseBtn").innerText = pSt === window.YT.PlayerState.PLAYING ? "⏸" : "▶";
                     }
 
                     if (stagingVideoId) {
@@ -831,7 +825,7 @@
                                 const lag = curTime - hostTargetTime; const absLag = Math.abs(lag);
                                 $("ytLagMeter").style.display = "inline-block";
                                 
-                                if (absLag <= 1.5) {
+                                if (absLag <= 1.8) {
                                     $("ytSyncStatusIndicator").innerText = "同期中";
                                     $("ytSyncStatusIndicator").className = "px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-600";
                                     $("ytLagMeter").innerText = `ラグ: ${(lag >= 0 ? '+' : '')}${lag.toFixed(2)}s`;
@@ -839,11 +833,11 @@
                                     $("topLiveIndicator").className = "w-2 h-2 bg-emerald-500 rounded-full animate-pulse shrink-0";
                                     
                                     if (globalVideoStateCache && globalVideoStateCache.status === "playing" && !isLocalAction) {
-                                        if (lag > 0.3) ytPlayer.setPlaybackRate(0.95);
-                                        else if (lag < -0.3) ytPlayer.setPlaybackRate(1.05);
+                                        if (lag > 0.4) ytPlayer.setPlaybackRate(0.95);
+                                        else if (lag < -0.4) ytPlayer.setPlaybackRate(1.05);
                                         else ytPlayer.setPlaybackRate(1.0);
                                     }
-                                } else if (absLag <= 3.5) {
+                                } else if (absLag <= 4.0) {
                                     $("ytSyncStatusIndicator").innerText = "微調整";
                                     $("ytSyncStatusIndicator").className = "px-1.5 py-0.5 rounded text-[10px] font-bold bg-yellow-950 text-yellow-400 border border-yellow-600";
                                     $("ytLagMeter").innerText = `調整: ${(lag >= 0 ? '+' : '')}${lag.toFixed(2)}s`;
@@ -873,11 +867,11 @@
             const onSliderChange = async (sliderEl) => {
                 const targetTime = Number(sliderEl.value);
                 if (ytPlayer && typeof ytPlayer.seekTo === 'function') { 
-                    activateShield(1000);
+                    activateShield(1200);
                     ytPlayer.seekTo(targetTime, true); 
                 }
                 if (amIOwner && !stagingVideoId) {
-                    const status = (ytPlayer && typeof ytPlayer.getPlayerState === 'function' && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) ? "playing" : "paused";
+                    const status = (ytPlayer && typeof ytPlayer.getPlayerState === 'function' && ytPlayer.getPlayerState() === window.YT.PlayerState.PLAYING) ? "playing" : "paused";
                     const currentId = globalVideoStateCache?.videoId || "dQw4w9WgXcQ";
                     await set(roomStateRef, { 
                         videoId: currentId, status: status, currentTime: targetTime, timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: lastResetSeed || Date.now()
@@ -893,36 +887,36 @@
             $("ytMiniPlayPauseBtn").onclick = (e) => {
                 e.preventDefault(); if (!ytPlayer || typeof ytPlayer.getPlayerState !== 'function') return;
                 const pState = ytPlayer.getPlayerState();
-                if (pState === YT.PlayerState.PLAYING) {
-                    if (amIOwner && !stagingVideoId) syncPauseAction(); else { activateShield(800); ytPlayer.pauseVideo(); }
+                if (pState === window.YT.PlayerState.PLAYING) {
+                    if (amIOwner && !stagingVideoId) syncPauseAction(); else { activateShield(1000); ytPlayer.pauseVideo(); }
                 } else {
-                    if (amIOwner && !stagingVideoId) syncPlayAction(); else { activateShield(800); ytPlayer.playVideo(); }
+                    if (amIOwner && !stagingVideoId) syncPlayAction(); else { activateShield(1000); ytPlayer.playVideo(); }
                 }
             };
 
             async function syncPlayAction() {
                 if (!ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') return;
-                amIOwner = true; activateShield(1000); lastSavedStatus = "playing"; 
+                amIOwner = true; activateShield(1200); lastSavedStatus = "playing"; 
                 const currentPos = ytPlayer.getCurrentTime();
                 try {
                     await set(roomStateRef, { 
                         videoId: globalVideoStateCache?.videoId || "dQw4w9WgXcQ", status: "playing", currentTime: currentPos, timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: lastResetSeed || Date.now()
                     });
-                    if (ytPlayer.getPlayerState() !== YT.PlayerState.PLAYING) ytPlayer.playVideo();
+                    if (ytPlayer.getPlayerState() !== window.YT.PlayerState.PLAYING) ytPlayer.playVideo();
                     startPeriodicSync();
                 } catch(err){}
             }
 
             async function syncPauseAction() {
                 if (!ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') return;
-                amIOwner = true; activateShield(1000); lastSavedStatus = "paused"; 
+                amIOwner = true; activateShield(1200); lastSavedStatus = "paused"; 
                 if (syncIntervalId) { clearInterval(syncIntervalId); syncIntervalId = null; }
                 const currentPos = ytPlayer.getCurrentTime();
                 try {
                     await set(roomStateRef, { 
                         videoId: globalVideoStateCache?.videoId || "dQw4w9WgXcQ", status: "paused", currentTime: currentPos, timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: lastResetSeed || Date.now()
                     });
-                    if (ytPlayer.getPlayerState() !== YT.PlayerState.PAUSED) ytPlayer.pauseVideo();
+                    if (ytPlayer.getPlayerState() !== window.YT.PlayerState.PAUSED) ytPlayer.pauseVideo();
                 } catch(err){}
             }
 
@@ -931,10 +925,10 @@
                 if (!curR) return;
                 const currentId = globalVideoStateCache?.videoId || "dQw4w9WgXcQ";
                 const currentPos = (ytPlayer && typeof ytPlayer.getCurrentTime === 'function') ? ytPlayer.getCurrentTime() : 0;
-                const currentStatus = (ytPlayer && typeof ytPlayer.getPlayerState === 'function' && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) ? "playing" : "paused";
+                const currentStatus = (ytPlayer && typeof ytPlayer.getPlayerState === 'function' && ytPlayer.getPlayerState() === window.YT.PlayerState.PLAYING) ? "playing" : "paused";
                 
                 amIOwner = true; isGuestFreeMode = false; isExplicitlyClosedByGuest = false; isUserApprovedSync = true;
-                activateShield(1200);
+                activateShield(1500);
                 $("guestConfirmOverlay").classList.add("hidden");
                 
                 await set(roomStateRef, {
@@ -1007,7 +1001,7 @@
 
             // 🔔 Firebaseのデータベース同期リスナー（メイン）
             onValue(roomStateRef, (snapshot) => {
-                if (stagingVideoId) return; // 自分が配信確認中の時は、外部同期を完全にシャットアウトする
+                if (stagingVideoId) return; 
 
                 if (!snapshot.exists()) {
                     if (lastLoadedVideoId === "__INIT__" || !lastLoadedVideoId) { amIOwner = false; updateControlsUI(); return; }
@@ -1086,17 +1080,36 @@
                         let startPos = state.currentTime;
                         if (state.status === "playing") { startPos += ((getServerNow() - state.timestamp) / 1000); }
 
-                        activateShield(1200); 
-                        ytPlayer = new YT.Player('ytPlayer', { 
+                        activateShield(1500); 
+                        
+                        // 規制対策：ゲスト側は自動再生失敗を防ぐため、初期化パラメーター段階で一時的にミュートをかける
+                        const shouldMuteOnInit = !amIOwner; 
+
+                        ytPlayer = new window.YT.Player('ytPlayer', { 
                             videoId: state.videoId, 
                             playerVars: { 
                                 'autoplay': (state.status==="paused")?0:1, 'playsinline': 1, 'controls': 0, 'disablekb': 1, 
-                                'rel': 0, 'modestbranding': 1, 'start': Math.max(0, Math.floor(startPos)), 'mute': 0
+                                'rel': 0, 'modestbranding': 1, 'start': Math.max(0, Math.floor(startPos)), 'mute': shouldMuteOnInit ? 1 : 0
                             }, 
                             events: { 
                                 'onReady': (e) => { 
-                                    if(!amIOwner) { e.target.unMute(); e.target.playVideo(); } 
-                                    applyLocalVolumeFromUI(); syncPlayer(state); 
+                                    if (shouldMuteOnInit) {
+                                        e.target.mute();
+                                    } else {
+                                        applyLocalVolumeFromUI();
+                                    }
+                                    if (state.status === "playing") {
+                                        try { e.target.playVideo(); } catch(err){}
+                                    }
+                                    
+                                    // プレイヤー生成完了後に遅延してローカル音量を上書き吸着（ブラウザロック回避）
+                                    setTimeout(() => {
+                                        if (ytPlayer && typeof ytPlayer.unMute === 'function') {
+                                            applyLocalVolumeFromUI();
+                                        }
+                                    }, 600);
+
+                                    syncPlayer(state); 
                                 }, 
                                 'onStateChange': onPlayerStateChange 
                             } 
@@ -1162,12 +1175,12 @@
             };
 
             function rebuildFreePlayer(vId, startTime) {
-                if (ytPlayer) { try { try { ytPlayer.destroy(); } catch(e){} } catch(e){} ytPlayer = null; }
-                ytPlayer = new YT.Player('ytPlayer', { 
+                if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; }
+                ytPlayer = new window.YT.Player('ytPlayer', { 
                     videoId: vId, 
                     playerVars: { 'autoplay': 1, 'playsinline': 1, 'controls': 0, 'rel': 0, 'modestbranding': 1, 'start': Math.floor(startTime) }, 
                     events: { 
-                        'onReady': () => { applyLocalVolumeFromUI(); }, 
+                        'onReady': () => { applyLocalVolumeFromUI(); try { ytPlayer.playVideo(); } catch(e){} }, 
                         'onStateChange': onPlayerStateChange 
                     } 
                 });
@@ -1177,15 +1190,20 @@
                 if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; }
                 let targetTime = state.currentTime; 
                 if (state.status === "playing") { targetTime += ((getServerNow() - state.timestamp) / 1000); }
-                activateShield(1200);
-                ytPlayer = new YT.Player('ytPlayer', { 
+                activateShield(1500);
+                ytPlayer = new window.YT.Player('ytPlayer', { 
                     videoId: state.videoId, 
                     playerVars: { 
                         'autoplay': (state.status === "paused") ? 0 : 1, 'playsinline': 1, 'controls': 0, 'disablekb': 1, 
-                        'rel': 0, 'modestbranding': 1, 'start': Math.max(0, Math.floor(targetTime)), 'mute': 0 
+                        'rel': 0, 'modestbranding': 1, 'start': Math.max(0, Math.floor(targetTime)), 'mute': 1 
                     }, 
                     events: { 
-                        'onReady': (e) => { e.target.unMute(); e.target.playVideo(); applyLocalVolumeFromUI(); syncPlayer(state); }, 
+                        'onReady': (e) => { 
+                            e.target.mute(); 
+                            if (state.status === "playing") { try { e.target.playVideo(); } catch(err){} }
+                            setTimeout(() => { applyLocalVolumeFromUI(); }, 500);
+                            syncPlayer(state); 
+                        }, 
                         'onStateChange': onPlayerStateChange 
                     } 
                 });
@@ -1199,21 +1217,21 @@
                     const curTime = ytPlayer.getCurrentTime(); const timeDiff = Math.abs(curTime - targetTime);
 
                     if (state.status === "playing") {
-                        if (ytPlayer.getPlayerState() !== YT.PlayerState.PLAYING) { 
-                            activateShield(600);
+                        if (ytPlayer.getPlayerState() !== window.YT.PlayerState.PLAYING) { 
+                            activateShield(800);
                             ytPlayer.playVideo(); 
                         }
-                        if (timeDiff > 3.0) { 
-                            activateShield(600);
+                        if (timeDiff > 2.5) { 
+                            activateShield(800);
                             ytPlayer.seekTo(targetTime, true); 
                         }
                     } else if (state.status === "paused") {
-                        if (ytPlayer.getPlayerState() !== YT.PlayerState.PAUSED) { 
-                            activateShield(600);
+                        if (ytPlayer.getPlayerState() !== window.YT.PlayerState.PAUSED) { 
+                            activateShield(800);
                             ytPlayer.pauseVideo(); 
                         }
-                        if (timeDiff > 1.5) { 
-                            activateShield(600);
+                        if (timeDiff > 1.2) { 
+                            activateShield(800);
                             ytPlayer.seekTo(targetTime, true); 
                         }
                     }
@@ -1224,7 +1242,7 @@
                 if (syncIntervalId) clearInterval(syncIntervalId);
                 syncIntervalId = setInterval(async () => {
                     if (!amIOwner || !ytPlayer || typeof ytPlayer.getCurrentTime !== 'function' || isLocalAction || stagingVideoId) return;
-                    if (ytPlayer.getPlayerState() !== YT.PlayerState.PLAYING) return;
+                    if (ytPlayer.getPlayerState() !== window.YT.PlayerState.PLAYING) return;
                     try {
                         await set(roomStateRef, { 
                             videoId: globalVideoStateCache?.videoId || "dQw4w9WgXcQ", status: "playing", currentTime: ytPlayer.getCurrentTime(), timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: lastResetSeed || Date.now()
@@ -1237,8 +1255,8 @@
                 if (!ytPlayer) return;
                 const pState = event.data;
 
-                if (pState === YT.PlayerState.ENDED) {
-                    activateShield(1000);
+                if (pState === window.YT.PlayerState.ENDED) {
+                    activateShield(1200);
                     if (syncIntervalId) { clearInterval(syncIntervalId); syncIntervalId = null; }
                     
                     const duration = typeof ytPlayer.getDuration === 'function' ? ytPlayer.getDuration() : 0;
@@ -1262,54 +1280,43 @@
                     return;
                 }
 
-                // 👑 【最重要】ステージング中のホスト自身の再生/停止アクションはFirebaseに送らず、自分だけで完結させる
                 if (stagingVideoId) {
                     return; 
                 }
 
+                // バッファリング中(-1, 3)はFirebaseへのイベント送信から除外してループを防止する
+                if (pState === window.YT.PlayerState.BUFFERING || pState === -1) return;
                 if (isGuestFreeMode || isLocalAction) return;
 
                 if (amIOwner) {
                     const curTime = ytPlayer.getCurrentTime ? ytPlayer.getCurrentTime() : 0;
-                    if (pState === YT.PlayerState.PLAYING) {
-                        activateShield(800); lastSavedStatus = "playing";
+                    if (pState === window.YT.PlayerState.PLAYING) {
+                        activateShield(1000); lastSavedStatus = "playing";
                         set(roomStateRef, { videoId: globalVideoStateCache?.videoId || "dQw4w9WgXcQ", status: "playing", currentTime: curTime, timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: lastResetSeed || Date.now() });
                         startPeriodicSync();
-                    } else if (pState === YT.PlayerState.PAUSED) {
-                        activateShield(800); lastSavedStatus = "paused";
+                    } else if (pState === window.YT.PlayerState.PAUSED) {
+                        activateShield(1000); lastSavedStatus = "paused";
                         if (syncIntervalId) { clearInterval(syncIntervalId); syncIntervalId = null; }
                         set(roomStateRef, { videoId: globalVideoStateCache?.videoId || "dQw4w9WgXcQ", status: "paused", currentTime: curTime, timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: lastResetSeed || Date.now() });
                     }
                 } else {
                     if (globalVideoStateCache) {
-                        if (globalVideoStateCache.status === "playing" && pState === YT.PlayerState.PAUSED) {
-                            setTimeout(() => { if (!isGuestFreeMode && globalVideoStateCache?.status === "playing" && ytPlayer?.getPlayerState() === YT.PlayerState.PAUSED && !isLocalAction) ytPlayer.playVideo(); }, 1000);
-                        } else if (globalVideoStateCache.status === "paused" && pState === YT.PlayerState.PLAYING) {
-                            setTimeout(() => { if (!isGuestFreeMode && globalVideoStateCache?.status === "paused" && ytPlayer?.getPlayerState() === YT.PlayerState.PLAYING && !isLocalAction) ytPlayer.pauseVideo(); }, 400);
+                        if (globalVideoStateCache.status === "playing" && pState === window.YT.PlayerState.PAUSED) {
+                            setTimeout(() => { if (!isGuestFreeMode && globalVideoStateCache?.status === "playing" && ytPlayer?.getPlayerState() === window.YT.PlayerState.PAUSED && !isLocalAction) try{ytPlayer.playVideo();}catch(e){} }, 600);
+                        } else if (globalVideoStateCache.status === "paused" && pState === window.YT.PlayerState.PLAYING) {
+                            setTimeout(() => { if (!isGuestFreeMode && globalVideoStateCache?.status === "paused" && ytPlayer?.getPlayerState() === window.YT.PlayerState.PLAYING && !isLocalAction) try{ytPlayer.pauseVideo();}catch(e){} }, 400);
                         }
                     }
                 }
             }
 
-            // 🔄 生存シグナル
             if (heartbeatIntervalId) clearInterval(heartbeatIntervalId);
             heartbeatIntervalId = setInterval(async () => {
                 if (!curR) return;
                 try {
                     const NOW = getServerNow();
                     await update(ref(db, `presence/${curR}/${uid}`), { lastSeen: NOW });
-                    
-                    let isVideoActive = false;
-                    if (ytPlayer && typeof ytPlayer.getPlayerState === 'function') {
-                        const pState = ytPlayer.getPlayerState();
-                        if (pState === 1 || stagingVideoId) { isVideoActive = true; }
-                    }
-
-                    if (isVideoActive) {
-                        await update(roomRef, { lastActivity: NOW });
-                    } else {
-                        await update(roomRef, { lastActivity: NOW }); 
-                    }
+                    await update(roomRef, { lastActivity: NOW }); 
                 } catch(e) {}
             }, 15000);
 
@@ -1355,12 +1362,19 @@
         $("clearBtn").onclick = (e) => { e.preventDefault(); $("mi").value = ""; $("mi").rows = 1; toggleClearBtn(""); $("mi").focus(); };
 
         async function joinFromParams() {
-            const rawName = $("ni").value; const tk = $("tk").value.trim(); const r = $("ri").value.trim(); const p = $("pi").value.trim();
+            const rawName = $("ni").value; let tk = $("tk").value.trim(); const r = $("ri").value.trim(); const p = $("pi").value.trim();
             const cleanName = rawName.replace(/[\s\u3000]+/g, "").trim();
-            if (!cleanName || !tk || !r || !p) {
+            
+            if (!cleanName || !r || !p) {
                 $("errMsg").innerText = "必須入力項目が不足しています。";
                 $("errMsg").style.display = "block";
                 return;
+            }
+
+            // トリップ空欄時のフォールバック処理
+            if (!tk) {
+                tk = "anon_" + Math.floor(Math.random() * 10000);
+                $("tk").value = tk;
             }
             
             $("enterBtn").disabled = true; $("enterBtn").innerText = "接続中...";

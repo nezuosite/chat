@@ -397,7 +397,6 @@
         const OFFICIAL_ROOM_HASH = CryptoJS.SHA256("公式部屋").toString();
         const chatTimeline = $('chatTimeline');
 
-        // 🛠️ 修正：IDへの依存を排除し、ボタンのコンテキストから対象のプレースホルダーを直に書き換える
         window.playYoutubeInline = function(buttonElement, vid) {
             const container = buttonElement.closest('.msg-card').querySelector('.yt-placeholder');
             if (container) {
@@ -539,7 +538,8 @@
             let mediaHtml = "";
             let cleanText = text;
 
-            const ytRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(mbed)?)\/|\S*?[?&]v=)|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/;
+            // 🔍 強力版YouTube正規表現：ショート、短縮、パラメータ、大文字小文字の表記ゆれに完全対応
+            const ytRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/i;
             const imgRegex = /\.(jpeg|jpg|gif|png|webp|bmp)(?:\?.*)?$/i;
 
             for (const word of words) {
@@ -548,7 +548,7 @@
                     if (ytMatch && ytMatch[1]) {
                         const vid = ytMatch[1];
                         cleanText = cleanText.replace(word, "");
-                        // 🛠️ 修正：id="yt-placeholder-${vid}" から class="yt-placeholder" へ変更。onclickの引数に this を追加
+                        
                         mediaHtml += `
                             <div class="mt-2 rounded-lg overflow-hidden border border-slate-700 bg-black max-w-sm w-full">
                                 <div class="yt-placeholder relative aspect-video bg-cover bg-center" style="background-image: url('https://img.youtube.com/vi/${vid}/mqdefault.jpg');"></div>
@@ -573,7 +573,7 @@
 
             cleanText = cleanText.trim();
             let textHtml = esc(cleanText);
-            textHtml = textHtml.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:underline">$1</a>');
+            textHtml = textHtml.replace(/(https?:\/\/[^\s]+)/gi, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:underline">$1</a>');
 
             return { textHtml: textHtml, mediaHtml: mediaHtml };
         }
@@ -625,7 +625,6 @@
         }, { passive: true });
 
         $("imageModal").addEventListener("touchmove", (e) => {
-            // 🛠️ 修正：スケールが1より大きい（ズーム中）、またはマルチタッチ時のみスクロール等の標準動作を止めるよう安全弁を設置
             if (scale > 1 || e.touches.length > 1) {
                 if (e.cancelable) e.preventDefault();
             }
@@ -699,7 +698,7 @@
                         myUid = userCredential.user.uid;
                     } catch (authErr) {
                         if (authErr.code === 'auth/operation-not-allowed') {
-                            throw new Error("Firebase側で『匿名認証(Anonymous)』の許可設定がオフになっています。FirebaseコンソールのAuthentication -> Sign-in method画面で有効にしてください。");
+                            throw new Error("Firebase側で『匿名認証』の設定がオフになっています。");
                         } else {
                             throw new Error(`認証エラーが発生しました: ${authErr.message}`);
                         }
@@ -758,9 +757,6 @@
                         if (!isOfficial) await set(roomRef, { max: finalMax, romMin: selectRomMin, roomMin: selectRoomMin, lastActivity: NOW });
                     }
                 } catch (roomErr) {
-                    if (roomErr.message.includes("PERMISSION_DENIED")) {
-                        throw new Error("データベースへのアクセスが拒否されました。Realtime Databaseのセキュリティルール（Rules）が適正か確認してください。");
-                    }
                     console.warn("部屋構成の設定をスキップしました:", roomErr);
                 }
 
@@ -784,14 +780,14 @@
 
                                 if (k === myUid) {
                                     if (activeN !== name || activeT !== trip) {
-                                        showLobby(`【認証エラー】セッション情報が一致しません。同じ名前とトリップキーで再入室してください。`);
+                                        showLobby(`【認証エラー】セッション情報が一致しません。`);
                                         return;
                                     }
                                     isReentry = true;
                                 }
 
                                 if (k !== myUid && activeN === name) {
-                                    showLobby(`【入室エラー】「${name}」という名前はすでに部屋の中のユーザーに使用されています。別の名前を入力してください。`);
+                                    showLobby(`【入室エラー】「${name}」という名前はすでに部屋の中で使用されています。`);
                                     return;
                                 }
                             }
@@ -904,7 +900,7 @@
 
             } catch (e) {
                 console.error(e);
-                showLobby(`❌ 入室に失敗しました\n━━━━━━━━━━━━━━━━━━━━\n原因: ${e.message}`);
+                showLobby(`❌ 入室に失敗しました\n原因: ${e.message}`);
             } finally {
                 setLobbyButtonsState(true);
             }
@@ -958,7 +954,7 @@
             const rawName = $("ni").value, tk = $("tk").value.trim(), r = $("ri").value.trim(), p = $("pi").value.trim();
             const cleanName = rawName.replace(/[\s\u3000]+/g, "").trim();
             const cleanRoom = r.replace(/[\s\u3000]+/g, "").trim();
-            if (!cleanName || !cleanRoom || !p) { alert("必須項目（表示名、部屋ID、部屋パスワード）が入力されていません。"); return; }
+            if (!cleanName || !cleanRoom || !p) { alert("必須項目が入力されていません。"); return; }
             setLobbyButtonsState(false);
             await join(cleanRoom, p, cleanName, generateTripString(cleanName, tk), Number($("maxUsers").value), Number($("romTime").value), Number($("roomCleanTime").value));
         };
@@ -974,7 +970,7 @@
         $("watcherUpgradeBtn").onclick = async () => {
             const rawName = $("watcher_ni").value, tk = $("watcher_tk").value.trim();
             const cleanName = rawName.replace(/[\s\u3000]+/g, "").trim();
-            if (!cleanName || !tk) { alert("名前 と トリップキーを入力してください。"); return; }
+            if (!cleanName || !tk) { alert("名前とトリップキーを入力してください。"); return; }
             localStorage.setItem("nez_ni", cleanName); localStorage.setItem("nez_tk", tk);
             $("ni").value = cleanName; $("tk").value = tk; updateTripPreview();
             await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, tk), 10, 30, 999999999);
@@ -1013,7 +1009,7 @@
                     }
                 }
             } catch(e) {
-                console.error("退室処理中にエラーが発生しました:", e);
+                console.error("退室処理中のエラー:", e);
             }
             isProcessingExit = false; showLobby();
         }
@@ -1032,7 +1028,7 @@
             const textArea = document.createElement("textarea"); textArea.value = text;
             Object.assign(textArea.style, { position: "fixed", top: "0", left: "0", width: "2em", height: "2em", background: "transparent", border: "none" });
             document.body.appendChild(textArea); textArea.focus(); textArea.select();
-            try { document.execCommand('copy'); alert("招待リンクをコピーしました！"); } catch (err) { alert("ブラウザのURLを共有してください。"); }
+            try { document.execCommand('copy'); alert("招待リンクをコピーしました！"); } catch (err) { alert("URLを共有してください。"); }
             document.body.removeChild(textArea);
         }
 

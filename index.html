@@ -476,7 +476,7 @@
             if (unsubscribeChat) { unsubscribeChat(); unsubscribeChat = null; }
             if (unsubscribePres) { unsubscribePres(); unsubscribePres = null; }
             if (unsubscribeRoomConfig) { unsubscribeRoomConfig(); unsubscribeRoomConfig = null; }
-            if (unsubscribeConn) { unsubscribeConn(); unsubscribeConn = null; }
+            if (unsubscribeConn) { unsubscribeConn = null; }
             if (heartbeatIntervalId) { clearInterval(heartbeatIntervalId); heartbeatIntervalId = null; }
         };
 
@@ -797,7 +797,8 @@
 
                 if (unsubscribeConn) { unsubscribeConn = null; }
                 
-                let isReentry = false;
+                // セッション復帰フラグが立っている場合は最初から再入室扱いとする
+                let isReentry = isSessionRestore;
 
                 if (!isWatcherMode) {
                     const pSnap = await get(presRef);
@@ -843,6 +844,7 @@
 
                     await set(myRef, { nEnc: enc(name, pass, isOfficial), tEnc: enc(trip, pass, isOfficial), lastSeen: NOW });
                     
+                    // 完全な新規入室であり、かつセッション復帰でもない場合のみ入室アナウンスを送信
                     if (!isReentry) {
                         await push(chatRef, { type: "sys", text: enc(`${name}${trip} が入室しました`, pass, isOfficial), time: NOW });
                     }

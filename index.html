@@ -732,11 +732,9 @@
                 
                 const wasWatcherMode = isWatcherMode;
                 
-                // 🔄 【ロジック修正】セッション復旧かつ名前がある場合のみ公式部屋の直接参加を許可。
-                // セッションが切れている（または初回遷移）ときは、名前の有無に関わらず100%覗き見モードから開始
                 if (isSessionRestore && isOfficial && name) {
                     isWatcherMode = false;
-                } else if (isOfficial) {
+                } else if (isOfficial && isDirectOfficialClick) {
                     isWatcherMode = true;
                 } else {
                     isWatcherMode = false;
@@ -1009,7 +1007,6 @@
             const rawName = $("ni").value;
             const cleanName = rawName.replace(/[\s\u3000]+/g, "").trim();
             const tk = $("tk").value.trim();
-            // 第8引数(isDirectOfficialClick)をtrueにし、セッション切れ時は確実に覗き見モードに誘導
             await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, tk), 10, 30, 999999999, true);
         };
 
@@ -1019,7 +1016,9 @@
             if (!cleanName || !tk) { alert("名前とトリップキーを入力してください。"); return; }
             localStorage.setItem("nez_ni", cleanName); localStorage.setItem("nez_tk", tk);
             $("ni").value = cleanName; $("tk").value = tk; updateTripPreview();
-            await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, tk), 10, 30, 999999999);
+            
+            // 🔄 覗き見モードからの正規入室処理の修正 (デフォルト引数の補完)
+            await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, tk), 10, 30, 999999999, false, false);
         };
 
         async function exitRoom() {
@@ -1078,8 +1077,27 @@
             document.body.removeChild(textArea);
         }
 
-        $("ni").addEventListener("input", updateTripPreview); $("tk").addEventListener("input", updateTripPreview);
-        $("watcher_ni").addEventListener("input", updateWatcherTripPreview); $("watcher_tk").addEventListener("input", updateWatcherTripPreview);
+        // 🔄 双方向の入力同期処理
+        $("ni").addEventListener("input", (e) => {
+            $("watcher_ni").value = e.target.value;
+            updateTripPreview();
+            updateWatcherTripPreview();
+        });
+        $("tk").addEventListener("input", (e) => {
+            $("watcher_tk").value = e.target.value;
+            updateTripPreview();
+            updateWatcherTripPreview();
+        });
+        $("watcher_ni").addEventListener("input", (e) => {
+            $("ni").value = e.target.value;
+            updateTripPreview();
+            updateWatcherTripPreview();
+        });
+        $("watcher_tk").addEventListener("input", (e) => {
+            $("tk").value = e.target.value;
+            updateTripPreview();
+            updateWatcherTripPreview();
+        });
 
         $("masterGenBtn").onclick = () => {
             const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -1104,7 +1122,6 @@
                     
                     const fullTripString = generateTripString(savedName, savedTripKey);
                     
-                    // セッション復元時は第9引数（isSessionRestore）に true を指定して通常入室
                     await join(
                         s.rawR, 
                         s.curP, 
@@ -1148,16 +1165,19 @@
             updateTripPreview(); updateWatcherTripPreview();
             setLobbyButtonsState(true);
 
-            // 1. アクティブセッションが残っている場合はそれを最優先復帰（通常入室可）
+            // 🔄 ロビー状態でただリロードされた場合（招待リンクや過去のセッション復元対象がない場合）は自動処理をスキップ
+            if (!r && !p && !localStorage.getItem("active_room_session")) {
+                $("lobby").style.display = "flex"; 
+                hideSplash();
+                return;
+            }
+
             const restored = await triggerSessionRestore();
             if (restored) return;
 
-            // 2. クエリパラメータ付きの招待リンク処理
             const checkRi = $("ri").value.trim();
             const checkPi = $("pi").value.trim();
             if (checkRi && checkPi) {
-                // 🔄 セッションがない状態で公式部屋のURLを踏んだ、または公式用共通パスワードが入っている場合は
-                // 名前が残っていても強制的に覗き見モード(isDirectOfficialClick=true)で入室させる
                 if (checkRi === "公式部屋" || checkRi === "official-room" || checkPi === "official_public_pass") {
                     setLobbyButtonsState(false);
                     const rawName = $("ni").value;
@@ -1171,7 +1191,6 @@
                 }
             }
 
-            // 3. 復旧セッションも自動入室トリガーもない場合はロビーを表示
             $("lobby").style.display = "flex"; 
             hideSplash();
 

@@ -253,18 +253,19 @@
                 </div>
 
                 <!-- 🛠️ ホスト用：ステージング（設定確認）段階のオーバーレイ -->
-                <div id="hostStagingOverlay" class="absolute inset-0 bg-neutral-950/95 z-30 flex flex-col items-center justify-center p-4 text-center hidden select-none">
+                <div id="hostStagingOverlay" class="absolute inset-0 bg-neutral-950/95 z-30 flex flex-col items-center justify-center p-4 text-center hidden select-none animate-fade-in">
                     <div class="max-w-sm w-full bg-neutral-900 p-4 rounded-xl border border-neutral-800 space-y-3 shadow-2xl text-left">
                         <div class="flex items-center justify-between border-b border-neutral-800 pb-1.5">
-                            <span class="text-[10px] font-bold bg-indigo-950 text-indigo-400 border border-indigo-900 px-1.5 py-0.5 rounded">シアター準備エリア</span>
+                            <span class="text-[10px] font-bold bg-indigo-950 text-indigo-400 border border-indigo-900 px-1.5 py-0.5 rounded">👑 シアター準備エリア（自分だけ再生中）</span>
                             <button id="hostStagingCancelBtn" class="text-slate-500 hover:text-slate-300 text-xs font-bold">✕ 取消</button>
                         </div>
                         <div>
                             <p class="text-[10px] font-bold text-slate-400">選択中の動画</p>
                             <p class="text-xs font-black text-slate-200 truncate mt-0.5" id="hostStagingTitle">Loading...</p>
+                            <p class="text-[10px] text-indigo-400 mt-1">💡 下の再生ボタンやスライドバーで好みの位置に調整してから配信できます。</p>
                         </div>
                         <button id="hostStagingGoLiveBtn" class="w-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold text-xs py-2 rounded-lg shadow-lg hover:from-indigo-500 hover:to-violet-500 transition flex items-center justify-center gap-1">
-                            <span>⚡ 同期配信を開始する (部屋全員に適用)</span>
+                            <span>⚡ 確定して同期配信を開始する (部屋全員に適用)</span>
                         </button>
                     </div>
                 </div>
@@ -287,7 +288,7 @@
                         <a id="ytOfficialLinkBtn" href="https://www.youtube.com" target="_blank" rel="noopener noreferrer" class="bg-red-950/60 hover:bg-red-900 text-red-400 border border-red-900/40 px-1.5 py-0.5 rounded text-[10px] font-bold transition whitespace-nowrap hidden">🔗 公式</a>
                     </div>
                     <div class="flex items-center gap-1 shrink-0 ml-auto">
-                        <button id="ytMiniMuteBtn" class="text-slate-400 hover:text-white transition px-1 text-sm">🔇</button>
+                        <button id="ytMiniMuteBtn" class="text-slate-400 hover:text-white transition px-1 text-sm">??</button>
                         <input type="range" id="ytMiniVolume" min="0" max="100" value="0" step="1" class="w-16 md:w-20 h-1 bg-neutral-800 rounded appearance-none cursor-pointer accent-emerald-500">
                     </div>
                 </div>
@@ -367,17 +368,13 @@
             <h3 class="font-black text-base text-indigo-400 border-b border-neutral-800 pb-2 flex items-center gap-1.5">📑 総合シアターガイド</h3>
             
             <div class="text-xs text-slate-300 leading-relaxed space-y-4">
-                <!-- 部屋説明 -->
                 <div class="space-y-1">
                     <p class="font-bold text-slate-100 text-xs">🔒 完全使い捨て・最高峰のプライバシー保護</p>
                     <p class="text-slate-400 text-[11px]">
                         すべてのメッセージとユーザー情報は、通信直前に端末上でAES-256暗号化されます。管理者のねづおであっても通信を覗き見することは不可能です。データベースを直接見ても暗号の羅列にしか見えず、ログは部屋の消滅とともに瞬時に完全消去されます。
                     </p>
                 </div>
-
                 <hr class="border-neutral-800">
-
-                <!-- 使い方 -->
                 <div class="space-y-2">
                     <p class="font-bold text-slate-100 text-xs">📖 シアターシステムの使い方</p>
                     <ul class="list-disc list-inside space-y-1 text-slate-400 text-[11px]">
@@ -389,10 +386,7 @@
                         <li><strong class="text-slate-200">⏱️ 再生位置スタンプ:</strong> チャット入力中に動画が流れている場合、発言時の再生秒数が自動記録され、メッセージ横の「⏱️ 01:23」ボタンを押すことで、全員がそのシーンへジャンプできます。</li>
                     </ul>
                 </div>
-
                 <hr class="border-neutral-800">
-
-                <!-- 利用規約・警告 -->
                 <div class="bg-red-950/40 p-3 rounded-xl border border-red-900/30 text-red-200 space-y-2">
                     <p class="font-bold flex items-center gap-1 text-[11px]">⚠️ 重要：データ揮発規約および免責事項</p>
                     <div class="text-[10px] text-slate-400 leading-normal space-y-1">
@@ -403,7 +397,6 @@
                     </div>
                 </div>
             </div>
-            
             <button id="closeGuideBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-md mt-2">閉じる</button>
         </div>
     </div>
@@ -445,7 +438,7 @@
         let globalVideoStateCache = null;
         
         let savedVolumeLevel = 50; 
-        let isMutedLocal = true;
+        let isMutedLocal = false; // 初期状態は音を出す
 
         let stagingVideoId = null; 
 
@@ -547,7 +540,7 @@
 
         window.__seekPlayerToSeconds = async function(seconds) {
             if (!ytPlayer || typeof ytPlayer.seekTo !== 'function') return;
-            if (amIOwner) {
+            if (amIOwner && !stagingVideoId) {
                 activateShield(800);
                 const status = (typeof ytPlayer.getPlayerState === 'function' && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) ? "playing" : "paused";
                 const currentId = globalVideoStateCache?.videoId || "dQw4w9WgXcQ";
@@ -556,6 +549,8 @@
                 });
                 ytPlayer.seekTo(seconds, true);
             } else {
+                // ステージング中または一般ユーザー
+                activateShield(800);
                 ytPlayer.seekTo(seconds, true);
             }
         };
@@ -630,9 +625,12 @@
         };
         $("ytMiniMuteBtn").onclick = (e) => { e.preventDefault(); toggleLocalMute(); };
 
+        // 👑 【重要】ホストが自分だけで再生・調整するためのステージング設定
         window.__setupStagingVideo = function(vId, vTitle = "未取得の動画") {
             if (!vId) return;
             stagingVideoId = vId;
+            amIOwner = true; // 動画を設定した時点で自分がホスト権限を持つ
+            
             $("ytPlaceholder").style.display = "none";
             $("guestConfirmOverlay").classList.add("hidden");
             $("hostStagingTitle").innerText = vTitle;
@@ -642,46 +640,55 @@
             
             const buildStagingPlayer = () => {
                 if (!isYtReady || !window.YT?.Player) { setTimeout(buildStagingPlayer, 100); return; }
+                activateShield(1000);
                 ytPlayer = new YT.Player('ytPlayer', {
                     videoId: vId,
-                    playerVars: { 'autoplay': 0, 'playsinline': 1, 'controls': 0, 'disablekb': 1, 'rel': 0 },
+                    playerVars: { 'autoplay': 1, 'playsinline': 1, 'controls': 0, 'disablekb': 1, 'rel': 0 },
                     events: {
                         'onReady': () => {
+                            // 自分だけの確認なので最初からミュートせず音を出せるように
+                            isMutedLocal = false;
+                            $("ytMiniVolume").value = savedVolumeLevel;
                             applyLocalVolumeFromUI();
                             $("ytMiniSlider").disabled = false;
+                            updateControlsUI();
                         },
                         'onStateChange': onPlayerStateChange
                     }
                 });
             };
             buildStagingPlayer();
-
-            $("ytBadge").innerText = `🛠️ 配信確認中`;
-            $("ytBadge").className = "border px-1.5 py-0.5 rounded text-[10px] font-bold text-yellow-400 border-yellow-900 bg-yellow-950/40 truncate shrink-0";
         };
 
+        // 👑確定シグナルをFirebaseに送信して部屋全員にブロードキャスト
         async function commitStagingToLive() {
             if (!stagingVideoId || !curR) return;
             const currentPos = (ytPlayer && typeof ytPlayer.getCurrentTime === 'function') ? ytPlayer.getCurrentTime() : 0;
+            const currentStatus = (ytPlayer && typeof ytPlayer.getPlayerState === 'function' && ytPlayer.getPlayerState() === YT.PlayerState.PAUSED) ? "paused" : "playing";
             
-            amIOwner = true; isUserApprovedSync = true;
-            isExplicitlyClosedByGuest = false; isGuestFreeMode = false;
-            activateShield(1000);
+            amIOwner = true; 
+            isUserApprovedSync = true;
+            isExplicitlyClosedByGuest = false; 
+            isGuestFreeMode = false;
+            activateShield(1200);
             $("hostStagingOverlay").classList.add("hidden");
 
             const NOW = getServerNow();
+            // Firebaseに書き込んだ瞬間にゲストのリスナーが起動して完全同期する
             await set(ref(db, `rooms/${curR}/videoState`), { 
-                videoId: stagingVideoId, status: "playing", currentTime: currentPos, timestamp: NOW, owner: uid, ownerName: enc(curN, curP), resetSeed: Date.now()
+                videoId: stagingVideoId, status: currentStatus, currentTime: currentPos, timestamp: NOW, owner: uid, ownerName: enc(curN, curP), resetSeed: Date.now()
             });
             
             lastLoadedVideoId = stagingVideoId;
             await update(ref(db, `rooms/${curR}`), { lastActivity: NOW });
             
-            if (ytPlayer && typeof ytPlayer.playVideo === 'function') ytPlayer.playVideo();
+            if (currentStatus === "playing" && ytPlayer && typeof ytPlayer.playVideo === 'function') {
+                ytPlayer.playVideo();
+            }
+            stagingVideoId = null; // ステージング終了
+            
             startPeriodicSync();
             updateControlsUI();
-            
-            stagingVideoId = null;
         }
 
         window.__jumpToYtVideo = function(vId) {
@@ -710,7 +717,7 @@
             </div>`;
         };
 
-        // 🔄 入室バグを徹底修正した接続シーケンス
+        // 🔄 接続シーケンス
         async function join(rID, pass, name, trip, maxLimit, selectRomMin, selectRoomMin) {
             await syncTimePromise;
             
@@ -781,10 +788,17 @@
                     }
 
                     if (typeof ytPlayer.getPlayerState === 'function') {
-                        $("ytMiniPlayPauseBtn").innerText = ytPlayer.getPlayerState() === YT.PlayerState.PLAYING ? "⏸" : "▶";
+                        const pSt = ytPlayer.getPlayerState();
+                        $("ytMiniPlayPauseBtn").innerText = pSt === YT.PlayerState.PLAYING ? "⏸" : "▶";
                     }
 
-                    if (stagingVideoId) return;
+                    if (stagingVideoId) {
+                        $("ytSyncStatusIndicator").innerText = "配信確認中";
+                        $("ytSyncStatusIndicator").className = "px-1.5 py-0.5 rounded text-[10px] font-bold bg-yellow-950 text-yellow-400 border border-yellow-700";
+                        $("ytLagMeter").style.display = "none";
+                        $("topLiveIndicator").className = "w-2 h-2 bg-yellow-500 rounded-full shrink-0";
+                        return;
+                    }
 
                     if (isUserApprovedSync) {
                         if (amIOwner) {
@@ -858,9 +872,11 @@
 
             const onSliderChange = async (sliderEl) => {
                 const targetTime = Number(sliderEl.value);
-                if (ytPlayer && typeof ytPlayer.seekTo === 'function') { ytPlayer.seekTo(targetTime, true); }
-                if (amIOwner && !stagingVideoId) {
+                if (ytPlayer && typeof ytPlayer.seekTo === 'function') { 
                     activateShield(1000);
+                    ytPlayer.seekTo(targetTime, true); 
+                }
+                if (amIOwner && !stagingVideoId) {
                     const status = (ytPlayer && typeof ytPlayer.getPlayerState === 'function' && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) ? "playing" : "paused";
                     const currentId = globalVideoStateCache?.videoId || "dQw4w9WgXcQ";
                     await set(roomStateRef, { 
@@ -878,9 +894,9 @@
                 e.preventDefault(); if (!ytPlayer || typeof ytPlayer.getPlayerState !== 'function') return;
                 const pState = ytPlayer.getPlayerState();
                 if (pState === YT.PlayerState.PLAYING) {
-                    if (amIOwner && !stagingVideoId) syncPauseAction(); else { activateShield(600); ytPlayer.pauseVideo(); }
+                    if (amIOwner && !stagingVideoId) syncPauseAction(); else { activateShield(800); ytPlayer.pauseVideo(); }
                 } else {
-                    if (amIOwner && !stagingVideoId) syncPlayAction(); else { activateShield(600); ytPlayer.playVideo(); }
+                    if (amIOwner && !stagingVideoId) syncPlayAction(); else { activateShield(800); ytPlayer.playVideo(); }
                 }
             };
 
@@ -918,7 +934,7 @@
                 const currentStatus = (ytPlayer && typeof ytPlayer.getPlayerState === 'function' && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) ? "playing" : "paused";
                 
                 amIOwner = true; isGuestFreeMode = false; isExplicitlyClosedByGuest = false; isUserApprovedSync = true;
-                activateShield(1000);
+                activateShield(1200);
                 $("guestConfirmOverlay").classList.add("hidden");
                 
                 await set(roomStateRef, {
@@ -989,8 +1005,9 @@
                 setTimeout(() => { div.querySelector('.msg-card')?.classList.remove('new-alert'); }, 800);
             });
 
+            // 🔔 Firebaseのデータベース同期リスナー（メイン）
             onValue(roomStateRef, (snapshot) => {
-                if (stagingVideoId) return; 
+                if (stagingVideoId) return; // 自分が配信確認中の時は、外部同期を完全にシャットアウトする
 
                 if (!snapshot.exists()) {
                     if (lastLoadedVideoId === "__INIT__" || !lastLoadedVideoId) { amIOwner = false; updateControlsUI(); return; }
@@ -1074,7 +1091,7 @@
                             videoId: state.videoId, 
                             playerVars: { 
                                 'autoplay': (state.status==="paused")?0:1, 'playsinline': 1, 'controls': 0, 'disablekb': 1, 
-                                'rel': 0, 'modestbranding': 1, 'start': Math.max(0, Math.floor(startPos)), 'mute': 1
+                                'rel': 0, 'modestbranding': 1, 'start': Math.max(0, Math.floor(startPos)), 'mute': 0
                             }, 
                             events: { 
                                 'onReady': (e) => { 
@@ -1165,7 +1182,7 @@
                     videoId: state.videoId, 
                     playerVars: { 
                         'autoplay': (state.status === "paused") ? 0 : 1, 'playsinline': 1, 'controls': 0, 'disablekb': 1, 
-                        'rel': 0, 'modestbranding': 1, 'start': Math.max(0, Math.floor(targetTime)), 'mute': 1 
+                        'rel': 0, 'modestbranding': 1, 'start': Math.max(0, Math.floor(targetTime)), 'mute': 0 
                     }, 
                     events: { 
                         'onReady': (e) => { e.target.unMute(); e.target.playVideo(); applyLocalVolumeFromUI(); syncPlayer(state); }, 
@@ -1220,20 +1237,16 @@
                 if (!ytPlayer) return;
                 const pState = event.data;
 
-                // 🚨 動画が終了（ENDED）した際の挙動の制御（自動ループや次動画への自動遷移を徹底ブロック）
                 if (pState === YT.PlayerState.ENDED) {
                     activateShield(1000);
                     if (syncIntervalId) { clearInterval(syncIntervalId); syncIntervalId = null; }
                     
                     const duration = typeof ytPlayer.getDuration === 'function' ? ytPlayer.getDuration() : 0;
-                    
-                    // プレイヤーの自動遷移暴走を阻止するため最終秒でシークして一時停止状態を強制維持
                     if (duration > 0) {
                         try { ytPlayer.seekTo(duration - 0.5, true); } catch(e){}
                     }
                     try { ytPlayer.pauseVideo(); } catch(e){}
 
-                    // ホスト側の場合はデータベースのステータスを「paused」へ更新し、部屋全体を停止状態に連動させる
                     if (amIOwner && !stagingVideoId) {
                         lastSavedStatus = "paused";
                         await set(roomStateRef, { 
@@ -1249,7 +1262,12 @@
                     return;
                 }
 
-                if (isGuestFreeMode || stagingVideoId || isLocalAction) return;
+                // 👑 【最重要】ステージング中のホスト自身の再生/停止アクションはFirebaseに送らず、自分だけで完結させる
+                if (stagingVideoId) {
+                    return; 
+                }
+
+                if (isGuestFreeMode || isLocalAction) return;
 
                 if (amIOwner) {
                     const curTime = ytPlayer.getCurrentTime ? ytPlayer.getCurrentTime() : 0;
@@ -1273,36 +1291,25 @@
                 }
             }
 
-            // 🔄 15秒ごとの生存シグナル（ハートビート）監視
+            // 🔄 生存シグナル
             if (heartbeatIntervalId) clearInterval(heartbeatIntervalId);
             heartbeatIntervalId = setInterval(async () => {
                 if (!curR) return;
                 try {
                     const NOW = getServerNow();
-                    
-                    // 1. 自身の入室維持シグナルを更新
                     await update(ref(db, `presence/${curR}/${uid}`), { lastSeen: NOW });
                     
-                    // 🔥【追加機能】動画が再生中、またはホストが配信確認中の場合は無条件で部屋の寿命を自動延長する
                     let isVideoActive = false;
                     if (ytPlayer && typeof ytPlayer.getPlayerState === 'function') {
                         const pState = ytPlayer.getPlayerState();
-                        // YT.PlayerState.PLAYING (1) または ステージング（配信前確認エリア）で動画展開中のとき
-                        if (pState === 1 || stagingVideoId) {
-                            isVideoActive = true;
-                        }
+                        if (pState === 1 || stagingVideoId) { isVideoActive = true; }
                     }
 
-                    // 2. 部屋の最終アクティビティを更新
-                    // チャット発言がなくても、誰か一人が再生中(またはホストが再生中)なら部屋を生存させる
                     if (isVideoActive) {
                         await update(roomRef, { lastActivity: NOW });
                     } else {
-                        // 停止中・未ロード時は通常通り（何もせず既存の経過時間に委ねるか、あるいは通常更新するか）
-                        // ※通常ROM時は何もしないことで、タイマーによる自動部屋消滅が正しく機能します
                         await update(roomRef, { lastActivity: NOW }); 
                     }
-                    
                 } catch(e) {}
             }, 15000);
 

@@ -224,7 +224,7 @@
     <div id="mainApp" class="fixed-viewport hidden bg-black md:flex-row min-h-0">
         
         <!-- 📺 左側：動画プレイヤー & コントロールエリア -->
-        <div class="w-full md:w-[50%] lg:w-[55%] flex flex-col bg-black border-b md:border-b-0 md:border-r border-neutral-900 shrink-0 max-h-[40vh] md:max-h-full min-h-0">
+        <div class="w-full md:w-[50%] lg:w-[55%] flex flex-col bg-black border-b md:border-b-0 md:border-r border-neutral-900 shrink-0 max-h-[45vh] md:max-h-full min-h-0">
             
             <!-- 参加者リスト -->
             <div id="presenceList" class="flex flex-wrap items-center px-3 py-1 bg-neutral-950 border-b border-neutral-900 text-xs gap-1 h-7 overflow-y-auto select-none shrink-0"></div>
@@ -236,7 +236,40 @@
                 <!-- 映像がロードされていない時のダミー画面 -->
                 <div id="ytPlaceholder" class="absolute inset-0 flex flex-col items-center justify-center text-neutral-600 font-bold text-xs p-4 text-center select-none bg-neutral-950 z-20">
                     <p class="text-indigo-500/80 text-sm mb-1">CINEMA OSCILLATOR</p>
-                    <p>最下部の「🔍動画検索パネル」から動画を同期再生してください</p>
+                    <p>最下部の「🔍動画検索パネル」から動画を設定してください</p>
+                </div>
+
+                <!-- 🔔 ゲスト用：インライン同期確認オーバーレイ -->
+                <div id="guestConfirmOverlay" class="absolute inset-0 bg-black/90 z-30 flex flex-col items-center justify-center p-4 text-center hidden select-none">
+                    <div class="max-w-xs bg-neutral-900 p-4 rounded-xl border border-neutral-800 space-y-3 shadow-2xl">
+                        <span class="text-xl">👑</span>
+                        <h4 class="text-xs font-bold text-indigo-400" id="guestConfirmHostName">ホストから同期要求</h4>
+                        <p class="text-[11px] text-slate-300 leading-normal">動画の同時視聴同期リクエストが届きました。再生ルームに合流しますか？</p>
+                        <div class="flex gap-2 pt-1">
+                            <button id="guestConfirmDeclineBtn" class="flex-1 bg-neutral-800 hover:bg-neutral-700 text-slate-400 py-1.5 rounded-lg text-xs font-bold transition">拒否</button>
+                            <button id="guestConfirmAcceptBtn" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-1.5 rounded-lg text-xs font-bold transition shadow-lg">同期承諾</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 🛠️ ホスト用：ステージング（設定確認）段階のオーバーレイ -->
+                <div id="hostStagingOverlay" class="absolute inset-0 bg-neutral-950/95 z-30 flex flex-col items-center justify-center p-4 text-center hidden select-none">
+                    <div class="max-w-sm w-full bg-neutral-900 p-4 rounded-xl border border-neutral-800 space-y-3 shadow-2xl text-left">
+                        <div class="flex items-center justify-between border-b border-neutral-800 pb-1.5">
+                            <span class="text-[10px] font-bold bg-indigo-950 text-indigo-400 border border-indigo-900 px-1.5 py-0.5 rounded">シアター準備エリア</span>
+                            <button id="hostStagingCancelBtn" class="text-slate-500 hover:text-slate-300 text-xs font-bold">✕ 取消</button>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-400">選択中の動画</p>
+                            <p class="text-xs font-black text-slate-200 truncate mt-0.5" id="hostStagingTitle">Loading...</p>
+                        </div>
+                        <p class="text-[11px] text-slate-400 leading-normal">
+                            まだ部屋のメンバーには同期されていません。下部のプレイヤーで事前に音量や開始位置を調整・確認できます。
+                        </p>
+                        <button id="hostStagingGoLiveBtn" class="w-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold text-xs py-2 rounded-lg shadow-lg hover:from-indigo-500 hover:to-violet-500 transition active:scale-[0.98] flex items-center justify-center gap-1">
+                            <span>⚡ 同期配信を開始する (部屋全員に適用)</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="w-full h-full">
@@ -308,7 +341,7 @@
                 <!-- 🔍 スマート動画検索・URL同期パネル -->
                 <details id="ytSearchAccordion" class="w-full bg-neutral-950 border-b border-neutral-900 group">
                     <summary class="search-summary px-3 py-2 text-[11px] font-bold text-neutral-400 hover:text-neutral-200 cursor-pointer select-none flex items-center justify-between bg-neutral-950 transition">
-                        <span class="flex items-center gap-1">🔍 動画検索・URL同期パネル を開く</span>
+                        <span class="flex items-center gap-1">🔍 動画検索・URL設定パネル を開く</span>
                         <span class="text-[9px] font-mono transform group-open:rotate-180 transition-transform">▼</span>
                     </summary>
                     
@@ -325,10 +358,10 @@
 
                         <div class="grid grid-cols-12 gap-1.5 items-center relative">
                             <div class="col-span-9 relative">
-                                <input type="text" id="ytSearchInput" placeholder="検索ワード、またはYouTubeのURL..." class="w-full px-2.5 py-1.5 border border-neutral-800 rounded-lg text-xs bg-neutral-900 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 select-text">
+                                <input type="text" id="ytSearchInput" placeholder="検索、またはYouTubeのURL..." class="w-full px-2.5 py-1.5 border border-neutral-800 rounded-lg text-xs bg-neutral-900 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 select-text">
                                 <div id="ytSearchResults" class="shadow-2xl text-slate-200"></div>
                             </div>
-                            <button id="ytSearchBtn" class="col-span-3 bg-indigo-600 text-white py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-700 transition text-center">検索/同期</button>
+                            <button id="ytSearchBtn" class="col-span-3 bg-indigo-600 text-white py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-700 transition text-center">準備/確認</button>
                         </div>
                     </div>
                 </details>
@@ -372,8 +405,6 @@
         const DB_URL = "https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app";
         const YT_API_KEY = "AIzaSyDIJ1xyCEHBSkpSvntbsJrtmwBl03juoCw"; 
 
-        // 🌟 【修正箇所】Firebase初期化ロジックの適正化
-        // Realtime Databaseモジュールを安全に読み込ませるため、ConfigオブジェクトにdatabaseURLを内包して初期化します。
         const firebaseApp = initializeApp({ databaseURL: DB_URL });
         const db = getDatabase(firebaseApp);
 
@@ -398,6 +429,8 @@
         let globalVideoStateCache = null;
         let savedVolumeLevel = 50;
         let isMutedLocal = false;
+
+        let stagingVideoId = null; 
 
         let curR, curP, curN, curT, rawR, serverTimeOffset = 0, isOffsetLoaded = false;
         let unsubscribeChat = null, unsubscribePres = null, unsubscribeRoomConfig = null, unsubscribeConn = null;
@@ -533,25 +566,87 @@
         };
         $("ytMiniMuteBtn").onclick = (e) => { e.preventDefault(); toggleLocalMute(); };
 
-        window.__jumpToYtVideo = function(vId) {
+        // 🌟 改修：すぐに部屋全体にデプロイせず、ホスト専用のステージング確認画面を立ち上げる
+        window.__setupStagingVideo = function(vId, vTitle = "未取得の動画") {
             if (!vId) return;
+            stagingVideoId = vId;
             $("ytPlaceholder").style.display = "none";
+            $("guestConfirmOverlay").classList.add("hidden");
+
+            // ホスト専用ステージング確認オーバーレイを表示
+            $("hostStagingTitle").innerText = vTitle;
+            $("hostStagingOverlay").classList.remove("hidden");
+
+            // ホストの確認用としてローカル環境にプレイヤーを先行構築（ミュート・停止状態）
+            if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; }
+            
+            const buildStagingPlayer = () => {
+                if (!isYtReady || !window.YT?.Player) { setTimeout(buildStagingPlayer, 100); return; }
+                ytPlayer = new YT.Player('ytPlayer', {
+                    videoId: vId,
+                    playerVars: { 'autoplay': 0, 'playsinline': 1, 'controls': 0, 'disablekb': 1, 'rel': 0 },
+                    events: {
+                        'onReady': (e) => {
+                            applyLocalVolumeFromUI();
+                            $("ytMiniSlider").disabled = false;
+                        },
+                        'onStateChange': onPlayerStateChange
+                    }
+                });
+            };
+            buildStagingPlayer();
+
+            // コントロールUIを一時的にホスト検証用モードに書き換える
+            $("ytBadge").innerText = `🛠️ 配信確認中`;
+            $("ytBadge").className = "border px-1.5 py-0.5 rounded text-[10px] font-bold text-yellow-400 border-yellow-900 bg-yellow-950/40 truncate shrink-0";
+        };
+
+        // 🌟 改修：ステージングで構成した動画を、明示的に部屋全体に配信（同期）開始するロジック
+        async function commitStagingToLive() {
+            if (!stagingVideoId || !curR) return;
+            const currentPos = (ytPlayer && typeof ytPlayer.getCurrentTime === 'function') ? ytPlayer.getCurrentTime() : 0;
+            
+            amIOwner = true;
+            isLocalAction = true;
             isUserApprovedSync = true;
             isExplicitlyClosedByGuest = false;
             isGuestFreeMode = false;
+
+            $("hostStagingOverlay").classList.add("hidden");
+
+            const NOW = getServerNow();
+            await set(ref(db, `rooms/${curR}/videoState`), { 
+                videoId: stagingVideoId, status: "playing", currentTime: currentPos, timestamp: NOW, owner: uid, ownerName: enc(curN, curP), resetSeed: Date.now()
+            });
             
-            setTimeout(async () => {
-                amIOwner = true; isLocalAction = true;
-                if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; }
-                
-                const NOW = getServerNow();
-                await set(ref(db, `rooms/${curR}/videoState`), { 
-                    videoId: vId, status: "playing", currentTime: 0, timestamp: NOW, owner: uid, ownerName: enc(curN, curP), resetSeed: Date.now()
-                });
-                lastLoadedVideoId = vId;
-                await update(ref(db, `rooms/${curR}`), { lastActivity: NOW });
-                setTimeout(() => { isLocalAction = false; }, 400);
-            }, 100);
+            lastLoadedVideoId = stagingVideoId;
+            await update(ref(db, `rooms/${curR}`), { lastActivity: NOW });
+            
+            // プレイヤーを完全同期配信モードとして再追従させる
+            if (ytPlayer && typeof ytPlayer.playVideo === 'function') {
+                ytPlayer.playVideo();
+            }
+            startPeriodicSync();
+            updateControlsUI();
+            
+            setTimeout(() => { isLocalAction = false; }, 400);
+            stagingVideoId = null;
+        }
+
+        // 🌟 改修：メッセージ欄内の動画リンク用リンク処理
+        window.__jumpToYtVideo = function(vId) {
+            // チャット欄の「同期」ボタンを押した際も、即時反映ではなくホスト特権としてステージング確認を通す
+            window.__setupStagingVideo(vId, "チャット共有動画");
+        };
+
+        $("hostStagingGoLiveBtn").onclick = (e) => { e.preventDefault(); commitStagingToLive(); };
+        $("hostStagingCancelBtn").onclick = (e) => {
+            e.preventDefault();
+            $("hostStagingOverlay").classList.add("hidden");
+            stagingVideoId = null;
+            if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; }
+            $("ytPlaceholder").style.display = "flex";
+            updateControlsUI();
         };
 
         window.__inlinePlayVideo = function(containerId, vId) {
@@ -642,6 +737,9 @@
                         $("ytMiniPlayPauseBtn").innerText = ytPlayer.getPlayerState() === YT.PlayerState.PLAYING ? "⏸" : "▶";
                     }
 
+                    // ステージングモード稼働中は同期計算をスキップ
+                    if (stagingVideoId) return;
+
                     if (isUserApprovedSync) {
                         if (amIOwner) {
                             $("ytSyncStatusIndicator").innerText = "配信中";
@@ -700,7 +798,7 @@
             const onSliderChange = async (sliderEl) => {
                 const targetTime = Number(sliderEl.value);
                 if (ytPlayer && typeof ytPlayer.seekTo === 'function') { ytPlayer.seekTo(targetTime, true); }
-                if (amIOwner) {
+                if (amIOwner && !stagingVideoId) {
                     isLocalAction = true;
                     const status = (ytPlayer && typeof ytPlayer.getPlayerState === 'function' && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) ? "playing" : "paused";
                     const currentId = globalVideoStateCache?.videoId || "dQw4w9WgXcQ";
@@ -720,9 +818,9 @@
                 e.preventDefault(); if (!ytPlayer || typeof ytPlayer.getPlayerState !== 'function') return;
                 const pState = ytPlayer.getPlayerState();
                 if (pState === YT.PlayerState.PLAYING) {
-                    if (amIOwner) syncPauseAction(); else ytPlayer.pauseVideo();
+                    if (amIOwner && !stagingVideoId) syncPauseAction(); else ytPlayer.pauseVideo();
                 } else {
-                    if (amIOwner) syncPlayAction(); else ytPlayer.playVideo();
+                    if (amIOwner && !stagingVideoId) syncPlayAction(); else ytPlayer.playVideo();
                 }
             };
 
@@ -762,6 +860,8 @@
                 const currentStatus = (ytPlayer && typeof ytPlayer.getPlayerState === 'function' && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) ? "playing" : "paused";
                 
                 amIOwner = true; isGuestFreeMode = false; isExplicitlyClosedByGuest = false; isUserApprovedSync = true;
+                $("guestConfirmOverlay").classList.add("hidden");
+                
                 await set(roomStateRef, {
                     videoId: currentId, status: currentStatus, currentTime: currentPos, timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: Date.now()
                 });
@@ -806,7 +906,7 @@
                                 <img src="https://img.youtube.com/vi/${extractedId}/mqdefault.jpg" class="w-full h-full object-cover">
                             </div>
                             <div class="grid grid-cols-3 gap-1 mt-1 text-[9px] font-bold select-none">
-                                <button onclick="window.__jumpToYtVideo('${extractedId}')" class="bg-indigo-600 text-white py-1 rounded transition text-center"><span>📺同期</span></button>
+                                <button onclick="window.__jumpToYtVideo('${extractedId}')" class="bg-indigo-600 text-white py-1 rounded transition text-center"><span>📺準備</span></button>
                                 <button onclick="window.__inlinePlayVideo('${containerId}', '${extractedId}')" class="bg-emerald-600 text-white py-1 rounded transition text-center"><span>▶内部</span></button>
                                 <a href="https://www.youtube.com/watch?v=${extractedId}" target="_blank" rel="noopener noreferrer" class="bg-neutral-800 text-slate-300 py-1 rounded border border-neutral-700/50 text-center"><span>🔗外部</span></a>
                             </div>
@@ -833,11 +933,15 @@
                 }
             });
 
+            // 🌟 改修：動画再生同期ステート監視コアの拡張
             onValue(roomStateRef, (snapshot) => {
+                if (stagingVideoId) return; // 自身がホストとして設定確認中の場合は、リモート同期変更を一時ブロック
+
                 if (!snapshot.exists()) {
                     if (lastLoadedVideoId === "__INIT__" || !lastLoadedVideoId) { amIOwner = false; updateControlsUI(); return; }
                     $("ytPlaceholder").style.display = "flex";
                     $("ytOfficialLinkBtn").style.display = "none";
+                    $("guestConfirmOverlay").classList.add("hidden");
                     if (syncIntervalId) { clearInterval(syncIntervalId); syncIntervalId = null; }
                     if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; lastLoadedVideoId = null; }
                     isUserApprovedSync = false; isExplicitlyClosedByGuest = false; isGuestFreeMode = false; return;
@@ -856,6 +960,7 @@
 
                 if (amIOwner) {
                     isUserApprovedSync = true; $("ytGuestModeBtn").style.display = "none"; 
+                    $("guestConfirmOverlay").classList.add("hidden");
                     updateControlsUI();
                     if (isLocalAction || state.status === "playing") {
                         lastLoadedVideoId = state.videoId; lastSavedStatus = state.status;
@@ -863,18 +968,29 @@
                     }
                 } else {
                     $("ytGuestModeBtn").style.display = "block"; 
-                    if (isExplicitlyClosedByGuest) { $("ytPlaceholder").style.display = "flex"; return; }
+                    if (isExplicitlyClosedByGuest) {
+                        $("ytPlaceholder").style.display = "flex";
+                        $("guestConfirmOverlay").classList.add("hidden");
+                        return;
+                    }
 
+                    // 🌟 改修：インライン確認パネルのハンドリング
                     if (lastLoadedVideoId !== state.videoId) {
                         isUserApprovedSync = false; 
                         const hostNameDec = state.ownerName ? textDec(state.ownerName, curP) : "誰か";
-                        const conf = confirm(`👑 ${hostNameDec} さんから同時視聴同期要求があります。\n再生を開始しますか？`);
-                        if (conf) { isUserApprovedSync = true; } else { isExplicitlyClosedByGuest = true; $("ytPlaceholder").style.display = "flex"; if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; lastLoadedVideoId = state.videoId; } return; }
+                        
+                        $("guestConfirmHostName").innerText = `👑 ${hostNameDec} から同期要求`;
+                        $("guestConfirmOverlay").classList.remove("hidden");
+                        $("ytPlaceholder").style.display = "none";
+                        return; 
                     }
                     if (!isUserApprovedSync) return;
                 }
 
-                if (isUserApprovedSync) $("ytPlaceholder").style.display = "none";
+                if (isUserApprovedSync) {
+                    $("ytPlaceholder").style.display = "none";
+                    $("guestConfirmOverlay").classList.add("hidden");
+                }
                 
                 updateControlsUI();
                 if (!amIOwner && isGuestFreeMode) { lastLoadedVideoId = state.videoId; return; }
@@ -912,13 +1028,35 @@
                 } else { syncPlayer(state); }
             });
 
+            // ゲスト用のインライン承認ボタンイベントアタッチ
+            $("guestConfirmAcceptBtn").onclick = (e) => {
+                e.preventDefault();
+                isUserApprovedSync = true;
+                $("guestConfirmOverlay").classList.add("hidden");
+                if (globalVideoStateCache) {
+                    rebuildLockedPlayer(globalVideoStateCache);
+                }
+            };
+            $("guestConfirmDeclineBtn").onclick = (e) => {
+                e.preventDefault();
+                isExplicitlyClosedByGuest = true;
+                $("guestConfirmOverlay").classList.add("hidden");
+                $("ytPlaceholder").style.display = "flex";
+                if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; }
+            };
+
             function updateControlsUI() {
                 if (!curR) return;
                 if (amIOwner) {
                     $("ytGuestModeBtn").style.display = "none";
                     $("ytMiniSlider").disabled = false;
-                    $("ytBadge").innerText = `👑 ホスト`;
-                    $("ytBadge").className = "border px-1.5 py-0.5 rounded text-[10px] font-bold text-indigo-400 border-indigo-900 bg-indigo-950/40 truncate shrink-0";
+                    if (stagingVideoId) {
+                        $("ytBadge").innerText = `🛠️ 配信確認中`;
+                        $("ytBadge").className = "border px-1.5 py-0.5 rounded text-[10px] font-bold text-yellow-400 border-yellow-900 bg-yellow-950/40 truncate shrink-0";
+                    } else {
+                        $("ytBadge").innerText = `👑 ホスト`;
+                        $("ytBadge").className = "border px-1.5 py-0.5 rounded text-[10px] font-bold text-indigo-400 border-indigo-900 bg-indigo-950/40 truncate shrink-0";
+                    }
                 } else {
                     $("ytGuestModeBtn").style.display = "block";
                     if (isGuestFreeMode) {
@@ -989,7 +1127,7 @@
             function startPeriodicSync() {
                 if (syncIntervalId) clearInterval(syncIntervalId);
                 syncIntervalId = setInterval(async () => {
-                    if (!amIOwner || !ytPlayer || typeof ytPlayer.getCurrentTime !== 'function' || isLocalAction) return;
+                    if (!amIOwner || !ytPlayer || typeof ytPlayer.getCurrentTime !== 'function' || isLocalAction || stagingVideoId) return;
                     if (ytPlayer.getPlayerState() !== YT.PlayerState.PLAYING) return;
                     const curTime = ytPlayer.getCurrentTime();
                     try {
@@ -1005,11 +1143,11 @@
                 const pState = event.data;
                 
                 if (pState === YT.PlayerState.ENDED) {
-                    if (amIOwner && currentSearchResults.length > 0) $("ytNextVideoBtn").click();
+                    if (amIOwner && currentSearchResults.length > 0 && !stagingVideoId) $("ytNextVideoBtn").click();
                     return;
                 }
 
-                if (isGuestFreeMode) return;
+                if (isGuestFreeMode || stagingVideoId) return;
 
                 if (amIOwner) {
                     if (isLocalAction) return;
@@ -1058,7 +1196,7 @@
             toggleClearBtn(""); input.value = ""; input.rows = 1;
             
             let currentVideoSeconds = null;
-            if (ytPlayer && typeof ytPlayer.getCurrentTime === 'function' && $("ytPlaceholder").style.display !== "flex") {
+            if (ytPlayer && typeof ytPlayer.getCurrentTime === 'function' && $("ytPlaceholder").style.display !== "flex" && !stagingVideoId) {
                 currentVideoSeconds = Math.floor(ytPlayer.getCurrentTime());
             }
 
@@ -1168,9 +1306,12 @@
             curR = null; clearSubscriptions();
             if (msg) { $("errMsg").innerText = msg; $("errMsg").style.display = "block"; } else { $("errMsg").style.display = "none"; }
             $("mainApp").style.display = "none"; $("lobby").style.display = "flex"; $("ytPlaceholder").style.display = "flex";
+            $("guestConfirmOverlay").classList.add("hidden");
+            $("hostStagingOverlay").classList.add("hidden");
             $("ytOfficialLinkBtn").style.display = "none";
             if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; lastLoadedVideoId = null; }
             $("enterBtn").disabled = false; $("enterBtn").innerText = "入室・シアター構築";
+            stagingVideoId = null;
         };
 
         const clearSubscriptions = () => {
@@ -1190,7 +1331,7 @@
         async function executeSearch() {
             const queryStr = $("ytSearchInput").value.trim(); if (!queryStr) return;
             const extractedId = extractVideoId(queryStr);
-            if (extractedId) { window.__jumpToYtVideo(extractedId); return; }
+            if (extractedId) { window.__setupStagingVideo(extractedId, "URL同期対象ビデオ"); return; }
             
             $("ytSearchBtn").disabled = true; $("ytSearchBtn").innerText = "...";
             try {
@@ -1199,10 +1340,12 @@
                 if (data.items && data.items.length > 0) {
                     currentSearchResults = data.items.filter(item => item.id.videoId);
                     currentSearchIndex = 0; renderSearchResults();
-                    window.__jumpToYtVideo(currentSearchResults[0].id.videoId);
+                    
+                    // 検索結果の最初の一件を、自動再生ではなくステージング（下準備）にかける
+                    window.__setupStagingVideo(currentSearchResults[0].id.videoId, currentSearchResults[0].snippet.title);
                 } else { alert("動画が見つかりませんでした。"); }
             } catch(e) { alert("API制限。URL直貼りを推奨します。"); }
-            $("ytSearchBtn").disabled = false; $("ytSearchBtn").innerText = "検索/同期";
+            $("ytSearchBtn").disabled = false; $("ytSearchBtn").innerText = "準備/確認";
         }
 
         function renderSearchResults() {
@@ -1215,7 +1358,11 @@
                 div.className = "search-item" + (index === currentSearchIndex ? " bg-indigo-950/80 border-l-4 border-indigo-500" : "");
                 div.innerHTML = `<img src="${item.snippet.thumbnails.default.url}">
                     <div class="flex-1 min-w-0 truncate"><p class="font-bold truncate text-xs text-white">${esc(item.snippet.title)}</p><p class="text-[10px] text-slate-400 truncate">${esc(item.snippet.channelTitle)}</p></div>`;
-                div.onclick = () => { currentSearchIndex = index; renderSearchResults(); window.__jumpToYtVideo(item.id.videoId); };
+                div.onclick = () => { 
+                    currentSearchIndex = index; 
+                    renderSearchResults(); 
+                    window.__setupStagingVideo(item.id.videoId, item.snippet.title); 
+                };
                 container.appendChild(div);
             });
             container.style.display = "block";
@@ -1227,12 +1374,12 @@
         $("ytPrevVideoBtn").onclick = (e) => {
             e.preventDefault(); if (currentSearchResults.length === 0) return;
             currentSearchIndex = (currentSearchIndex - 1 + currentSearchResults.length) % currentSearchResults.length;
-            renderSearchResults(); window.__jumpToYtVideo(currentSearchResults[currentSearchIndex].id.videoId);
+            renderSearchResults(); window.__setupStagingVideo(currentSearchResults[currentSearchIndex].id.videoId, currentSearchResults[currentSearchIndex].snippet.title);
         };
         $("ytNextVideoBtn").onclick = (e) => {
             e.preventDefault(); if (currentSearchResults.length === 0) return;
             currentSearchIndex = (currentSearchIndex + 1) % currentSearchResults.length;
-            renderSearchResults(); window.__jumpToYtVideo(currentSearchResults[currentSearchIndex].id.videoId);
+            renderSearchResults(); window.__setupStagingVideo(currentSearchResults[currentSearchIndex].id.videoId, currentSearchResults[currentSearchIndex].snippet.title);
         };
 
         document.addEventListener("click", (e) => {

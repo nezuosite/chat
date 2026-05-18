@@ -154,6 +154,15 @@
         #modalTargetImg:active {
             cursor: grabbing;
         }
+
+        /* カスタムオーディオプレイヤーの微調整 */
+        audio::-webkit-media-controls-panel {
+            background-color: #1e293b;
+        }
+        audio::-webkit-media-controls-current-time-display,
+        audio::-webkit-media-controls-time-remaining-display {
+            color: #f8fafc;
+        }
     </style>
 </head>
 <body class="flex items-start justify-center p-2 pt-4 text-slate-100 h-full w-screen overflow-hidden">
@@ -557,6 +566,7 @@
 
             const ytRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/i;
             const imgRegex = /\.(jpeg|jpg|gif|png|webp|bmp)(?:\?.*)?$/i;
+            const audioRegex = /\.(mp3|wav|aac|m4a|ogg)(?:\?.*)?$/i;
 
             for (const word of words) {
                 if (/^https?:\/\/[^\s]+$/i.test(word)) {
@@ -577,26 +587,49 @@
                         continue;
                     }
 
-                    // 2. kuku.lu の判定と表示用URLの生成ロジック
-                    let displayImageUrl = word;
-                    let isKukuImage = false;
-                    
+                    // 2. kuku.lu 及び ギガファイル便の汎用リンク判定とインラインプレビュー
+                    let targetUrl = word;
+                    let isTargetMedia = false;
+                    let forceImageType = false;
+
                     if (word.includes('d.kuku.lu/')) {
-                        // プレビューページURLかつ、すでに末尾が /p や画像拡張子になっていない場合
                         if (!word.endsWith('/p') && !imgRegex.test(word.replace(/[?#].*$/, ''))) {
-                            // 末尾を /p に書き換えて、直接画像データを取得できるようにする
-                            displayImageUrl = word.endsWith('/') ? word + 'p' : word + '/p';
+                            targetUrl = word.endsWith('/') ? word + 'p' : word + '/p';
                         }
-                        isKukuImage = true;
-                        cleanText = cleanText.replace(word, ""); // メッセージ本文からはURLを消去
+                        isTargetMedia = true;
+                        forceImageType = true; // kuku.luアップローダーは画像専用扱い
+                        cleanText = cleanText.replace(word, "");
+                    } 
+                    else if (word.includes('gigafile.nu/')) {
+                        // ギガファイル便の個別ダウンロードリンクの構造を解析してダイレクトURLを作成
+                        // 例: https://37.gigafile.nu/0619-da491c6e1ca8cb03bd7eecbf26b349d3c
+                        const gigaMatch = word.match(/https?:\/\/([^.]+)\.gigafile\.nu\/([a-zA-Z0-9-]+)/i);
+                        if (gigaMatch) {
+                            const serverNum = gigaMatch[1];
+                            const fileId = gigaMatch[2];
+                            // ギガファイル便の直接アセット配信用URLへ変換
+                            targetUrl = `https://${serverNum}.gigafile.nu/download.php?file=${fileId}`;
+                            isTargetMedia = true;
+                            cleanText = cleanText.replace(word, "");
+                        }
                     }
 
-                    // 3. 通常の画像、またはkuku.luの画像として判定された場合のインライン処理
+                    // 3. 画像および音声の描画処理
                     const cleanUrl = word.replace(/[?#].*$/, '');
-                    if (imgRegex.test(cleanUrl) || /^data:image\//i.test(word) || isKukuImage) {
+                    
+                    if (imgRegex.test(cleanUrl) || /^data:image\//i.test(word) || forceImageType) {
                         mediaHtml += `
                             <div class="mt-2 max-w-xs overflow-hidden rounded-lg border border-slate-800 bg-slate-950 shadow-inner">
-                                <img src="${esc(displayImageUrl)}" alt="送信画像" class="max-h-48 w-auto object-cover cursor-pointer hover:opacity-90 active:scale-98 transition" onclick="openImageModal('${esc(displayImageUrl)}')">
+                                <img src="${esc(targetUrl)}" alt="送信画像" class="max-h-48 w-auto object-cover cursor-pointer hover:opacity-90 active:scale-98 transition" onclick="openImageModal('${esc(targetUrl)}')">
+                            </div>`;
+                        continue;
+                    } 
+                    else if (audioRegex.test(cleanUrl) || (!forceImageType && isTargetMedia)) {
+                        // ギガファイルや直接リンクの音声ストリーム処理
+                        mediaHtml += `
+                            <div class="mt-2 w-full max-w-xs p-1.5 rounded-xl border border-slate-700 bg-slate-800 shadow-md">
+                                <p class="text-[10px] text-slate-400 font-bold mb-1 px-1 truncate">🎵 インラインオーディオ</p>
+                                <audio controls src="${esc(targetUrl)}" class="w-full h-8 rounded-lg text-xs focus:outline-none"></audio>
                             </div>`;
                         continue;
                     }

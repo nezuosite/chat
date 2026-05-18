@@ -61,7 +61,6 @@
             animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; 
         }
 
-        /* 🔄 修正: 最新を一番上に、メッセージを上寄せにするため flex-direction と justify-content を修正 */
         #chatTimeline {
             flex: 1 1 0%;
             overflow-y: auto;
@@ -94,32 +93,30 @@
             border-left: 4px solid var(--primary);
             will-change: transform, opacity;
         }
-        .msg-card.new-alert {
-            border-left-color: var(--accent-color);
-            background: rgba(0, 255, 102, 0.04);
-        }
 
         #floating-nav {
             position: absolute;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            z-index: 40;
+            right: 16px;
+            bottom: 24px;
+            z-index: 45;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 10px;
             pointer-events: none;
         }
         #floating-nav button { 
             pointer-events: auto; 
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5); 
             touch-action: manipulation;
             opacity: 0.6;
-            transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.15s ease;
+            background-color: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, transform 0.15s ease;
         }
         #floating-nav button:hover,
         #floating-nav button:active {
             opacity: 1;
+            background-color: rgba(30, 41, 59, 0.8);
         }
         
         input, textarea, select {
@@ -144,45 +141,48 @@
         }
     </style>
 </head>
-<body class="flex items-center justify-center p-2 text-slate-100 h-full w-screen overflow-hidden">
+<body class="flex items-start justify-center p-2 pt-4 text-slate-100 h-full w-screen overflow-hidden">
 
     <!-- 🚪 ロビー画面 -->
-    <div id="lobby" class="w-full max-w-md p-3.5 bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 flex flex-col gap-2 select-text max-h-[96dvh] overflow-y-auto overflow-x-hidden">
+    <div id="lobby" class="w-full max-w-md p-3.5 bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 flex flex-col gap-2.5 select-text max-h-[96dvh] overflow-y-auto overflow-x-hidden">
         <h1 class="text-base font-black text-center text-indigo-400 tracking-tight shrink-0">NEZU ONETIME CHAT</h1>
         
-        <div class="bg-indigo-950/40 border border-indigo-900/60 rounded-xl p-2.5 text-[10.5px] space-y-1 text-slate-300 shrink-0 leading-normal">
-            <p class="font-bold text-indigo-300 flex items-center gap-1">🔒 運営すら解読不能・完全使い捨て 暗号化通信空間</p>
+        <!-- 📄 ルーム説明 -->
+        <div class="bg-indigo-950/40 border border-indigo-900/60 rounded-xl p-2.5 text-[10px] space-y-1 text-slate-300 shrink-0 leading-normal">
+            <p class="font-bold text-indigo-300 flex items-center gap-1 text-[10.5px]">🔒 エンドツーエンド(E2E) 暗号化空間</p>
             <p class="text-slate-400">
-                本システムは、ブラウザ間で会話を強力に暗号化（AES-256）する一時的なルームです。ログは保存されず、最後の退出時に自動消滅します。<br>
-                <span class="text-emerald-400 font-bold">※「公式部屋」のみ暗号化無効のパブリック空間となり、リアルタイムに閲覧可能です。</span>
+                共通パスワードを用いてブラウザ側でAES-256暗号化を行う使い捨てチャットです。生データや暗号鍵はサーバーに送信されず、退室や時間経過でログは完全消去されます。
+            </p>
+            <p class="text-emerald-400 font-bold bg-emerald-950/30 border border-emerald-900/40 p-1 rounded">
+                ⚠️ 公式部屋は常駐されています（ログ100件保存）
             </p>
         </div>
         
         <div id="errMsg" class="bg-red-950 text-red-400 text-xs p-2.5 rounded-lg font-bold border border-red-900 hidden shrink-0 break-all"></div>
         
-        <div class="flex flex-col gap-1.5 shrink-0 text-[11px]">
-            <div class="grid grid-cols-2 gap-2">
-                <div>
-                    <label class="block font-bold text-slate-400 mb-0.5">あなたの表示名</label>
-                    <input type="text" id="ni" placeholder="名前を入力" maxlength="14" class="w-full px-2 py-1 border border-slate-700 bg-slate-800 rounded-lg text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
-                <div>
-                    <label class="block font-bold text-slate-400 mb-0.5">トリップ暗号（秘密のキー）</label>
-                    <div class="flex gap-1 items-center relative">
-                        <input type="text" id="tk" placeholder="本人証明キー" autocomplete="on" spellcheck="false" class="w-full px-2 py-1 border border-slate-700 bg-slate-800 rounded-lg text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        <span id="tp" class="absolute right-1 text-[9px] font-mono text-green-400 bg-slate-950/90 px-1 py-0.5 rounded border border-slate-800 hidden shrink-0 max-w-[60px] truncate"></span>
-                    </div>
+        <!-- フォーム入力エリア -->
+        <div class="flex flex-col gap-2 shrink-0 text-[11px]">
+            <div>
+                <label class="block font-bold text-slate-400 mb-0.5">あなたの表示名 <span class="text-red-500">*</span></label>
+                <input type="text" id="ni" placeholder="例: ゲストA (最大14文字)" maxlength="14" class="w-full px-2.5 py-1.5 border border-slate-700 bg-slate-800 rounded-lg text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            
+            <div>
+                <label class="block font-bold text-slate-400 mb-0.5">トリップ暗号（なりすまし防止用の秘密キー）</label>
+                <div class="flex gap-1 items-center relative">
+                    <input type="text" id="tk" placeholder="任意の文字列を入力 (パスワードとは別の個人キー)" autocomplete="on" spellcheck="false" class="w-full px-2.5 py-1.5 border border-slate-700 bg-slate-800 rounded-lg text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <span id="tp" class="absolute right-1 text-[9px] font-mono text-green-400 bg-slate-950/90 px-1 py-0.5 rounded border border-slate-800 hidden shrink-0 max-w-[80px] truncate"></span>
                 </div>
             </div>
-            <div class="grid grid-cols-2 gap-2">
-                <div>
-                    <label class="block font-bold text-slate-400 mb-0.5">部屋ID（半角英数） <span class="text-red-500">*</span></label>
-                    <input type="text" id="ri" placeholder="room-abc" autocomplete="off" autocapitalize="off" spellcheck="false" class="w-full px-2 py-1 border border-slate-700 bg-slate-800 rounded-lg text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
-                <div>
-                    <label class="block font-bold text-slate-400 mb-0.5">共通暗号パスワード <span class="text-red-500">*</span></label>
-                    <input type="text" id="pi" placeholder="会話の解読鍵" autocomplete="off" autocapitalize="off" spellcheck="false" class="w-full px-2 py-1 border border-slate-700 bg-slate-800 rounded-lg text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
+            
+            <div>
+                <label class="block font-bold text-slate-400 mb-0.5">部屋ID（半角英数字・ハイフン・アンダーバー） <span class="text-red-500">*</span></label>
+                <input type="text" id="ri" placeholder="例: secret-room-101" autocomplete="off" autocapitalize="off" spellcheck="false" class="w-full px-2.5 py-1.5 border border-slate-700 bg-slate-800 rounded-lg text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            
+            <div>
+                <label class="block font-bold text-slate-400 mb-0.5">共通暗号パスワード（会話を解読するための共通鍵） <span class="text-red-500">*</span></label>
+                <input type="text" id="pi" placeholder="例: pass1234 (部屋の全員が同じ鍵を入力)" autocomplete="off" autocapitalize="off" spellcheck="false" class="w-full px-2.5 py-1.5 border border-slate-700 bg-slate-800 rounded-lg text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
             </div>
         </div>
 
@@ -268,20 +268,20 @@
             </div>
         </div>
 
-        <!-- 🗺️ チャットタイムライン -->
+        <!-- 🗺️ チャットタイムライン（上が最新・上寄せ） -->
         <div id="chatTimeline" class="select-text"></div>
 
-        <!-- 🎯 固定ナビゲーションアシスタントボタン（🔄 修正: 最新=上、最古=下に合わせてアイコンと処理を反転） -->
+        <!-- 🎯 固定ナビゲーションアシスタントボタン -->
         <div id="floating-nav">
-            <button id="toTopBtn" class="p-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl border border-indigo-500 flex flex-col items-center justify-center opacity-60 hover:opacity-100 active:opacity-100 transition" title="最上部（最新ログ）へ">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 11l7-7 7 7M5 19l7-7 7 7"/></svg>
+            <button id="toTopBtn" class="p-2.5 rounded-xl border border-slate-800/40 flex flex-col items-center justify-center transition text-indigo-400 w-12 h-12 shadow-lg" title="最上部（最新ログ）へ">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 15l7-7 7 7"></path></svg>
                 <span class="text-[9px] font-bold mt-0.5">最新</span>
             </button>
-            <button id="toBottomBtn" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700 flex flex-col items-center justify-center opacity-60 hover:opacity-100 active:opacity-100 transition" title="最下部（過去ログ）へ">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 13l-7 7-7-7M19 5l-7 7-7-7"/></svg>
+            <button id="toBottomBtn" class="p-2.5 rounded-xl border border-slate-800/40 flex flex-col items-center justify-center transition text-slate-400 w-12 h-12 shadow-lg" title="最下部（過去ログ）へ">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
                 <span class="text-[9px] font-bold mt-0.5">最古</span>
             </button>
-            <button id="focusBtn" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-700 flex flex-col items-center justify-center opacity-60 hover:opacity-100 active:opacity-100 transition" title="入力欄へフォーカス">
+            <button id="focusBtn" class="p-2.5 rounded-xl border border-slate-800/40 flex flex-col items-center justify-center transition text-slate-300 w-12 h-12 shadow-lg" title="入力欄へフォーカス">
                 <span class="text-base leading-none">⌨️</span>
                 <span class="text-[9px] font-bold mt-0.5">入力</span>
             </button>
@@ -290,17 +290,50 @@
 
     <!-- 📑 統合ガイドモーダル -->
     <div id="guideCard" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-slate-900 p-6 rounded-2xl max-w-md w-full max-h-[85vh] overflow-y-auto shadow-2xl flex flex-col gap-4 border border-slate-800 select-text">
-            <h3 class="font-black text-lg text-indigo-400 border-b border-slate-800 pb-2 flex items-center gap-1">📖 セキュリティ構造 ＆ 利用規約</h3>
-            <div class="text-xs text-slate-300 leading-relaxed space-y-4">
-                <div class="bg-red-950/50 p-3 rounded-xl border border-red-900/40 text-red-200 space-y-1">
-                    <p class="font-bold flex items-center gap-1">🔒 運営者からも100%覗けません</p>
-                    <p class="text-[11px] text-slate-300 leading-normal">
-                        通常の部屋で交わされるテキストは端末上で暗号化（AES-256）されます。サーバー管理側であってもデータを解読することは構造上不可能です。
+        <div class="bg-slate-900 p-5 rounded-2xl max-w-md w-full max-h-[85vh] overflow-y-auto shadow-2xl flex flex-col gap-4 border border-slate-800 select-text">
+            <h3 class="font-black text-sm text-indigo-400 border-b border-slate-800 pb-2 flex items-center gap-1 shrink-0">📖 セキュリティ構造 ＆ 利用規約</h3>
+            
+            <div class="text-[11px] text-slate-300 leading-relaxed space-y-4 overflow-y-auto pr-1">
+                <div class="bg-indigo-950/40 p-3 rounded-xl border border-indigo-900/60 space-y-1.5">
+                    <p class="font-bold text-indigo-300 text-[11.5px]">🛡️ 暗号化の仕組みと安全性</p>
+                    <p class="text-slate-400 text-[10.5px]">
+                        本ツールは、端末間暗号化技術をベースに設計されています。入力された「共通暗号パスワード」を元にブラウザ側でテキストを暗号化（AES-256）してからデータベースへ送信します。
+                    </p>
+                    <p class="text-amber-400 font-semibold text-[10px]">
+                        ※パスワードのハッシュや暗号鍵そのものはサーバーに送信されません。パスワードを共有した当事者以外、運営者であってもデータはただの乱数であり解読不能です。
                     </p>
                 </div>
+
+                <div class="space-y-1">
+                    <p class="font-bold text-slate-200">💡 基本的な使い方</p>
+                    <ul class="list-disc list-inside space-y-1 text-slate-400 pl-1 text-[10.5px]">
+                        <li>特定の相手と話す場合は、独自の「部屋ID」と「共通暗号パスワード」を取り決めて入室してください。</li>
+                        <li>入室後に右上にある「招待」ボタンを押すと、現在の部屋IDとパスワードを含んだ秘密の招待URLがクリップボードにコピーされます。</li>
+                        <li>「トリップ暗号」を入力すると、自分の名前の横に <span class="text-green-400 font-mono">◆a1b2c3</span> のような固有値が表示され、他人のなりすましを防止できます。</li>
+                    </ul>
+                </div>
+
+                <div class="bg-red-950/30 p-3 rounded-xl border border-red-950 text-slate-300 space-y-1.5">
+                    <p class="font-bold text-red-400 flex items-center gap-1 text-[11.5px]">🚫 絶対禁止事項</p>
+                    <p class="text-[10.5px] text-slate-400">当空間は完全匿名の一時利用を想定していますが、以下の行為は固くお断りします。</p>
+                    <ul class="list-disc list-inside space-y-0.5 text-red-300 text-[10px] pl-1">
+                        <li>他者の権利を侵害する名誉毀損・誹謗中傷・脅脅迫行為</li>
+                        <li>公式部屋などパブリック空間での過度な荒らし行為、スパム連投</li>
+                        <li>違法コンテンツのリンク共有、または犯罪行為の計画・唆し</li>
+                        <li>システムの脆弱性を狙った不正なリクエストやサーバーへの攻撃</li>
+                    </ul>
+                </div>
             </div>
-            <button id="closeGuideBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-md mt-2">安全性を理解しました</button>
+            
+            <button id="closeGuideBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-md mt-1 shrink-0">安全性を理解しました</button>
+        </div>
+    </div>
+
+    <!-- 🖼️ 画像拡大用汎用モーダル -->
+    <div id="imageModal" class="fixed inset-0 bg-black/90 backdrop-filter backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-200 pointer-events-none" onclick="closeImageModal()">
+        <img id="modalTargetImg" src="" alt="拡大画像" class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl transition-transform duration-200 scale-95 select-text">
+        <div class="absolute top-4 right-4 text-white bg-slate-900/80 rounded-full p-2 cursor-pointer border border-slate-700">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
         </div>
     </div>
 
@@ -321,7 +354,7 @@
         });
         const db = getDatabase(firebaseApp, DB_URL);
 
-        let isTimelineScrolledUp = false; 
+        let isTimelineScrolledDown = false; 
         let isComposing = false; 
         let heartbeatIntervalId = null;
         let curR = null, curP = null, curN = null, curT = null, rawR = null;
@@ -336,14 +369,13 @@
         const OFFICIAL_ROOM_HASH = CryptoJS.SHA256("公式部屋").toString();
         const chatTimeline = $('chatTimeline');
         
-        // 🔄 修正: スクリロール検知のしきい値を最新位置（一番上）に合わせて調整
         chatTimeline.addEventListener('scroll', () => {
-            isTimelineScrolledUp = chatTimeline.scrollTop > 10;
+            // 上寄せ（最新が最上部）のため、scrollTopが0に近ければ最新位置にいると判定
+            isTimelineScrolledDown = chatTimeline.scrollTop > 10;
         }, { passive: true });
 
-        // 🔄 修正: 最新（一番上）、最古（一番下）へ移動するようにスクロール関数を修正
-        window.scrollToLatest = function() { chatTimeline.scrollTop = 0; isTimelineScrolledUp = false; };
-        window.scrollToOldest = function() { chatTimeline.scrollTop = chatTimeline.scrollHeight; isTimelineScrolledUp = true; };
+        window.scrollToLatest = function() { chatTimeline.scrollTop = 0; isTimelineScrolledDown = false; };
+        window.scrollToOldest = function() { chatTimeline.scrollTop = chatTimeline.scrollHeight; isTimelineScrolledDown = true; };
 
         $("toTopBtn").onclick = () => { scrollToLatest(); };
         $("toBottomBtn").onclick = () => { scrollToOldest(); };
@@ -353,6 +385,17 @@
             if (!id) { id = crypto.randomUUID(); localStorage.setItem("nez_uid", id); }
             return id;
         })();
+
+        const toggleClearBtn = (val) => {
+            const btn = $("clearBtn");
+            if (val && val.length > 0) {
+                btn.style.opacity = "1";
+                btn.style.pointerEvents = "auto";
+            } else {
+                btn.style.opacity = "0";
+                btn.style.pointerEvents = "none";
+            }
+        };
 
         const setLobbyButtonsState = (enabled) => {
             $("enterBtn").disabled = !enabled;
@@ -382,9 +425,9 @@
 
         const clearSubscriptions = () => {
             if (unsubscribeChat) { unsubscribeChat(); unsubscribeChat = null; }
-            if (unsubscribePres) { unsubscribePres(); unsubscribePres = null; }
+            if (unsubscribePres) { unsubscribePres = null; }
             if (unsubscribeRoomConfig) { unsubscribeRoomConfig(); unsubscribeRoomConfig = null; }
-            if (unsubscribeConn) { unsubscribeConn = null; }
+            if (unsubscribeConn) { unsubscribeConn(); unsubscribeConn = null; }
             if (heartbeatIntervalId) { clearInterval(heartbeatIntervalId); heartbeatIntervalId = null; }
         };
 
@@ -408,12 +451,115 @@
         };
 
         const esc = t => (t || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-        const linkify = t => esc(t).replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:underline">$1</a>');
 
-        const toggleClearBtn = (text) => {
-            const hasText = !!(text && text.trim().length > 0);
-            $("clearBtn").style.opacity = hasText ? "1" : "0"; 
-            $("clearBtn").style.pointerEvents = hasText ? "auto" : "none";
+        function formatFullDateTime(timestamp) {
+            if (!timestamp) return "";
+            const d = new Date(timestamp);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const date = String(d.getDate()).padStart(2, '0');
+            const hours = String(d.getHours()).padStart(2, '0');
+            const minutes = String(d.getMinutes()).padStart(2, '0');
+            const seconds = String(d.getSeconds()).padStart(2, '0');
+            return `${year}/${month}/${date} ${hours}:${minutes}:${seconds}`;
+        }
+
+        function createMessageElement(m, pass, isOfficial = false) {
+            const txt = textDec(m.text, pass, isOfficial); if (!txt) return null;
+            const div = document.createElement("div"); div.className = "msg-wrap animate-fade-in";
+            const fullTimeStr = formatFullDateTime(m.time);
+            
+            if (m.type === "sys") {
+                div.innerHTML = `<div class="sys-msg text-center text-[10px] font-bold text-slate-400 my-1 bg-slate-800/60 border border-slate-700/50 py-1 px-3 rounded-lg inline-block mx-auto">${esc(txt)} <span class="text-slate-500 font-normal ml-1">${fullTimeStr}</span></div>`;
+                div.className = "msg-wrap text-center w-full justify-center items-center";
+            } else {
+                const sN = textDec(m.nEnc, pass, isOfficial) || "???", sT = textDec(m.tEnc, pass, isOfficial) || "";
+                const cardClass = "msg-card msg bg-slate-900/90 text-slate-200 px-3 py-2 rounded-xl border border-slate-800 shadow-md max-w-sm inline-block break-all";
+                
+                const parsedResult = parseMessageContent(txt);
+                const hasOnlyMedia = parsedResult.textHtml.trim() === "" && parsedResult.mediaHtml !== "";
+                const contentBody = hasOnlyMedia 
+                    ? parsedResult.mediaHtml 
+                    : `<div class="text-sm leading-relaxed">${parsedResult.textHtml}</div>${parsedResult.mediaHtml}`;
+
+                div.innerHTML = `<div class="text-[11px] font-bold text-slate-400 mb-0.5 pl-1">${esc(sN)}<span class="text-green-400 font-mono">${esc(sT)}</span> <span class="text-slate-500 font-normal">${fullTimeStr}</span></div>
+                    <div class="${cardClass}">
+                        ${contentBody}
+                    </div>`;
+            }
+            return div;
+        }
+
+        function parseMessageContent(text) {
+            const words = text.split(/\s+/);
+            let mediaHtml = "";
+            let cleanText = text;
+
+            const ytRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/;
+            const imgRegex = /\.(jpeg|jpg|gif|png|webp|bmp)(?:\?.*)?$/i;
+
+            for (const word of words) {
+                if (/^https?:\/\/[^\s]+$/i.test(word)) {
+                    const ytMatch = word.match(ytRegex);
+                    if (ytMatch && ytMatch[1]) {
+                        const vid = ytMatch[1];
+                        cleanText = cleanText.replace(word, "");
+                        mediaHtml += `
+                            <div class="mt-2 rounded-lg overflow-hidden border border-slate-700 bg-black max-w-sm w-full">
+                                <div id="yt-placeholder-${vid}" class="relative aspect-video bg-cover bg-center" style="background-image: url('https://img.youtube.com/vi/${vid}/mqdefault.jpg');"></div>
+                                <div class="bg-slate-900/90 p-2 flex justify-between gap-2 text-xs border-t border-slate-800">
+                                    <button onclick="playYoutubeInline('${vid}')" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-2 rounded transition text-center">その場で再生</button>
+                                    <a href="https://www.youtube.com/watch?v=${vid}" target="_blank" rel="noopener noreferrer" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-1 px-2 rounded transition text-center flex items-center justify-center">YouTube公式へ</a>
+                                </div>
+                            </div>`;
+                        continue;
+                    }
+
+                    const cleanUrl = word.replace(/[?#].*$/, '');
+                    if (imgRegex.test(cleanUrl) || /^data:image\//i.test(word)) {
+                        mediaHtml += `
+                            <div class="mt-2 max-w-xs overflow-hidden rounded-lg border border-slate-800 bg-slate-950 shadow-inner">
+                                <img src="${esc(word)}" alt="送信画像" class="max-h-48 w-auto object-cover cursor-pointer hover:opacity-90 active:scale-98 transition" onclick="openImageModal('${esc(word)}')">
+                            </div>`;
+                        continue;
+                    }
+                }
+            }
+
+            cleanText = cleanText.trim();
+            let textHtml = esc(cleanText);
+            textHtml = textHtml.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:underline">$1</a>');
+
+            return { textHtml: textHtml, mediaHtml: mediaHtml };
+        }
+
+        window.playYoutubeInline = function(vid) {
+            const container = $(`yt-placeholder-${vid}`);
+            if (container) {
+                container.innerHTML = `<iframe class="w-full h-full aspect-video" src="https://www.youtube.com/embed/${vid}?autoplay=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+            }
+        };
+
+        window.openImageModal = function(src) {
+            const modal = $("imageModal");
+            const img = $("modalTargetImg");
+            img.src = src;
+            modal.classList.remove("hidden");
+            setTimeout(() => {
+                modal.classList.remove("opacity-0", "pointer-events-none");
+                img.classList.remove("scale-95");
+            }, 10);
+        };
+
+        window.closeImageModal = function() {
+            const modal = $("imageModal");
+            const img = $("modalTargetImg");
+            modal.classList.add("opacity-0", "pointer-events-none");
+            img.classList.add("scale-95");
+            setTimeout(() => {
+                modal.classList.add("hidden");
+                img.src = "";
+            }, 200);
         };
 
         function generateTripString(name, key) {
@@ -441,24 +587,6 @@
             }
         }
 
-        function createMessageElement(m, pass, isOfficial = false) {
-            const txt = textDec(m.text, pass, isOfficial); if (!txt) return null;
-            const div = document.createElement("div"); div.className = "msg-wrap animate-fade-in";
-            const time = m.time ? new Date(m.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }) : "";
-            
-            if (m.type === "sys") {
-                div.innerHTML = `<div class="sys-msg text-center text-[10px] font-bold text-slate-400 my-1 bg-slate-800/60 border border-slate-700/50 py-1 px-3 rounded-lg inline-block mx-auto">${linkify(txt)} <span class="text-slate-500 font-normal ml-1">${time}</span></div>`;
-                div.className = "msg-wrap text-center w-full justify-center items-center";
-            } else {
-                const sN = textDec(m.nEnc, pass, isOfficial) || "???", sT = textDec(m.tEnc, pass, isOfficial) || "";
-                div.innerHTML = `<div class="text-[11px] font-bold text-slate-400 mb-0.5 pl-1">${esc(sN)}<span class="text-green-400 font-mono">${esc(sT)}</span> <span class="text-slate-500 font-normal">${time}</span></div>
-                    <div class="msg-card msg bg-slate-900/90 text-slate-200 px-3 py-2 rounded-xl border border-slate-800 shadow-md max-w-sm inline-block break-all">
-                        <div class="text-sm leading-relaxed">${linkify(txt)}</div>
-                    </div>`;
-            }
-            return div;
-        }
-
         async function join(rID, pass, name, trip, maxLimit, selectRomMin, selectRoomMin) {
             try {
                 await ensureTimeSync(); 
@@ -472,7 +600,7 @@
                 isWatcherMode = (isOfficial && !name);
 
                 if (curR && (curR !== hashId || wasWatcherMode !== isWatcherMode)) {
-                    try { if (!wasWatcherMode) await remove(ref(db, `presence/${curR}/${uid}`)); } catch(e) {}
+                    try { if (!wasWatcherMode) await remove(ref(db, `presence/${curR}/${uid}`)); } catch(e){}
                     clearSubscriptions(); 
                 }
 
@@ -582,14 +710,12 @@
                     if (m && m.time) { initialMsgs.push(m); if (m.time > lastLoadedTime) lastLoadedTime = m.time; }
                 });
 
-                // 🔄 修正: 最新（新しい時間）が上にくるようにソート（降順 b.time - a.time）
                 initialMsgs.sort((a, b) => b.time - a.time);
                 initialMsgs.forEach(m => {
                     const el = createMessageElement(m, curP, isOfficial);
                     if (el) chatTimeline.appendChild(el);
                 });
                 
-                // 🔄 修正: 最新（一番上）が見えている状態にする
                 scrollToLatest();
 
                 const nextChatQuery = query(chatRef, orderByChild("time"), startAfter(lastLoadedTime));
@@ -597,12 +723,10 @@
                     const m = s.val(); if (!m || m.time <= lastLoadedTime) return;
                     const div = createMessageElement(m, curP, isOfficial); if (!div) return;
                     
-                    // 🔄 修正: 新しい発言はタイムラインの一番上（先頭）に挿入する
                     chatTimeline.insertBefore(div, chatTimeline.firstChild);
-                    if (!isTimelineScrolledUp) { 
+                    
+                    if (!isTimelineScrolledDown) { 
                         scrollToLatest(); 
-                    } else {
-                        div.querySelector('.msg-card')?.classList.add('new-alert');
                     }
                 });
 
@@ -630,6 +754,10 @@
             
             const isOfficial = (curR === OFFICIAL_ROOM_HASH);
             toggleClearBtn(""); input.value = ""; input.rows = 1; input.style.overflowY = "hidden"; 
+            
+            // 自分が発言を送信した瞬間に強制的に上にスクロール（最新ログ位置へ移動）
+            scrollToLatest();
+
             try {
                 const NOW = getServerNow();
                 await push(ref(db, `chat/${curR}`), { 
@@ -642,22 +770,42 @@
             } catch (e) { alert("送信に失敗しました: " + e.message); }
         }
 
+        // 入力エリアに対するスクロール連動イベント群
         $("mi").addEventListener("compositionstart", () => { isComposing = true; });
         $("mi").addEventListener("compositionend", (e) => { isComposing = false; toggleClearBtn(e.target.value); });
         $("mi").addEventListener("input", (e) => { 
             toggleClearBtn(e.target.value); 
             e.target.rows = 1; 
-            
             const currentRows = Math.min(4, Math.floor(e.target.scrollHeight / 24)) || 1;
             e.target.rows = currentRows;
-            
             if (e.target.scrollHeight > 96) {
                 e.target.style.overflowY = "auto";
             } else {
                 e.target.style.overflowY = "hidden";
             }
         });
-        $("mi").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { if (isComposing) return; e.preventDefault(); sendMessage(); } });
+
+        // 1. 入力欄にフォーカスした際のイベント（スマホキーボード立ち上がり対策付き）
+        $("mi").addEventListener("focus", () => {
+            // キーボードのせいで描画領域が変わるタイムラグを考慮し少しディレイを入れる
+            setTimeout(() => {
+                scrollToLatest();
+            }, 150);
+        });
+
+        // 2. キーボード入力（Enter送信含む）が押された、離された際の連動
+        $("mi").addEventListener("keydown", (e) => { 
+            if (e.key === "Enter" && !e.shiftKey) { 
+                if (isComposing) return; 
+                e.preventDefault(); 
+                sendMessage(); 
+            } else {
+                // 文字が入力されている際も最新ログが見えるように強制（好みに応じてオン）
+                if (!isTimelineScrolledDown) {
+                    scrollToLatest();
+                }
+            }
+        });
         
         $("sendBtn").onclick = (e) => { e.preventDefault(); sendMessage(); };
         $("clearBtn").onclick = (e) => { e.preventDefault(); $("mi").value = ""; $("mi").rows = 1; $("mi").style.overflowY = "hidden"; toggleClearBtn(""); $("mi").focus(); };
@@ -665,7 +813,7 @@
         $("enterBtn").onclick = async () => {
             const rawName = $("ni").value, tk = $("tk").value.trim(), r = $("ri").value.trim(), p = $("pi").value.trim();
             const cleanName = rawName.replace(/[\s\u3000]+/g, "").trim();
-            if (!cleanName || !tk || !r || !p) { alert("必須項目が入力されていません。"); return; }
+            if (!cleanName || !r || !p) { alert("必須項目（表示名、部屋ID、共通暗号パスワード）が入力されていません。"); return; }
             if (!/^[a-zA-Z0-9_-]+$/.test(r)) { alert("部屋IDの形式が不正です（半角英数・ハイフン・アンダーバーのみ）。"); return; }
             setLobbyButtonsState(false);
             await join(r, p, cleanName, generateTripString(cleanName, tk), Number($("maxUsers").value), Number($("romTime").value), Number($("roomCleanTime").value));
@@ -728,7 +876,12 @@
 
         $("openGuideBtn").onclick = () => $("guideCard").style.display = "flex";
         $("closeGuideBtn").onclick = () => $("guideCard").style.display = "none";
-        $("focusBtn").onclick = () => $("mi").focus();
+        
+        // 3. 右下のナビゲーション「入力」ボタンを押した際にも最新ログ（上）へ強制追従
+        $("focusBtn").onclick = () => { 
+            $("mi").focus(); 
+            setTimeout(() => { scrollToLatest(); }, 150);
+        };
 
         function triggerSessionRestore() {
             const sessionData = sessionStorage.getItem("active_room_session");

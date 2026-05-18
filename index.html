@@ -315,7 +315,7 @@
                         本ツールは、端末間暗号化技術をベースに設計されています。入力された「共通暗号パスワード」を元にブラウザ側でテキストを暗号化（AES-256）してからデータベースへ送信します。
                     </p>
                     <p class="text-amber-400 font-semibold text-[10px]">
-                        ※パスワードのハッシュや暗号鍵そのものはサーバーに送信されません。パスワードを共有した当事者以外、運営者であってもデータはただの乱数であり解読不能です。
+                        ※パスワード的ハッシュや暗号鍵そのものはサーバーに送信されません。パスワードを共有した当事者以外、運営者であってもデータはただの乱数であり解読不能です。
                     </p>
                 </div>
 
@@ -506,7 +506,7 @@
             let mediaHtml = "";
             let cleanText = text;
 
-            const ytRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/;
+            const ytRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(mbed)?)\/|\S*?[?&]v=)|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/;
             const imgRegex = /\.(jpeg|jpg|gif|png|webp|bmp)(?:\?.*)?$/i;
 
             for (const word of words) {
@@ -732,11 +732,34 @@
                     const pSnap = await get(presRef);
                     let isReentry = false;
                     if (pSnap.exists()) {
-                        const users = pSnap.val() || {}; let currentActiveCount = 0;
-                        Object.keys(users).forEach(k => { 
-                            if (k === uid) isReentry = true; 
-                            if (k !== uid && NOW - (users[k].lastSeen || NOW) <= USER_TIMEOUT) currentActiveCount++; 
-                        });
+                        const users = pSnap.val() || {}; 
+                        let currentActiveCount = 0;
+
+                        for (const k of Object.keys(users)) {
+                            const isUserAlive = (NOW - (users[k].lastSeen || NOW) <= USER_TIMEOUT);
+                            
+                            if (isUserAlive) {
+                                if (k !== uid) currentActiveCount++;
+
+                                const activeN = textDec(users[k].nEnc, pass, isOfficial);
+                                const activeT = textDec(users[k].tEnc, pass, isOfficial) || "";
+
+                                // 🛡️ 1. 再入室（Reentry）時の本人検証
+                                if (k === uid) {
+                                    if (activeN !== name || activeT !== trip) {
+                                        showLobby(`【認証エラー】セッション情報が一致しません。同じ名前とトリップキーで再入室してください。`);
+                                        return;
+                                    }
+                                    isReentry = true;
+                                }
+
+                                // 🚫 2. 生存している他ユーザーとの重複名ブロック
+                                if (k !== uid && activeN === name) {
+                                    showLobby(`【入室エラー】「${name}」という名前はすでに部屋の中のユーザーに使用されています。別の名前を入力してください。`);
+                                    return;
+                                }
+                            }
+                        }
                         if (!isReentry && currentActiveCount >= finalMax) { showLobby(`部屋が満員です（上限 ${finalMax} 名）`); return; }
                     }
 
@@ -748,7 +771,10 @@
                     });
 
                     await set(myRef, { nEnc: enc(name, pass, isOfficial), tEnc: enc(trip, pass, isOfficial), lastSeen: NOW });
-                    await push(chatRef, { type: "sys", text: enc(`${name}${trip} が入室しました`, pass, isOfficial), time: NOW });
+                    
+                    if (!isReentry) {
+                        await push(chatRef, { type: "sys", text: enc(`${name}${trip} が入室しました`, pass, isOfficial), time: NOW });
+                    }
                     
                     localStorage.setItem("nez_ni", name);
                     if (!isOfficial) localStorage.setItem("nez_tk", $("tk").value.trim());
@@ -760,8 +786,10 @@
 
                 if (isWatcherMode) {
                     $("input-container").style.display = "none"; $("watcher-banner").style.display = "block"; updateWatcherTripPreview();
+                    $("exitBtn").innerText = "ロビーへ戻る"; 
                 } else {
                     $("input-container").style.display = "flex"; $("watcher-banner").style.display = "none";
+                    $("exitBtn").innerText = "退出"; 
                 }
 
                 let trackedUserStates = {};
@@ -901,13 +929,20 @@
 
         $("officialRoomBtn").onclick = async () => {
             setLobbyButtonsState(false);
-            await join("公式部屋", "official_public_pass", "", "", 10, 30, 999999999);
+            const rawName = $("ni").value;
+            const cleanName = rawName.replace(/[\s\u3000]+/g, "").trim();
+            const tk = $("tk").value.trim();
+            if (cleanName) {
+                await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, tk), 10, 30, 999999999);
+            } else {
+                await join("公式部屋", "official_public_pass", "", "", 10, 30, 999999999);
+            }
         };
 
         $("watcherUpgradeBtn").onclick = async () => {
             const rawName = $("watcher_ni").value, tk = $("watcher_tk").value.trim();
             const cleanName = rawName.replace(/[\s\u3000]+/g, "").trim();
-            if (!cleanName || !tk) { alert("名前とトリップキーを入力してください。"); return; }
+            if (!cleanName || !tk) { alert("名前 と トリップキーを入力してください。"); return; }
             localStorage.setItem("nez_ni", cleanName); localStorage.setItem("nez_tk", tk);
             $("ni").value = cleanName; $("tk").value = tk; updateTripPreview();
             await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, tk), 10, 30, 999999999);

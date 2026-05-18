@@ -370,7 +370,6 @@
         const chatTimeline = $('chatTimeline');
         
         chatTimeline.addEventListener('scroll', () => {
-            // 上寄せ（最新が最上部）のため、scrollTopが0に近ければ最新位置にいると判定
             isTimelineScrolledDown = chatTimeline.scrollTop > 10;
         }, { passive: true });
 
@@ -755,7 +754,6 @@
             const isOfficial = (curR === OFFICIAL_ROOM_HASH);
             toggleClearBtn(""); input.value = ""; input.rows = 1; input.style.overflowY = "hidden"; 
             
-            // 自分が発言を送信した瞬間に強制的に上にスクロール（最新ログ位置へ移動）
             scrollToLatest();
 
             try {
@@ -770,7 +768,6 @@
             } catch (e) { alert("送信に失敗しました: " + e.message); }
         }
 
-        // 入力エリアに対するスクロール連動イベント群
         $("mi").addEventListener("compositionstart", () => { isComposing = true; });
         $("mi").addEventListener("compositionend", (e) => { isComposing = false; toggleClearBtn(e.target.value); });
         $("mi").addEventListener("input", (e) => { 
@@ -785,22 +782,18 @@
             }
         });
 
-        // 1. 入力欄にフォーカスした際のイベント（スマホキーボード立ち上がり対策付き）
         $("mi").addEventListener("focus", () => {
-            // キーボードのせいで描画領域が変わるタイムラグを考慮し少しディレイを入れる
             setTimeout(() => {
                 scrollToLatest();
             }, 150);
         });
 
-        // 2. キーボード入力（Enter送信含む）が押された、離された際の連動
         $("mi").addEventListener("keydown", (e) => { 
             if (e.key === "Enter" && !e.shiftKey) { 
                 if (isComposing) return; 
                 e.preventDefault(); 
                 sendMessage(); 
             } else {
-                // 文字が入力されている際も最新ログが見えるように強制（好みに応じてオン）
                 if (!isTimelineScrolledDown) {
                     scrollToLatest();
                 }
@@ -838,10 +831,40 @@
             try {
                 if (!isWatcherMode) {
                     const isOfficial = (curR === OFFICIAL_ROOM_HASH);
-                    await push(ref(db, `chat/${curR}`), { type: "sys", text: enc(`${curN}${curT} が退出しました`, curP, isOfficial), time: getServerNow() });
-                    await remove(ref(db, `presence/${curR}/${uid}`));
+                    const chatRef = ref(db, `chat/${curR}`);
+                    const presRef = ref(db, `presence/${curR}`);
+                    const roomRef = ref(db, `rooms/${curR}`);
+                    const myRef = ref(db, `presence/${curR}/${uid}`);
+
+                    // 1. 現在の部屋のアクティブな他ユーザー状況を取得
+                    const presSnap = await get(presRef);
+                    let otherUsersCount = 0;
+                    const currentNow = getServerNow();
+
+                    if (presSnap.exists()) {
+                        const users = presSnap.val() || {};
+                        Object.keys(users).forEach(k => {
+                            // 自分以外の生存者（ROMタイムアウト内）をカウント
+                            if (k !== uid && (currentNow - (users[k].lastSeen || currentNow) <= USER_TIMEOUT)) {
+                                otherUsersCount++;
+                            }
+                        });
+                    }
+
+                    // 2. 公式部屋ではなく、かつ自分以外にアクティブな人がいない（最後の1人）なら部屋データを全削除
+                    if (!isOfficial && otherUsersCount === 0) {
+                        await remove(roomRef);
+                        await remove(chatRef);
+                        await remove(presRef);
+                    } else {
+                        // 他に人がいる場合は、通常通り退出通知を出して自分のプレゼンスのみを削除
+                        await push(chatRef, { type: "sys", text: enc(`${curN}${curT} が退出しました`, curP, isOfficial), time: currentNow });
+                        await remove(myRef);
+                    }
                 }
-            } catch(e){}
+            } catch(e){
+                console.error("退室処理中にエラーが発生しました:", e);
+            }
             isProcessingExit = false; showLobby();
         }
 
@@ -877,7 +900,6 @@
         $("openGuideBtn").onclick = () => $("guideCard").style.display = "flex";
         $("closeGuideBtn").onclick = () => $("guideCard").style.display = "none";
         
-        // 3. 右下のナビゲーション「入力」ボタンを押した際にも最新ログ（上）へ強制追従
         $("focusBtn").onclick = () => { 
             $("mi").focus(); 
             setTimeout(() => { scrollToLatest(); }, 150);

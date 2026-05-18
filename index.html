@@ -377,9 +377,23 @@
             appId: "1:154725381397:web:8742ccd957e20cee8ce51c"
         };
         
-        const firebaseApp = initializeApp(firebaseConfig);
-        const db = getDatabase(firebaseApp, firebaseConfig.databaseURL);
-        const auth = getAuth(firebaseApp);
+        // 🌐 ローカル環境（localhostか127.0.0.1、またはfile://による直接閲覧）かどうかを判別するフラグ
+        const isLocalEnvironment = ["localhost", "127.0.0.1"].includes(window.location.hostname) || window.location.protocol === 'file:';
+
+        let firebaseApp = null;
+        let db = null;
+        let auth = null;
+
+        // ローカル環境でない時のみFirebaseを正しく初期化
+        if (!isLocalEnvironment) {
+            try {
+                firebaseApp = initializeApp(firebaseConfig);
+                db = getDatabase(firebaseApp, firebaseConfig.databaseURL);
+                auth = getAuth(firebaseApp);
+            } catch(e) {
+                console.error("Firebase初期化エラー:", e);
+            }
+        }
 
         let isTimelineScrolledDown = false; 
         let isComposing = false; 
@@ -396,6 +410,9 @@
 
         const OFFICIAL_ROOM_HASH = CryptoJS.SHA256("公式部屋").toString();
         const chatTimeline = $('chatTimeline');
+
+        // 🛠️ 【修正】ローカルモック用の簡易インメモリKVS
+        let localMockDb = { chat: {}, presence: {}, rooms: {} };
 
         window.playYoutubeInline = function(vid) {
             const container = $(`yt-placeholder-${vid}`);
@@ -449,7 +466,7 @@
 
         const ensureTimeSync = () => {
             return new Promise((resolve) => {
-                if (isOffsetLoaded) return resolve();
+                if (isLocalEnvironment || isOffsetLoaded) return resolve();
                 const unsubscribe = onValue(ref(db, ".info/serverTimeOffset"), (snap) => {
                     serverTimeOffset = snap.val() || 0;
                     isOffsetLoaded = true;
@@ -688,19 +705,26 @@
                 await ensureTimeSync(); 
                 const NOW = getServerNow();
 
-                if (!auth.currentUser) {
-                    try {
-                        const userCredential = await signInAnonymously(auth);
-                        myUid = userCredential.user.uid;
-                    } catch (authErr) {
-                        if (authErr.code === 'auth/operation-not-allowed') {
-                            throw new Error("Firebase側で『匿名認証(Anonymous)』の許可設定がオフになっています。FirebaseコンソールのAuthentication -> Sign-in method画面で有効にしてください。");
-                        } else {
-                            throw new Error(`認証エラーが発生しました: ${authErr.message}`);
-                        }
+                // 🌐 【ローカル環境 or 覗き見モード】でのUID確定ロジック
+                if (isLocalEnvironment) {
+                    if (!myUid) {
+                        myUid = "local_" + Math.random().toString(36).substr(2, 9);
                     }
                 } else {
-                    myUid = auth.currentUser.uid;
+                    if (!auth.currentUser) {
+                        try {
+                            const userCredential = await signInAnonymously(auth);
+                            myUid = userCredential.user.uid;
+                        } catch (authErr) {
+                            if (authErr.code === 'auth/operation-not-allowed') {
+                                throw new Error("Firebase側で『匿名認証(Anonymous)』の許可設定がオフになっています。");
+                            } else {
+                                throw new Error(`認証エラーが発生しました: ${authErr.message}`);
+                            }
+                        }
+                    } else {
+                        myUid = auth.currentUser.uid;
+                    }
                 }
 
                 const targetRoomID = (rID === "official-room" || rID === "公式部屋") ? "公式部屋" : rID;
@@ -711,7 +735,11 @@
                 isWatcherMode = (isOfficial && !name);
 
                 if (curR && (curR !== hashId || wasWatcherMode !== isWatcherMode)) {
-                    try { if (!wasWatcherMode) await remove(ref(db, `presence/${curR}/${myUid}`)); } catch(e){}
+                    if (!isLocalEnvironment) {
+                        try { if (!wasWatcherMode) await remove(ref(db, `presence/${curR}/${myUid}`)); } catch(e){}
+                    } else {
+                        if (localMockDb.presence[curR]) delete localMockDb.presence[curR][myUid];
+                    }
                     clearSubscriptions(); 
                 }
 
@@ -728,89 +756,114 @@
                     rawR, curP, curN, curT, maxLimit, selectRomMin, selectRoomMin
                 }));
 
-                const chatRef = ref(db, `chat/${curR}`);
-                const presRef = ref(db, `presence/${curR}`);
-                const roomRef = ref(db, `rooms/${curR}`);
-                const myRef = ref(db, `presence/${curR}/${myUid}`);
-
                 let finalMax = maxLimit;
                 USER_TIMEOUT = (selectRomMin * 60 + 1) * 1000; 
                 ROOM_LIFETIME = (selectRoomMin * 60) * 1000;
 
-                try {
-                    const roomSnap = await get(roomRef);
-                    if (roomSnap.exists()) {
-                        const rData = roomSnap.val();
-                        USER_TIMEOUT = ((isOfficial ? 30 : (rData.romMin || selectRomMin)) * 60 + 1) * 1000; 
-                        ROOM_LIFETIME = (isOfficial ? 999999999 : (rData.roomMin || selectRoomMin)) * 60 * 1000;
-                        if (rData.max !== undefined) finalMax = isOfficial ? 10 : Number(rData.max);
-                        if (!isOfficial) await update(roomRef, { lastActivity: NOW });
-                    } else {
-                        if (!isOfficial) await set(roomRef, { max: finalMax, romMin: selectRomMin, roomMin: selectRoomMin, lastActivity: NOW });
+                // 🌐 ローカル/本番環境に応じた初期入室判定とDB同期
+                if (isLocalEnvironment) {
+                    // 【ローカル環境用モック処理】
+                    if (!localMockDb.rooms[curR]) {
+                        localMockDb.rooms[curR] = { max: finalMax, romMin: selectRomMin, roomMin: selectRoomMin, lastActivity: NOW };
                     }
-                } catch (roomErr) {
-                    if (roomErr.message.includes("PERMISSION_DENIED")) {
-                        throw new Error("データベースへのアクセスが拒否されました。Realtime Databaseのセキュリティルール（Rules）が適正か確認してください。");
-                    }
-                    console.warn("部屋構成の設定をスキップしました:", roomErr);
-                }
+                    if (!localMockDb.presence[curR]) localMockDb.presence[curR] = {};
+                    if (!localMockDb.chat[curR]) localMockDb.chat[curR] = [];
 
-                if (unsubscribeConn) unsubscribeConn();
-                
-                if (!isWatcherMode) {
-                    const pSnap = await get(presRef);
-                    let isReentry = false;
-                    if (pSnap.exists()) {
-                        const users = pSnap.val() || {}; 
+                    if (!isWatcherMode) {
                         let currentActiveCount = 0;
-
+                        const users = localMockDb.presence[curR];
                         for (const k of Object.keys(users)) {
-                            const isUserAlive = (NOW - (users[k].lastSeen || NOW) <= USER_TIMEOUT);
-                            
-                            if (isUserAlive) {
+                            if (NOW - (users[k].lastSeen || NOW) <= USER_TIMEOUT) {
                                 if (k !== myUid) currentActiveCount++;
-
                                 const activeN = textDec(users[k].nEnc, pass, isOfficial);
-                                const activeT = textDec(users[k].tEnc, pass, isOfficial) || "";
-
-                                if (k === myUid) {
-                                    if (activeN !== name || activeT !== trip) {
-                                        showLobby(`【認証エラー】セッション情報が一致しません。同じ名前とトリップキーで再入室してください。`);
-                                        return;
-                                    }
-                                    isReentry = true;
-                                }
-
                                 if (k !== myUid && activeN === name) {
                                     showLobby(`【入室エラー】「${name}」という名前はすでに部屋の中のユーザーに使用されています。別の名前を入力してください。`);
                                     return;
                                 }
                             }
                         }
-                        if (!isReentry && currentActiveCount >= finalMax) { showLobby(`部屋が満員です（上限 ${finalMax} 名）`); return; }
-                    }
+                        if (currentActiveCount >= finalMax) { showLobby(`部屋が満員です（上限 ${finalMax} 名）`); return; }
 
-                    unsubscribeConn = onValue(ref(db, ".info/connected"), (snap) => {
-                        if (snap.val() === true && curR && !isProcessingExit && !isWatcherMode) {
-                            onDisconnect(myRef).remove().catch(e => console.error(e));
-                            set(myRef, { nEnc: enc(name, pass, isOfficial), tEnc: enc(trip, pass, isOfficial), lastSeen: getServerNow() }).catch(e => console.error(e));
+                        localMockDb.presence[curR][myUid] = { nEnc: enc(name, pass, isOfficial), tEnc: enc(trip, pass, isOfficial), lastSeen: NOW };
+                        localMockDb.chat[curR].push({ type: "sys", text: enc(`${name}${trip} が入室しました（ローカル環境）`, pass, isOfficial), time: NOW });
+                    }
+                } else {
+                    // 【本番Firebase環境用処理】
+                    const chatRef = ref(db, `chat/${curR}`);
+                    const presRef = ref(db, `presence/${curR}`);
+                    const roomRef = ref(db, `rooms/${curR}`);
+                    const myRef = ref(db, `presence/${curR}/${myUid}`);
+
+                    try {
+                        const roomSnap = await get(roomRef);
+                        if (roomSnap.exists()) {
+                            const rData = roomSnap.val();
+                            USER_TIMEOUT = ((isOfficial ? 30 : (rData.romMin || selectRomMin)) * 60 + 1) * 1000; 
+                            ROOM_LIFETIME = (isOfficial ? 999999999 : (rData.roomMin || selectRoomMin)) * 60 * 1000;
+                            if (rData.max !== undefined) finalMax = isOfficial ? 10 : Number(rData.max);
+                            if (!isOfficial) await update(roomRef, { lastActivity: NOW });
+                        } else {
+                            if (!isOfficial) await set(roomRef, { max: finalMax, romMin: selectRomMin, roomMin: selectRoomMin, lastActivity: NOW });
                         }
-                    });
-
-                    await set(myRef, { nEnc: enc(name, pass, isOfficial), tEnc: enc(trip, pass, isOfficial), lastSeen: NOW });
-                    
-                    if (!isReentry) {
-                        await push(chatRef, { type: "sys", text: enc(`${name}${trip} が入室しました`, pass, isOfficial), time: NOW });
+                    } catch (roomErr) {
+                        console.warn("部屋構成の設定をスキップしました:", roomErr);
                     }
+
+                    if (unsubscribeConn) unsubscribeConn();
                     
-                    localStorage.setItem("nez_ni", name);
-                    if (!isOfficial) localStorage.setItem("nez_tk", $("tk").value.trim());
+                    if (!isWatcherMode) {
+                        const pSnap = await get(presRef);
+                        let isReentry = false;
+                        if (pSnap.exists()) {
+                            const users = pSnap.val() || {}; 
+                            let currentActiveCount = 0;
+
+                            for (const k of Object.keys(users)) {
+                                const isUserAlive = (NOW - (users[k].lastSeen || NOW) <= USER_TIMEOUT);
+                                if (isUserAlive) {
+                                    if (k !== myUid) currentActiveCount++;
+                                    const activeN = textDec(users[k].nEnc, pass, isOfficial);
+                                    const activeT = textDec(users[k].tEnc, pass, isOfficial) || "";
+
+                                    if (k === myUid) {
+                                        if (activeN !== name || activeT !== trip) {
+                                            showLobby(`【認証エラー】セッション情報が一致しません。同じ名前とトリップキーで再入室してください。`);
+                                            return;
+                                        }
+                                        isReentry = true;
+                                    }
+                                    if (k !== myUid && activeN === name) {
+                                        showLobby(`【入室エラー】「${name}」という名前はすでに部屋の中のユーザーに使用されています。別の名前を入力してください。`);
+                                        return;
+                                    }
+                                }
+                            }
+                            if (!isReentry && currentActiveCount >= finalMax) { showLobby(`部屋が満員です（上限 ${finalMax} 名）`); return; }
+                        }
+
+                        unsubscribeConn = onValue(ref(db, ".info/connected"), (snap) => {
+                            if (snap.val() === true && curR && !isProcessingExit && !isWatcherMode) {
+                                onDisconnect(myRef).remove().catch(e => console.error(e));
+                                set(myRef, { nEnc: enc(name, pass, isOfficial), tEnc: enc(trip, pass, isOfficial), lastSeen: getServerNow() }).catch(e => console.error(e));
+                            }
+                        });
+
+                        await set(myRef, { nEnc: enc(name, pass, isOfficial), tEnc: enc(trip, pass, isOfficial), lastSeen: NOW });
+                        if (!isReentry) {
+                            await push(chatRef, { type: "sys", text: enc(`${name}${trip} が入室しました`, pass, isOfficial), time: NOW });
+                        }
+                    }
                 }
+
+                // 💾 入力キャッシュ更新
+                if (name) localStorage.setItem("nez_ni", name);
+                if (!isOfficial) localStorage.setItem("nez_tk", $("tk").value.trim());
 
                 $("roomDisplay").innerText = targetRoomID; 
                 $("lobby").style.display = "none"; $("mainApp").style.display = "flex";
                 $("errMsg").style.display = "none";
 
+                // 👁️ UI切り替え
                 if (isWatcherMode) {
                     $("input-container").style.display = "none"; $("watcher-banner").style.display = "block"; updateWatcherTripPreview();
                     $("exitBtn").innerText = "ロビーへ戻る"; 
@@ -819,77 +872,104 @@
                     $("exitBtn").innerText = "退室"; 
                 }
 
-                let trackedUserStates = {};
-                unsubscribePres = onValue(presRef, s => {
-                    if (!curR) return; 
-                    const users = s.val() || {}, frag = document.createDocumentFragment(), currentNow = getServerNow();
-                    let count = 0, currentActiveUids = new Set();
+                // 👥 メンバーリストとチャットログのリッスン構築
+                chatTimeline.innerHTML = "";
 
-                    Object.keys(users).forEach(k => {
-                        const n = textDec(users[k].nEnc, curP, isOfficial); if (!n) return;
-                        const trip = textDec(users[k].tEnc, curP, isOfficial) || "";
-                        
-                        if (currentNow - (users[k].lastSeen || currentNow) > USER_TIMEOUT) {
-                            if (!isOfficial && (trackedUserStates[k] === "active" || trackedUserStates[k] === undefined)) {
-                                if (users[k].nEnc && k === myUid) { try { push(chatRef, { type: "sys", text: enc(`${n}${trip} がタイムアウト自動退室しました`, curP, isOfficial), time: currentNow }); } catch(e){} }
+                if (isLocalEnvironment) {
+                    // ローカル環境用のリアルタイム同期エミュレート表示
+                    const renderLocalData = () => {
+                        const users = localMockDb.presence[curR] || {};
+                        const frag = document.createDocumentFragment();
+                        let count = 0;
+                        Object.keys(users).forEach(k => {
+                            const n = textDec(users[k].nEnc, curP, isOfficial); if (!n) return;
+                            const trip = textDec(users[k].tEnc, curP, isOfficial) || "";
+                            count++;
+                            const span = document.createElement("span"); span.className = "user-chip"; span.innerText = n + trip; frag.appendChild(span);
+                        });
+                        $("presenceList").innerHTML = ""; $("presenceList").appendChild(frag); $("presenceCount").innerText = `[${count}/${finalMax}]`;
+
+                        chatTimeline.innerHTML = "";
+                        const logs = [...(localMockDb.chat[curR] || [])].sort((a, b) => b.time - a.time);
+                        logs.forEach(m => {
+                            const el = createMessageElement(m, curP, isOfficial);
+                            if (el) chatTimeline.appendChild(el);
+                        });
+                    };
+                    renderLocalData();
+                    window.refreshLocalTimeline = renderLocalData; // グローバル関数化してメッセージ送信時に叩く
+                } else {
+                    // 本番環境（Firebase接続）
+                    const presRef = ref(db, `presence/${curR}`);
+                    const chatRef = ref(db, `chat/${curR}`);
+                    let trackedUserStates = {};
+
+                    unsubscribePres = onValue(presRef, s => {
+                        if (!curR) return; 
+                        const users = s.val() || {}, frag = document.createDocumentFragment(), currentNow = getServerNow();
+                        let count = 0, currentActiveUids = new Set();
+
+                        Object.keys(users).forEach(k => {
+                            const n = textDec(users[k].nEnc, curP, isOfficial); if (!n) return;
+                            const trip = textDec(users[k].tEnc, curP, isOfficial) || "";
+                            
+                            if (currentNow - (users[k].lastSeen || currentNow) > USER_TIMEOUT) {
+                                if (!isOfficial && (trackedUserStates[k] === "active" || trackedUserStates[k] === undefined)) {
+                                    if (users[k].nEnc && k === myUid) { try { push(chatRef, { type: "sys", text: enc(`${n}${trip} がタイムアウト自動退室しました`, curP, isOfficial), time: currentNow }); } catch(e){} }
+                                }
+                                return;
                             }
-                            return;
-                        }
-                        
-                        currentActiveUids.add(k);
-                        count++;
-                        const span = document.createElement("span"); span.className = "user-chip"; span.innerText = n + trip; frag.appendChild(span);
+                            currentActiveUids.add(k); count++;
+                            const span = document.createElement("span"); span.className = "user-chip"; span.innerText = n + trip; frag.appendChild(span);
+                        });
+
+                        trackedUserStates = {};
+                        currentActiveUids.forEach(activeUid => { trackedUserStates[activeUid] = "active"; });
+                        $("presenceList").innerHTML = ""; $("presenceList").appendChild(frag); $("presenceCount").innerText = `[${count}/${finalMax}]`;
                     });
 
-                    trackedUserStates = {};
-                    currentActiveUids.forEach(activeUid => { trackedUserStates[activeUid] = "active"; });
-                    $("presenceList").innerHTML = ""; $("presenceList").appendChild(frag); $("presenceCount").innerText = `[${count}/${finalMax}]`;
-                });
-
-                chatTimeline.innerHTML = ""; 
-                let chatQuery = isOfficial ? query(chatRef, orderByChild("time"), limitToLast(100)) : query(chatRef, orderByChild("time"));
-                
-                const chatSnap = await get(chatQuery);
-                const initialMsgs = [];
-                let maxTimestampInSnapshot = 0;
-                
-                chatSnap.forEach(s => {
-                    const m = s.val();
-                    if (m && m.time) { 
-                        initialMsgs.push(m); 
-                        if (m.time > maxTimestampInSnapshot) maxTimestampInSnapshot = m.time;
-                    }
-                });
-
-                initialMsgs.sort((a, b) => b.time - a.time);
-                initialMsgs.forEach(m => {
-                    const el = createMessageElement(m, curP, isOfficial);
-                    if (el) chatTimeline.appendChild(el);
-                });
-                
-                scrollToLatest();
-
-                let trackingStartTime = maxTimestampInSnapshot > 0 ? maxTimestampInSnapshot : NOW;
-
-                const nextChatQuery = query(chatRef, orderByChild("time"), startAfter(trackingStartTime));
-                unsubscribeChat = onChildAdded(nextChatQuery, s => {
-                    const m = s.val(); 
-                    if (!m || m.time <= trackingStartTime) return;
-                    const div = createMessageElement(m, curP, isOfficial); if (!div) return;
+                    let chatQuery = isOfficial ? query(chatRef, orderByChild("time"), limitToLast(100)) : query(chatRef, orderByChild("time"));
+                    const chatSnap = await get(chatQuery);
+                    const initialMsgs = [];
+                    let maxTimestampInSnapshot = 0;
                     
-                    chatTimeline.insertBefore(div, chatTimeline.firstChild);
-                    if (!isTimelineScrolledDown) { scrollToLatest(); }
-                });
+                    chatSnap.forEach(s => {
+                        const m = s.val();
+                        if (m && m.time) { initialMsgs.push(m); if (m.time > maxTimestampInSnapshot) maxTimestampInSnapshot = m.time; }
+                    });
 
+                    initialMsgs.sort((a, b) => b.time - a.time);
+                    initialMsgs.forEach(m => {
+                        const el = createMessageElement(m, curP, isOfficial); if (el) chatTimeline.appendChild(el);
+                    });
+                    scrollToLatest();
+
+                    let trackingStartTime = maxTimestampInSnapshot > 0 ? maxTimestampInSnapshot : NOW;
+                    const nextChatQuery = query(chatRef, orderByChild("time"), startAfter(trackingStartTime));
+                    unsubscribeChat = onChildAdded(nextChatQuery, s => {
+                        const m = s.val(); if (!m || m.time <= trackingStartTime) return;
+                        const div = createMessageElement(m, curP, isOfficial); if (!div) return;
+                        chatTimeline.insertBefore(div, chatTimeline.firstChild);
+                        if (!isTimelineScrolledDown) { scrollToLatest(); }
+                    });
+                }
+
+                // 💓 生存信号インターバル
                 if (heartbeatIntervalId) clearInterval(heartbeatIntervalId);
                 if (!isWatcherMode) {
                     heartbeatIntervalId = setInterval(async () => {
                         if (!curR) return;
                         const currentNow = getServerNow();
-                        try { 
-                            await update(ref(db, `presence/${curR}/${myUid}`), { lastSeen: currentNow }); 
-                            if (!isOfficial) await update(ref(db, `rooms/${curR}`), { lastActivity: currentNow }); 
-                        } catch(e) {}
+                        if (isLocalEnvironment) {
+                            if (localMockDb.presence[curR] && localMockDb.presence[curR][myUid]) {
+                                localMockDb.presence[curR][myUid].lastSeen = currentNow;
+                            }
+                        } else {
+                            try { 
+                                await update(ref(db, `presence/${curR}/${myUid}`), { lastSeen: currentNow }); 
+                                if (!isOfficial) await update(ref(db, `rooms/${curR}`), { lastActivity: currentNow }); 
+                            } catch(e) {}
+                        }
                     }, 15000);
                 }
 
@@ -910,19 +990,25 @@
             toggleClearBtn(""); input.value = ""; input.rows = 1; input.style.overflowY = "hidden"; 
             scrollToLatest();
 
-            try {
-                const NOW = getServerNow();
-                await push(ref(db, `chat/${curR}`), { 
-                    type: "msg", 
-                    nEnc: enc(curN, curP, isOfficial), 
-                    tEnc: enc(curT, curP, isOfficial), 
-                    text: enc(txt, curP, isOfficial), 
-                    time: NOW 
-                });
-            } catch (e) { alert("送信に失敗しました: " + e.message); }
+            const NOW = getServerNow();
+            const msgObj = { 
+                type: "msg", 
+                nEnc: enc(curN, curP, isOfficial), 
+                tEnc: enc(curT, curP, isOfficial), 
+                text: enc(txt, curP, isOfficial), 
+                time: NOW 
+            };
+
+            if (isLocalEnvironment) {
+                localMockDb.chat[curR].push(msgObj);
+                if (window.refreshLocalTimeline) window.refreshLocalTimeline();
+            } else {
+                try {
+                    await push(ref(db, `chat/${curR}`), msgObj);
+                } catch (e) { alert("送信に失敗しました: " + e.message); }
+            }
         }
 
-        // ⭕ 【修正箇所】「幕」になっていたタイポを「$」に修正しました
         $("mi").addEventListener("compositionstart", () => { isComposing = true; });
         $("mi").addEventListener("compositionend", (e) => { isComposing = false; toggleClearBtn(e.target.value); });
         $("mi").addEventListener("input", (e) => { 
@@ -980,32 +1066,36 @@
             if (isProcessingExit || !curR) return; isProcessingExit = true;
             try {
                 if (!isWatcherMode) {
-                    const isOfficial = (curR === OFFICIAL_ROOM_HASH);
-                    const chatRef = ref(db, `chat/${curR}`);
-                    const presRef = ref(db, `presence/${curR}`);
-                    const roomRef = ref(db, `rooms/${curR}`);
-                    const myRef = ref(db, `presence/${curR}/${myUid}`);
-
-                    const presSnap = await get(presRef);
-                    let otherUsersCount = 0;
-                    const currentNow = getServerNow();
-
-                    if (presSnap.exists()) {
-                        const users = presSnap.val() || {};
-                        Object.keys(users).forEach(k => {
-                            if (k !== myUid && (currentNow - (users[k].lastSeen || currentNow) <= USER_TIMEOUT)) {
-                                otherUsersCount++;
-                            }
-                        });
-                    }
-
-                    if (!isOfficial && otherUsersCount === 0) {
-                        await remove(roomRef).catch(()=>{});
-                        await remove(chatRef).catch(()=>{});
-                        await remove(presRef).catch(()=>{});
+                    if (isLocalEnvironment) {
+                        if (localMockDb.presence[curR]) delete localMockDb.presence[curR][myUid];
                     } else {
-                        await push(chatRef, { type: "sys", text: enc(`${curN}${curT} が退室しました`, curP, isOfficial), time: currentNow }).catch(()=>{});
-                        await remove(myRef).catch(()=>{});
+                        const isOfficial = (curR === OFFICIAL_ROOM_HASH);
+                        const chatRef = ref(db, `chat/${curR}`);
+                        const presRef = ref(db, `presence/${curR}`);
+                        const roomRef = ref(db, `rooms/${curR}`);
+                        const myRef = ref(db, `presence/${curR}/${myUid}`);
+
+                        const presSnap = await get(presRef);
+                        let otherUsersCount = 0;
+                        const currentNow = getServerNow();
+
+                        if (presSnap.exists()) {
+                            const users = presSnap.val() || {};
+                            Object.keys(users).forEach(k => {
+                                if (k !== myUid && (currentNow - (users[k].lastSeen || currentNow) <= USER_TIMEOUT)) {
+                                    otherUsersCount++;
+                                }
+                            });
+                        }
+
+                        if (!isOfficial && otherUsersCount === 0) {
+                            await remove(roomRef).catch(()=>{});
+                            await remove(chatRef).catch(()=>{});
+                            await remove(presRef).catch(()=>{});
+                        } else {
+                            await push(chatRef, { type: "sys", text: enc(`${curN}${curT} が退室しました`, curP, isOfficial), time: currentNow }).catch(()=>{});
+                            await remove(myRef).catch(()=>{});
+                        }
                     }
                 }
             } catch(e) {
@@ -1035,18 +1125,22 @@
         $("ni").addEventListener("input", updateTripPreview); $("tk").addEventListener("input", updateTripPreview);
         $("watcher_ni").addEventListener("input", updateWatcherTripPreview); $("watcher_tk").addEventListener("input", updateWatcherTripPreview);
 
+        // 🛠️ 【修正】自動生成処理を補強（プレビュー追従とUI最適化）
         $("masterGenBtn").onclick = () => {
             const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
             let rGen = "", pGen = "";
             for (let i = 0; i < 10; i++) rGen += chars.charAt(Math.floor(Math.random() * chars.length));
             for (let i = 0; i < 12; i++) pGen += chars.charAt(Math.floor(Math.random() * chars.length));
-            $("ri").value = rGen; $("pi").value = pGen; updateTripPreview();
+            $("ri").value = rGen; 
+            $("pi").value = pGen; 
+            // トリップ暗号プレビューも同期させる
+            updateTripPreview();
         };
 
         $("openGuideBtn").onclick = () => $("guideCard").style.display = "flex";
         $("closeGuideBtn").onclick = () => $("guideCard").style.display = "none";
         
-        $("focusBtn").onclick = () => { $("mi").focus(); setTimeout(() => { scrollToLatest(); }, 150); };
+        $("focusBtn").onclick = () => { $("mi").focus(); setTimeout(() => { scrollToLatest(); }, 150); });
 
         function triggerSessionRestore() {
             const sessionData = sessionStorage.getItem("active_room_session");
@@ -1055,10 +1149,12 @@
             }
         }
 
-        onValue(ref(db, ".info/serverTimeOffset"), (snap) => { 
-            serverTimeOffset = snap.val() || 0; 
-            isOffsetLoaded = true;
-        }, { onlyOnce: true });
+        if (!isLocalEnvironment) {
+            onValue(ref(db, ".info/serverTimeOffset"), (snap) => { 
+                serverTimeOffset = snap.val() || 0; 
+                isOffsetLoaded = true;
+            }, { onlyOnce: true });
+        }
 
         window.addEventListener("DOMContentLoaded", async () => {
             const savedName = localStorage.getItem("nez_ni"), savedTripKey = localStorage.getItem("nez_tk");

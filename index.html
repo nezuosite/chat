@@ -831,7 +831,7 @@
                         
                         if (currentNow - (users[k].lastSeen || currentNow) > USER_TIMEOUT) {
                             if (!isOfficial && (trackedUserStates[k] === "active" || trackedUserStates[k] === undefined)) {
-                                if (users[k].nEnc && k === myUid) { try { push(chatRef, { type: "sys", text: enc(`${n}${trip} がタイムアウト自動退室しました`, curP, isOfficial), time: currentNow }); } catch(e){} }
+                                if (users[k].nEnc && k === myUid && !isWatcherMode) { try { push(chatRef, { type: "sys", text: enc(`${n}${trip} がタイムアウト自動退室しました`, curP, isOfficial), time: currentNow }); } catch(e){} }
                             }
                             return;
                         }
@@ -922,7 +922,6 @@
             } catch (e) { alert("送信に失敗しました: " + e.message); }
         }
 
-        // ⭕ 【修正箇所】「幕」になっていたタイポを「$」に修正しました
         $("mi").addEventListener("compositionstart", () => { isComposing = true; });
         $("mi").addEventListener("compositionend", (e) => { isComposing = false; toggleClearBtn(e.target.value); });
         $("mi").addEventListener("input", (e) => { 

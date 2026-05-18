@@ -158,8 +158,14 @@
 </head>
 <body class="flex items-start justify-center p-2 pt-4 text-slate-100 h-full w-screen overflow-hidden">
 
-    <!-- 🚪 ロビー画面 -->
-    <div id="lobby" class="w-full max-w-md p-3.5 bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 flex flex-col gap-2.5 select-text max-h-[96dvh] overflow-y-auto overflow-x-hidden">
+    <!-- ⏳ 初期ロード中マスク (チラつき防止用) -->
+    <div id="appSplash" class="fixed inset-0 bg-[#111111] z-50 flex flex-col items-center justify-center gap-3">
+        <div class="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+        <p class="text-xs font-bold text-slate-500 tracking-wider">CONNECTING...</p>
+    </div>
+
+    <!-- 🚪 ロビー画面 (初期状態はhidden) -->
+    <div id="lobby" class="w-full max-w-md p-3.5 bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 flex flex-col gap-2.5 select-text max-h-[96dvh] overflow-y-auto overflow-x-hidden hidden">
         <h1 class="text-base font-black text-center text-indigo-400 tracking-tight shrink-0">NEZU ONETIME CHAT</h1>
         
         <!-- 📄 ルーム説明 -->
@@ -333,7 +339,7 @@
                     <p class="font-bold text-red-400 flex items-center gap-1 text-[11.5px]">🚫 絶対禁止事項</p>
                     <p class="text-[10.5px] text-slate-400">当空間は完全匿名の一時利用を想定していますが、以下の行為は固くお断りします。</p>
                     <ul class="list-disc list-inside space-y-0.5 text-red-300 text-[10px] pl-1">
-                        <li>他者の権利を侵害する名誉毀損・誹謗中傷・脅迫行為</li>
+                        <li>他者の権利を侵害する名誉毀損・誹謗中傷・脅脅行為</li>
                         <li>公式部屋などパブリック空間での過度な荒らし行為、スパム連投</li>
                         <li>違法コンテンツのリンク共有、または犯罪行為の計画・唆し</li>
                         <li>システムの脆弱性を狙った不正なリクエストやサーバーへの攻撃</li>
@@ -396,6 +402,16 @@
 
         const OFFICIAL_ROOM_HASH = CryptoJS.SHA256("公式部屋").toString();
         const chatTimeline = $('chatTimeline');
+
+        // スプラッシュマスクを外すヘルパー
+        const hideSplash = () => {
+            const splash = $("appSplash");
+            if (splash) {
+                splash.style.opacity = "0";
+                splash.style.transition = "opacity 0.2s ease-out";
+                setTimeout(() => splash.remove(), 200);
+            }
+        };
 
         window.playYoutubeInline = function(buttonElement, vid) {
             const container = buttonElement.closest('.msg-card').querySelector('.yt-placeholder');
@@ -465,7 +481,7 @@
             if (unsubscribeChat) { unsubscribeChat(); unsubscribeChat = null; }
             if (unsubscribePres) { unsubscribePres(); unsubscribePres = null; }
             if (unsubscribeRoomConfig) { unsubscribeRoomConfig(); unsubscribeRoomConfig = null; }
-            if (unsubscribeConn) { unsubscribeConn = null; }
+            if (unsubscribeConn) { unsubscribeConn(); unsubscribeConn = null; }
             if (heartbeatIntervalId) { clearInterval(heartbeatIntervalId); heartbeatIntervalId = null; }
         };
 
@@ -481,8 +497,8 @@
             }
             $("mainApp").style.display = "none"; $("lobby").style.display = "flex";
             setLobbyButtonsState(true);
+            hideSplash();
 
-            // ロビーに戻ってきた際、保存してある名前とトリップキーを再ロードして同期する
             const savedName = localStorage.getItem("nez_ni"), savedTripKey = localStorage.getItem("nez_tk");
             if (savedName) { $("ni").value = savedName; $("watcher_ni").value = savedName; } 
             if (savedTripKey) { $("tk").value = savedTripKey; $("watcher_tk").value = savedTripKey; }
@@ -721,6 +737,7 @@
                 const isOfficial = (hashId === OFFICIAL_ROOM_HASH);
                 
                 const wasWatcherMode = isWatcherMode;
+                // セッション情報に名前がある、もしくはダイレクトクリックでなければ、公式部屋でも通常入室（再入室含む）と判定
                 isWatcherMode = isOfficial && (!name || isDirectOfficialClick);
 
                 if (curR && (curR !== hashId || wasWatcherMode !== isWatcherMode)) {
@@ -769,10 +786,11 @@
                     console.warn("部屋構成の設定をスキップしました:", roomErr);
                 }
 
-                if (unsubscribeConn) unsubscribeConn();
+                if (unsubscribeConn) { unsubscribeConn(); unsubscribeConn = null; }
                 
                 let isReentry = false;
 
+                // 🌟 【修正箇所】通常入室 or 公式部屋のアクティブ再入室時の整合性バリデーション
                 if (!isWatcherMode) {
                     const pSnap = await get(presRef);
                     if (pSnap.exists()) {
@@ -786,14 +804,11 @@
                                 const activeN = textDec(users[k].nEnc, pass, isOfficial);
                                 const activeT = textDec(users[k].tEnc, pass, isOfficial) || "";
                                 
-                                // 同一UIDセッションがすでに部屋に存在する場合の検証（公式部屋・一般部屋共通）
                                 if (k === myUid) {
-                                    // 保存されている「名前」と「トリップ」が双方とも完全一致する場合のみ再入室（復活）を許可する
                                     if (activeN === name && activeT === trip) {
                                         isReentry = true;
                                         continue; 
                                     } else {
-                                        // 一致しない場合は同一UIDであっても別人とみなして他者重複判定に回す（または弾く）
                                         showLobby(`【再入室拒否】以前のセッション情報と「名前」または「トリップ」が一致しません。`);
                                         return;
                                     }
@@ -801,7 +816,6 @@
 
                                 currentActiveCount++;
 
-                                // 自分以外のUIDが、まったく同じ名前でアクティブに滞在している場合は弾く
                                 if (activeN === name) {
                                     showLobby(`【入室エラー】「${name}」という名前はすでに部屋の中で使用されています。`);
                                     return;
@@ -839,6 +853,8 @@
                     $("input-container").style.display = "flex"; $("watcher-banner").style.display = "none";
                     $("exitBtn").innerText = "退室"; 
                 }
+
+                hideSplash(); // 完全に通信と描画の構築が終わったらマスクを外す
 
                 let trackedUserStates = {};
                 unsubscribePres = onValue(presRef, s => {
@@ -1078,6 +1094,7 @@
             if (sessionData) {
                 try { 
                     const s = JSON.parse(sessionData); 
+                    // セッション復元時、s.curN（名前）が書き込まれていれば、公式部屋であっても通常参加（再入室）として扱う
                     await join(s.rawR, s.curP, s.curN, s.curT, s.maxLimit, s.selectRomMin, s.selectRoomMin); 
                     return true;
                 } catch(e) { 
@@ -1093,6 +1110,7 @@
         }, { onlyOnce: true });
 
         window.addEventListener("DOMContentLoaded", async () => {
+            // 初期状態はHTMLに 'hidden' が付与されているため、どちらの画面もまだ見えません (チラつき防止)
             const savedName = localStorage.getItem("nez_ni"), savedTripKey = localStorage.getItem("nez_tk");
             if (savedName) { $("ni").value = savedName; $("watcher_ni").value = savedName; } 
             if (savedTripKey) { $("tk").value = savedTripKey; $("watcher_tk").value = savedTripKey; }
@@ -1107,13 +1125,19 @@
             updateTripPreview(); updateWatcherTripPreview();
             setLobbyButtonsState(true);
 
+            // 1. まず最優先でアクティブセッション（リロード）の復元を試みる
             const restored = await triggerSessionRestore();
-            if (restored) return;
+            if (restored) return; // 復元が成功した場合は join 側でスプラッシュが消されるため、ここで終了
 
+            // 2. クエリパラメータで自動入室が指定されている場合の判定
             if ($("ri").value.trim() && $("pi").value.trim() && ($("ni").value || n)) {
                 const autoJoined = await executeJoinFromLobbyInputs();
                 if (autoJoined) return;
             }
+
+            // 3. どのセッションも復元されなかった場合、ここで初めてロビー画面を表示してスプラッシュを外す
+            $("lobby").style.display = "flex"; 
+            hideSplash();
 
             if (r && p && !$("ni").value) {
                 $("ni").focus();

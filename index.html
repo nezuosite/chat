@@ -409,18 +409,7 @@
             query, orderByChild, get, update, onDisconnect, onChildAdded
         } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
-        // モジュールモード内安全スコープ参照のためのエイリアス
         const CryptoJS = window.CryptoJS;
-        const YT = window.YT;
-
-        const $ = id => document.getElementById(id);
-        
-        const DB_URL = "https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app";
-        const YT_API_KEY = "AIzaSyDIJ1xyCEHBSkpSvntbsJrtmwBl03juoCw"; 
-
-        const firebaseApp = initializeApp({ databaseURL: DB_URL });
-        const db = getDatabase(firebaseApp);
-
         let ytPlayer = null, isYtReady = false;
         let currentSearchResults = []; 
         let currentSearchIndex = 0;
@@ -447,8 +436,20 @@
         let stagingVideoId = null; 
 
         let curR, curP, curN, curT, rawR, serverTimeOffset = 0, isOffsetLoaded = false;
-        let unsubscribeChat = null, unsubscribePres = null, unsubscribeRoomConfig = null, unsubscribeConn = null;
+        let unsubscribeChat = null, unsubscribePres = null, unsubscribeRoomConfig = null, unsubscribeConn = null, unsubscribeRoomState = null;
         let isProcessingExit = false, USER_TIMEOUT = 30 * 60 * 1000, ROOM_LIFETIME = 60 * 60 * 1000;
+
+        const $ = id => document.getElementById(id);
+        const DB_URL = "https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app";
+        const YT_API_KEY = "AIzaSyDIJ1xyCEHBSkpSvntbsJrtmwBl03juoCw"; 
+
+        let db = null;
+        try {
+            const firebaseApp = initializeApp({ databaseURL: DB_URL });
+            db = getDatabase(firebaseApp);
+        } catch(e) {
+            console.error("Firebase Initialization Failed. Switching to Local Simulator.", e);
+        }
 
         const uid = (() => {
             let id = localStorage.getItem("nez_uid");
@@ -465,21 +466,30 @@
                     serverTimeOffset = 0;
                     resolve();
                 }
-            }, 1500);
+            }, 1000);
 
-            onValue(ref(db, ".info/connected"), (snap) => {
-                if (snap.val() === true) {
-                    onValue(ref(db, ".info/serverTimeOffset"), (offsetSnap) => { 
-                        if (!resolved) {
-                            serverTimeOffset = offsetSnap.val() || 0; 
-                            isOffsetLoaded = true;
-                            resolved = true;
-                            clearTimeout(timer);
-                            resolve();
-                        }
-                    }, { onlyOnce: true });
-                }
-            });
+            if (!db) { resolved = true; isOffsetLoaded = true; resolve(); return; }
+
+            try {
+                onValue(ref(db, ".info/connected"), (snap) => {
+                    if (snap.val() === true) {
+                        onValue(ref(db, ".info/serverTimeOffset"), (offsetSnap) => { 
+                            if (!resolved) {
+                                serverTimeOffset = offsetSnap.val() || 0; 
+                                isOffsetLoaded = true;
+                                resolved = true;
+                                clearTimeout(timer);
+                                resolve();
+                            }
+                        }, { onlyOnce: true });
+                    }
+                }, { onlyOnce: true });
+            } catch(e) {
+                resolved = true;
+                isOffsetLoaded = true;
+                serverTimeOffset = 0;
+                resolve();
+            }
         });
 
         const getServerNow = () => Date.now() + (isOffsetLoaded ? serverTimeOffset : 0);
@@ -528,13 +538,15 @@
         }
 
         function updateTripPreview() { 
-            const n = $("ni").value.replace(/[\s\u3000]+/g, "").trim(); 
-            const tk = $("tk").value.trim(); 
-            if (n && tk) {
-                $("tp").innerText = generateTripString(n, tk); $("tp").style.display = "inline-block";
-            } else {
-                $("tp").innerText = ""; $("tp").style.display = "none";
-            }
+            try {
+                const n = $("ni").value.replace(/[\s\u3000]+/g, "").trim(); 
+                const tk = $("tk").value.trim(); 
+                if (n && tk) {
+                    $("tp").innerText = generateTripString(n, tk); $("tp").style.display = "inline-block";
+                } else {
+                    $("tp").innerText = ""; $("tp").style.display = "none";
+                }
+            } catch(e) {}
         }
 
         const toggleClearBtn = (text) => {
@@ -544,18 +556,15 @@
 
         window.__seekPlayerToSeconds = async function(seconds) {
             if (!ytPlayer || typeof ytPlayer.seekTo !== 'function') return;
-            if (amIOwner && !stagingVideoId) {
-                activateShield(1200);
+            activateShield(1500);
+            if (amIOwner && !stagingVideoId && db) {
                 const status = (typeof ytPlayer.getPlayerState === 'function' && ytPlayer.getPlayerState() === window.YT.PlayerState.PLAYING) ? "playing" : "paused";
                 const currentId = globalVideoStateCache?.videoId || "dQw4w9WgXcQ";
                 await set(ref(db, `rooms/${curR}/videoState`), { 
                     videoId: currentId, status: status, currentTime: seconds, timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: lastResetSeed || Date.now()
-                });
-                ytPlayer.seekTo(seconds, true);
-            } else {
-                activateShield(1200);
-                ytPlayer.seekTo(seconds, true);
+                }).catch(()=>{});
             }
+            ytPlayer.seekTo(seconds, true);
         };
 
         const loadYtScript = () => {
@@ -669,12 +678,14 @@
             $("hostStagingOverlay").classList.add("hidden");
 
             const NOW = getServerNow();
-            await set(ref(db, `rooms/${curR}/videoState`), { 
-                videoId: stagingVideoId, status: currentStatus, currentTime: currentPos, timestamp: NOW, owner: uid, ownerName: enc(curN, curP), resetSeed: Date.now()
-            });
+            if (db) {
+                await set(ref(db, `rooms/${curR}/videoState`), { 
+                    videoId: stagingVideoId, status: currentStatus, currentTime: currentPos, timestamp: NOW, owner: uid, ownerName: enc(curN, curP), resetSeed: Date.now()
+                }).catch(()=>{});
+                await update(ref(db, `rooms/${curR}`), { lastActivity: NOW }).catch(()=>{});
+            }
             
             lastLoadedVideoId = stagingVideoId;
-            await update(ref(db, `rooms/${curR}`), { lastActivity: NOW });
             
             if (currentStatus === "playing" && ytPlayer && typeof ytPlayer.playVideo === 'function') {
                 try { ytPlayer.playVideo(); } catch(e){}
@@ -711,23 +722,41 @@
             </div>`;
         };
 
-        // 🔄 接続シーケンス
         async function join(rID, pass, name, trip, maxLimit, selectRomMin, selectRoomMin) {
             await syncTimePromise;
             
             curR = CryptoJS.SHA256(rID).toString(); rawR = rID; curP = pass; curN = name; curT = trip;
+
+            const proceedToMainApp = () => {
+                $("roomDisplay").innerText = `ROOM: ${rID}`; 
+                $("lobby").style.display = "none"; 
+                $("mainApp").style.display = "flex";
+                $("errMsg").style.display = "none";
+            };
+
+            if (!db) {
+                proceedToMainApp();
+                $("roomDisplay").innerText = `ROOM: ${rID} (Local-Mode)`;
+                setupLocalTheaterLoop(null, null, null, maxLimit, null);
+                return;
+            }
 
             const chatRef = ref(db, `chat/${curR}`), presRef = ref(db, `presence/${curR}`), roomRef = ref(db, `rooms/${curR}`), myRef = ref(db, `presence/${curR}/${uid}`);
             const roomStateRef = ref(db, `rooms/${curR}/videoState`);
 
             try {
                 const NOW = getServerNow();
-                let roomSnap = await get(roomRef).catch(() => ({ exists: () => false }));
+                let roomSnap = null;
+                try {
+                    roomSnap = await get(roomRef);
+                } catch(e) {
+                    console.warn("Room layout fetched via local simulation mode.");
+                }
                 
                 USER_TIMEOUT = selectRomMin * 60 * 1000; ROOM_LIFETIME = selectRoomMin * 60 * 1000;
                 let finalMax = parseInt(maxLimit, 10) || 4;
 
-                if (roomSnap.exists()) {
+                if (roomSnap && typeof roomSnap.exists === 'function' && roomSnap.exists()) {
                     const rData = roomSnap.val();
                     if (rData) {
                         USER_TIMEOUT = (parseInt(rData.romMin, 10) || selectRomMin) * 60 * 1000; 
@@ -742,34 +771,42 @@
                 if (pSnap && pSnap.exists()) {
                     const users = pSnap.val() || {}; let currentActiveCount = 0;
                     Object.keys(users).forEach(k => { if (k !== uid && NOW - (users[k].lastSeen || NOW) <= USER_TIMEOUT) currentActiveCount++; });
-                    if (currentActiveCount >= finalMax) { showLobby(`対象の部屋は現在満員です（上限 ${finalMax} 名）`); return; }
+                    if (currentActiveCount >= finalMax) { 
+                        showLobby(`対象の部屋は現在満員です（上限 ${finalMax} 名）`); 
+                        return; 
+                    }
                 }
 
                 if (unsubscribeConn) unsubscribeConn();
-                unsubscribeConn = onValue(ref(db, ".info/connected"), (snap) => {
-                    if (snap.val() === true && curR && !isProcessingExit) {
-                        onDisconnect(myRef).remove(); 
-                        set(myRef, { nEnc: enc(name, pass), tEnc: enc(trip, pass), lastSeen: getServerNow() });
-                    }
-                });
+                try {
+                    unsubscribeConn = onValue(ref(db, ".info/connected"), (snap) => {
+                        if (snap.val() === true && curR && !isProcessingExit) {
+                            onDisconnect(myRef).remove(); 
+                            set(myRef, { nEnc: enc(name, pass), tEnc: enc(trip, pass), lastSeen: getServerNow() }).catch(()=>{});
+                        }
+                    });
+                } catch(e){}
 
-                await set(myRef, { nEnc: enc(name, pass), tEnc: enc(trip, pass), lastSeen: NOW });
+                await set(myRef, { nEnc: enc(name, pass), tEnc: enc(trip, pass), lastSeen: NOW }).catch(()=>{});
                 
                 localStorage.setItem("nez_ni", name);
                 localStorage.setItem("nez_tk", $("tk").value.trim());
                 localStorage.setItem("nez_ri", rID);
 
-                $("roomDisplay").innerText = `ROOM: ${rID}`; $("lobby").style.display = "none"; $("mainApp").style.display = "flex";
-                $("errMsg").style.display = "none";
-                await push(chatRef, { type: "sys", text: enc(`${name}${trip} が入室しました`, pass), time: NOW });
+                proceedToMainApp();
+                await push(chatRef, { type: "sys", text: enc(`${name}${trip} が入室しました`, pass), time: NOW }).catch(()=>{});
             } catch (e) { 
-                console.error("Firebase connection error:", e);
-                $("roomDisplay").innerText = `ROOM: ${rID} (Local-Mode)`; 
-                $("lobby").style.display = "none"; 
-                $("mainApp").style.display = "flex";
+                console.error("Firebase connection routing bypassed:", e);
+                proceedToMainApp();
+                $("roomDisplay").innerText = `ROOM: ${rID} (Local/Protected)`; 
+                setupLocalTheaterLoop(null, null, null, maxLimit, null);
                 return;
             }
 
+            setupLocalTheaterLoop(roomStateRef, roomRef, presRef, finalMax, chatRef);
+        }
+
+        function setupLocalTheaterLoop(roomStateRef, roomRef, presRef, finalMax, chatRef) {
             if (sliderIntervalId) clearInterval(sliderIntervalId);
             sliderIntervalId = setInterval(() => {
                 if (!ytPlayer || typeof ytPlayer.getCurrentTime !== 'function' || isUserDraggingSlider) return;
@@ -866,17 +903,17 @@
 
             const onSliderChange = async (sliderEl) => {
                 const targetTime = Number(sliderEl.value);
+                activateShield(1500);
                 if (ytPlayer && typeof ytPlayer.seekTo === 'function') { 
-                    activateShield(1200);
                     ytPlayer.seekTo(targetTime, true); 
                 }
-                if (amIOwner && !stagingVideoId) {
+                if (amIOwner && !stagingVideoId && roomStateRef) {
                     const status = (ytPlayer && typeof ytPlayer.getPlayerState === 'function' && ytPlayer.getPlayerState() === window.YT.PlayerState.PLAYING) ? "playing" : "paused";
                     const currentId = globalVideoStateCache?.videoId || "dQw4w9WgXcQ";
                     await set(roomStateRef, { 
                         videoId: currentId, status: status, currentTime: targetTime, timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: lastResetSeed || Date.now()
-                    });
-                    await update(ref(db, `rooms/${curR}`), { lastActivity: getServerNow() });
+                    }).catch(()=>{});
+                    await update(roomRef, { lastActivity: getServerNow() }).catch(()=>{});
                 }
                 isUserDraggingSlider = false;
             };
@@ -888,20 +925,22 @@
                 e.preventDefault(); if (!ytPlayer || typeof ytPlayer.getPlayerState !== 'function') return;
                 const pState = ytPlayer.getPlayerState();
                 if (pState === window.YT.PlayerState.PLAYING) {
-                    if (amIOwner && !stagingVideoId) syncPauseAction(); else { activateShield(1000); ytPlayer.pauseVideo(); }
+                    if (amIOwner && !stagingVideoId) syncPauseAction(); else { activateShield(1200); ytPlayer.pauseVideo(); }
                 } else {
-                    if (amIOwner && !stagingVideoId) syncPlayAction(); else { activateShield(1000); ytPlayer.playVideo(); }
+                    if (amIOwner && !stagingVideoId) syncPlayAction(); else { activateShield(1200); ytPlayer.playVideo(); }
                 }
             };
 
             async function syncPlayAction() {
                 if (!ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') return;
-                amIOwner = true; activateShield(1200); lastSavedStatus = "playing"; 
+                amIOwner = true; activateShield(1500); lastSavedStatus = "playing"; 
                 const currentPos = ytPlayer.getCurrentTime();
                 try {
-                    await set(roomStateRef, { 
-                        videoId: globalVideoStateCache?.videoId || "dQw4w9WgXcQ", status: "playing", currentTime: currentPos, timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: lastResetSeed || Date.now()
-                    });
+                    if (roomStateRef) {
+                        await set(roomStateRef, { 
+                            videoId: globalVideoStateCache?.videoId || "dQw4w9WgXcQ", status: "playing", currentTime: currentPos, timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: lastResetSeed || Date.now()
+                        }).catch(()=>{});
+                    }
                     if (ytPlayer.getPlayerState() !== window.YT.PlayerState.PLAYING) ytPlayer.playVideo();
                     startPeriodicSync();
                 } catch(err){}
@@ -909,13 +948,15 @@
 
             async function syncPauseAction() {
                 if (!ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') return;
-                amIOwner = true; activateShield(1200); lastSavedStatus = "paused"; 
+                amIOwner = true; activateShield(1500); lastSavedStatus = "paused"; 
                 if (syncIntervalId) { clearInterval(syncIntervalId); syncIntervalId = null; }
                 const currentPos = ytPlayer.getCurrentTime();
                 try {
-                    await set(roomStateRef, { 
-                        videoId: globalVideoStateCache?.videoId || "dQw4w9WgXcQ", status: "paused", currentTime: currentPos, timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: lastResetSeed || Date.now()
-                    });
+                    if (roomStateRef) {
+                        await set(roomStateRef, { 
+                            videoId: globalVideoStateCache?.videoId || "dQw4w9WgXcQ", status: "paused", currentTime: currentPos, timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: lastResetSeed || Date.now()
+                        }).catch(()=>{});
+                    }
                     if (ytPlayer.getPlayerState() !== window.YT.PlayerState.PAUSED) ytPlayer.pauseVideo();
                 } catch(err){}
             }
@@ -931,193 +972,168 @@
                 activateShield(1500);
                 $("guestConfirmOverlay").classList.add("hidden");
                 
-                await set(roomStateRef, {
-                    videoId: currentId, status: currentStatus, currentTime: currentPos, timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: Date.now()
-                });
+                if (roomStateRef) {
+                    await set(roomStateRef, {
+                        videoId: currentId, status: currentStatus, currentTime: currentPos, timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: Date.now()
+                    }).catch(()=>{});
+                }
                 updateControlsUI();
                 startPeriodicSync();
             };
 
-            unsubscribePres = onValue(presRef, s => {
-                if (!curR) return; const users = s.val() || {}, frag = document.createDocumentFragment(), NOW = getServerNow();
-                let count = 0, amIInList = false;
-                Object.keys(users).forEach(k => {
-                    const n = textDec(users[k].nEnc, curP); if (!n) return;
-                    if (NOW - (users[k].lastSeen || NOW) > USER_TIMEOUT) return;
-                    if (k === uid) amIInList = true; count++;
-                    const span = document.createElement("span"); span.className = "user-chip"; span.innerText = n + (textDec(users[k].tEnc, curP) || ""); frag.appendChild(span);
-                });
-                $("presenceList").innerHTML = ""; $("presenceList").appendChild(frag); $("presenceCount").innerText = `[${count}/${finalMax}]`;
-                if (count === 0 && !isProcessingExit && amIInList) { deleteRoomData(curR); showLobby("部屋データを消滅させました。"); }
-            });
+            if (presRef) {
+                try {
+                    unsubscribePres = onValue(presRef, s => {
+                        if (!curR) return; const users = s.val() || {}, frag = document.createDocumentFragment(), NOW = getServerNow();
+                        let count = 0, amIInList = false;
+                        Object.keys(users).forEach(k => {
+                            const n = textDec(users[k].nEnc, curP); if (!n) return;
+                            if (NOW - (users[k].lastSeen || NOW) > USER_TIMEOUT) return;
+                            if (k === uid) amIInList = true; count++;
+                            const span = document.createElement("span"); span.className = "user-chip"; span.innerText = n + (textDec(users[k].tEnc, curP) || ""); frag.appendChild(span);
+                        });
+                        $("presenceList").innerHTML = ""; $("presenceList").appendChild(frag); $("presenceCount").innerText = `[${count}/${finalMax}]`;
+                        if (count === 0 && !isProcessingExit && amIInList) { deleteRoomData(curR); showLobby("部屋データを消滅させました。"); }
+                    });
+                } catch(e){}
+            } else {
+                const span = document.createElement("span"); span.className = "user-chip"; span.innerText = curN + (curT || "");
+                $("presenceList").appendChild(span); $("presenceCount").innerText = `[1/${finalMax}]`;
+            }
 
             $("chatTimeline").innerHTML = ""; 
 
-            if (unsubscribeChat) unsubscribeChat();
-            const chatQuery = query(chatRef, orderByChild("time"));
-            unsubscribeChat = onChildAdded(chatQuery, s => {
-                const m = s.val(); const txt = textDec(m.text, curP); if (!txt) return;
-                const div = document.createElement("div"); div.className = "msg-wrap animate-fade-in";
-                const time = m.time ? new Date(m.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }) : "";
-                
-                if (m.type === "sys") {
-                    div.innerHTML = `<div class="sys-msg text-center text-[10px] font-bold text-slate-400 my-0.5 bg-neutral-800/50 border border-neutral-700/40 py-0.5 px-2 rounded-lg inline-block mx-auto">${linkify(txt)}</div>`;
-                    div.className = "msg-wrap text-center w-full justify-center items-center";
-                } else {
-                    const extractedId = extractVideoId(txt);
-                    let embedMediaHtml = "";
-                    
-                    if (extractedId) {
-                        const containerId = `yt-embed-${s.key}`;
-                        embedMediaHtml = `
-                        <div id="${containerId}" class="mt-1 w-full max-w-[240px] bg-black/50 rounded-xl p-1.5 border border-neutral-800/80 shadow-inner">
-                            <div class="media-preview relative aspect-video rounded-lg overflow-hidden border border-neutral-800">
-                                <img src="https://img.youtube.com/vi/${extractedId}/mqdefault.jpg" class="w-full h-full object-cover">
-                            </div>
-                            <div class="grid grid-cols-3 gap-1 mt-1 text-[9px] font-bold select-none">
-                                <button onclick="window.__jumpToYtVideo('${extractedId}')" class="bg-indigo-600 text-white py-1 rounded transition text-center"><span>📺準備</span></button>
-                                <button onclick="window.__inlinePlayVideo('${containerId}', '${extractedId}')" class="bg-emerald-600 text-white py-1 rounded transition text-center"><span>▶内部</span></button>
-                                <a href="https://www.youtube.com/watch?v=${extractedId}" target="_blank" rel="noopener noreferrer" class="bg-neutral-800 text-slate-300 py-1 rounded border border-neutral-700/50 text-center"><span>🔗外部</span></a>
-                            </div>
-                        </div>`;
-                    }
+            if (chatRef) {
+                try {
+                    if (unsubscribeChat) unsubscribeChat();
+                    const chatQuery = query(chatRef, orderByChild("time"));
+                    unsubscribeChat = onChildAdded(chatQuery, s => {
+                        const m = s.val(); const txt = textDec(m.text, curP); if (!txt) return;
+                        renderSingleMessage(s.key, m, txt);
+                    });
+                } catch(e){}
+            }
 
-                    let vSecBadgeHtml = "";
-                    if (m.vSec !== undefined && m.vSec !== null && m.vSec >= 0) {
-                        vSecBadgeHtml = `<button onclick="window.__seekPlayerToSeconds(${m.vSec})" class="inline-flex items-center gap-0.5 px-1 py-0.2 ml-1 rounded bg-indigo-950 border border-indigo-700/60 text-[9px] font-mono font-bold text-indigo-400 transition">⏱️ ${formatTime(m.vSec)}</button>`;
-                    }
+            if (roomStateRef) {
+                try {
+                    if (unsubscribeRoomState) unsubscribeRoomState();
+                    unsubscribeRoomState = onValue(roomStateRef, (snapshot) => {
+                        if (stagingVideoId) return; 
 
-                    const sN = textDec(m.nEnc, curP) || "???", sT = textDec(m.tEnc, curP) || "";
-                    div.innerHTML = `<div class="text-[10px] font-bold text-slate-400 mb-0.2 pl-1 flex items-center flex-wrap">${esc(sN)}<span class="text-green-400 font-mono text-[9px] ml-0.5">${esc(sT)}</span> ${vSecBadgeHtml} <span class="text-neutral-500 font-normal ml-auto pr-1 text-[9px]">${time}</span></div>
-                        <div class="msg-card msg bg-neutral-900/95 text-slate-200 px-2.5 py-1 rounded-xl border border-neutral-800 shadow-md max-w-sm inline-block break-all new-alert">
-                            <div class="text-xs leading-normal">${linkify(txt)}</div>
-                            ${embedMediaHtml}
-                        </div>`;
-                }
-                
-                $("chatTimeline").insertBefore(div, $("chatTimeline").firstChild);
-                setTimeout(() => { div.querySelector('.msg-card')?.classList.remove('new-alert'); }, 800);
-            });
-
-            // 🔔 Firebaseのデータベース同期リスナー（メイン）
-            onValue(roomStateRef, (snapshot) => {
-                if (stagingVideoId) return; 
-
-                if (!snapshot.exists()) {
-                    if (lastLoadedVideoId === "__INIT__" || !lastLoadedVideoId) { amIOwner = false; updateControlsUI(); return; }
-                    $("ytPlaceholder").style.display = "flex";
-                    $("ytOfficialLinkBtn").style.display = "none";
-                    $("guestConfirmOverlay").classList.add("hidden");
-                    if (syncIntervalId) { clearInterval(syncIntervalId); syncIntervalId = null; }
-                    if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; lastLoadedVideoId = null; }
-                    isUserApprovedSync = false; isExplicitlyClosedByGuest = false; isGuestFreeMode = false; return;
-                }
-                
-                const state = snapshot.val(); if (!state?.videoId) return; 
-                
-                if (globalVideoStateCache && state.timestamp < globalVideoStateCache.timestamp && state.videoId === globalVideoStateCache.videoId) {
-                    return; 
-                }
-
-                globalVideoStateCache = state;
-                amIOwner = (state.owner === uid);
-
-                $("ytOfficialLinkBtn").href = `https://www.youtube.com/watch?v=${state.videoId}`;
-                $("ytOfficialLinkBtn").style.display = "inline-block";
-
-                if (lastLoadedVideoId !== state.videoId) {
-                    isExplicitlyClosedByGuest = false; if (!amIOwner) { isGuestFreeMode = false; } 
-                }
-
-                if (amIOwner) {
-                    isUserApprovedSync = true; $("ytGuestModeBtn").style.display = "none"; 
-                    $("guestConfirmOverlay").classList.add("hidden");
-                    updateControlsUI();
-                    if (isLocalAction || state.status === "playing" || state.status === "paused") {
-                        lastLoadedVideoId = state.videoId; lastSavedStatus = state.status;
-                        $("ytPlaceholder").style.display = "none";
-                    }
-                } else {
-                    $("ytGuestModeBtn").style.display = "block"; 
-                    if (isExplicitlyClosedByGuest) {
-                        $("ytPlaceholder").style.display = "flex";
-                        $("guestConfirmOverlay").classList.add("hidden");
-                        return;
-                    }
-
-                    if (lastLoadedVideoId !== state.videoId) {
-                        isUserApprovedSync = false; 
-                        const hostNameDec = state.ownerName ? textDec(state.ownerName, curP) : "誰か";
+                        if (!snapshot.exists()) {
+                            if (lastLoadedVideoId === "__INIT__" || !lastLoadedVideoId) { amIOwner = false; updateControlsUI(); return; }
+                            $("ytPlaceholder").style.display = "flex";
+                            $("ytOfficialLinkBtn").style.display = "none";
+                            $("guestConfirmOverlay").classList.add("hidden");
+                            if (syncIntervalId) { clearInterval(syncIntervalId); syncIntervalId = null; }
+                            if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; lastLoadedVideoId = null; }
+                            isUserApprovedSync = false; isExplicitlyClosedByGuest = false; isGuestFreeMode = false; return;
+                        }
                         
-                        $("guestConfirmHostName").innerText = `👑 ${hostNameDec} から同期要求`;
-                        $("guestConfirmOverlay").classList.remove("hidden");
-                        $("ytPlaceholder").style.display = "none";
-                        return; 
-                    }
-                    if (!isUserApprovedSync) return;
-                }
-
-                if (isUserApprovedSync) {
-                    $("ytPlaceholder").style.display = "none";
-                    $("guestConfirmOverlay").classList.add("hidden");
-                }
-                
-                updateControlsUI();
-                
-                if (!amIOwner && isGuestFreeMode) { lastLoadedVideoId = state.videoId; return; }
-                if (lastSavedStatus !== state.status) { triggerFlashEffect(state.status); }
-                
-                const incomingResetSeed = state.resetSeed || 0;
-                const needsForcedRebuild = (lastLoadedVideoId !== state.videoId) || (lastResetSeed !== incomingResetSeed);
-                lastSavedStatus = state.status; lastResetSeed = incomingResetSeed;
-
-                if (needsForcedRebuild || !ytPlayer) {
-                    lastLoadedVideoId = state.videoId; 
-                    if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; }
-                    
-                    const buildPlayer = () => {
-                        if (!isYtReady || !window.YT?.Player) { setTimeout(buildPlayer, 100); return; }
-                        let startPos = state.currentTime;
-                        if (state.status === "playing") { startPos += ((getServerNow() - state.timestamp) / 1000); }
-
-                        activateShield(1500); 
+                        const state = snapshot.val(); if (!state?.videoId) return; 
                         
-                        // 規制対策：ゲスト側は自動再生失敗を防ぐため、初期化パラメーター段階で一時的にミュートをかける
-                        const shouldMuteOnInit = !amIOwner; 
+                        if (globalVideoStateCache && state.timestamp < globalVideoStateCache.timestamp && state.videoId === globalVideoStateCache.videoId) {
+                            return; 
+                        }
 
-                        ytPlayer = new window.YT.Player('ytPlayer', { 
-                            videoId: state.videoId, 
-                            playerVars: { 
-                                'autoplay': (state.status==="paused")?0:1, 'playsinline': 1, 'controls': 0, 'disablekb': 1, 
-                                'rel': 0, 'modestbranding': 1, 'start': Math.max(0, Math.floor(startPos)), 'mute': shouldMuteOnInit ? 1 : 0
-                            }, 
-                            events: { 
-                                'onReady': (e) => { 
-                                    if (shouldMuteOnInit) {
-                                        e.target.mute();
-                                    } else {
-                                        applyLocalVolumeFromUI();
-                                    }
-                                    if (state.status === "playing") {
-                                        try { e.target.playVideo(); } catch(err){}
-                                    }
-                                    
-                                    // プレイヤー生成完了後に遅延してローカル音量を上書き吸着（ブラウザロック回避）
-                                    setTimeout(() => {
-                                        if (ytPlayer && typeof ytPlayer.unMute === 'function') {
-                                            applyLocalVolumeFromUI();
-                                        }
-                                    }, 600);
+                        globalVideoStateCache = state;
+                        amIOwner = (state.owner === uid);
 
-                                    syncPlayer(state); 
-                                }, 
-                                'onStateChange': onPlayerStateChange 
-                            } 
-                        });
-                    };
-                    buildPlayer();
-                } else { syncPlayer(state); }
-            });
+                        $("ytOfficialLinkBtn").href = `https://www.youtube.com/watch?v=${state.videoId}`;
+                        $("ytOfficialLinkBtn").style.display = "inline-block";
+
+                        if (lastLoadedVideoId !== state.videoId) {
+                            isExplicitlyClosedByGuest = false; if (!amIOwner) { isGuestFreeMode = false; } 
+                        }
+
+                        if (amIOwner) {
+                            isUserApprovedSync = true; $("ytGuestModeBtn").style.display = "none"; 
+                            $("guestConfirmOverlay").classList.add("hidden");
+                            updateControlsUI();
+                            if (isLocalAction || state.status === "playing" || state.status === "paused") {
+                                lastLoadedVideoId = state.videoId; lastSavedStatus = state.status;
+                                $("ytPlaceholder").style.display = "none";
+                            }
+                        } else {
+                            $("ytGuestModeBtn").style.display = "block"; 
+                            if (isExplicitlyClosedByGuest) {
+                                $("ytPlaceholder").style.display = "flex";
+                                $("guestConfirmOverlay").classList.add("hidden");
+                                return;
+                            }
+
+                            if (lastLoadedVideoId !== state.videoId) {
+                                isUserApprovedSync = false; 
+                                const hostNameDec = state.ownerName ? textDec(state.ownerName, curP) : "誰か";
+                                
+                                $("guestConfirmHostName").innerText = `👑 ${hostNameDec} から同期要求`;
+                                $("guestConfirmOverlay").classList.remove("hidden");
+                                $("ytPlaceholder").style.display = "none";
+                                return; 
+                            }
+                            if (!isUserApprovedSync) return;
+                        }
+
+                        if (isUserApprovedSync) {
+                            $("ytPlaceholder").style.display = "none";
+                            $("guestConfirmOverlay").classList.add("hidden");
+                        }
+                        
+                        updateControlsUI();
+                        
+                        if (!amIOwner && isGuestFreeMode) { lastLoadedVideoId = state.videoId; return; }
+                        if (lastSavedStatus !== state.status) { triggerFlashEffect(state.status); }
+                        
+                        const incomingResetSeed = state.resetSeed || 0;
+                        const needsForcedRebuild = (lastLoadedVideoId !== state.videoId) || (lastResetSeed !== incomingResetSeed);
+                        lastSavedStatus = state.status; lastResetSeed = incomingResetSeed;
+
+                        if (needsForcedRebuild || !ytPlayer) {
+                            lastLoadedVideoId = state.videoId; 
+                            if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; }
+                            
+                            const buildPlayer = () => {
+                                if (!isYtReady || !window.YT?.Player) { setTimeout(buildPlayer, 100); return; }
+                                let startPos = state.currentTime;
+                                if (state.status === "playing") { startPos += ((getServerNow() - state.timestamp) / 1000); }
+
+                                activateShield(1500); 
+                                const shouldMuteOnInit = !amIOwner; 
+
+                                ytPlayer = new window.YT.Player('ytPlayer', { 
+                                    videoId: state.videoId, 
+                                    playerVars: { 
+                                        'autoplay': (state.status==="paused")?0:1, 'playsinline': 1, 'controls': 0, 'disablekb': 1, 
+                                        'rel': 0, 'modestbranding': 1, 'start': Math.max(0, Math.floor(startPos)), 'mute': shouldMuteOnInit ? 1 : 0
+                                    }, 
+                                    events: { 
+                                        'onReady': (e) => { 
+                                            if (shouldMuteOnInit) {
+                                                e.target.mute();
+                                            } else {
+                                                applyLocalVolumeFromUI();
+                                            }
+                                            if (state.status === "playing") {
+                                                try { e.target.playVideo(); } catch(err){}
+                                            }
+                                            
+                                            setTimeout(() => {
+                                                if (ytPlayer && typeof ytPlayer.unMute === 'function') {
+                                                    applyLocalVolumeFromUI();
+                                                }
+                                            }, 600);
+
+                                            syncPlayer(state); 
+                                        }, 
+                                        'onStateChange': onPlayerStateChange 
+                                    } 
+                                });
+                            };
+                            buildPlayer();
+                        } else { syncPlayer(state); }
+                    });
+                } catch(e){}
+            }
 
             $("guestConfirmAcceptBtn").onclick = (e) => {
                 e.preventDefault(); isUserApprovedSync = true;
@@ -1218,20 +1234,20 @@
 
                     if (state.status === "playing") {
                         if (ytPlayer.getPlayerState() !== window.YT.PlayerState.PLAYING) { 
-                            activateShield(800);
+                            activateShield(1000);
                             ytPlayer.playVideo(); 
                         }
                         if (timeDiff > 2.5) { 
-                            activateShield(800);
+                            activateShield(1000);
                             ytPlayer.seekTo(targetTime, true); 
                         }
                     } else if (state.status === "paused") {
                         if (ytPlayer.getPlayerState() !== window.YT.PlayerState.PAUSED) { 
-                            activateShield(800);
+                            activateShield(1000);
                             ytPlayer.pauseVideo(); 
                         }
                         if (timeDiff > 1.2) { 
-                            activateShield(800);
+                            activateShield(1000);
                             ytPlayer.seekTo(targetTime, true); 
                         }
                     }
@@ -1244,19 +1260,21 @@
                     if (!amIOwner || !ytPlayer || typeof ytPlayer.getCurrentTime !== 'function' || isLocalAction || stagingVideoId) return;
                     if (ytPlayer.getPlayerState() !== window.YT.PlayerState.PLAYING) return;
                     try {
-                        await set(roomStateRef, { 
-                            videoId: globalVideoStateCache?.videoId || "dQw4w9WgXcQ", status: "playing", currentTime: ytPlayer.getCurrentTime(), timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: lastResetSeed || Date.now()
-                        });
+                        if (roomStateRef) {
+                            await set(roomStateRef, { 
+                                videoId: globalVideoStateCache?.videoId || "dQw4w9WgXcQ", status: "playing", currentTime: ytPlayer.getCurrentTime(), timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: lastResetSeed || Date.now()
+                            }).catch(()=>{});
+                        }
                     } catch(e){}
                 }, 3500);
             }
 
-            async function onPlayerStateChange(event) {
+            function onPlayerStateChange(event) {
                 if (!ytPlayer) return;
                 const pState = event.data;
 
                 if (pState === window.YT.PlayerState.ENDED) {
-                    activateShield(1200);
+                    activateShield(1500);
                     if (syncIntervalId) { clearInterval(syncIntervalId); syncIntervalId = null; }
                     
                     const duration = typeof ytPlayer.getDuration === 'function' ? ytPlayer.getDuration() : 0;
@@ -1265,9 +1283,9 @@
                     }
                     try { ytPlayer.pauseVideo(); } catch(e){}
 
-                    if (amIOwner && !stagingVideoId) {
+                    if (amIOwner && !stagingVideoId && roomStateRef) {
                         lastSavedStatus = "paused";
-                        await set(roomStateRef, { 
+                        set(roomStateRef, { 
                             videoId: globalVideoStateCache?.videoId || "dQw4w9WgXcQ", 
                             status: "paused", 
                             currentTime: duration > 0 ? duration - 0.5 : 0, 
@@ -1275,29 +1293,25 @@
                             owner: uid, 
                             ownerName: enc(curN, curP), 
                             resetSeed: lastResetSeed || Date.now() 
-                        });
+                        }).catch(()=>{});
                     }
                     return;
                 }
 
-                if (stagingVideoId) {
-                    return; 
-                }
-
-                // バッファリング中(-1, 3)はFirebaseへのイベント送信から除外してループを防止する
+                if (stagingVideoId) return; 
                 if (pState === window.YT.PlayerState.BUFFERING || pState === -1) return;
                 if (isGuestFreeMode || isLocalAction) return;
 
                 if (amIOwner) {
                     const curTime = ytPlayer.getCurrentTime ? ytPlayer.getCurrentTime() : 0;
                     if (pState === window.YT.PlayerState.PLAYING) {
-                        activateShield(1000); lastSavedStatus = "playing";
-                        set(roomStateRef, { videoId: globalVideoStateCache?.videoId || "dQw4w9WgXcQ", status: "playing", currentTime: curTime, timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: lastResetSeed || Date.now() });
+                        activateShield(1200); lastSavedStatus = "playing";
+                        if (roomStateRef) set(roomStateRef, { videoId: globalVideoStateCache?.videoId || "dQw4w9WgXcQ", status: "playing", currentTime: curTime, timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: lastResetSeed || Date.now() }).catch(()=>{});
                         startPeriodicSync();
                     } else if (pState === window.YT.PlayerState.PAUSED) {
-                        activateShield(1000); lastSavedStatus = "paused";
+                        activateShield(1200); lastSavedStatus = "paused";
                         if (syncIntervalId) { clearInterval(syncIntervalId); syncIntervalId = null; }
-                        set(roomStateRef, { videoId: globalVideoStateCache?.videoId || "dQw4w9WgXcQ", status: "paused", currentTime: curTime, timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: lastResetSeed || Date.now() });
+                        if (roomStateRef) set(roomStateRef, { videoId: globalVideoStateCache?.videoId || "dQw4w9WgXcQ", status: "paused", currentTime: curTime, timestamp: getServerNow(), owner: uid, ownerName: enc(curN, curP), resetSeed: lastResetSeed || Date.now() }).catch(()=>{});
                     }
                 } else {
                     if (globalVideoStateCache) {
@@ -1315,18 +1329,67 @@
                 if (!curR) return;
                 try {
                     const NOW = getServerNow();
-                    await update(ref(db, `presence/${curR}/${uid}`), { lastSeen: NOW });
-                    await update(roomRef, { lastActivity: NOW }); 
+                    if (db) {
+                        await update(ref(db, `presence/${curR}/${uid}`), { lastSeen: NOW }).catch(()=>{});
+                        await update(roomRef, { lastActivity: NOW }).catch(()=>{}); 
+                    }
                 } catch(e) {}
             }, 15000);
 
-            if (unsubscribeRoomConfig) unsubscribeRoomConfig();
-            unsubscribeRoomConfig = onValue(roomRef, async (snap) => {
-                if (!snap.exists()) return; const data = snap.val();
-                if (data && data.lastActivity && getServerNow() - data.lastActivity > ROOM_LIFETIME) {
-                    await deleteRoomData(curR); showLobby("部屋の上限時間を超過したため消滅しました。");
+            if (roomRef && db) {
+                try {
+                    if (unsubscribeRoomConfig) unsubscribeRoomConfig();
+                    unsubscribeRoomConfig = onValue(roomRef, async (snap) => {
+                        if (!snap.exists()) return; const data = snap.val();
+                        if (data && data.lastActivity && getServerNow() - data.lastActivity > ROOM_LIFETIME) {
+                            await deleteRoomData(curR); showLobby("部屋の上限時間を超過したため消滅しました。");
+                        }
+                    });
+                } catch(e){}
+            }
+        }
+
+        function renderSingleMessage(key, m, txt) {
+            const div = document.createElement("div"); div.className = "msg-wrap animate-fade-in";
+            const time = m.time ? new Date(m.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }) : "";
+            
+            if (m.type === "sys") {
+                div.innerHTML = `<div class="sys-msg text-center text-[10px] font-bold text-slate-400 my-0.5 bg-neutral-800/50 border border-neutral-700/40 py-0.5 px-2 rounded-lg inline-block mx-auto">${linkify(txt)}</div>`;
+                div.className = "msg-wrap text-center w-full justify-center items-center";
+            } else {
+                const extractedId = extractVideoId(txt);
+                let embedMediaHtml = "";
+                
+                if (extractedId) {
+                    const containerId = `yt-embed-${key}`;
+                    embedMediaHtml = `
+                    <div id="${containerId}" class="mt-1 w-full max-w-[240px] bg-black/50 rounded-xl p-1.5 border border-neutral-800/80 shadow-inner">
+                        <div class="media-preview relative aspect-video rounded-lg overflow-hidden border border-neutral-800">
+                            <img src="https://img.youtube.com/vi/${extractedId}/mqdefault.jpg" class="w-full h-full object-cover">
+                        </div>
+                        <div class="grid grid-cols-3 gap-1 mt-1 text-[9px] font-bold select-none">
+                            <button onclick="window.__jumpToYtVideo('${extractedId}')" class="bg-indigo-600 text-white py-1 rounded transition text-center"><span>📺準備</span></button>
+                            <button onclick="window.__inlinePlayVideo('${containerId}', '${extractedId}')" class="bg-emerald-600 text-white py-1 rounded transition text-center"><span>▶内部</span></button>
+                            <a href="https://www.youtube.com/watch?v=${extractedId}" target="_blank" rel="noopener noreferrer" class="bg-neutral-800 text-slate-300 py-1 rounded border border-neutral-700/50 text-center"><span>🔗外部</span></a>
+                        </div>
+                    </div>`;
                 }
-            });
+
+                let vSecBadgeHtml = "";
+                if (m.vSec !== undefined && m.vSec !== null && m.vSec >= 0) {
+                    vSecBadgeHtml = `<button onclick="window.__seekPlayerToSeconds(${m.vSec})" class="inline-flex items-center gap-0.5 px-1 py-0.2 ml-1 rounded bg-indigo-950 border border-indigo-700/60 text-[9px] font-mono font-bold text-indigo-400 transition">⏱️ ${formatTime(m.vSec)}</button>`;
+                }
+
+                const sN = textDec(m.nEnc, curP) || "???", sT = textDec(m.tEnc, curP) || "";
+                div.innerHTML = `<div class="text-[10px] font-bold text-slate-400 mb-0.2 pl-1 flex items-center flex-wrap">${esc(sN)}<span class="text-green-400 font-mono text-[9px] ml-0.5">${esc(sT)}</span> ${vSecBadgeHtml} <span class="text-neutral-500 font-normal ml-auto pr-1 text-[9px]">${time}</span></div>
+                    <div class="msg-card msg bg-neutral-900/95 text-slate-200 px-2.5 py-1 rounded-xl border border-neutral-800 shadow-md max-w-sm inline-block break-all new-alert">
+                        <div class="text-xs leading-normal">${linkify(txt)}</div>
+                        ${embedMediaHtml}
+                    </div>`;
+            }
+            
+            $("chatTimeline").insertBefore(div, $("chatTimeline").firstChild);
+            setTimeout(() => { div.querySelector('.msg-card')?.classList.remove('new-alert'); }, 800);
         }
 
         async function sendMessage() {
@@ -1338,14 +1401,18 @@
                 currentVideoSeconds = Math.floor(ytPlayer.getCurrentTime());
             }
 
-            try {
-                const NOW = getServerNow();
-                const payload = { type: "msg", nEnc: enc(curN, curP), tEnc: enc(curT, curP), text: enc(txt, curP), time: NOW };
-                if (currentVideoSeconds !== null && currentVideoSeconds >= 0) payload.vSec = currentVideoSeconds; 
-                
-                await push(ref(db, `chat/${curR}`), payload);
-                await update(ref(db, `rooms/${curR}`), { lastActivity: NOW });
-            } catch (e) { alert("送信エラー。"); }
+            const NOW = getServerNow();
+            const payload = { type: "msg", nEnc: enc(curN, curP), tEnc: enc(curT, curP), text: enc(txt, curP), time: NOW };
+            if (currentVideoSeconds !== null && currentVideoSeconds >= 0) payload.vSec = currentVideoSeconds; 
+
+            if (db) {
+                try {
+                    await push(ref(db, `chat/${curR}`), payload).catch(()=>{});
+                    await update(ref(db, `rooms/${curR}`), { lastActivity: NOW }).catch(()=>{});
+                } catch (e) { console.error("Message push failed sync context."); }
+            } else {
+                renderSingleMessage(crypto.randomUUID(), payload, txt);
+            }
         }
 
         $("mi").addEventListener("compositionstart", () => { isComposing = true; });
@@ -1371,7 +1438,6 @@
                 return;
             }
 
-            // トリップ空欄時のフォールバック処理
             if (!tk) {
                 tk = "anon_" + Math.floor(Math.random() * 10000);
                 $("tk").value = tk;
@@ -1379,19 +1445,21 @@
             
             $("enterBtn").disabled = true; $("enterBtn").innerText = "接続中...";
             const tripStr = generateTripString(cleanName, tk);
-            join(r, p, cleanName, tripStr, Number($("maxUsers").value), Number($("romTime").value), Number($("roomCleanTime").value));
+            await join(r, p, cleanName, tripStr, Number($("maxUsers").value), Number($("romTime").value), Number($("roomCleanTime").value));
         }
 
-        $("enterBtn").onclick = async () => { joinFromParams(); };
+        $("enterBtn").onclick = async () => { await joinFromParams(); };
 
         async function exitRoom() {
             if (isProcessingExit || !curR) return; isProcessingExit = true;
             if (syncIntervalId) { clearInterval(syncIntervalId); syncIntervalId = null; }
-            try {
-                if (amIOwner) await remove(ref(db, `rooms/${curR}/videoState`)).catch(()=>{});
-                await push(ref(db, `chat/${curR}`), { type: "sys", text: enc(`${curN}${curT} が退出しました`, curP), time: getServerNow() });
-                await remove(ref(db, `presence/${curR}/${uid}`)).catch(()=>{});
-            } catch(e){}
+            if (db) {
+                try {
+                    if (amIOwner) await remove(ref(db, `rooms/${curR}/videoState`)).catch(()=>{});
+                    await push(ref(db, `chat/${curR}`), { type: "sys", text: enc(`${curN}${curT} が退出しました`, curP), time: getServerNow() }).catch(()=>{});
+                    await remove(ref(db, `presence/${curR}/${uid}`)).catch(()=>{});
+                } catch(e){}
+            }
             isProcessingExit = false; showLobby();
         }
 
@@ -1424,9 +1492,10 @@
         };
 
         const clearSubscriptions = () => {
-            if (unsubscribeChat) { unsubscribeChat(); unsubscribeChat = null; }
-            if (unsubscribePres) { unsubscribePres(); unsubscribePres = null; } 
-            if (unsubscribeRoomConfig) { unsubscribeRoomConfig(); unsubscribeRoomConfig = null; }
+            if (unsubscribeChat) { try{unsubscribeChat();}catch(e){} unsubscribeChat = null; }
+            if (unsubscribePres) { try{unsubscribePres();}catch(e){} unsubscribePres = null; } 
+            if (unsubscribeRoomConfig) { try{unsubscribeRoomConfig();}catch(e){} unsubscribeRoomConfig = null; }
+            if (unsubscribeRoomState) { try{unsubscribeRoomState();}catch(e){} unsubscribeRoomState = null; }
             if (unsubscribeConn) { unsubscribeConn = null; }
             if (sliderIntervalId) { clearInterval(sliderIntervalId); sliderIntervalId = null; }
             if (heartbeatIntervalId) { clearInterval(heartbeatIntervalId); heartbeatIntervalId = null; }
@@ -1435,6 +1504,7 @@
         };
 
         async function deleteRoomData(roomHash) {
+            if (!db) return;
             try { await Promise.all([remove(ref(db, `chat/${roomHash}`)), remove(ref(db, `presence/${roomHash}`)), remove(ref(db, `rooms/${roomHash}`))]); } catch (e) {}
         }
 
@@ -1450,8 +1520,8 @@
                 if (data.items && data.items.length > 0) {
                     currentSearchResults = data.items.filter(item => item.id.videoId); currentSearchIndex = 0; renderSearchResults();
                     window.__setupStagingVideo(currentSearchResults[0].id.videoId, currentSearchResults[0].snippet.title);
-                } else { alert("動画が見つかりませんでした。"); }
-            } catch(e) { alert("API制限。URL直貼りを推奨します。"); }
+                } else { alert("動画が見つかりませんでした。URL直貼りを試してください。"); }
+            } catch(e) { alert("API利用枠制限。URL直貼りを推奨します。"); }
             $("ytSearchBtn").disabled = false; $("ytSearchBtn").innerText = "準備/確認";
         }
 

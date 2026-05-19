@@ -325,7 +325,7 @@
                         本システムは暗号規格である**AES-256**を使用し、ユーザーのブラウザ上でテキストを暗号化してから通信します。解読に必要な鍵（部屋パスワード）はサーバーに転送されません。
                     </p>
                     <p class="text-amber-400 font-bold text-[10.5px]">
-                        【安全設計】タブを閉じたり回線が切れても、会話データは即座に消えません。ただし、誰も発言しない状態が指定時間続くと、サーバーからデータが完全抹消されます。
+                        【安全設計】タブを閉じたり回線が切れても、入室状態や会話データは即座に消えません。ただし、誰も発言しない状態が指定時間続くと、サーバーからデータが完全抹消されます。
                     </p>
                 </div>
 
@@ -366,7 +366,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
         import {
             getDatabase, ref, push, onValue, set, remove, child,
-            query, orderByChild, limitToLast, get, update, onDisconnect, endBefore
+            query, orderByChild, limitToLast, get, update, onDisconnect, endBefore, startAfter
         } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
         const $ = id => document.getElementById(id);
@@ -397,7 +397,9 @@
         let myUid = null;
         
         let oldestLoadedTimestamp = null;
+        let newestLoadedTimestamp = null;
         let isPaginationEnding = false;
+        let currentPageNum = 1;
 
         let ROOM_LIFETIME = (30 * 60) * 1000; 
 
@@ -606,7 +608,7 @@
             
             for (let i = 0; i < children.length; i++) {
                 const child = children[i];
-                if (child.id === "officialPagerBtn") continue;
+                if (child.id === "officialPagerContainer") continue;
                 const childTs = parseInt(child.getAttribute("data-timestamp"), 10);
                 if (!isNaN(childTs) && ts > childTs) {
                     chatTimeline.insertBefore(el, child);
@@ -614,7 +616,7 @@
                 }
             }
             
-            const pager = $("officialPagerBtn");
+            const pager = $("officialPagerContainer");
             if (pager) {
                 chatTimeline.insertBefore(el, pager);
             } else {
@@ -792,17 +794,44 @@
             }
         }
 
-        window.loadMoreOfficialPastLogs = async function(buttonEl) {
-            if (!curR || !oldestLoadedTimestamp || isPaginationEnding) return;
-            buttonEl.disabled = true;
-            buttonEl.innerText = "読み込み中...";
+        window.navigatePastLogsPagination = async function(direction) {
+            if (!curR) return;
             
+            const container = $("officialPagerContainer");
+            if (container) {
+                const navButtons = container.querySelectorAll("button");
+                navButtons.forEach(btn => btn.disabled = true);
+            }
+
             try {
                 const isOfficial = (curR === OFFICIAL_ROOM_HASH);
                 const chatRef = ref(db, `chat/${curR}`);
-                const pastQuery = query(chatRef, orderByChild("time"), endBefore(oldestLoadedTimestamp), limitToLast(50));
-                
-                const snap = await get(pastQuery);
+                let paginatedQuery;
+
+                if (direction === 'older') {
+                    if (!oldestLoadedTimestamp) return;
+                    paginatedQuery = query(chatRef, orderByChild("time"), endBefore(oldestLoadedTimestamp), limitToLast(50));
+                } else if (direction === 'newer') {
+                    if (!newestLoadedTimestamp) {
+                        currentPageNum = 1;
+                        renderPaginationUI();
+                        return;
+                    }
+                    paginatedQuery = query(chatRef, orderByChild("time"), startAfter(newestLoadedTimestamp), limitToLast(50));
+                } else if (direction === 'latest') {
+                    currentPageNum = 1;
+                    renderedMsgIds.clear();
+                    chatTimeline.innerHTML = "";
+                    isPaginationEnding = false;
+                    
+                    let limitCount = isOfficial ? 50 : 200; 
+                    let initialQuery = query(chatRef, orderByChild("time"), limitToLast(limitCount));
+                    const snap = await get(initialQuery);
+                    handleIncomingBatch(snap, isOfficial);
+                    return;
+                }
+
+                const snap = await get(paginatedQuery);
                 const fetchedMsgs = [];
                 
                 snap.forEach(s => {
@@ -814,37 +843,114 @@
                 });
 
                 if (fetchedMsgs.length === 0) {
-                    isPaginationEnding = true;
-                    buttonEl.innerText = "これ以上ログはありません";
-                    setTimeout(() => buttonEl.remove(), 1500);
+                    if (direction === 'older') isPaginationEnding = true;
+                    renderPaginationUI();
                     return;
                 }
 
-                fetchedMsgs.sort((a, b) => b.time - a.time);
-                oldestLoadedTimestamp = fetchedMsgs[fetchedMsgs.length - 1].time;
+                fetchedMsgs.sort((a, b) => a.time - b.time);
+
+                renderedMsgIds.clear();
+                chatTimeline.innerHTML = "";
+
+                oldestLoadedTimestamp = fetchedMsgs[0].time;
+                newestLoadedTimestamp = fetchedMsgs[fetchedMsgs.length - 1].time;
+
+                if (direction === 'older') {
+                    currentPageNum++;
+                } else if (direction === 'newer') {
+                    currentPageNum = Math.max(1, currentPageNum - 1);
+                }
 
                 fetchedMsgs.forEach(m => {
-                    if (renderedMsgIds.has(m._key)) return;
+                    renderedMsgIds.add(m._key);
+                    const el = createMessageElement(m, curP, isOfficial);
+                    if (el) chatTimeline.appendChild(el);
+                });
+
+                isPaginationEnding = (fetchedMsgs.length < 50 && direction === 'older');
+                renderPaginationUI();
+                chatTimeline.scrollTop = 0;
+
+            } catch(e) {
+                console.error("ページネーション取得失敗:", e);
+                renderPaginationUI();
+            }
+        };
+
+        function handleIncomingBatch(snapshot, isOfficial) {
+            const incomingMsgs = [];
+            snapshot.forEach(s => {
+                const m = s.val();
+                if (m && m.time) {
+                    m._key = s.key;
+                    incomingMsgs.push(m);
+                }
+            });
+
+            incomingMsgs.sort((a, b) => a.time - b.time);
+
+            if (incomingMsgs.length > 0) {
+                oldestLoadedTimestamp = incomingMsgs[0].time;
+                newestLoadedTimestamp = incomingMsgs[incomingMsgs.length - 1].time;
+            }
+
+            incomingMsgs.forEach(m => {
+                if (!renderedMsgIds.has(m._key)) {
                     renderedMsgIds.add(m._key);
                     const el = createMessageElement(m, curP, isOfficial);
                     if (el) insertMessageInChronologicalOrder(el);
-                });
-
-                buttonEl.disabled = false;
-                buttonEl.innerText = "さらに古いログを読み込む（50件）";
-                
-                if (fetchedMsgs.length < 50) {
-                    isPaginationEnding = true;
-                    buttonEl.innerText = "すべてのログを読み込みました";
-                    setTimeout(() => buttonEl.remove(), 1500);
                 }
+            });
 
-            } catch(e) {
-                console.error("過去ログ取得失敗:", e);
-                buttonEl.disabled = false;
-                buttonEl.innerText = "再試行する";
-            }
-        };
+            renderPaginationUI();
+        }
+
+        function renderPaginationUI() {
+            const oldContainer = $("officialPagerContainer");
+            if (oldContainer) oldContainer.remove();
+
+            const isOfficial = (curR === OFFICIAL_ROOM_HASH);
+            if (!isOfficial) return; 
+
+            const pagerContainer = document.createElement("div");
+            pagerContainer.id = "officialPagerContainer";
+            pagerContainer.className = "w-full bg-slate-900/60 border border-slate-800 rounded-xl p-2.5 my-2 flex flex-col gap-2 shrink-0 select-none animate-fade-in";
+
+            const infoRow = document.createElement("div");
+            infoRow.className = "flex justify-between items-center text-[10px] font-bold text-slate-400 px-1";
+            infoRow.innerHTML = `<span>最新ログ ◀ Page ${currentPageNum} ▶ 最古ログ</span>
+                                 <span>${isPaginationEnding ? '最古ページに到達' : '過去データあり'}</span>`;
+            pagerContainer.appendChild(infoRow);
+
+            const btnRow = document.createElement("div");
+            btnRow.className = "flex gap-1 items-center justify-between";
+
+            const toLatestBtn = document.createElement("button");
+            toLatestBtn.className = "flex-1 py-1.5 text-[11px] font-extrabold text-indigo-400 bg-slate-950 rounded-lg border border-slate-800 hover:bg-slate-850 active:scale-95 transition disabled:opacity-40";
+            toLatestBtn.innerText = "← 最新面";
+            toLatestBtn.disabled = (currentPageNum === 1);
+            toLatestBtn.onclick = () => window.navigatePastLogsPagination('latest');
+
+            const prevBtn = document.createElement("button");
+            prevBtn.className = "flex-1 py-1.5 text-[11px] font-bold text-slate-300 bg-slate-950 rounded-lg border border-slate-800 hover:bg-slate-850 active:scale-95 transition disabled:opacity-40";
+            prevBtn.innerText = "◀ 新しい";
+            prevBtn.disabled = (currentPageNum === 1);
+            prevBtn.onclick = () => window.navigatePastLogsPagination('newer');
+
+            const nextBtn = document.createElement("button");
+            nextBtn.className = "flex-1 py-1.5 text-[11px] font-bold text-slate-300 bg-slate-950 rounded-lg border border-slate-800 hover:bg-slate-850 active:scale-95 transition disabled:opacity-40";
+            nextBtn.innerText = "古い ▶";
+            nextBtn.disabled = isPaginationEnding;
+            nextBtn.onclick = () => window.navigatePastLogsPagination('older');
+
+            btnRow.appendChild(toLatestBtn);
+            btnRow.appendChild(prevBtn);
+            btnRow.appendChild(nextBtn);
+            pagerContainer.appendChild(btnRow);
+
+            chatTimeline.appendChild(pagerContainer);
+        }
 
         async function cleanRoomDataImmediate() {
             if (!curR || curR === OFFICIAL_ROOM_HASH) return;
@@ -920,14 +1026,15 @@
                     ROOM_LIFETIME = (isOfficial ? 999999999 : (rData.roomMin || selectRoomMin)) * 60 * 1000;
                     if (rData.max !== undefined) finalMax = isOfficial ? 10 : Number(rData.max);
 
+                    // 【生存確認】入室時チェックをここに適用
                     if (!isOfficial && (NOW - lastKnownActivity > ROOM_LIFETIME)) {
+                        console.log("⏱️ 入室時チェック: 部屋の生存期限切れを検知しました。サーバーから残骸をクリーンアップします。");
                         await cleanRoomDataImmediate();
                         roomExistsInDb = false;
                         lastKnownActivity = NOW;
                     }
                 }
 
-                // 【最重要】部屋データが完全に消滅していた場合、セッション復元(isSessionRestore)であっても新規作成モードにフォールバックさせる
                 let isReentry = isSessionRestore;
                 if (!roomExistsInDb && !isOfficial) {
                     isReentry = false; 
@@ -960,10 +1067,6 @@
                         if (!isReentry && currentActiveCount >= finalMax) { showLobby(`部屋が満員です（上限 ${finalMax} 名）`); return; }
                     }
 
-                    await onDisconnect(ref(db)).cancel().catch(()=>{});
-                    await onDisconnect(myRef).remove().catch(()=>{});
-
-                    // 部屋に入った瞬間に即座に生存確認（lastActivity）を更新し、ゾンビ化判定を防ぐ
                     if (!isOfficial) {
                         await update(roomRef, { lastActivity: NOW }).catch(()=>{});
                     }
@@ -977,7 +1080,6 @@
                     if (!isOfficial) localStorage.setItem("nez_tk", $("tk").value.trim());
                 }
 
-                // ローカルセッションを安全に同期保存
                 localStorage.setItem("active_room_session", JSON.stringify({
                     rawR, curP, curN: isWatcherMode ? "" : curN, curT: isWatcherMode ? "" : curT, maxLimit, selectRoomMin, isWatcherMode
                 }));
@@ -1000,12 +1102,13 @@
 
                 renderedMsgIds.clear();
                 chatTimeline.innerHTML = "";
+                currentPageNum = 1;
+                isPaginationEnding = false;
 
                 if (!isOfficial) {
                     unsubscribeRoomConfig = onValue(roomRef, async (snap) => {
                         if (!snap.exists() && curR && !isProcessingExit) {
                             isProcessingExit = true;
-                            // 部屋構成リスナーによる破綻を防ぐためローカルセッションを消去
                             localStorage.removeItem("active_room_session");
                             alert("この部屋は活動タイマー上限または全メンバー退出により完全消去されました。");
                             isProcessingExit = false;
@@ -1054,47 +1157,18 @@
                         } catch(err) { console.error(err); }
                     }
 
-                    let hasNewMessage = false;
-                    const incomingMsgs = [];
-                    
-                    snapshot.forEach(s => {
-                        const m = s.val();
-                        if (m && m.time) {
-                            m._key = s.key;
-                            incomingMsgs.push(m);
-                        }
-                    });
-
-                    incomingMsgs.sort((a, b) => a.time - b.time);
-
-                    if (incomingMsgs.length > 0) {
-                        oldestLoadedTimestamp = incomingMsgs[0].time;
-                    }
-
-                    const oldPager = $("officialPagerBtn");
-                    if (oldPager) oldPager.remove();
-
-                    incomingMsgs.forEach(m => {
-                        if (!renderedMsgIds.has(m._key)) {
-                            renderedMsgIds.add(m._key);
-                            const el = createMessageElement(m, curP, isOfficial);
-                            if (el) {
-                                insertMessageInChronologicalOrder(el);
+                    if (currentPageNum === 1) {
+                        let hasNewMessage = false;
+                        handleIncomingBatch(snapshot, isOfficial);
+                        
+                        snapshot.forEach(s => {
+                            if (renderedMsgIds.has(s.key)) {
                                 hasNewMessage = true;
                             }
-                        }
-                    });
-
-                    if (isOfficial && incomingMsgs.length >= 50 && !isPaginationEnding) {
-                        const pagerBtn = document.createElement("button");
-                        pagerBtn.id = "officialPagerBtn";
-                        pagerBtn.className = "w-full py-2.5 my-2 text-xs font-bold text-indigo-400 bg-slate-900 border border-slate-800 rounded-xl hover:bg-slate-850 transition-all shrink-0";
-                        pagerBtn.innerText = "さらに古いログを読み込む（50件）";
-                        pagerBtn.onclick = function() { window.loadMoreOfficialPastLogs(this); };
-                        chatTimeline.appendChild(pagerBtn);
+                        });
+                        
+                        if (hasNewMessage && !isTimelineScrolledDown) { scrollToLatest(); }
                     }
-
-                    if (hasNewMessage && !isTimelineScrolledDown) { scrollToLatest(); }
                 });
 
             } catch (e) {
@@ -1127,6 +1201,10 @@
                     text: enc(txt, curP, isOfficial), 
                     time: NOW 
                 });
+                
+                if (currentPageNum !== 1) {
+                    await window.navigatePastLogsPagination('latest');
+                }
             } catch (e) { alert("送信失敗: " + e.message); }
         }
 
@@ -1200,7 +1278,6 @@
             localStorage.removeItem("active_room_session");
 
             try {
-                await onDisconnect(ref(db)).cancel().catch(()=>{});
                 if (!isWatcherMode) {
                     const isOfficial = (curR === OFFICIAL_ROOM_HASH);
                     const chatRef = ref(db, `chat/${curR}`);

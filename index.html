@@ -77,6 +77,7 @@
             padding: 16px;
             display: flex;
             flex-direction: column; 
+            justify-content: flex-start;
             gap: 12px;
             background-color: #141414;
             -webkit-overflow-scrolling: touch;
@@ -189,7 +190,7 @@
                 ⚠️ 注意：タブ閉じや回線切断では部屋は消えません。最後の発言から一定時間が経過するか、全員が退室した瞬間にログは完全消去されます。
             </p>
             <p id="localModeIndicator" class="text-emerald-400 font-bold bg-emerald-950/30 border border-emerald-900/40 p-1 rounded text-[10px]">
-                🚀 Strict Activity Mode: 生存確認は「発言（メッセージ送信）」のみで判定。ROM状態や切断に関わらず、会話が途絶えると自動消滅します。
+                🚀 Strict Activity Mode: 生存確認は「発言（メッセージ送信）」のみで判定。一般部屋のログ保存件数は無制限。
             </p>
         </div>
         
@@ -334,6 +335,7 @@
                     <ul class="list-disc list-inside space-y-1 text-slate-400 pl-1">
                         <li>任意の「部屋ID」と「共通の部屋パスワード」を共有した仲間だけが合流できます。</li>
                         <li>「招待」ボタンから、部屋IDとパスワードが埋め込まれたURLを取得できます。</li>
+                        <li>一般の部屋のログ保存件数は無制限です。部屋の生存期間内であれば全件が完全に同期されます。</li>
                         <li>**最後の発言（メッセージ送信）**から設定時間を過ぎると、安全装置が働きサーバー上のログデータは自動的に痕跡なく完全消去されます。</li>
                         <li>全員が「退室」をクリックして誰もいなくなった場合も即時消滅します。</li>
                     </ul>
@@ -344,7 +346,7 @@
                     <p class="text-slate-400">
                         以下の行為は固く禁止します。<br>
                         ・違法な取引、犯罪の謀議、人道に反するコンテンツの共有。<br>
-                        ・ボットやスクリプトを用いたサーバーへのスパム行為。
+                        ・ボットやスクリプトを用いてサーバーへのスパム行為を行うこと。
                     </p>
                 </div>
             </div>
@@ -391,17 +393,16 @@
         let isComposing = false; 
         let curR = null, curP = null, curN = null, curT = null, rawR = null;
         let serverTimeOffset = 0;
-        let unsubscribeChat = null, unsubscribePres = null, unsubscribeRoomConfig = null, unsubscribeConn = null;
+        let unsubscribeChat = null, unsubscribePres = null, unsubscribeRoomConfig = null;
         let isProcessingExit = false;
         let isWatcherMode = false; 
         let myUid = null;
+        let isSelfSending = false; 
         
         let oldestLoadedTimestamp = null;
         let newestLoadedTimestamp = null;
-        let isPaginationEnding = false;
-        let currentPageNum = 1;
-
-        let ROOM_LIFETIME = (30 * 60) * 1000; 
+        let currentTotalCount = 0; 
+        const LOG_PAGE_SIZE = 100; // 公式部屋の表示・保存上限を100件に設定
 
         const OFFICIAL_ROOM_HASH = CryptoJS.SHA256("公式部屋").toString();
         const chatTimeline = $('chatTimeline');
@@ -492,7 +493,6 @@
             if (unsubscribeChat) { unsubscribeChat(); unsubscribeChat = null; }
             if (unsubscribePres) { unsubscribePres(); unsubscribePres = null; }
             if (unsubscribeRoomConfig) { unsubscribeRoomConfig(); unsubscribeRoomConfig = null; }
-            if (unsubscribeConn) { unsubscribeConn(); unsubscribeConn = null; }
             renderedMsgIds.clear();
         };
 
@@ -514,6 +514,8 @@
             if (savedName) { $("ni").value = savedName; $("watcher_ni").value = savedName; } 
             if (savedTripKey) { $("tk").value = savedTripKey; $("watcher_tk").value = savedTripKey; }
             updateTripPreview(); updateWatcherTripPreview();
+            
+            setTimeout(() => { triggerSessionRestore(); }, 100);
         };
 
         const enc = (t, k, isOfficial = false) => {
@@ -602,26 +604,20 @@
             return div;
         }
 
+        // 時系列順（最新が一番上、古いものが下へ蓄積）に並べる挿入関数
         function insertMessageInChronologicalOrder(el) {
             const ts = parseInt(el.getAttribute("data-timestamp"), 10);
-            const children = chatTimeline.children;
-            
+            const children = Array.from(chatTimeline.children);
+
             for (let i = 0; i < children.length; i++) {
                 const child = children[i];
-                if (child.id === "officialPagerContainer") continue;
                 const childTs = parseInt(child.getAttribute("data-timestamp"), 10);
                 if (!isNaN(childTs) && ts > childTs) {
                     chatTimeline.insertBefore(el, child);
                     return;
                 }
             }
-            
-            const pager = $("officialPagerContainer");
-            if (pager) {
-                chatTimeline.insertBefore(el, pager);
-            } else {
-                chatTimeline.appendChild(el);
-            }
+            chatTimeline.appendChild(el);
         }
 
         function parseMessageContentToHtml(text) {
@@ -794,90 +790,6 @@
             }
         }
 
-        window.navigatePastLogsPagination = async function(direction) {
-            if (!curR) return;
-            
-            const container = $("officialPagerContainer");
-            if (container) {
-                const navButtons = container.querySelectorAll("button");
-                navButtons.forEach(btn => btn.disabled = true);
-            }
-
-            try {
-                const isOfficial = (curR === OFFICIAL_ROOM_HASH);
-                const chatRef = ref(db, `chat/${curR}`);
-                let paginatedQuery;
-
-                if (direction === 'older') {
-                    if (!oldestLoadedTimestamp) return;
-                    paginatedQuery = query(chatRef, orderByChild("time"), endBefore(oldestLoadedTimestamp), limitToLast(50));
-                } else if (direction === 'newer') {
-                    if (!newestLoadedTimestamp) {
-                        currentPageNum = 1;
-                        renderPaginationUI();
-                        return;
-                    }
-                    paginatedQuery = query(chatRef, orderByChild("time"), startAfter(newestLoadedTimestamp), limitToLast(50));
-                } else if (direction === 'latest') {
-                    currentPageNum = 1;
-                    renderedMsgIds.clear();
-                    chatTimeline.innerHTML = "";
-                    isPaginationEnding = false;
-                    
-                    let limitCount = isOfficial ? 50 : 200; 
-                    let initialQuery = query(chatRef, orderByChild("time"), limitToLast(limitCount));
-                    const snap = await get(initialQuery);
-                    handleIncomingBatch(snap, isOfficial);
-                    return;
-                }
-
-                const snap = await get(paginatedQuery);
-                const fetchedMsgs = [];
-                
-                snap.forEach(s => {
-                    const m = s.val();
-                    if (m && m.time) {
-                        m._key = s.key;
-                        fetchedMsgs.push(m);
-                    }
-                });
-
-                if (fetchedMsgs.length === 0) {
-                    if (direction === 'older') isPaginationEnding = true;
-                    renderPaginationUI();
-                    return;
-                }
-
-                fetchedMsgs.sort((a, b) => a.time - b.time);
-
-                renderedMsgIds.clear();
-                chatTimeline.innerHTML = "";
-
-                oldestLoadedTimestamp = fetchedMsgs[0].time;
-                newestLoadedTimestamp = fetchedMsgs[fetchedMsgs.length - 1].time;
-
-                if (direction === 'older') {
-                    currentPageNum++;
-                } else if (direction === 'newer') {
-                    currentPageNum = Math.max(1, currentPageNum - 1);
-                }
-
-                fetchedMsgs.forEach(m => {
-                    renderedMsgIds.add(m._key);
-                    const el = createMessageElement(m, curP, isOfficial);
-                    if (el) chatTimeline.appendChild(el);
-                });
-
-                isPaginationEnding = (fetchedMsgs.length < 50 && direction === 'older');
-                renderPaginationUI();
-                chatTimeline.scrollTop = 0;
-
-            } catch(e) {
-                console.error("ページネーション取得失敗:", e);
-                renderPaginationUI();
-            }
-        };
-
         function handleIncomingBatch(snapshot, isOfficial) {
             const incomingMsgs = [];
             snapshot.forEach(s => {
@@ -888,12 +800,19 @@
                 }
             });
 
-            incomingMsgs.sort((a, b) => a.time - b.time);
+            if (incomingMsgs.length === 0) return;
 
-            if (incomingMsgs.length > 0) {
-                oldestLoadedTimestamp = incomingMsgs[0].time;
-                newestLoadedTimestamp = incomingMsgs[incomingMsgs.length - 1].time;
+            // タイムスタンプの新しい順(降順)にソート
+            incomingMsgs.sort((a, b) => b.time - a.time);
+            
+            // 初回読み込み時の境界追跡処理
+            if (renderedMsgIds.size === 0) {
+                newestLoadedTimestamp = incomingMsgs[0].time;
+                oldestLoadedTimestamp = incomingMsgs[incomingMsgs.length - 1].time;
             }
+
+            // 画面挿入時の描画崩れを防ぐため、【古いメッセージ順】に直して1件ずつDOMへ投入
+            incomingMsgs.sort((a, b) => a.time - b.time);
 
             incomingMsgs.forEach(m => {
                 if (!renderedMsgIds.has(m._key)) {
@@ -902,54 +821,6 @@
                     if (el) insertMessageInChronologicalOrder(el);
                 }
             });
-
-            renderPaginationUI();
-        }
-
-        function renderPaginationUI() {
-            const oldContainer = $("officialPagerContainer");
-            if (oldContainer) oldContainer.remove();
-
-            const isOfficial = (curR === OFFICIAL_ROOM_HASH);
-            if (!isOfficial) return; 
-
-            const pagerContainer = document.createElement("div");
-            pagerContainer.id = "officialPagerContainer";
-            pagerContainer.className = "w-full bg-slate-900/60 border border-slate-800 rounded-xl p-2.5 my-2 flex flex-col gap-2 shrink-0 select-none animate-fade-in";
-
-            const infoRow = document.createElement("div");
-            infoRow.className = "flex justify-between items-center text-[10px] font-bold text-slate-400 px-1";
-            infoRow.innerHTML = `<span>最新ログ ◀ Page ${currentPageNum} ▶ 最古ログ</span>
-                                 <span>${isPaginationEnding ? '最古ページに到達' : '過去データあり'}</span>`;
-            pagerContainer.appendChild(infoRow);
-
-            const btnRow = document.createElement("div");
-            btnRow.className = "flex gap-1 items-center justify-between";
-
-            const toLatestBtn = document.createElement("button");
-            toLatestBtn.className = "flex-1 py-1.5 text-[11px] font-extrabold text-indigo-400 bg-slate-950 rounded-lg border border-slate-800 hover:bg-slate-850 active:scale-95 transition disabled:opacity-40";
-            toLatestBtn.innerText = "← 最新面";
-            toLatestBtn.disabled = (currentPageNum === 1);
-            toLatestBtn.onclick = () => window.navigatePastLogsPagination('latest');
-
-            const prevBtn = document.createElement("button");
-            prevBtn.className = "flex-1 py-1.5 text-[11px] font-bold text-slate-300 bg-slate-950 rounded-lg border border-slate-800 hover:bg-slate-850 active:scale-95 transition disabled:opacity-40";
-            prevBtn.innerText = "◀ 新しい";
-            prevBtn.disabled = (currentPageNum === 1);
-            prevBtn.onclick = () => window.navigatePastLogsPagination('newer');
-
-            const nextBtn = document.createElement("button");
-            nextBtn.className = "flex-1 py-1.5 text-[11px] font-bold text-slate-300 bg-slate-950 rounded-lg border border-slate-800 hover:bg-slate-850 active:scale-95 transition disabled:opacity-40";
-            nextBtn.innerText = "古い ▶";
-            nextBtn.disabled = isPaginationEnding;
-            nextBtn.onclick = () => window.navigatePastLogsPagination('older');
-
-            btnRow.appendChild(toLatestBtn);
-            btnRow.appendChild(prevBtn);
-            btnRow.appendChild(nextBtn);
-            pagerContainer.appendChild(btnRow);
-
-            chatTimeline.appendChild(pagerContainer);
         }
 
         async function cleanRoomDataImmediate() {
@@ -1005,8 +876,7 @@
                     $("copyBtn").style.display = "block";
                 }
 
-                ROOM_LIFETIME = (selectRoomMin * 60) * 1000;
-
+                let ROOM_LIFETIME = (selectRoomMin * 60) * 1000;
                 const NOW = getServerNow();
 
                 const chatRef = ref(db, `chat/${curR}`);
@@ -1026,9 +896,7 @@
                     ROOM_LIFETIME = (isOfficial ? 999999999 : (rData.roomMin || selectRoomMin)) * 60 * 1000;
                     if (rData.max !== undefined) finalMax = isOfficial ? 10 : Number(rData.max);
 
-                    // 【生存確認】入室時チェックをここに適用
                     if (!isOfficial && (NOW - lastKnownActivity > ROOM_LIFETIME)) {
-                        console.log("⏱️ 入室時チェック: 部屋の生存期限切れを検知しました。サーバーから残骸をクリーンアップします。");
                         await cleanRoomDataImmediate();
                         roomExistsInDb = false;
                         lastKnownActivity = NOW;
@@ -1102,8 +970,6 @@
 
                 renderedMsgIds.clear();
                 chatTimeline.innerHTML = "";
-                currentPageNum = 1;
-                isPaginationEnding = false;
 
                 if (!isOfficial) {
                     unsubscribeRoomConfig = onValue(roomRef, async (snap) => {
@@ -1132,8 +998,10 @@
                     $("presenceList").innerHTML = ""; $("presenceList").appendChild(frag); $("presenceCount").innerText = `[${count}/${finalMax}]`;
                 });
 
-                let limitCount = isOfficial ? 50 : 200; 
-                let chatQuery = query(chatRef, orderByChild("time"), limitToLast(limitCount));
+                // 公式部屋の場合は取得件数を最大100件に拡張
+                let chatQuery = isOfficial 
+                    ? query(chatRef, orderByChild("time"), limitToLast(LOG_PAGE_SIZE))
+                    : query(chatRef, orderByChild("time"));
                 
                 unsubscribeChat = onValue(chatQuery, async (snapshot) => {
                     if (!curR) return;
@@ -1157,17 +1025,11 @@
                         } catch(err) { console.error(err); }
                     }
 
-                    if (currentPageNum === 1) {
-                        let hasNewMessage = false;
-                        handleIncomingBatch(snapshot, isOfficial);
-                        
-                        snapshot.forEach(s => {
-                            if (renderedMsgIds.has(s.key)) {
-                                hasNewMessage = true;
-                            }
-                        });
-                        
-                        if (hasNewMessage && !isTimelineScrolledDown) { scrollToLatest(); }
+                    handleIncomingBatch(snapshot, isOfficial);
+
+                    if (isSelfSending || !isTimelineScrolledDown) { 
+                        scrollToLatest(); 
+                        isSelfSending = false;
                     }
                 });
 
@@ -1184,6 +1046,8 @@
             
             const isOfficial = (curR === OFFICIAL_ROOM_HASH);
             toggleClearBtn(""); input.value = ""; input.rows = 1; input.style.height = "auto";
+            
+            isSelfSending = true;
             scrollToLatest(); 
 
             try {
@@ -1201,11 +1065,8 @@
                     text: enc(txt, curP, isOfficial), 
                     time: NOW 
                 });
-                
-                if (currentPageNum !== 1) {
-                    await window.navigatePastLogsPagination('latest');
-                }
-            } catch (e) { alert("送信失敗: " + e.message); }
+
+            } catch (e) { alert("送信失敗: " + e.message); isSelfSending = false; }
         }
 
         $("mi").addEventListener("compositionstart", () => { isComposing = true; });
@@ -1307,7 +1168,7 @@
             showLobby(); 
         }
 
-        $("exitBtn").onclick = () => { if (isWatcherMode || confirm("本当に退室しますか？\n全員が退室、または発言が途絶えると、サーバーからデータは即座に完全破棄されます。")) exitRoom(); };
+        $("exitBtn").onclick = () => { if (isWatcherMode || confirm("本当に退室しますか？\n全員が退室、または発言が途減ると、サーバーからデータは即座に完全破棄されます。")) exitRoom(); };
 
         $("copyBtn").onclick = () => {
             if (!rawR || !curP) return;
@@ -1351,7 +1212,7 @@
                     const savedTripKey = localStorage.getItem("nez_tk") || "";
                     const fullTripString = generateTripString(savedName, savedTripKey);
                     
-                    await join(s.rawR, s.curP, savedName, fullTripString, s.maxLimit, s.selectRoomMin || 30, !!s.isWatcherMode, true); 
+                    await join(s.rawR, s.curP, savedName, fullTripString, s.maxLimit || 4, s.selectRoomMin || 30, !!s.isWatcherMode, true); 
                     return true;
                 } catch(e) { localStorage.removeItem("active_room_session"); }
             }
@@ -1377,26 +1238,12 @@
             updateTripPreview(); updateWatcherTripPreview();
             setLobbyButtonsState(true);
 
-            if (r && p) {
-                const checkRi = $("ri").value.trim(); const checkPi = $("pi").value.trim();
-                if (checkRi && checkPi) {
-                    if (checkRi === "公式部屋" || checkRi === "official-room" || checkPi === "official_public_pass") {
-                        const cleanName = (savedName || "").replace(/[\s\u3000]+/g, "").trim();
-                        await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, savedTripKey || ""), 10, 999999999, true);
-                        return;
-                    } else if (savedName || n) {
-                        const autoJoined = await executeJoinFromLobbyInputs(); 
-                        if (autoJoined) return;
-                    }
-                }
-            }
-
             const restored = await triggerSessionRestore(); 
             if (restored) return;
 
+            if (r && p && !$("ni").value) { $("ni").focus(); }
             $("lobby").style.display = "flex"; 
             hideSplash();
-            if (r && p && !$("ni").value) { $("ni").focus(); }
         });
     </script>
 </body>

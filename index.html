@@ -611,11 +611,9 @@
 
                     // 2. d.kuku.lu の判定（画像ページ・ファイルパスの自動処理）
                     if (word.includes('d.kuku.lu/')) {
-                        // パス形式に関わらず最後の英数字ID（gg3c2kj4uなど）を取得
                         const kukuMatch = word.match(/d\.kuku\.lu\/([a-zA-Z0-9]+)/i);
                         if (kukuMatch) {
                             const fileId = kukuMatch[1];
-                            // 生画像展開エンドポイントと公式サムネイル生成エンドポイントを設定
                             const directUrl = `https://d.kuku.lu/b/${fileId}`;
                             const thumbUrl = `https://d.kuku.lu/thumbnail.php?id=${fileId}`;
                             
@@ -647,7 +645,7 @@
                         continue;
                     } 
                     
-                    // 3. ギガファイル便の判定
+                    // 3. ギガファイル便の判定（★画像表示に対応するようアップデート）
                     if (word.includes('gigafile.nu/')) {
                         const gigaMatch = word.match(/https?:\/\/(?:([^.]+)\.)?gigafile\.nu\/(?:download\.php\?file=)?([a-zA-Z0-9-]+)/i);
                         if (gigaMatch) {
@@ -658,6 +656,7 @@
                             hasMediaPending = true;
 
                             const isAudio = audioRegex.test(word);
+                            const isImage = imgRegex.test(word); // URL末尾の拡張子チェック
 
                             asyncHandler = () => {
                                 setTimeout(() => {
@@ -669,6 +668,12 @@
                                             <div class="mt-2 w-full max-w-[260px] p-2 rounded-xl border border-slate-800 bg-slate-950 shadow-md">
                                                 <p class="text-[10px] text-slate-400 font-bold mb-1 px-1 truncate">🎵 ギガファイル オーディオ</p>
                                                 <audio controls src="${esc(directUrl)}" class="w-full h-8 rounded-lg text-xs focus:outline-none" preload="metadata"></audio>
+                                            </div>`;
+                                    } else if (isImage) {
+                                        // 画像URLだった場合は、ダイレクトDL用URLを直接imgタグにマッピングして描画
+                                        target.innerHTML = `
+                                            <div class="mt-2 max-w-[240px] overflow-hidden rounded-lg border border-slate-800 bg-slate-950 shadow-inner">
+                                                <img src="${esc(directUrl)}" alt="送信画像" class="max-h-48 w-full object-cover cursor-pointer hover:opacity-90 active:scale-95 transition" onclick="openImageModal('${esc(directUrl)}')">
                                             </div>`;
                                     } else {
                                         target.innerHTML = `
@@ -1217,6 +1222,7 @@
         });
         $("watcher_tk").addEventListener("input", (e) => {
             $("tk").value = e.target.value;
+            updateTripPreview();
             updateWatcherTripPreview();
         });
 

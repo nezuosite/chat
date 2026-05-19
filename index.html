@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>NEZU ONETIME CHAT (Local Patch v2.4 - Live/Local Auto)</title>
+    <title>NEZU ONETIME CHAT (AtomicClean-v2.6.5-MaxStrict)</title>
     <script src="https://cdn.tailwindcss.com/"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
@@ -76,8 +76,7 @@
             overflow-y: auto;
             padding: 16px;
             display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
+            flex-direction: column; 
             gap: 12px;
             background-color: #141414;
             -webkit-overflow-scrolling: touch;
@@ -173,23 +172,24 @@
 </head>
 <body class="flex items-start justify-center p-2 pt-4 text-slate-100 h-full w-screen overflow-hidden">
 
-    <!-- ⏳ 初期ロード中マスク -->
     <div id="appSplash" class="fixed inset-0 bg-[#111111] z-50 flex flex-col items-center justify-center gap-3">
         <div class="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
         <p class="text-xs font-bold text-slate-500 tracking-wider">CONNECTING...</p>
     </div>
 
-    <!-- 🚪 ロビー画面 -->
     <div id="lobby" class="w-full max-w-md p-3.5 bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 flex flex-col gap-2.5 select-text max-h-[96dvh] overflow-y-auto overflow-x-hidden hidden">
         <h1 class="text-base font-black text-center text-indigo-400 tracking-tight shrink-0">NEZU ONETIME CHAT</h1>
         
-        <div class="bg-indigo-950/40 border border-indigo-900/60 rounded-xl p-2.5 text-[10px] space-y-1 text-slate-300 shrink-0 leading-normal">
-            <p class="font-bold text-indigo-300 flex items-center gap-1 text-[10.5px]">🛡️ エンドツーエンド(E2E) 暗号化空間</p>
+        <div class="bg-indigo-950/40 border border-indigo-900/60 rounded-xl p-2.5 text-[10.5px] space-y-1 text-slate-300 shrink-0 leading-normal">
+            <p class="font-bold text-indigo-300 flex items-center gap-1">🔒 完全エンドツーエンド(E2E)暗号化空間</p>
             <p class="text-slate-400">
-                部屋パスワードを用いてブラウザ側でAES-256暗号化を行う使い捨てチャットです。生データや暗号鍵はサーバーに送信されず、退室や時間経過でログは完全消去されます。
+                入力した共通パスワードを元にブラウザ側で完全に暗号化（AES-256）してから通信します。共通パスワードは一切サーバーへ送信されません。
             </p>
-            <p id="localModeIndicator" class="text-emerald-400 font-bold bg-emerald-950/30 border border-emerald-900/40 p-1 rounded">
-                ⚠️ 公式部屋は常設されています（1ページ50件、過去ログ閲覧可）
+            <p class="text-amber-400 font-bold">
+                ⚠️ 管理者の「ねづお」でもログを解読・覗き見することは物理的に絶対不可能です。
+            </p>
+            <p id="localModeIndicator" class="text-emerald-400 font-bold bg-emerald-950/30 border border-emerald-900/40 p-1 rounded text-[10px]">
+                🚀 Strict Clean Mode: 最後の1人が退室するか、発言タイムアウトが起きた瞬間に、サーバーから部屋データおよび全ログを痕跡なく一撃で完全消去します。
             </p>
         </div>
         
@@ -216,13 +216,13 @@
             
             <div>
                 <label class="block font-bold text-slate-400 mb-0.5">部屋パスワード（会話を解読するための共通鍵） <span class="text-red-500">*</span></label>
-                <input type="text" id="pi" placeholder="メンバー共通 of 暗号化パスワード" autocomplete="off" autocapitalize="off" spellcheck="false" class="w-full px-2.5 py-1.5 border border-slate-700 bg-slate-800 rounded-lg text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <input type="text" id="pi" placeholder="メンバー共通の暗号化パスワード" autocomplete="off" autocapitalize="off" spellcheck="false" class="w-full px-2.5 py-1.5 border border-slate-700 bg-slate-800 rounded-lg text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
             </div>
         </div>
 
         <details class="text-[10.5px] text-slate-400 bg-slate-950 p-2 rounded-xl border border-slate-800 shrink-0">
             <summary class="cursor-pointer font-bold select-none text-slate-300">⚙️ 部屋の最適化構成</summary>
-            <div class="grid grid-cols-2 gap-1.5 mt-1.5">
+            <div class="grid grid-cols-3 gap-1.5 mt-1.5">
                 <div>
                     <label class="block font-semibold mb-0.5 text-slate-400">人数制限</label>
                     <select id="maxUsers" class="w-full p-1 border border-slate-700 rounded-md bg-slate-800 text-white font-bold text-[11px] focus:outline-none">
@@ -230,9 +230,15 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block font-semibold mb-0.5 text-slate-400">自動消滅/ROM切断</label>
+                    <label class="block font-semibold mb-0.5 text-slate-400">発言タイムアウト</label>
+                    <select id="userTimeoutTime" class="w-full p-1 border border-slate-700 rounded-md bg-slate-800 text-white font-bold text-[11px] focus:outline-none">
+                        <option value="5">5分</option><option value="10">10分</option><option value="20">20分</option><option value="30" selected>30分</option><option value="60">1時間</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-semibold mb-0.5 text-slate-400">自動部屋消滅</label>
                     <select id="roomCleanTime" class="w-full p-1 border border-slate-700 rounded-md bg-slate-800 text-white font-bold text-[11px] focus:outline-none">
-                        <option value="10">10分</option><option value="20">20分</option><option value="30">30分</option><option value="40">40分</option><option value="50">50分</option><option value="60" selected>1時間</option>
+                        <option value="10">10分</option><option value="20">20分</option><option value="30">30分</option><option value="60" selected>1時間</option>
                     </select>
                 </div>
             </div>
@@ -244,15 +250,13 @@
             <button id="officialRoomBtn" class="flex-1 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition py-2" title="常設公式部屋を覗き見する">公式部屋</button>
         </div>
 
-        <div class="flex justify-center text-[10px] text-slate-500 mt-0.5 px-1 shrink-0">
-            <button id="openGuideBtn" class="hover:text-indigo-400 font-bold flex items-center gap-1 transition">📖 使い方・セキュリティ規約（必読）</button>
+        <div class="flex justify-center text-[11px] text-slate-400 mt-0.5 px-1 shrink-0">
+            <button id="openGuideBtn" class="text-indigo-400 hover:text-indigo-300 font-black flex items-center gap-1 transition">📖 使い方・セキュリティ規約・禁止事項（必読）</button>
         </div>
     </div>
 
-    <!-- 💬 メインアプリ画面 -->
     <div id="mainApp" class="w-full h-full max-w-lg bg-transparent flex flex-col relative hidden">
         
-        <!-- 🔝 上部固定コントロールパネル -->
         <div id="header-panel" class="border-b border-slate-800 bg-slate-900/95 backdrop-filter backdrop-blur-md z-30 shrink-0 flex flex-col shadow-lg sticky top-0">
             <div class="px-4 py-2 border-b border-slate-800/50 flex items-center justify-between gap-2">
                 <div class="min-w-0 flex-1">
@@ -269,7 +273,6 @@
             </div>
             <div id="presenceList" class="flex flex-wrap px-4 py-1.5 max-h-12 overflow-y-auto bg-slate-950/40 border-b border-slate-800/30"></div>
             
-            <!-- 👀 覗き見モード専用アナウンス＆簡易入室フォーム -->
             <div id="watcher-banner" class="bg-emerald-950/90 border-b border-emerald-900 text-emerald-400 text-[11px] font-bold p-3 hidden">
                 <p class="text-center mb-2">👀 現在「覗き見（閲覧のみ）モード」で接続中です。</p>
                 <div class="flex flex-col gap-2 max-w-sm mx-auto bg-slate-950/60 p-2.5 rounded-xl border border-emerald-900/40">
@@ -284,7 +287,6 @@
                 </div>
             </div>
 
-            <!-- ✍️ 発言入力エリア -->
             <div id="input-container" class="p-3 flex items-center gap-1.5 w-full relative bg-slate-900 border-b border-slate-800">
                 <button id="clearBtn" class="absolute left-5 text-slate-500 hover:text-slate-300 p-1 opacity-0 transition-opacity pointer-events-none z-10">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -296,18 +298,16 @@
             </div>
         </div>
 
-        <!-- 🗺️ チャットタイムライン -->
         <div id="chatTimeline" class="select-text"></div>
 
-        <!-- 🎯 固定ナビゲーションアシストボタン -->
         <div id="floating-nav">
             <button id="toTopBtn" class="p-2.5 rounded-xl border border-slate-800/40 flex flex-col items-center justify-center transition text-indigo-400 w-12 h-12 shadow-lg" title="最上部（最新ログ）へ">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 15l7-7 7 7"></path></svg>
-                <span class="text-[9px] font-bold mt-0.5">最新</span>
+                <span class="text-[9px] font-bold mt-0.5">最新へ</span>
             </button>
             <button id="toBottomBtn" class="p-2.5 rounded-xl border border-slate-800/40 flex flex-col items-center justify-center transition text-slate-400 w-12 h-12 shadow-lg" title="最下部（過去ログ）へ">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
-                <span class="text-[9px] font-bold mt-0.5">最古</span>
+                <span class="text-[9px] font-bold mt-0.5">最古へ</span>
             </button>
             <button id="focusBtn" class="p-2.5 rounded-xl border border-slate-800/40 flex flex-col items-center justify-center transition text-slate-300 w-12 h-12 shadow-lg" title="入力欄へフォーカス">
                 <span class="text-base leading-none">⌨️</span>
@@ -316,48 +316,53 @@
         </div>
     </div>
 
-    <!-- 👑 統合ガイドモーダル -->
     <div id="guideCard" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-slate-900 p-5 rounded-2xl max-w-md w-full max-h-[85vh] overflow-y-auto shadow-2xl flex flex-col gap-4 border border-slate-800 select-text">
-            <h3 class="font-black text-sm text-indigo-400 border-b border-slate-800 pb-2 flex items-center gap-1 shrink-0">📖 セキュリティ構造 ＆ 利用規約</h3>
+            <h3 class="font-black text-sm text-indigo-400 border-b border-slate-800 pb-2 flex items-center gap-1 shrink-0">📖 総合利用規約・セキュリティガイド</h3>
             
             <div class="text-[11px] text-slate-300 leading-relaxed space-y-4 overflow-y-auto pr-1">
                 <div class="bg-indigo-950/40 p-3 rounded-xl border border-indigo-900/60 space-y-1.5">
-                    <p class="font-bold text-indigo-300 text-[11.5px]">🛡️ 暗号化の仕組みと安全性</p>
+                    <p class="font-bold text-indigo-300 text-[11.5px]">🔒 1. 鉄壁の暗号化構造 (E2E)</p>
                     <p class="text-slate-400 text-[10.5px]">
-                        本ツールは、端末間暗号化技術をベースに設計されています。入力された「部屋パスワード」を元にブラウザ側でテキストを暗号化（AES-256）してからデータベースへ送信します。
+                        本システムは軍事レベルの暗号規格である**AES-256**を使用し、すべてあなたのブラウザ上でテキストを暗号化してから送信します。解読に必要な鍵（部屋パスワード）はサーバーに一切転送されません。
                     </p>
-                    <p class="text-amber-400 font-semibold text-[10px]">
-                        ※部屋パスワードや暗号鍵そのものはサーバーに送信されません。パスワードを共有した当事者以外、運営者であってもデータはただの乱数であり解読不能です。
+                    <p class="text-emerald-400 font-bold text-[10.5px]">
+                        【超重要】システム開発・管理者の「ねづお」を含むいかなる第三者も、データベースのログを直接覗き見・解読することは物理的に100%不可能です。
                     </p>
                 </div>
 
-                <div class="space-y-1">
-                    <p class="font-bold text-slate-200">💡 基本的な使い方</p>
-                    <ul class="list-disc list-inside space-y-1 text-slate-400 pl-1 text-[10.5px]">
-                        <li>特定の相手と話す場合は、独自の「部屋ID」と「部屋パスワード」を取り決めて入室してください。</li>
-                        <li>入室後に右上にある「招待」ボタンを押すと、現在の部屋ID and 部屋パスワードを含んだ秘密の招待URLがクリップボードにコピーされます。</li>
-                        <li>「トリップ暗号」を入力すると、自分の名前の横に <span class="text-green-400 font-mono">◆a1b2c3</span> のような固有値が表示され、他人のなりすましを防止できます。</li>
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1.5">
+                    <p class="font-bold text-slate-200 text-[11.5px]">💡 2. 使い方と自動消滅の仕組み</p>
+                    <ul class="list-disc list-inside space-y-1 text-slate-400 pl-1">
+                        <li>任意の「部屋ID」と「共通の部屋パスワード」を共有した仲間だけが合流できます。</li>
+                        <li>「招待」ボタンから、部屋IDとパスワードが埋め込まれた暗号化URLを取得できます。</li>
+                        <li>室内の全員の発言が止まるか、最後の1人が「退室」をクリック、またはブラウザを閉じた瞬間に、サーバー上の部屋構成・ログデータは**自動的に一撃で痕跡なく完全破壊消去**されます。</li>
                     </ul>
                 </div>
 
-                <div class="bg-red-950/30 p-3 rounded-xl border border-red-950 text-slate-300 space-y-1.5">
-                    <p class="font-bold text-red-400 flex items-center gap-1 text-[11.5px]">🚫 絶対禁止事項</p>
-                    <p class="text-[10.5px] text-slate-400">当空間は完全匿名の一時利用を想定していますが、以下の行為は固くお断りします。</p>
-                    <ul class="list-disc list-inside space-y-0.5 text-red-300 text-[10px] pl-1">
-                        <li>他者の権利を侵害する名誉毀損・誹謗中傷・脅脅行為</li>
-                        <li>公式部屋などパブリック空間での過度な荒らし行為、スパム連投</li>
-                        <li>違法コンテンツのリンク共有、または犯罪行為の計画・唆し</li>
-                        <li>システムの脆弱性を狙った不正なリクエストやサーバーへの攻撃</li>
-                    </ul>
+                <div class="bg-amber-950/40 p-3 rounded-xl border border-amber-900/60 space-y-1.5">
+                    <p class="font-bold text-amber-400 text-[11.5px]">⚠️ 3. 運用上の注意点</p>
+                    <p class="text-slate-400">
+                        ・「発言タイムアウト」設定時間を過ぎて発言がない場合、無通信の安全装置が働き、自動的に部屋からキック（タイムアウト退室）されます。<br>
+                        ・パスワードを1文字でも間違えると、暗号が正常に復号できず**「判読不能な暗号文」**のまま画面に表示されます。
+                    </p>
+                </div>
+
+                <div class="bg-red-950/40 p-3 rounded-xl border border-red-900/60 space-y-1.5">
+                    <p class="font-bold text-red-400 text-[11.5px]">❌ 4. 禁止事項</p>
+                    <p class="text-slate-400">
+                        当チャットは完全匿名かつ検証不可能な秘匿空間ですが、以下の行為は固く禁止します。<br>
+                        ・違法な取引、犯罪の謀議、児童ポルノ、人道に反するコンテンツの共有。<br>
+                        ・ボットやスクリプトを用いたサーバーへのDDOS攻撃、不適切な負荷付与行為。<br>
+                        ※違反が認められた部屋や通信IPは、事前の予告なくネットワーク層においてアクセス遮断を行う場合があります。
+                    </p>
                 </div>
             </div>
             
-            <button id="closeGuideBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-md mt-1 shrink-0">安全性を理解しました</button>
+            <button id="closeGuideBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-md mt-1 shrink-0">規約と安全性を理解しました</button>
         </div>
     </div>
 
-    <!-- 🖼️ 画像拡大用汎用モーダル -->
     <div id="imageModal" class="fixed inset-0 bg-black/90 backdrop-filter backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-200 pointer-events-none">
         <div id="modalImgWrapper" class="w-full h-full flex items-center justify-center overflow-hidden relative">
             <img id="modalTargetImg" src="" alt="拡大画像" class="select-text">
@@ -367,14 +372,12 @@
         </div>
     </div>
 
-    <!-- 👑 アプリケーションロジック -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
         import {
-            getDatabase, ref, push, onValue, set, remove,
-            query, orderByChild, limitToLast, get, update, onDisconnect, onChildAdded, startAfter, endBefore
+            getDatabase, ref, push, onValue, set, remove, child,
+            query, orderByChild, limitToLast, get, update, onDisconnect, endBefore
         } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
         const $ = id => document.getElementById(id);
         
@@ -383,19 +386,13 @@
             authDomain: "nezuochat.firebaseapp.com",
             databaseURL: "https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app",
             projectId: "nezuochat",
-            storageBucket: "nezuochat.firebasestorage.app",
+            storageBucket: "nebasestorage.app",
             messagingSenderId: "154725381397",
             appId: "1:154725381397:web:8742ccd957e20cee8ce51c"
         };
         
         const firebaseApp = initializeApp(firebaseConfig);
         const db = getDatabase(firebaseApp, firebaseConfig.databaseURL);
-        const auth = getAuth(firebaseApp);
-
-        // 🌟 ローカル環境の自動判定ロジック
-        const isLocalContext = window.location.hostname === "localhost" || 
-                               window.location.hostname === "127.0.0.1" || 
-                               window.location.protocol === "file:";
 
         const modalImg = $("modalTargetImg");
         const imgWrapper = $("modalImgWrapper");
@@ -403,52 +400,31 @@
         let isTimelineScrolledDown = false; 
         let isComposing = false; 
         let curR = null, curP = null, curN = null, curT = null, rawR = null;
-        let serverTimeOffset = 0, isOffsetLoaded = false;
+        let serverTimeOffset = 0;
         let unsubscribeChat = null, unsubscribePres = null, unsubscribeRoomConfig = null, unsubscribeConn = null;
         let isProcessingExit = false;
         let isWatcherMode = false; 
         let myUid = null;
-        let authPromise = null;
         
         let oldestLoadedTimestamp = null;
         let isPaginationEnding = false;
 
-        let USER_TIMEOUT = (30 * 60 + 1) * 1000; 
+        let USER_TIMEOUT = (30 * 60) * 1000; 
         let ROOM_LIFETIME = (60 * 60) * 1000;
 
         const OFFICIAL_ROOM_HASH = CryptoJS.SHA256("公式部屋").toString();
         const chatTimeline = $('chatTimeline');
 
-        // 🔒 認証状態追跡ファクトリ（ローカル時と本番時の切り替えを強化）
-        const initializeUserIdentity = () => {
-            if (authPromise) return authPromise;
-            
-            authPromise = new Promise((resolve, reject) => {
-                if (isLocalContext) {
-                    let localUid = localStorage.getItem("nez_local_test_uid");
-                    if (!localUid) {
-                        localUid = "local-user-" + Math.random().toString(36).substr(2, 9);
-                        localStorage.setItem("nez_local_test_uid", localUid);
-                    }
-                    myUid = localUid;
-                    console.log("🛠️ 【ローカル開発モード】Firebase Authを完全にスキップしました。UID:", myUid);
-                    resolve(myUid);
-                    return;
-                }
+        let renderedMsgIds = new Set();
 
-                signInAnonymously(auth).then((userCredential) => {
-                    myUid = userCredential.user.uid;
-                    console.log("🚀 Firebase Auth 認証成功 UID:", myUid);
-                    resolve(myUid);
-                }).catch((error) => {
-                    console.error("❌ Firebase匿名認証に完全に失敗しました:", error);
-                    hideSplash();
-                    showLobby(`【Firebase 認証エラー】\n匿名認証の確立に失敗したため、接続を遮断しました。\n\n▼解決策：\nFirebaseコンソール ＞「Authentication」＞「Sign-in method」を開き、【匿名 (Anonymous)】が「有効」になっているか必ず確認してください。\n\n(内部ログ: ${error.message})`);
-                    authPromise = null; 
-                    reject(error);
-                });
-            });
-            return authPromise;
+        const initializeUserIdentity = () => {
+            let localUid = localStorage.getItem("nez_pure_session_uid");
+            if (!localUid) {
+                localUid = "u-" + Math.random().toString(36).substr(2, 9) + "-" + Date.now().toString(36);
+                localStorage.setItem("nez_pure_session_uid", localUid);
+            }
+            myUid = localUid;
+            return myUid;
         };
 
         const hideSplash = () => {
@@ -485,7 +461,7 @@
         };
         
         chatTimeline.addEventListener('scroll', () => {
-            isTimelineScrolledDown = chatTimeline.scrollTop > 10;
+            isTimelineScrolledDown = chatTimeline.scrollTop > 15;
         }, { passive: true });
 
         window.scrollToLatest = function() { chatTimeline.scrollTop = 0; isTimelineScrolledDown = false; };
@@ -512,30 +488,10 @@
             $("officialRoomBtn").innerText = enabled ? "公式部屋" : "処理中...";
         };
 
-        const ensureTimeSync = () => {
-            return new Promise((resolve) => {
-                if (isOffsetLoaded) return resolve();
-                
-                const fallbackTimeout = setTimeout(() => {
-                    console.warn("⚠️ サーバー時刻同期がタイムアウトしました。ローカルシステム時刻を適用します。");
-                    serverTimeOffset = 0;
-                    isOffsetLoaded = true;
-                    resolve();
-                }, 1200);
-
-                const unsubscribe = onValue(ref(db, ".info/serverTimeOffset"), (snap) => {
-                    clearTimeout(fallbackTimeout);
-                    serverTimeOffset = snap.val() || 0;
-                    isOffsetLoaded = true;
-                    unsubscribe();
-                    resolve();
-                }, (err) => {
-                    console.warn("⚠️ .info/serverTimeOffsetの読み取り権限がないかエラーが発生しました:", err);
-                    clearTimeout(fallbackTimeout);
-                    serverTimeOffset = 0;
-                    isOffsetLoaded = true;
-                    resolve();
-                });
+        // 【高速化改善】バックグラウンド用の非同期時刻同期に変更（待機処理を排除）
+        const startBackgroundTimeSync = () => {
+            onValue(ref(db, ".info/serverTimeOffset"), (snap) => {
+                serverTimeOffset = snap.val() || 0;
             });
         };
 
@@ -546,6 +502,7 @@
             if (unsubscribePres) { unsubscribePres(); unsubscribePres = null; }
             if (unsubscribeRoomConfig) { unsubscribeRoomConfig(); unsubscribeRoomConfig = null; }
             if (unsubscribeConn) { unsubscribeConn(); unsubscribeConn = null; }
+            renderedMsgIds.clear();
         };
 
         const showLobby = (msg = "") => {
@@ -715,9 +672,10 @@
                     replacement = `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:underline break-all font-medium">${url}</a>`;
                 }
 
-                escapedText = escapedText.replace(item.id, replacement);
+                escapedText = escapedText.replace(item.id, `<br>${replacement}<br>`);
             });
 
+            escapedText = escapedText.replace(/^(<br>)+|(<br>)+$/g, '').replace(/(<br>){3,}/g, '<br><br>');
             return escapedText;
         }
 
@@ -836,7 +794,10 @@
                 
                 snap.forEach(s => {
                     const m = s.val();
-                    if (m && m.time) fetchedMsgs.push(m);
+                    if (m && m.time) {
+                        m._key = s.key;
+                        fetchedMsgs.push(m);
+                    }
                 });
 
                 if (fetchedMsgs.length === 0) {
@@ -850,8 +811,10 @@
                 oldestLoadedTimestamp = fetchedMsgs[fetchedMsgs.length - 1].time;
 
                 fetchedMsgs.forEach(m => {
+                    if (renderedMsgIds.has(m._key)) return;
+                    renderedMsgIds.add(m._key);
                     const el = createMessageElement(m, curP, isOfficial);
-                    if (el) chatTimeline.appendChild(el);
+                    if (el) chatTimeline.appendChild(el); 
                 });
 
                 buttonEl.disabled = false;
@@ -864,48 +827,41 @@
                 }
 
             } catch(e) {
-                console.error("過去ログの取得に失敗しました:", e);
+                console.error("過去ログ取得失敗:", e);
                 buttonEl.disabled = false;
                 buttonEl.innerText = "再試行する";
             }
         };
 
-        async function setupDisconnectHook() {
-            if (isWatcherMode || !curR) return;
-            try {
-                const myRef = ref(db, `presence/${curR}/${myUid}`);
-                const disconnectRef = onDisconnect(myRef);
-                await disconnectRef.cancel();
-                await disconnectRef.setValue(null);
-            } catch(e) {
-                console.error("onDisconnect再登録失敗:", e);
-            }
-        }
-
         async function cleanRoomDataImmediate() {
             if (!curR || curR === OFFICIAL_ROOM_HASH) return;
             try {
-                await remove(ref(db, `rooms/${curR}`)).catch(()=>{});
-                await remove(ref(db, `chat/${curR}`)).catch(()=>{});
-                await remove(ref(db, `presence/${curR}`)).catch(()=>{});
-                console.log("🧹 部屋「" + curR + "」の全データを完全消去しました（参加者0化）。");
+                clearSubscriptions();
+                const wipes = {};
+                wipes[`rooms/${curR}`] = null;
+                wipes[`chat/${curR}`] = null;
+                wipes[`presence/${curR}`] = null;
+                await update(ref(db), wipes);
+                console.log("🧹 Strict Clean Mode: 全データをサーバーから完全消去しました。");
             } catch(e) {
-                console.error("即時クリーンアップエラー:", e);
+                console.error("消去エラー、フォールバック実行:", e);
+                try {
+                    await remove(ref(db, `rooms/${curR}`));
+                    await remove(ref(db, `chat/${curR}`));
+                    await remove(ref(db, `presence/${curR}`));
+                } catch(inner) { console.error("完全破棄失敗:", inner); }
             }
         }
 
-        async function join(rID, pass, name, trip, maxLimit, selectRoomMin, isDirectOfficialClick = false, isSessionRestore = false) {
+        async function join(rID, pass, name, trip, maxLimit, selectUserMin, selectRoomMin, isDirectOfficialClick = false, isSessionRestore = false) {
             try {
                 $("errMsg").style.display = "none";
                 setLobbyButtonsState(false);
-                
-                await initializeUserIdentity();
-                if (!myUid) throw new Error("ユーザーアイデンティティの初期化が完了していません。");
+                initializeUserIdentity();
 
                 const targetRoomID = (rID === "official-room" || rID === "公式部屋") ? "公式部屋" : rID;
                 const hashId = (targetRoomID === "公式部屋") ? OFFICIAL_ROOM_HASH : CryptoJS.SHA256(targetRoomID).toString();
                 const isOfficial = (hashId === OFFICIAL_ROOM_HASH);
-                
                 const wasWatcherMode = isWatcherMode;
                 
                 if (isSessionRestore) {
@@ -913,66 +869,59 @@
                     if (sessionData) {
                         const s = JSON.parse(sessionData);
                         isWatcherMode = !!s.isWatcherMode;
-                    } else {
-                        isWatcherMode = false;
-                    }
+                    } else { isWatcherMode = false; }
                 } else if (isOfficial && isDirectOfficialClick) {
                     isWatcherMode = true;
-                } else {
-                    isWatcherMode = false;
-                }
+                } else { isWatcherMode = false; }
 
-                if (curR && (curR !== hashId || wasWatcherMode !== isWatcherMode)) {
-                    try { if (!wasWatcherMode) await remove(ref(db, `presence/${curR}/${myUid}`)); } catch(e){}
-                    clearSubscriptions(); 
-                }
+                if (curR && (curR !== hashId || wasWatcherMode !== isWatcherMode)) { clearSubscriptions(); }
 
                 curR = hashId; rawR = targetRoomID; curP = pass;
                 if (isWatcherMode) { curN = ""; curT = ""; } else { curN = name; curT = trip; }
 
                 if (isOfficial) {
-                    maxLimit = 10; selectRoomMin = 999999999;
+                    maxLimit = 10; selectUserMin = 30; selectRoomMin = 999999999;
                     $("copyBtn").style.display = "none";
                 } else {
                     $("copyBtn").style.display = "block";
                 }
 
+                USER_TIMEOUT = (selectUserMin * 60) * 1000; 
+                ROOM_LIFETIME = (selectRoomMin * 60) * 1000 + 1000;
+
+                // 【高速化改善】即座にサーバー時間を取得（起動時に同期が始まっているため一瞬で取得可能）
+                const NOW = getServerNow();
+
                 localStorage.setItem("active_room_session", JSON.stringify({
-                    rawR, curP, curN: isWatcherMode ? "" : curN, curT: isWatcherMode ? "" : curT, maxLimit, selectRoomMin, isWatcherMode
+                    rawR, curP, curN: isWatcherMode ? "" : curN, curT: isWatcherMode ? "" : curT, maxLimit, selectUserMin, selectRoomMin, isWatcherMode
                 }));
                 
                 localStorage.setItem("nez_ri", targetRoomID);
                 localStorage.setItem("nez_pi", pass);
 
                 const chatRef = ref(db, `chat/${curR}`);
-                const presRef = ref(db, `presence/${curR}`);
+                const pRef = ref(db, `presence/${curR}`);
                 const roomRef = ref(db, `rooms/${curR}`);
                 const myRef = ref(db, `presence/${curR}/${myUid}`);
 
                 let finalMax = maxLimit;
-                USER_TIMEOUT = (selectRoomMin * 60 + 1) * 1000; 
-                ROOM_LIFETIME = (selectRoomMin * 60) * 1000;
-
-                await ensureTimeSync(); 
-                const NOW = getServerNow();
 
                 try {
                     const roomSnap = await get(roomRef);
                     if (roomSnap.exists()) {
                         const rData = roomSnap.val();
-                        USER_TIMEOUT = ((isOfficial ? 30 : (rData.roomMin || selectRoomMin)) * 60 + 1) * 1000; 
-                        ROOM_LIFETIME = (isOfficial ? 999999999 : (rData.roomMin || selectRoomMin)) * 60 * 1000;
+                        USER_TIMEOUT = (isOfficial ? 30 : (rData.userMin || selectUserMin)) * 60 * 1000; 
+                        ROOM_LIFETIME = (isOfficial ? 999999999 : (rData.roomMin || selectRoomMin)) * 60 * 1000 + 1000;
                         if (rData.max !== undefined) finalMax = isOfficial ? 10 : Number(rData.max);
-                        if (!isOfficial) await update(roomRef, { lastActivity: NOW });
                     } else {
-                        if (!isOfficial) await set(roomRef, { max: finalMax, roomMin: selectRoomMin, lastActivity: NOW });
+                        if (!isOfficial) await set(roomRef, { max: finalMax, userMin: selectUserMin, roomMin: selectRoomMin, lastActivity: NOW });
                     }
-                } catch (roomErr) { console.warn("部屋構成の設定をスキップ:", roomErr); }
+                } catch (roomErr) { console.warn("部屋構成設定スキップ:", roomErr); }
 
                 let isReentry = isSessionRestore;
 
                 if (!isWatcherMode) {
-                    const pSnap = await get(presRef);
+                    const pSnap = await get(pRef);
                     if (pSnap.exists()) {
                         const users = pSnap.val() || {}; 
                         let currentActiveCount = 0;
@@ -981,7 +930,10 @@
                             if (k === myUid) {
                                 const activeN = textDec(users[k].nEnc, pass, isOfficial);
                                 const activeT = textDec(users[k].tEnc, pass, isOfficial) || "";
-                                if (activeN === name && activeT === trip) { isReentry = true; continue; } else {
+                                if (activeN === name && activeT === trip) { 
+                                    isReentry = true; 
+                                    continue; 
+                                } else {
                                     if (NOW - (users[k].lastSeen || NOW) <= USER_TIMEOUT) {
                                         showLobby(`【再入室拒否】セッション名またはトリップが一致しません。`);
                                         return;
@@ -1002,18 +954,39 @@
                         if (!isReentry && currentActiveCount >= finalMax) { showLobby(`部屋が満員です（上限 ${finalMax} 名）`); return; }
                     }
 
-                    unsubscribeConn = onValue(ref(db, ".info/connected"), async (snap) => {
-                        if (snap.val() === true && curR && !isProcessingExit && !isWatcherMode) {
-                            await setupDisconnectHook();
-                            await set(myRef, { nEnc: enc(name, pass, isOfficial), tEnc: enc(trip, pass, isOfficial), lastSeen: getServerNow() });
+                    if (!isOfficial) {
+                        const disconnectWipes = {};
+                        disconnectWipes[`rooms/${curR}`] = null;
+                        disconnectWipes[`chat/${curR}`] = null;
+                        disconnectWipes[`presence/${curR}`] = null;
+                        
+                        const checkPresSnap = await get(pRef);
+                        let liveOthers = 0;
+                        if (checkPresSnap.exists()) {
+                            const currentUsers = checkPresSnap.val() || {};
+                            Object.keys(currentUsers).forEach(uid => {
+                                if (uid !== myUid && (NOW - (currentUsers[uid].lastSeen || NOW) <= USER_TIMEOUT)) {
+                                    liveOthers++;
+                                }
+                            });
                         }
-                    });
-
-                    await set(myRef, { nEnc: enc(name, pass, isOfficial), tEnc: enc(trip, pass, isOfficial), lastSeen: NOW });
-                    
-                    if (!isReentry) { 
-                        await push(chatRef, { type: "sys", text: enc(`${name}${trip} が入室しました`, pass, isOfficial), time: NOW }); 
+                        
+                        if (liveOthers === 0) {
+                            await onDisconnect(ref(db)).update(disconnectWipes);
+                        } else {
+                            await onDisconnect(myRef).remove();
+                        }
+                    } else {
+                        await onDisconnect(myRef).remove();
                     }
+
+                    if (!isReentry) {
+                        await set(myRef, { nEnc: enc(name, pass, isOfficial), tEnc: enc(trip, pass, isOfficial), lastSeen: NOW });
+                        await push(chatRef, { type: "sys", text: enc(`${name}${trip} が入室しました`, pass, isOfficial), time: NOW }); 
+                    } else {
+                        await update(myRef, { lastSeen: NOW });
+                    }
+                    
                     localStorage.setItem("nez_ni", name);
                     if (!isOfficial) localStorage.setItem("nez_tk", $("tk").value.trim());
                 }
@@ -1032,38 +1005,46 @@
 
                 hideSplash();
 
-                let trackedUserStates = {};
-                unsubscribePres = onValue(presRef, async (s) => {
+                renderedMsgIds.clear();
+                chatTimeline.innerHTML = "";
+
+                if (!isOfficial) {
+                    unsubscribeRoomConfig = onValue(roomRef, async (snap) => {
+                        if (!snap.exists() && curR && !isProcessingExit) {
+                            isProcessingExit = true;
+                            alert("部屋データが破棄されたか、タイムアウト制限により自動消滅しました。");
+                            isProcessingExit = false;
+                            showLobby("部屋が即時完全消去されました。");
+                        }
+                    });
+                }
+
+                unsubscribePres = onValue(pRef, async (s) => {
                     if (!curR) return; 
                     const users = s.val() || {}, frag = document.createDocumentFragment(), currentNow = getServerNow();
-                    let count = 0, currentActiveUids = new Set();
+                    let count = 0;
                     let amIExpired = false;
+                    let liveCountExcludingMe = 0;
 
                     Object.keys(users).forEach(k => {
-                        if (currentNow - (users[k].lastSeen || currentNow) > USER_TIMEOUT) {
+                        const isUserAlive = (currentNow - (users[k].lastSeen || currentNow) <= USER_TIMEOUT);
+                        if (!isUserAlive) {
                             if (k === myUid) amIExpired = true;
                             return;
                         }
                         const n = textDec(users[k].nEnc, curP, isOfficial); if (!n) return;
                         const trip = textDec(users[k].tEnc, curP, isOfficial) || "";
                         
-                        currentActiveUids.add(k); count++;
+                        count++;
+                        if (k !== myUid) liveCountExcludingMe++;
                         const span = document.createElement("span"); span.className = "user-chip"; span.innerText = n + trip; frag.appendChild(span);
                     });
 
                     if (amIExpired && !isWatcherMode && !isProcessingExit) {
                         isProcessingExit = true;
                         alert("一定時間発言がなかったため、自動タイムアウト退室しました。");
-                        try { onDisconnect(ref(db)).cancel(); } catch(e){}
                         
-                        let otherAlive = false;
-                        Object.keys(users).forEach(k => {
-                            if (k !== myUid && (currentNow - (users[k].lastSeen || currentNow) <= USER_TIMEOUT)) {
-                                otherAlive = true;
-                            }
-                        });
-
-                        if (!isOfficial && !otherAlive) {
+                        if (!isOfficial && liveCountExcludingMe === 0) {
                             await cleanRoomDataImmediate();
                         } else {
                             await push(chatRef, { 
@@ -1071,98 +1052,120 @@
                                 text: enc(`${curN}${curT} が発言タイムアウトのため自動退出しました`, curP, isOfficial), 
                                 time: currentNow 
                             }).catch(()=>{});
-                            await remove(myRef).catch(()=>{});
+                            await set(myRef, null).catch(()=>{});
                         }
                         isProcessingExit = false;
                         showLobby("一定時間発言がなかったためタイムアウトしました。");
                         return;
                     }
 
-                    if (!isOfficial && Object.keys(users).length > 0 && count === 0 && !isProcessingExit) {
-                        await cleanRoomDataImmediate();
-                        if (!isWatcherMode) {
-                            showLobby("全員がタイムアウトしたため、部屋とログが自動消去されました。");
-                        }
-                        return;
+                    if (!isOfficial && !isProcessingExit) {
+                        try {
+                            const roomSnap = await get(roomRef);
+                            if (roomSnap.exists()) {
+                                const rData = roomSnap.val();
+                                const lastAct = rData.lastActivity || currentNow;
+                                if (currentNow - lastAct > ROOM_LIFETIME) {
+                                    isProcessingExit = true;
+                                    await cleanRoomDataImmediate();
+                                    isProcessingExit = false;
+                                    alert("部屋の有効期限（発言活動なし）が経過したため、データを完全消去しました。");
+                                    showLobby("部屋の有効期限が切れたため自動消滅しました。");
+                                    return;
+                                }
+                            }
+                        } catch(roomCheckErr) { console.error(roomCheckErr); }
                     }
 
-                    trackedUserStates = {}; currentActiveUids.forEach(activeUid => { trackedUserStates[activeUid] = "active"; });
+                    if (!isOfficial && !isWatcherMode && !isProcessingExit) {
+                        const disconnectWipes = {};
+                        disconnectWipes[`rooms/${curR}`] = null;
+                        disconnectWipes[`chat/${curR}`] = null;
+                        disconnectWipes[`presence/${curR}`] = null;
+                        
+                        if (liveCountExcludingMe === 0) {
+                            await onDisconnect(ref(db)).update(disconnectWipes).catch(()=>{});
+                        } else {
+                            await onDisconnect(ref(db)).update({ [`presence/${curR}/${myUid}`]: null }).catch(()=>{});
+                        }
+                    }
+
                     $("presenceList").innerHTML = ""; $("presenceList").appendChild(frag); $("presenceCount").innerText = `[${count}/${finalMax}]`;
                 });
 
-                chatTimeline.innerHTML = ""; 
-                isPaginationEnding = false;
-                
                 let limitCount = isOfficial ? 50 : 200; 
                 let chatQuery = query(chatRef, orderByChild("time"), limitToLast(limitCount));
                 
-                const chatSnap = await get(chatQuery);
-                const initialMsgs = [];
-                let maxTimestampInSnapshot = 0;
-                oldestLoadedTimestamp = null;
-                
-                chatSnap.forEach(s => {
-                    const m = s.val();
-                    if (m && m.time) { 
-                        initialMsgs.push(m); 
-                        if (m.time > maxTimestampInSnapshot) maxTimestampInSnapshot = m.time;
-                    }
-                });
-
-                initialMsgs.sort((a, b) => b.time - a.time);
-                initialMsgs.forEach(m => {
-                    const el = createMessageElement(m, curP, isOfficial);
-                    if (el) chatTimeline.appendChild(el);
-                });
-                
-                if (initialMsgs.length > 0) {
-                    oldestLoadedTimestamp = initialMsgs[initialMsgs.length - 1].time;
-                }
-
-                if (isOfficial && initialMsgs.length >= 50) {
-                    const pagerBtn = document.createElement("button");
-                    pagerBtn.id = "officialPagerBtn";
-                    pagerBtn.className = "w-full py-2.5 my-2 text-xs font-bold text-indigo-400 bg-slate-900 border border-slate-800 rounded-xl hover:bg-slate-850 transition-all shrink-0";
-                    pagerBtn.innerText = "さらに古いログを読み込む（50件）";
-                    pagerBtn.onclick = function() { window.loadMoreOfficialPastLogs(this); };
-                    chatTimeline.appendChild(pagerBtn);
-                }
-                
-                scrollToLatest();
-
-                let trackingStartTime = maxTimestampInSnapshot > 0 ? maxTimestampInSnapshot : NOW;
-                const nextChatQuery = query(chatRef, orderByChild("time"), startAfter(trackingStartTime));
-                
-                unsubscribeChat = onChildAdded(nextChatQuery, s => {
-                    const m = s.val(); 
-                    if (!m || m.time <= trackingStartTime) return;
-                    const div = createMessageElement(m, curP, isOfficial); if (!div) return;
+                unsubscribeChat = onValue(chatQuery, (snapshot) => {
+                    if (!curR) return;
                     
-                    chatTimeline.insertBefore(div, chatTimeline.firstChild);
-                    if (!isTimelineScrolledDown) { scrollToLatest(); }
+                    let hasNewMessage = false;
+                    const incomingMsgs = [];
+                    
+                    snapshot.forEach(s => {
+                        const m = s.val();
+                        if (m && m.time) {
+                            m._key = s.key;
+                            incomingMsgs.push(m);
+                        }
+                    });
+
+                    incomingMsgs.sort((a, b) => b.time - a.time);
+
+                    if (incomingMsgs.length > 0) {
+                        oldestLoadedTimestamp = incomingMsgs[incomingMsgs.length - 1].time;
+                    }
+
+                    const oldPager = $("officialPagerBtn");
+                    if (oldPager) oldPager.remove();
+
+                    incomingMsgs.forEach(m => {
+                        if (!renderedMsgIds.has(m._key)) {
+                            renderedMsgIds.add(m._key);
+                            const el = createMessageElement(m, curP, isOfficial);
+                            if (el) {
+                                chatTimeline.insertBefore(el, chatTimeline.firstChild);
+                                hasNewMessage = true;
+                            }
+                        }
+                    });
+
+                    if (isOfficial && incomingMsgs.length >= 50 && !isPaginationEnding) {
+                        const pagerBtn = document.createElement("button");
+                        pagerBtn.id = "officialPagerBtn";
+                        pagerBtn.className = "w-full py-2.5 my-2 text-xs font-bold text-indigo-400 bg-slate-900 border border-slate-800 rounded-xl hover:bg-slate-850 transition-all shrink-0";
+                        pagerBtn.innerText = "さらに古いログを読み込む（50件）";
+                        pagerBtn.onclick = function() { window.loadMoreOfficialPastLogs(this); };
+                        chatTimeline.appendChild(pagerBtn);
+                    }
+
+                    if (hasNewMessage && !isTimelineScrolledDown) { scrollToLatest(); }
                 });
 
             } catch (e) {
                 console.error(e);
-                showLobby(`❌ エラー\n原因: ${e.message}`);
-            } finalMax; setLobbyButtonsState(true); 
+                showLobby(`❌ 入室エラー\n原因: ${e.message}`);
+            } setLobbyButtonsState(true); 
         }
 
         async function sendMessage() {
             if (!curR || isWatcherMode) return; 
             const input = $("mi"); const txt = input.value.trim(); 
-            if (!txt || isComposing) return;
+            if (!txt) return;
             
             const isOfficial = (curR === OFFICIAL_ROOM_HASH);
-            toggleClearBtn(""); input.value = ""; input.rows = 1; input.style.overflowY = "hidden"; 
-            scrollToLatest();
+            toggleClearBtn(""); input.value = ""; input.rows = 1; input.style.height = "auto";
+            scrollToLatest(); 
 
             try {
                 const NOW = getServerNow();
                 const myRef = ref(db, `presence/${curR}/${myUid}`);
+                const roomRef = ref(db, `rooms/${curR}`);
                 
                 await update(myRef, { lastSeen: NOW });
-                await setupDisconnectHook();
+                if (!isOfficial) {
+                    await update(roomRef, { lastActivity: NOW }).catch(()=>{});
+                }
 
                 await push(ref(db, `chat/${curR}`), { 
                     type: "msg", 
@@ -1175,33 +1178,41 @@
         }
 
         $("mi").addEventListener("compositionstart", () => { isComposing = true; });
-        $("mi").addEventListener("compositionend", (e) => { isComposing = false; toggleClearBtn(e.target.value); });
+        $("mi").addEventListener("compositionend", (e) => { 
+            isComposing = false; 
+            toggleClearBtn(e.target.value); 
+        });
         $("mi").addEventListener("input", (e) => { 
             toggleClearBtn(e.target.value); 
-            e.target.rows = 1; 
-            const currentRows = Math.min(4, Math.floor(e.target.scrollHeight / 24)) || 1;
-            e.target.rows = currentRows;
-            if (e.target.scrollHeight > 96) { e.target.style.overflowY = "auto"; } else { e.target.style.overflowY = "hidden"; }
+            e.target.style.height = "auto";
+            const scrollHeight = e.target.scrollHeight;
+            e.target.style.height = (scrollHeight > 96 ? 96 : scrollHeight) + "px";
+            if (scrollHeight > 96) { e.target.style.overflowY = "auto"; } else { e.target.style.overflowY = "hidden"; }
         });
 
         $("mi").addEventListener("focus", () => { setTimeout(() => { scrollToLatest(); }, 150); });
         $("mi").addEventListener("keydown", (e) => { 
             if (e.key === "Enter" && !e.shiftKey) { 
                 if (isComposing) return; 
-                e.preventDefault(); sendMessage(); 
+                e.preventDefault(); 
+                sendMessage(); 
             } else { if (!isTimelineScrolledDown) { scrollToLatest(); } }
         });
         
         $("sendBtn").onclick = (e) => { e.preventDefault(); sendMessage(); };
-        $("clearBtn").onclick = (e) => { e.preventDefault(); $("mi").value = ""; $("mi").rows = 1; $("mi").style.overflowY = "hidden"; toggleClearBtn(""); $("mi").focus(); };
+        $("clearBtn").onclick = (e) => { e.preventDefault(); $("mi").value = ""; $("mi").rows = 1; $("mi").style.height = "auto"; $("mi").style.overflowY = "hidden"; toggleClearBtn(""); $("mi").focus(); };
 
         const executeJoinFromLobbyInputs = async () => {
             const rawName = $("ni").value, tk = $("tk").value.trim(), r = $("ri").value.trim(), p = $("pi").value.trim();
             const cleanName = rawName.replace(/[\s\u3000]+/g, "").trim();
             const cleanRoom = r.replace(/[\s\u3000]+/g, "").trim();
-            if (!cleanRoom || !p) { return false; }
+            if (!cleanName || !cleanRoom || !p) { return false; }
             setLobbyButtonsState(false);
-            await join(cleanRoom, p, cleanName, generateTripString(cleanName, tk), Number($("maxUsers").value), Number($("roomCleanTime").value));
+            
+            await join(
+                cleanRoom, p, cleanName, generateTripString(cleanName, tk), 
+                Number($("maxUsers").value), Number($("userTimeoutTime").value), Number($("roomCleanTime").value)
+            );
             return true;
         };
 
@@ -1218,7 +1229,7 @@
             const rawName = $("ni").value;
             const cleanName = rawName.replace(/[\s\u3000]+/g, "").trim();
             const tk = $("tk").value.trim();
-            await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, tk), 10, 999999999, true);
+            await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, tk), 10, 30, 999999999, true);
         };
 
         $("watcherUpgradeBtn").onclick = async () => {
@@ -1227,47 +1238,50 @@
             if (!cleanName || !tk) { alert("名前とトリップキーを入力してください。"); return; }
             localStorage.setItem("nez_ni", cleanName); localStorage.setItem("nez_tk", tk);
             $("ni").value = cleanName; $("tk").value = tk; updateTripPreview();
-            await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, tk), 10, 999999999, false, false);
+            await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, tk), 10, 30, 999999999, false, false);
         };
 
         async function exitRoom() {
-            if (isProcessingExit || !curR) return; isProcessingExit = true;
-            try {
-                try { onDisconnect(ref(db)).cancel(); } catch(cErr){}
+            if (isProcessingExit || !curR) return; 
+            isProcessingExit = true;
+            localStorage.removeItem("active_room_session");
 
+            try {
                 if (!isWatcherMode) {
                     const isOfficial = (curR === OFFICIAL_ROOM_HASH);
                     const chatRef = ref(db, `chat/${curR}`);
-                    const presRef = ref(db, `presence/${curR}`);
+                    const pRef = ref(db, `presence/${curR}`);
                     const myRef = ref(db, `presence/${curR}/${myUid}`);
 
-                    await remove(myRef).catch(()=>{});
-
-                    const presSnap = await get(presRef);
-                    let otherUsersCount = 0;
+                    const presSnap = await get(pRef);
+                    let activeOthersCount = 0;
                     const currentNow = getServerNow();
 
                     if (presSnap.exists()) {
                         const users = presSnap.val() || {};
                         Object.keys(users).forEach(k => {
                             if (k !== myUid && (currentNow - (users[k].lastSeen || currentNow) <= USER_TIMEOUT)) { 
-                                otherUsersCount++; 
+                                activeOthersCount++; 
                             }
                         });
                     }
 
-                    if (!isOfficial && otherUsersCount === 0) {
-                        clearSubscriptions();
+                    if (!isOfficial && activeOthersCount === 0) {
+                        await onDisconnect(ref(db)).cancel().catch(()=>{});
                         await cleanRoomDataImmediate();
                     } else {
+                        await onDisconnect(ref(db)).cancel().catch(()=>{});
+                        await set(myRef, null).catch(()=>{});
                         await push(chatRef, { type: "sys", text: enc(`${curN}${curT} が退室しました`, curP, isOfficial), time: currentNow }).catch(()=>{});
                     }
                 }
-            } catch(e) { console.error("退室処理エラー:", e); }
-            isProcessingExit = false; showLobby();
+            } catch(e) { console.error("退室エラー:", e); }
+            
+            isProcessingExit = false; 
+            showLobby(); 
         }
 
-        $("exitBtn").onclick = () => { if (isWatcherMode || confirm("本当に退室しますか？")) exitRoom(); };
+        $("exitBtn").onclick = () => { if (isWatcherMode || confirm("本当に退室しますか？\nあなたが最後の1人の場合、データは即座に完全破棄されます。")) exitRoom(); };
 
         $("copyBtn").onclick = () => {
             if (!rawR || !curP) return;
@@ -1281,7 +1295,7 @@
             const textArea = document.createElement("textarea"); textArea.value = text;
             Object.assign(textArea.style, { position: "fixed", top: "0", left: "0", width: "2em", height: "2em", background: "transparent", border: "none" });
             document.body.appendChild(textArea); textArea.focus(); textArea.select();
-            try { document.execCommand('copy'); alert("招待リンクをコピーしました！"); } catch (err) { alert("URLを共有してください。"); }
+            try { document.execCommand('copy'); alert("招待リンクをコピーしました！"); } catch (err) { alert("URLコピー失敗。直接共有してください。"); }
             document.body.removeChild(textArea);
         }
 
@@ -1311,7 +1325,7 @@
                     const savedTripKey = localStorage.getItem("nez_tk") || "";
                     const fullTripString = generateTripString(savedName, savedTripKey);
                     
-                    await join(s.rawR, s.curP, savedName, fullTripString, s.maxLimit, s.selectRoomMin, !!s.isWatcherMode, true); 
+                    await join(s.rawR, s.curP, savedName, fullTripString, s.maxLimit, s.selectUserMin || 30, s.selectRoomMin || 60, !!s.isWatcherMode, true); 
                     return true;
                 } catch(e) { localStorage.removeItem("active_room_session"); }
             }
@@ -1319,15 +1333,10 @@
         }
 
         window.addEventListener("DOMContentLoaded", async () => {
-            if (isLocalContext) {
-                const indicator = $("localModeIndicator");
-                if (indicator) {
-                    indicator.innerText = "🛠️ ローカル開発環境：Firebase Auth（匿名認証）を自動バイパスしています。";
-                    indicator.className = "text-amber-400 font-bold bg-amber-950/40 border border-amber-900/60 p-1 rounded text-center";
-                }
-            }
-
-            initializeUserIdentity().catch(()=>{});
+            // 【高速化改善】ページロード開始と同時にFirebaseサーバー時間オフセットを裏で取りにいく
+            startBackgroundTimeSync();
+            
+            initializeUserIdentity();
 
             const savedName = localStorage.getItem("nez_ni"), savedTripKey = localStorage.getItem("nez_tk");
             const savedRoomId = localStorage.getItem("nez_ri"), savedRoomPass = localStorage.getItem("nez_pi");
@@ -1344,24 +1353,25 @@
             updateTripPreview(); updateWatcherTripPreview();
             setLobbyButtonsState(true);
 
-            const restored = await triggerSessionRestore(); if (restored) return;
-
-            if (!r && !p) { $("lobby").style.display = "flex"; hideSplash(); return; }
-
-            const checkRi = $("ri").value.trim(); const checkPi = $("pi").value.trim();
-            if (checkRi && checkPi) {
-                if (checkRi === "公式部屋" || checkRi === "official-room" || checkPi === "official_public_pass") {
-                    setLobbyButtonsState(false);
-                    const rawName = $("ni").value;
-                    const cleanName = rawName.replace(/[\s\u3000]+/g, "").trim();
-                    const tk = $("tk").value.trim();
-                    await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, tk), 10, 999999999, true);
-                    return;
-                } else if ($("ni").value || n) {
-                    const autoJoined = await executeJoinFromLobbyInputs(); if (autoJoined) return;
+            if (r && p) {
+                const checkRi = $("ri").value.trim(); const checkPi = $("pi").value.trim();
+                if (checkRi && checkPi) {
+                    if (checkRi === "公式部屋" || checkRi === "official-room" || checkPi === "official_public_pass") {
+                        const cleanName = (savedName || "").replace(/[\s\u3000]+/g, "").trim();
+                        await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, savedTripKey || ""), 10, 30, 999999999, true);
+                        return;
+                    } else if (savedName || n) {
+                        const autoJoined = await executeJoinFromLobbyInputs(); 
+                        if (autoJoined) return;
+                    }
                 }
             }
-            $("lobby").style.display = "flex"; hideSplash();
+
+            const restored = await triggerSessionRestore(); 
+            if (restored) return;
+
+            $("lobby").style.display = "flex"; 
+            hideSplash();
             if (r && p && !$("ni").value) { $("ni").focus(); }
         });
     </script>

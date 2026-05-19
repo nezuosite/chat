@@ -419,7 +419,7 @@
         const OFFICIAL_ROOM_HASH = CryptoJS.SHA256("公式部屋").toString();
         const chatTimeline = $('chatTimeline');
 
-        // 🔒 認証状態追跡ファクトリ（ローカル時はFirebase Authを通さずダミーUIDを瞬時に返却）
+        // 🔒 認証状態追跡ファクトリ（ローカル時と本番時の切り替えを強化）
         const initializeUserIdentity = () => {
             if (authPromise) return authPromise;
             
@@ -521,7 +521,7 @@
                     serverTimeOffset = 0;
                     isOffsetLoaded = true;
                     resolve();
-                }, 1000);
+                }, 1200);
 
                 const unsubscribe = onValue(ref(db, ".info/serverTimeOffset"), (snap) => {
                     clearTimeout(fallbackTimeout);
@@ -529,7 +529,13 @@
                     isOffsetLoaded = true;
                     unsubscribe();
                     resolve();
-                }, { onlyOnce: true });
+                }, (err) => {
+                    console.warn("⚠️ .info/serverTimeOffsetの読み取り権限がないかエラーが発生しました:", err);
+                    clearTimeout(fallbackTimeout);
+                    serverTimeOffset = 0;
+                    isOffsetLoaded = true;
+                    resolve();
+                });
             });
         };
 
@@ -1072,7 +1078,6 @@
                         return;
                     }
 
-                    // 🌟 リアルタイム監視中に自分を含めた全員が消滅またはタイムアウトした場合のクリーンアップトリガー
                     if (!isOfficial && Object.keys(users).length > 0 && count === 0 && !isProcessingExit) {
                         await cleanRoomDataImmediate();
                         if (!isWatcherMode) {
@@ -1140,7 +1145,7 @@
             } catch (e) {
                 console.error(e);
                 showLobby(`❌ エラー\n原因: ${e.message}`);
-            } finally { setLobbyButtonsState(true); }
+            } finalMax; setLobbyButtonsState(true); 
         }
 
         async function sendMessage() {
@@ -1236,7 +1241,6 @@
                     const presRef = ref(db, `presence/${curR}`);
                     const myRef = ref(db, `presence/${curR}/${myUid}`);
 
-                    // 🌟 先に自分のプレゼンスを削除して、残っている有効なユーザーがいるかをサーバーから再確認
                     await remove(myRef).catch(()=>{});
 
                     const presSnap = await get(presRef);
@@ -1252,12 +1256,10 @@
                         });
                     }
 
-                    // 🌟 自身を除外して他生存ユーザーが0であれば、部屋データを確実に根こそぎ削除
                     if (!isOfficial && otherUsersCount === 0) {
                         clearSubscriptions();
                         await cleanRoomDataImmediate();
                     } else {
-                        // 他にユーザーがいる場合は、退室システムログを暗号化して流す
                         await push(chatRef, { type: "sys", text: enc(`${curN}${curT} が退室しました`, curP, isOfficial), time: currentNow }).catch(()=>{});
                     }
                 }

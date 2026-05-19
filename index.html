@@ -611,33 +611,26 @@
             return div;
         }
 
-        /* 🎵 メディアやURLの前後に自動で適切なマージンと改行を付与する高精度パーサー */
         function parseMessageContentToHtml(text) {
             const ytRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/i;
             const audioRegex = /\.(mp3|wav|aac|m4a|ogg|flac)(?:\?.*)?$/i;
             const urlRegex = /(https?:\/\/[^\s\n]+)/gi;
 
             let urlMap = [];
-            // URLを一旦独自のIDに置き換えて退避
             let placeholderText = text.replace(urlRegex, (url) => {
                 const id = `__URL_PLACEHOLDER_${urlMap.length}__`;
                 urlMap.push({ id, original: url });
                 return id;
             });
 
-            // HTMLのエスケープ処理
             let escapedText = esc(placeholderText);
-
-            // スペースによる不要な改行をなくし、純粋な改行のみを<br>に変換
             escapedText = escapedText.replace(/\n/g, "<br>").replace(/ /g, "&nbsp;");
 
-            // 退避しておいたURL（メディア）を順次展開
             urlMap.forEach(item => {
                 const url = item.original;
                 const cleanUrl = url.replace(/[?#].*$/, '');
                 let replacement = "";
 
-                // 1. YouTubeリンクの変換
                 const ytMatch = url.match(ytRegex);
                 if (ytMatch && ytMatch[1]) {
                     const vid = ytMatch[1];
@@ -649,13 +642,11 @@
                         </div>
                     </div><!-- /MEDIA_BLOCK -->`;
                 }
-                // 2. 画像リンクの変換
                 else if (/\.(jpeg|jpg|gif|png|webp|bmp)(?:\?.*)?$/i.test(cleanUrl) || /^data:image\//i.test(url)) {
                     replacement = `<!-- MEDIA_BLOCK --><div class="block my-2 max-w-[240px] overflow-hidden rounded-lg border border-slate-800 bg-slate-950 shadow-inner">
                         <img src="${url}" alt="送信画像" class="max-h-48 w-full object-cover cursor-pointer hover:opacity-90 active:scale-95 transition" onclick="openImageModal('${url}')">
                     </div><!-- /MEDIA_BLOCK -->`;
                 }
-                // 3. 音楽ファイル(オーディオプレイヤー)の変換
                 else if (audioRegex.test(cleanUrl)) {
                     const audioId = `aud-${Math.random().toString(36).substr(2, 9)}`;
                     const wrapId = `wrap-${audioId}`;
@@ -675,7 +666,6 @@
                         <span class="audio-time text-[9px] font-mono text-slate-400 select-none tracking-tighter shrink-0">00:00/00:00</span>
                     </div><!-- /MEDIA_BLOCK -->`;
                 }
-                // 4. 通常のテキストハイパーリンクの変換（上下にマージンを持った独立ブロック化）
                 else {
                     replacement = `<!-- MEDIA_BLOCK --><div class="block my-1.5"><a href="${url}" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:underline break-all font-medium">${url}</a></div><!-- /MEDIA_BLOCK -->`;
                 }
@@ -683,7 +673,6 @@
                 escapedText = escapedText.replace(item.id, replacement);
             });
 
-            // メディアブロックの前後にある重複した改行<br>（ユーザーの手動改行）をクリーンアップして均一な「1段あき」に成形
             escapedText = escapedText.replace(/(?:<br>|&nbsp;)*<!-- MEDIA_BLOCK -->/g, '<div class="h-2"></div><!-- MEDIA_BLOCK -->');
             escapedText = escapedText.replace(/<!-- \/MEDIA_BLOCK -->(?:<br>|&nbsp;)*/g, '<!-- /MEDIA_BLOCK --><div class="h-2"></div>');
 
@@ -944,15 +933,34 @@
                         if (!isReentry && currentActiveCount >= finalMax) { showLobby(`部屋が満員です（上限 ${finalMax} 名）`); return; }
                     }
 
+                    /* 💥 アトミック・オンディスコネクト（マルチパス・アップデート）の実装 */
                     unsubscribeConn = onValue(ref(db, ".info/connected"), (snap) => {
                         if (snap.val() === true && curR && !isProcessingExit && !isWatcherMode) {
-                            onDisconnect(myRef).remove().catch(e => console.error(e));
+                            const disconnectRef = ref(db);
+                            const updates = {};
+                            // 切断時に自分のプレゼンスを削除
+                            updates[`presence/${curR}/${myUid}`] = null;
+                            
+                            // 切断時にタイムアウト用システムメッセージを同時生成する予約（プッシュキーを事前生成）
+                            const sysPushKey = "sys_" + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+                            updates[`chat/${curR}/${sysPushKey}`] = {
+                                type: "sys",
+                                text: enc(`${name}${trip} がタイムアウト離脱しました`, pass, isOfficial),
+                                time: { ".sv": "timestamp" } // サーバー同期タイムスタンプ
+                            };
+
+                            onDisconnect(disconnectRef).update(updates).catch(e => console.error("onDisconnect登録失敗:", e));
                             set(myRef, { nEnc: enc(name, pass, isOfficial), tEnc: enc(trip, pass, isOfficial), lastSeen: getServerNow() }).catch(e => console.error(e));
                         }
                     });
 
+                    // 1. 入室直後：lastSeenを現在の実時刻に設定して入室処理を実行
                     await set(myRef, { nEnc: enc(name, pass, isOfficial), tEnc: enc(trip, pass, isOfficial), lastSeen: NOW });
-                    if (!isReentry) { await push(chatRef, { type: "sys", text: enc(`${name}${trip} が入室しました`, pass, isOfficial), time: NOW }); }
+                    
+                    // 復帰セッション（isReentry）でない新規入室時のみアナウンスを流す
+                    if (!isReentry) { 
+                        await push(chatRef, { type: "sys", text: enc(`${name}${trip} が入室しました`, pass, isOfficial), time: NOW }); 
+                    }
                     localStorage.setItem("nez_ni", name);
                     if (!isOfficial) localStorage.setItem("nez_tk", $("tk").value.trim());
                 }
@@ -980,10 +988,9 @@
                     Object.keys(users).forEach(k => {
                         const n = textDec(users[k].nEnc, curP, isOfficial); if (!n) return;
                         const trip = textDec(users[k].tEnc, curP, isOfficial) || "";
+                        
+                        // 2. タイムアウト時間を超えている（放置された）クライアントはリスト上から除外（非表示化）
                         if (currentNow - (users[k].lastSeen || currentNow) > USER_TIMEOUT) {
-                            if (!isOfficial && (trackedUserStates[k] === "active" || trackedUserStates[k] === undefined)) {
-                                if (users[k].nEnc && k === myUid && !isWatcherMode) { try { push(chatRef, { type: "sys", text: enc(`${n}${trip} がタイムアウト離脱しました`, curP, isOfficial), time: currentNow }); } catch(e){} }
-                            }
                             return;
                         }
                         currentActiveUids.add(k); count++;
@@ -1046,13 +1053,16 @@
                     if (!isTimelineScrolledDown) { scrollToLatest(); }
                 });
 
+                // 3. 閲覧中（放置）の自動ハートビートによる自動更新（lastSeen自動延長）は、仕様変更に伴い【廃止】します。
+                // 代わりに、一定周期で他ユーザーが消えたかどうかを検知して画面描画を更新するための軽量リフレッシャーのみを稼働させます。
                 if (heartbeatIntervalId) clearInterval(heartbeatIntervalId);
                 if (!isWatcherMode) {
                     heartbeatIntervalId = setInterval(async () => {
                         if (!curR) return;
+                        // ここでは、自身の lastSeen の定期的な自動上書き（自動延命）は行いません。
+                        // 部屋の最終アクティビティ維持、および他者検知用のトリガー通知処理のみを安全に評価させます。
                         const currentNow = getServerNow();
                         try { 
-                            await update(ref(db, `presence/${curR}/${myUid}`), { lastSeen: currentNow }); 
                             if (!isOfficial) await update(ref(db, `rooms/${curR}`), { lastActivity: currentNow }); 
                         } catch(e) {}
                     }, 15000);
@@ -1075,6 +1085,11 @@
 
             try {
                 const NOW = getServerNow();
+                
+                // 4. 発言時：チャットを発言するたびに自分の「lastSeen」をその瞬間の実時刻に上書きして生存時間を延長
+                const myRef = ref(db, `presence/${curR}/${myUid}`);
+                await update(myRef, { lastSeen: NOW });
+
                 await push(ref(db, `chat/${curR}`), { 
                     type: "msg", 
                     nEnc: enc(curN, curP, isOfficial), 
@@ -1144,6 +1159,9 @@
         async function exitRoom() {
             if (isProcessingExit || !curR) return; isProcessingExit = true;
             try {
+                // 通常の自主的退室時はonDisconnectの予約タスク（タイムアウト通知）を解除
+                try { onDisconnect(ref(db)).cancel(); } catch(cErr){}
+
                 if (!isWatcherMode) {
                     const isOfficial = (curR === OFFICIAL_ROOM_HASH);
                     const chatRef = ref(db, `chat/${curR}`);
@@ -1219,6 +1237,7 @@
                     const savedTripKey = localStorage.getItem("nez_tk") || "";
                     const fullTripString = generateTripString(savedName, savedTripKey);
                     
+                    // セッション復帰フラグ（isSessionRestore = true）を渡して入室
                     await join(s.rawR, s.curP, savedName, fullTripString, s.maxLimit, s.selectRomMin, s.selectRoomMin, !!s.isWatcherMode, true); 
                     return true;
                 } catch(e) { localStorage.removeItem("active_room_session"); }

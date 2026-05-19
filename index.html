@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>NEZU ONETIME CHAT</title>
+    <title>NEZU ONETIME CHAT (Local Patch v2.3 - Live/Local Auto)</title>
     <script src="https://cdn.tailwindcss.com/"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
@@ -188,7 +188,7 @@
             <p class="text-slate-400">
                 部屋パスワードを用いてブラウザ側でAES-256暗号化を行う使い捨てチャットです。生データや暗号鍵はサーバーに送信されず、退室や時間経過でログは完全消去されます。
             </p>
-            <p class="text-emerald-400 font-bold bg-emerald-950/30 border border-emerald-900/40 p-1 rounded">
+            <p id="localModeIndicator" class="text-emerald-400 font-bold bg-emerald-950/30 border border-emerald-900/40 p-1 rounded">
                 ⚠️ 公式部屋は常設されています（1ページ50件、過去ログ閲覧可）
             </p>
         </div>
@@ -222,7 +222,7 @@
 
         <details class="text-[10.5px] text-slate-400 bg-slate-950 p-2 rounded-xl border border-slate-800 shrink-0">
             <summary class="cursor-pointer font-bold select-none text-slate-300">⚙️ 部屋の最適化構成</summary>
-            <div class="grid grid-cols-3 gap-1.5 mt-1.5">
+            <div class="grid grid-cols-2 gap-1.5 mt-1.5">
                 <div>
                     <label class="block font-semibold mb-0.5 text-slate-400">人数制限</label>
                     <select id="maxUsers" class="w-full p-1 border border-slate-700 rounded-md bg-slate-800 text-white font-bold text-[11px] focus:outline-none">
@@ -230,13 +230,7 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block font-semibold mb-0.5 text-slate-400">ROM切断</label>
-                    <select id="romTime" class="w-full p-1 border border-slate-700 rounded-md bg-slate-800 text-white font-bold text-[11px] focus:outline-none">
-                        <option value="10">10分</option><option value="20">20分</option><option value="30">30分</option><option value="40">40分</option><option value="50">50分</option><option value="60" selected>1時間</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block font-semibold mb-0.5 text-slate-400">自動消滅</label>
+                    <label class="block font-semibold mb-0.5 text-slate-400">自動消滅/ROM切断</label>
                     <select id="roomCleanTime" class="w-full p-1 border border-slate-700 rounded-md bg-slate-800 text-white font-bold text-[11px] focus:outline-none">
                         <option value="10">10分</option><option value="20">20分</option><option value="30">30分</option><option value="40">40分</option><option value="50">50分</option><option value="60" selected>1時間</option>
                     </select>
@@ -351,7 +345,7 @@
                     <p class="font-bold text-red-400 flex items-center gap-1 text-[11.5px]">🚫 絶対禁止事項</p>
                     <p class="text-[10.5px] text-slate-400">当空間は完全匿名の一時利用を想定していますが、以下の行為は固くお断りします。</p>
                     <ul class="list-disc list-inside space-y-0.5 text-red-300 text-[10px] pl-1">
-                        <li>他者の権利を侵害する名誉毀損・誹謗中傷・脅迫行為</li>
+                        <li>他者の権利を侵害する名誉毀損・誹謗中傷・脅脅行為</li>
                         <li>公式部屋などパブリック空間での過度な荒らし行為、スパム連投</li>
                         <li>違法コンテンツのリンク共有、または犯罪行為の計画・唆し</li>
                         <li>システムの脆弱性を狙った不正なリクエストやサーバーへの攻撃</li>
@@ -373,13 +367,14 @@
         </div>
     </div>
 
-    <!-- 💻 アプリケーションロジック -->
+    <!-- 👑 アプリケーションロジック -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
         import {
             getDatabase, ref, push, onValue, set, remove,
             query, orderByChild, limitToLast, get, update, onDisconnect, onChildAdded, startAfter, endBefore
         } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
         const $ = id => document.getElementById(id);
         
@@ -395,16 +390,25 @@
         
         const firebaseApp = initializeApp(firebaseConfig);
         const db = getDatabase(firebaseApp, firebaseConfig.databaseURL);
+        const auth = getAuth(firebaseApp);
+
+        // 🌟 ローカル環境の自動判定ロジック
+        const isLocalContext = window.location.hostname === "localhost" || 
+                               window.location.hostname === "127.0.0.1" || 
+                               window.location.protocol === "file:";
+
+        const modalImg = $("modalTargetImg");
+        const imgWrapper = $("modalImgWrapper");
 
         let isTimelineScrolledDown = false; 
         let isComposing = false; 
-        let heartbeatIntervalId = null;
         let curR = null, curP = null, curN = null, curT = null, rawR = null;
         let serverTimeOffset = 0, isOffsetLoaded = false;
         let unsubscribeChat = null, unsubscribePres = null, unsubscribeRoomConfig = null, unsubscribeConn = null;
         let isProcessingExit = false;
         let isWatcherMode = false; 
         let myUid = null;
+        let authPromise = null;
         
         let oldestLoadedTimestamp = null;
         let isPaginationEnding = false;
@@ -415,15 +419,39 @@
         const OFFICIAL_ROOM_HASH = CryptoJS.SHA256("公式部屋").toString();
         const chatTimeline = $('chatTimeline');
 
-        const getOrCreateLocalUid = () => {
-            let uid = localStorage.getItem("nez_mock_uid");
-            if (!uid) {
-                uid = "usr_" + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
-                localStorage.setItem("nez_mock_uid", uid);
-            }
-            return uid;
+        // 🔒 認証状態追跡ファクトリ（ローカル時はFirebase Authを通さずダミーUIDを瞬時に返却）
+        const initializeUserIdentity = () => {
+            if (authPromise) return authPromise;
+            
+            authPromise = new Promise((resolve, reject) => {
+                if (isLocalContext) {
+                    // ローカルデバッグ用にローカルストレージベース、またはランダムの使い捨て固定UIDを生成して回避
+                    let localUid = localStorage.getItem("nez_local_test_uid");
+                    if (!localUid) {
+                        localUid = "local-user-" + Math.random().toString(36).substr(2, 9);
+                        localStorage.setItem("nez_local_test_uid", localUid);
+                    }
+                    myUid = localUid;
+                    console.log("🛠️ 【ローカル開発モード】Firebase Authをスキップしました。UID:", myUid);
+                    resolve(myUid);
+                    return;
+                }
+
+                // 本番サーバー（Live環境）時は通常通り匿名認証を要求
+                signInAnonymously(auth).then((userCredential) => {
+                    myUid = userCredential.user.uid;
+                    console.log("🚀 Firebase Auth 認証成功 UID:", myUid);
+                    resolve(myUid);
+                }).catch((error) => {
+                    console.error("❌ Firebase匿名認証に完全に失敗しました:", error);
+                    hideSplash();
+                    showLobby(`【Firebase 認証エラー】\n匿名認証の確立に失敗したため、接続を遮断しました。\n\n▼解決策：\nFirebaseコンソール ＞「Authentication」＞「Sign-in method」を開き、【匿名 (Anonymous)】が「有効」になっているか必ず確認してください。\n\n(内部ログ: ${error.message})`);
+                    authPromise = null; 
+                    reject(error);
+                });
+            });
+            return authPromise;
         };
-        myUid = getOrCreateLocalUid();
 
         const hideSplash = () => {
             const splash = $("appSplash");
@@ -443,6 +471,7 @@
 
         window.openImageModal = function(src) {
             const modal = $("imageModal");
+            if (!modalImg) return;
             scale = 1; translateX = 0; translateY = 0; baseTranslateX = 0; baseTranslateY = 0;
             modalImg.style.transform = `translate(0px, 0px) scale(1)`;
             modalImg.src = src;
@@ -452,6 +481,7 @@
 
         window.closeImageModal = function() {
             const modal = $("imageModal");
+            if (!modal || !modalImg) return;
             modal.classList.add("opacity-0", "pointer-events-none");
             setTimeout(() => { modal.classList.add("hidden"); modalImg.src = ""; }, 200);
         };
@@ -487,7 +517,16 @@
         const ensureTimeSync = () => {
             return new Promise((resolve) => {
                 if (isOffsetLoaded) return resolve();
+                
+                const fallbackTimeout = setTimeout(() => {
+                    console.warn("⚠️ サーバー時刻同期がタイムアウトしました。ローカルシステム時刻を適用します。");
+                    serverTimeOffset = 0;
+                    isOffsetLoaded = true;
+                    resolve();
+                }, 1000);
+
                 const unsubscribe = onValue(ref(db, ".info/serverTimeOffset"), (snap) => {
+                    clearTimeout(fallbackTimeout);
                     serverTimeOffset = snap.val() || 0;
                     isOffsetLoaded = true;
                     unsubscribe();
@@ -503,7 +542,6 @@
             if (unsubscribePres) { unsubscribePres(); unsubscribePres = null; }
             if (unsubscribeRoomConfig) { unsubscribeRoomConfig(); unsubscribeRoomConfig = null; }
             if (unsubscribeConn) { unsubscribeConn = null; }
-            if (heartbeatIntervalId) { clearInterval(heartbeatIntervalId); heartbeatIntervalId = null; }
         };
 
         const showLobby = (msg = "") => {
@@ -686,11 +724,8 @@
         let isDragging = false;
         let baseTranslateX = 0, baseTranslateY = 0;
 
-        const modalImg = $("modalTargetImg");
-        const imgWrapper = $("modalImgWrapper");
-
         function clampTransforms() {
-            if (scale <= 1) { translateX = 0; translateY = 0; return; }
+            if (!modalImg || scale <= 1) { translateX = 0; translateY = 0; return; }
             const wrapRect = imgWrapper.getBoundingClientRect();
             const currentWidth = modalImg.offsetWidth * scale;
             const currentHeight = modalImg.offsetHeight * scale;
@@ -718,6 +753,7 @@
         }, { passive: true });
 
         $("imageModal").addEventListener("touchmove", (e) => {
+            if (!modalImg) return;
             if (scale > 1 || e.touches.length > 1) { if (e.cancelable) e.preventDefault(); }
             if (isDragging && e.touches.length === 1 && scale > 1) {
                 const dx = e.touches[0].clientX - startX; const dy = e.touches[0].clientY - startY;
@@ -735,6 +771,7 @@
         }, { passive: false });
 
         $("imageModal").addEventListener("touchend", (e) => {
+            if (!modalImg) return;
             if (e.touches.length === 0) {
                 isDragging = false;
                 if (scale <= 1) {
@@ -829,11 +866,37 @@
             }
         };
 
-        async function join(rID, pass, name, trip, maxLimit, selectRomMin, selectRoomMin, isDirectOfficialClick = false, isSessionRestore = false) {
+        async function setupDisconnectHook() {
+            if (isWatcherMode || !curR) return;
+            try {
+                const myRef = ref(db, `presence/${curR}/${myUid}`);
+                const disconnectRef = onDisconnect(myRef);
+                await disconnectRef.cancel();
+                await disconnectRef.setValue(null);
+            } catch(e) {
+                console.error("onDisconnect再登録失敗:", e);
+            }
+        }
+
+        async function cleanRoomDataImmediate() {
+            if (!curR || curR === OFFICIAL_ROOM_HASH) return;
+            try {
+                await remove(ref(db, `rooms/${curR}`)).catch(()=>{});
+                await remove(ref(db, `chat/${curR}`)).catch(()=>{});
+                await remove(ref(db, `presence/${curR}`)).catch(()=>{});
+            } catch(e) {
+                console.error("即時クリーンアップエラー:", e);
+            }
+        }
+
+        async function join(rID, pass, name, trip, maxLimit, selectRoomMin, isDirectOfficialClick = false, isSessionRestore = false) {
             try {
                 $("errMsg").style.display = "none";
-                await ensureTimeSync(); 
-                const NOW = getServerNow();
+                setLobbyButtonsState(false);
+                
+                // 🔒 認証ファクトリ呼び出し
+                await initializeUserIdentity();
+                if (!myUid) throw new Error("ユーザーアイデンティティの初期化が完了していません。");
 
                 const targetRoomID = (rID === "official-room" || rID === "公式部屋") ? "公式部屋" : rID;
                 const hashId = (targetRoomID === "公式部屋") ? OFFICIAL_ROOM_HASH : CryptoJS.SHA256(targetRoomID).toString();
@@ -864,14 +927,14 @@
                 if (isWatcherMode) { curN = ""; curT = ""; } else { curN = name; curT = trip; }
 
                 if (isOfficial) {
-                    selectRomMin = 30; maxLimit = 10; selectRoomMin = 999999999;
+                    maxLimit = 10; selectRoomMin = 999999999;
                     $("copyBtn").style.display = "none";
                 } else {
                     $("copyBtn").style.display = "block";
                 }
 
                 localStorage.setItem("active_room_session", JSON.stringify({
-                    rawR, curP, curN: isWatcherMode ? "" : curN, curT: isWatcherMode ? "" : curT, maxLimit, selectRomMin, selectRoomMin, isWatcherMode
+                    rawR, curP, curN: isWatcherMode ? "" : curN, curT: isWatcherMode ? "" : curT, maxLimit, selectRoomMin, isWatcherMode
                 }));
                 
                 localStorage.setItem("nez_ri", targetRoomID);
@@ -883,23 +946,25 @@
                 const myRef = ref(db, `presence/${curR}/${myUid}`);
 
                 let finalMax = maxLimit;
-                USER_TIMEOUT = (selectRomMin * 60 + 1) * 1000; 
+                USER_TIMEOUT = (selectRoomMin * 60 + 1) * 1000; 
                 ROOM_LIFETIME = (selectRoomMin * 60) * 1000;
+
+                await ensureTimeSync(); 
+                const NOW = getServerNow();
 
                 try {
                     const roomSnap = await get(roomRef);
                     if (roomSnap.exists()) {
                         const rData = roomSnap.val();
-                        USER_TIMEOUT = ((isOfficial ? 30 : (rData.romMin || selectRomMin)) * 60 + 1) * 1000; 
+                        USER_TIMEOUT = ((isOfficial ? 30 : (rData.roomMin || selectRoomMin)) * 60 + 1) * 1000; 
                         ROOM_LIFETIME = (isOfficial ? 999999999 : (rData.roomMin || selectRoomMin)) * 60 * 1000;
                         if (rData.max !== undefined) finalMax = isOfficial ? 10 : Number(rData.max);
                         if (!isOfficial) await update(roomRef, { lastActivity: NOW });
                     } else {
-                        if (!isOfficial) await set(roomRef, { max: finalMax, romMin: selectRomMin, roomMin: selectRoomMin, lastActivity: NOW });
+                        if (!isOfficial) await set(roomRef, { max: finalMax, roomMin: selectRoomMin, lastActivity: NOW });
                     }
                 } catch (roomErr) { console.warn("部屋構成の設定をスキップ:", roomErr); }
 
-                if (unsubscribeConn) { unsubscribeConn = null; }
                 let isReentry = isSessionRestore;
 
                 if (!isWatcherMode) {
@@ -933,31 +998,15 @@
                         if (!isReentry && currentActiveCount >= finalMax) { showLobby(`部屋が満員です（上限 ${finalMax} 名）`); return; }
                     }
 
-                    /* 💥 アトミック・オンディスコネクト（マルチパス・アップデート）の実装 */
-                    unsubscribeConn = onValue(ref(db, ".info/connected"), (snap) => {
+                    unsubscribeConn = onValue(ref(db, ".info/connected"), async (snap) => {
                         if (snap.val() === true && curR && !isProcessingExit && !isWatcherMode) {
-                            const disconnectRef = ref(db);
-                            const updates = {};
-                            // 切断時に自分のプレゼンスを削除
-                            updates[`presence/${curR}/${myUid}`] = null;
-                            
-                            // 切断時にタイムアウト用システムメッセージを同時生成する予約（プッシュキーを事前生成）
-                            const sysPushKey = "sys_" + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
-                            updates[`chat/${curR}/${sysPushKey}`] = {
-                                type: "sys",
-                                text: enc(`${name}${trip} がタイムアウト離脱しました`, pass, isOfficial),
-                                time: { ".sv": "timestamp" } // サーバー同期タイムスタンプ
-                            };
-
-                            onDisconnect(disconnectRef).update(updates).catch(e => console.error("onDisconnect登録失敗:", e));
-                            set(myRef, { nEnc: enc(name, pass, isOfficial), tEnc: enc(trip, pass, isOfficial), lastSeen: getServerNow() }).catch(e => console.error(e));
+                            await setupDisconnectHook();
+                            await set(myRef, { nEnc: enc(name, pass, isOfficial), tEnc: enc(trip, pass, isOfficial), lastSeen: getServerNow() });
                         }
                     });
 
-                    // 1. 入室直後：lastSeenを現在の実時刻に設定して入室処理を実行
                     await set(myRef, { nEnc: enc(name, pass, isOfficial), tEnc: enc(trip, pass, isOfficial), lastSeen: NOW });
                     
-                    // 復帰セッション（isReentry）でない新規入室時のみアナウンスを流す
                     if (!isReentry) { 
                         await push(chatRef, { type: "sys", text: enc(`${name}${trip} が入室しました`, pass, isOfficial), time: NOW }); 
                     }
@@ -980,22 +1029,58 @@
                 hideSplash();
 
                 let trackedUserStates = {};
-                unsubscribePres = onValue(presRef, s => {
+                unsubscribePres = onValue(presRef, async (s) => {
                     if (!curR) return; 
                     const users = s.val() || {}, frag = document.createDocumentFragment(), currentNow = getServerNow();
                     let count = 0, currentActiveUids = new Set();
+                    let amIExpired = false;
 
                     Object.keys(users).forEach(k => {
+                        if (currentNow - (users[k].lastSeen || currentNow) > USER_TIMEOUT) {
+                            if (k === myUid) amIExpired = true;
+                            return;
+                        }
                         const n = textDec(users[k].nEnc, curP, isOfficial); if (!n) return;
                         const trip = textDec(users[k].tEnc, curP, isOfficial) || "";
                         
-                        // 2. タイムアウト時間を超えている（放置された）クライアントはリスト上から除外（非表示化）
-                        if (currentNow - (users[k].lastSeen || currentNow) > USER_TIMEOUT) {
-                            return;
-                        }
                         currentActiveUids.add(k); count++;
                         const span = document.createElement("span"); span.className = "user-chip"; span.innerText = n + trip; frag.appendChild(span);
                     });
+
+                    if (amIExpired && !isWatcherMode && !isProcessingExit) {
+                        isProcessingExit = true;
+                        alert("一定時間発言がなかったため、自動タイムアウト退室しました。");
+                        try { onDisconnect(ref(db)).cancel(); } catch(e){}
+                        
+                        let otherAlive = false;
+                        Object.keys(users).forEach(k => {
+                            if (k !== myUid && (currentNow - (users[k].lastSeen || currentNow) <= USER_TIMEOUT)) {
+                                otherAlive = true;
+                            }
+                        });
+
+                        if (!isOfficial && !otherAlive) {
+                            await cleanRoomDataImmediate();
+                        } else {
+                            await push(chatRef, { 
+                                type: "sys", 
+                                text: enc(`${curN}${curT} が発言タイムアウトのため自動退出しました`, curP, isOfficial), 
+                                time: currentNow 
+                            }).catch(()=>{});
+                            await remove(myRef).catch(()=>{});
+                        }
+                        isProcessingExit = false;
+                        showLobby("一定時間発言がなかったためタイムアウトしました。");
+                        return;
+                    }
+
+                    if (!isOfficial && Object.keys(users).length > 0 && count === 0 && !isProcessingExit) {
+                        await cleanRoomDataImmediate();
+                        if (!isWatcherMode) {
+                            showLobby("全員がタイムアウトしたため、部屋とログが自動消去されました。");
+                        }
+                        return;
+                    }
 
                     trackedUserStates = {}; currentActiveUids.forEach(activeUid => { trackedUserStates[activeUid] = "active"; });
                     $("presenceList").innerHTML = ""; $("presenceList").appendChild(frag); $("presenceCount").innerText = `[${count}/${finalMax}]`;
@@ -1053,21 +1138,6 @@
                     if (!isTimelineScrolledDown) { scrollToLatest(); }
                 });
 
-                // 3. 閲覧中（放置）の自動ハートビートによる自動更新（lastSeen自動延長）は、仕様変更に伴い【廃止】します。
-                // 代わりに、一定周期で他ユーザーが消えたかどうかを検知して画面描画を更新するための軽量リフレッシャーのみを稼働させます。
-                if (heartbeatIntervalId) clearInterval(heartbeatIntervalId);
-                if (!isWatcherMode) {
-                    heartbeatIntervalId = setInterval(async () => {
-                        if (!curR) return;
-                        // ここでは、自身の lastSeen の定期的な自動上書き（自動延命）は行いません。
-                        // 部屋の最終アクティビティ維持、および他者検知用のトリガー通知処理のみを安全に評価させます。
-                        const currentNow = getServerNow();
-                        try { 
-                            if (!isOfficial) await update(ref(db, `rooms/${curR}`), { lastActivity: currentNow }); 
-                        } catch(e) {}
-                    }, 15000);
-                }
-
             } catch (e) {
                 console.error(e);
                 showLobby(`❌ エラー\n原因: ${e.message}`);
@@ -1085,10 +1155,10 @@
 
             try {
                 const NOW = getServerNow();
-                
-                // 4. 発言時：チャットを発言するたびに自分の「lastSeen」をその瞬間の実時刻に上書きして生存時間を延長
                 const myRef = ref(db, `presence/${curR}/${myUid}`);
+                
                 await update(myRef, { lastSeen: NOW });
+                await setupDisconnectHook();
 
                 await push(ref(db, `chat/${curR}`), { 
                     type: "msg", 
@@ -1127,7 +1197,7 @@
             const cleanRoom = r.replace(/[\s\u3000]+/g, "").trim();
             if (!cleanRoom || !p) { return false; }
             setLobbyButtonsState(false);
-            await join(cleanRoom, p, cleanName, generateTripString(cleanName, tk), Number($("maxUsers").value), Number($("romTime").value), Number($("roomCleanTime").value));
+            await join(cleanRoom, p, cleanName, generateTripString(cleanName, tk), Number($("maxUsers").value), Number($("roomCleanTime").value));
             return true;
         };
 
@@ -1144,7 +1214,7 @@
             const rawName = $("ni").value;
             const cleanName = rawName.replace(/[\s\u3000]+/g, "").trim();
             const tk = $("tk").value.trim();
-            await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, tk), 10, 30, 999999999, true);
+            await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, tk), 10, 999999999, true);
         };
 
         $("watcherUpgradeBtn").onclick = async () => {
@@ -1153,20 +1223,18 @@
             if (!cleanName || !tk) { alert("名前とトリップキーを入力してください。"); return; }
             localStorage.setItem("nez_ni", cleanName); localStorage.setItem("nez_tk", tk);
             $("ni").value = cleanName; $("tk").value = tk; updateTripPreview();
-            await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, tk), 10, 30, 999999999, false, false);
+            await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, tk), 10, 999999999, false, false);
         };
 
         async function exitRoom() {
             if (isProcessingExit || !curR) return; isProcessingExit = true;
             try {
-                // 通常の自主的退室時はonDisconnectの予約タスク（タイムアウト通知）を解除
                 try { onDisconnect(ref(db)).cancel(); } catch(cErr){}
 
                 if (!isWatcherMode) {
                     const isOfficial = (curR === OFFICIAL_ROOM_HASH);
                     const chatRef = ref(db, `chat/${curR}`);
                     const presRef = ref(db, `presence/${curR}`);
-                    const roomRef = ref(db, `rooms/${curR}`);
                     const myRef = ref(db, `presence/${curR}/${myUid}`);
 
                     const presSnap = await get(presRef);
@@ -1176,14 +1244,15 @@
                     if (presSnap.exists()) {
                         const users = presSnap.val() || {};
                         Object.keys(users).forEach(k => {
-                            if (k !== myUid && (currentNow - (users[k].lastSeen || currentNow) <= USER_TIMEOUT)) { otherUsersCount++; }
+                            if (k !== myUid && (currentNow - (users[k].lastSeen || currentNow) <= USER_TIMEOUT)) { 
+                                otherUsersCount++; 
+                            }
                         });
                     }
 
                     if (!isOfficial && otherUsersCount === 0) {
-                        await remove(roomRef).catch(()=>{});
-                        await remove(chatRef).catch(()=>{});
-                        await remove(presRef).catch(()=>{});
+                        clearSubscriptions();
+                        await cleanRoomDataImmediate();
                     } else {
                         await push(chatRef, { type: "sys", text: enc(`${curN}${curT} が退室しました`, curP, isOfficial), time: currentNow }).catch(()=>{});
                         await remove(myRef).catch(()=>{});
@@ -1237,17 +1306,28 @@
                     const savedTripKey = localStorage.getItem("nez_tk") || "";
                     const fullTripString = generateTripString(savedName, savedTripKey);
                     
-                    // セッション復帰フラグ（isSessionRestore = true）を渡して入室
-                    await join(s.rawR, s.curP, savedName, fullTripString, s.maxLimit, s.selectRomMin, s.selectRoomMin, !!s.isWatcherMode, true); 
+                    await join(s.rawR, s.curP, savedName, fullTripString, s.maxLimit, s.selectRoomMin, !!s.isWatcherMode, true); 
                     return true;
                 } catch(e) { localStorage.removeItem("active_room_session"); }
             }
             return false;
         }
 
-        onValue(ref(db, ".info/serverTimeOffset"), (snap) => { serverTimeOffset = snap.val() || 0; isOffsetLoaded = true; }, { onlyOnce: true });
-
         window.addEventListener("DOMContentLoaded", async () => {
+            // 💡 ローカル環境判定があった場合はUIでお知らせ
+            if (isLocalContext) {
+                const indicator = $("localModeIndicator");
+                if (indicator) {
+                    indicator.innerText = "🛠️ ローカル開発環境：Firebase Auth（匿名認証）を自動バイパスしています。";
+                    indicator.className = "text-amber-400 font-bold bg-amber-950/40 border border-amber-900/60 p-1 rounded text-center";
+                }
+            }
+
+            // 🔒 1. まずはじめに環境判定と匿名認証処理を非同期的に呼び出してロックしておく
+            initializeUserIdentity().catch(()=>{
+                // 初期ロード時の例外は initializeUserIdentity 側でキャッチされ画面にエラー表示を出すため、ここでは空ハンドリング
+            });
+
             const savedName = localStorage.getItem("nez_ni"), savedTripKey = localStorage.getItem("nez_tk");
             const savedRoomId = localStorage.getItem("nez_ri"), savedRoomPass = localStorage.getItem("nez_pi");
 
@@ -1274,7 +1354,7 @@
                     const rawName = $("ni").value;
                     const cleanName = rawName.replace(/[\s\u3000]+/g, "").trim();
                     const tk = $("tk").value.trim();
-                    await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, tk), 10, 30, 999999999, true);
+                    await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, tk), 10, 999999999, true);
                     return;
                 } else if ($("ni").value || n) {
                     const autoJoined = await executeJoinFromLobbyInputs(); if (autoJoined) return;

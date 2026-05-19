@@ -1,1 +1,1339 @@
-mんk！
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>NEZU ONETIME CHAT (AtomicClean-v2.6.8-StrictActivity)</title>
+    <script src="https://cdn.tailwindcss.com/"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg: #111111;
+            --panel-bg: rgba(22, 28, 45, 0.95);
+            --text-color: #f8fafc;
+            --accent-color: #00ff66;
+            --border: rgba(255, 255, 255, 0.08);
+        }
+        
+        html, body {
+            height: 100vh;
+            height: 100dvh;
+            width: 100vw;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: var(--bg);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-text-size-adjust: 100%;
+            touch-action: manipulation;
+        }
+
+        .select-text {
+            -webkit-user-select: text;
+            user-select: text;
+        }
+
+        .user-chip {
+            display: inline-flex;
+            align-items: center;
+            background: #1e293b;
+            color: #cbd5e1;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-right: 4px;
+            margin-bottom: 4px;
+            border: 1px solid #334155;
+            contain: content;
+        }
+
+        @keyframes fadeIn { 
+            from { opacity: 0; transform: translateY(-4px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+        .animate-fade-in { 
+            animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; 
+        }
+
+        @keyframes audioPlayingPulse {
+            0% { border-color: rgba(79, 70, 229, 0.4); box-shadow: 0 0 4px rgba(79, 70, 229, 0.2); }
+            50% { border-color: rgba(0, 255, 102, 0.8); box-shadow: 0 0 10px rgba(0, 255, 102, 0.3); }
+            100% { border-color: rgba(79, 70, 229, 0.4); box-shadow: 0 0 4px rgba(79, 70, 229, 0.2); }
+        }
+        .audio-playing-wrapper {
+            animation: audioPlayingPulse 2s infinite ease-in-out;
+            background: rgba(15, 23, 42, 0.95) !important;
+        }
+
+        #chatTimeline {
+            flex: 1 1 0%;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column; 
+            justify-content: flex-start; 
+            gap: 12px;
+            background-color: #141414;
+            -webkit-overflow-scrolling: touch;
+            contain: content;
+        }
+
+        #chatTimeline::-webkit-scrollbar { width: 5px; }
+        #chatTimeline::-webkit-scrollbar-track { background: transparent; }
+        #chatTimeline::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
+
+        .msg-wrap { 
+            width: 100%; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: flex-start;
+            contain: layout style;
+        }
+        .msg-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--primary);
+            will-change: transform, opacity;
+        }
+
+        .audio-seekbar::-webkit-slider-runnable-track { background: #334155; height: 4px; border-radius: 2px; }
+        .audio-seekbar::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; background: #00ff66; height: 10px; width: 10px; border-radius: 50%; margin-top: -3px; cursor: pointer; }
+        .audio-seekbar::-moz-range-track { background: #334155; height: 4px; border-radius: 2px; }
+        .audio-seekbar::-moz-range-thumb { background: #00ff66; height: 10px; width: 10px; border-radius: 50%; cursor: pointer; border: none; }
+
+        #floating-nav {
+            position: absolute;
+            right: 16px;
+            bottom: 24px;
+            z-index: 45;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+        #floating-nav button { 
+            pointer-events: auto; 
+            touch-action: manipulation;
+            opacity: 0.6;
+            background-color: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, transform 0.15s ease;
+        }
+        #floating-nav button:hover,
+        #floating-nav button:active {
+            opacity: 1;
+            background-color: rgba(30, 41, 59, 0.8);
+        }
+        
+        input, textarea, select {
+            font-size: 16px !important;
+        }
+
+        #mi {
+            overflow-y: hidden;
+            scrollbar-width: none;
+        }
+        #mi::-webkit-scrollbar {
+            display: none;
+        }
+        #mi::placeholder {
+            font-size: 13px;
+            color: #64748b;
+        }
+        @media (max-width: 380px) {
+            #mi::placeholder {
+                font-size: 11px;
+            }
+        }
+
+        #imageModal {
+            touch-action: none;
+        }
+        #modalTargetImg {
+            will-change: transform;
+            cursor: grab;
+            transition: none;
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        #modalTargetImg:active {
+            cursor: grabbing;
+        }
+    </style>
+</head>
+<body class="flex items-start justify-center p-2 pt-4 text-slate-100 h-full w-screen overflow-hidden">
+
+    <div id="appSplash" class="fixed inset-0 bg-[#111111] z-50 flex flex-col items-center justify-center gap-3">
+        <div class="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+        <p class="text-xs font-bold text-slate-500 tracking-wider">CONNECTING...</p>
+    </div>
+
+    <!-- ロビー画面 -->
+    <div id="lobby" class="w-full max-w-md p-3.5 bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 flex flex-col gap-2.5 select-text max-h-[96dvh] overflow-y-auto overflow-x-hidden hidden">
+        <h1 class="text-base font-black text-center text-indigo-400 tracking-tight shrink-0">NEZU ONETIME CHAT</h1>
+        
+        <div class="bg-indigo-950/40 border border-indigo-900/60 rounded-xl p-3 text-[11px] space-y-2 text-slate-300 shrink-0 leading-normal">
+            <div class="flex items-center gap-1 font-bold text-indigo-300 border-b border-indigo-900/40 pb-1">
+                <span>🔒</span>
+                <span>端末間での強力な暗号化（E2E）空間</span>
+            </div>
+            <p class="text-slate-400">
+                入力した「部屋パスワード」をもとに、あなたのブラウザ内でメッセージを完全に暗号化してから送信します。パスワードや元のテキストは、サーバー側には一切伝わりません。
+            </p>
+            <div class="bg-slate-950/50 p-1.5 rounded border border-slate-800 text-[10.5px]">
+                <p class="text-amber-400 font-bold">⚠️ データ自動消滅のルール</p>
+                <p class="text-slate-400 mt-0.5">
+                    一時的な通信切断やタブ閉じでは部屋は消えませんが、<span class="text-slate-200 underline">「誰も発言しない状態」が設定時間を過ぎる</span>、または<span class="text-slate-200 underline">全員が退室する</span>と、サーバーから全ログが即座に完全抹消されます。
+                </p>
+            </div>
+            <p id="localModeIndicator" class="text-emerald-400 font-bold bg-emerald-950/30 border border-emerald-900/40 p-1 rounded text-[10px]">
+                🚀 Strict Activity Mode: 部屋の生存確認は「メッセージ送信」の有無のみで判定されます。一般部屋のログ保存件数は無制限です。
+            </p>
+        </div>
+        
+        <div id="errMsg" class="bg-red-950/80 text-red-300 text-xs p-3 rounded-xl font-medium border border-red-800/60 hidden shrink-0 break-all whitespace-pre-wrap leading-relaxed"></div>
+        
+        <div class="flex flex-col gap-2 shrink-0 text-[11px]">
+            <div>
+                <label class="block font-bold text-slate-400 mb-0.5">あなたの表示名 <span class="text-red-500">*</span></label>
+                <input type="text" id="ni" placeholder="ニックネームを入力（最大10文字）" maxlength="10" class="w-full px-2.5 py-1.5 border border-slate-700 bg-slate-800 rounded-lg text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            
+            <div>
+                <label class="block font-bold text-slate-400 mb-0.5">トリップ暗号（なりすまし防止用の秘密キー）</label>
+                <div class="flex gap-1 items-center relative">
+                    <input type="text" id="tk" placeholder="任意の秘密パス（本人証明用キー）" autocomplete="on" spellcheck="false" class="w-full px-2.5 py-1.5 border border-slate-700 bg-slate-800 rounded-lg text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <span id="tp" class="absolute right-1 text-[9px] font-mono text-green-400 bg-slate-950/90 px-1 py-0.5 rounded border border-slate-800 hidden shrink-0 max-w-[80px] truncate"></span>
+                </div>
+            </div>
+            
+            <div>
+                <label class="block font-bold text-slate-400 mb-0.5">部屋ID <span class="text-red-500">*</span></label>
+                <input type="text" id="ri" placeholder="作成または参加する部屋名" autocomplete="off" autocapitalize="off" spellcheck="false" class="w-full px-2.5 py-1.5 border border-slate-700 bg-slate-800 rounded-lg text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            
+            <div>
+                <label class="block font-bold text-slate-400 mb-0.5">部屋パスワード（会話を解読するための共通鍵） <span class="text-red-500">*</span></label>
+                <input type="text" id="pi" placeholder="メンバー共通 of 暗号化パスワード" autocomplete="off" autocapitalize="off" spellcheck="false" class="w-full px-2.5 py-1.5 border border-slate-700 bg-slate-800 rounded-lg text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+        </div>
+
+        <details class="text-[10.5px] text-slate-400 bg-slate-950 p-2 rounded-xl border border-slate-800 shrink-0">
+            <summary class="cursor-pointer font-bold select-none text-slate-300">⚙️ 部屋の最適化構成</summary>
+            <div class="grid grid-cols-2 gap-1.5 mt-1.5">
+                <div>
+                    <label class="block font-semibold mb-0.5 text-slate-400">人数制限</label>
+                    <select id="maxUsers" class="w-full p-1 border border-slate-700 rounded-md bg-slate-800 text-white font-bold text-[11px] focus:outline-none">
+                        <option value="2">2名</option><option value="3">3名</option><option value="4" selected>4名</option><option value="5">5名</option><option value="6">6名</option><option value="7">7名</option><option value="8">8名</option><option value="9">9名</option><option value="10">10名</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-semibold mb-0.5 text-slate-400">無発言自動消滅タイマー</label>
+                    <select id="userTimeoutTime" class="w-full p-1 border border-slate-700 rounded-md bg-slate-800 text-white font-bold text-[11px] focus:outline-none">
+                        <option value="5">5分発言なしで消滅</option>
+                        <option value="10">10分発言なしで消滅</option>
+                        <option value="20">20分発言なしで消滅</option>
+                        <option value="30" selected>30分発言なしで消滅</option>
+                        <option value="60">1時間発言なしで消滅</option>
+                    </select>
+                </div>
+            </div>
+        </details>
+
+        <div class="flex gap-2 mt-0.5 shrink-0">
+            <button id="masterGenBtn" class="w-1/4 text-xs bg-slate-800 text-slate-200 rounded-xl hover:bg-slate-700 transition font-bold py-2">自動生成</button>
+            <button id="enterBtn" class="flex-1 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition py-2">入室する</button>
+            <button id="officialRoomBtn" class="flex-1 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition py-2" title="常設公式部屋を覗き見する">公式部屋</button>
+        </div>
+
+        <div class="flex justify-center text-[11px] text-slate-400 mt-0.5 px-1 shrink-0">
+            <button id="openGuideBtn" class="text-indigo-400 hover:text-indigo-300 font-black flex items-center gap-1 transition">📖 詳細なセキュリティガイド・利用規約（必読）</button>
+        </div>
+    </div>
+
+    <!-- チャットメイン画面 -->
+    <div id="mainApp" class="w-full h-full max-w-lg bg-transparent flex flex-col relative hidden">
+        
+        <div id="header-panel" class="border-b border-slate-800 bg-slate-900/95 backdrop-filter backdrop-blur-md z-30 shrink-0 flex flex-col shadow-lg sticky top-0">
+            <div class="px-4 py-2 border-b border-slate-800/50 flex items-center justify-between gap-2">
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-1.5">
+                        <span id="topLiveIndicator" class="w-2 h-2 bg-indigo-500 rounded-full animate-pulse shrink-0"></span>
+                        <h2 id="roomDisplay" class="font-black text-sm text-slate-200 tracking-tight truncate select-text"></h2>
+                        <span id="presenceCount" class="text-xs text-slate-500 font-bold shrink-0">[-]</span>
+                    </div>
+                </div>
+                <div class="flex gap-1.5 shrink-0 items-center">
+                    <button id="copyBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs px-2.5 py-1.5 rounded-xl transition">招待</button>
+                    <button id="exitBtn" class="bg-red-950 hover:bg-red-900 text-red-400 font-bold text-xs px-2.5 py-1.5 rounded-xl transition">退室</button>
+                </div>
+            </div>
+            <div id="presenceList" class="flex flex-wrap px-4 py-1.5 max-h-12 overflow-y-auto bg-slate-950/40 border-b border-slate-800/30"></div>
+            
+            <div id="watcher-banner" class="bg-emerald-950/90 border-b border-emerald-900 text-emerald-400 text-[11px] font-bold p-3 hidden">
+                <p class="text-center mb-2">👀 現在「覗き見（閲覧のみ）モード」で接続中です。</p>
+                <div class="flex flex-col gap-2 max-w-sm mx-auto bg-slate-950/60 p-2.5 rounded-xl border border-emerald-900/40">
+                    <div class="w-full">
+                        <input type="text" id="watcher_ni" placeholder="あなたの表示名" maxlength="10" class="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                    </div>
+                    <div class="flex gap-1.5 items-center w-full">
+                        <input type="text" id="watcher_tk" placeholder="トリップキー（本人証明用）" spellcheck="false" class="flex-1 px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                        <span id="watcher_tp" class="text-[10px] font-mono text-green-400 bg-slate-950 px-2 py-1 rounded-lg border border-slate-800 hidden shrink-0"></span>
+                    </div>
+                    <button id="watcherUpgradeBtn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 rounded-lg text-xs transition mt-0.5 shadow-md">名前を登録してチャットに参加</button>
+                </div>
+            </div>
+
+            <div id="input-container" class="p-3 flex items-center gap-1.5 w-full relative bg-slate-900 border-b border-slate-800">
+                <button id="clearBtn" class="absolute left-5 text-slate-500 hover:text-slate-300 p-1 opacity-0 transition-opacity pointer-events-none z-10">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+                <textarea id="mi" placeholder="メッセージを入力... (Enterで送信)" rows="1" class="flex-1 pl-8 pr-3 py-2 border border-slate-800 bg-slate-950 rounded-xl text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none max-h-24 leading-relaxed select-text"></textarea>
+                <button id="sendBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-xl transition shadow-md shrink-0">
+                    <svg class="w-5 h-5 transform rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <div id="chatTimeline" class="select-text"></div>
+
+        <div id="floating-nav">
+            <button id="toTopBtn" class="p-2.5 rounded-xl border border-slate-800/40 flex flex-col items-center justify-center transition text-indigo-400 w-12 h-12 shadow-lg" title="最上部（最新ログ）へ">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 15l7-7 7 7"></path></svg>
+                <span class="text-[9px] font-bold mt-0.5">最新へ</span>
+            </button>
+            <button id="toBottomBtn" class="p-2.5 rounded-xl border border-slate-800/40 flex flex-col items-center justify-center transition text-slate-400 w-12 h-12 shadow-lg" title="最下部（過去ログ）へ">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
+                <span class="text-[9px] font-bold mt-0.5">最古へ</span>
+            </button>
+            <button id="focusBtn" class="p-2.5 rounded-xl border border-slate-800/40 flex flex-col items-center justify-center transition text-slate-300 w-12 h-12 shadow-lg" title="入力欄へフォーカス">
+                <span class="text-base leading-none">⌨️</span>
+                <span class="text-[9px] font-bold mt-0.5">入力</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 利用規約・詳細説明モーダル -->
+    <div id="guideCard" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 p-5 rounded-2xl max-w-md w-full max-h-[85vh] overflow-y-auto shadow-2xl flex flex-col gap-4 border border-slate-800 select-text">
+            <h3 class="font-black text-sm text-indigo-400 border-b border-slate-800 pb-2 flex items-center gap-1 shrink-0">📖 セキュリティガイド ＆ 利用規約</h3>
+            
+            <div class="text-[11px] text-slate-300 leading-relaxed space-y-4 overflow-y-auto pr-1">
+                <div class="bg-indigo-950/40 p-3 rounded-xl border border-indigo-900/60 space-y-1.5">
+                    <p class="font-bold text-indigo-300 text-[11.5px]">🛡️ 1. ブラウザ完結型の秘密通信 (E2E)</p>
+                    <p class="text-slate-400 text-[10.5px]">
+                        本システムは暗号規格**AES-256**を採用しています。入力された文章は、通信網に乗る前にあなたのブラウザ上で完全に暗号コード化されます。
+                    </p>
+                    <p class="text-emerald-400 font-bold text-[10.5px]">🔑 パスワードはサーバーに届きません：</p>
+                    <p class="text-slate-400 text-[10.5px]">
+                        解読に必要な「部屋パスワード」は一切サーバーへ送信・記録されません。そのため、万が一サーバーデータが流出しても、パスワードを知らない第三者が会話を解読することは数学的に不可能です。
+                    </p>
+                </div>
+
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1.5">
+                    <p class="font-bold text-slate-200 text-[11.5px]">⏱️ 2. ログ自動消滅の「厳格ルール」</p>
+                    <p class="text-slate-400 text-[10.5px]">
+                        データの痕跡を残さないため、当チャットには強力な自動削除装置（Strict Activity Mode）が備わっています。
+                    </p>
+                    <ul class="list-disc list-inside space-y-1 text-slate-400 pl-1 text-[10.5px]">
+                        <li><span class="text-amber-400 font-bold">発言の途減による消滅</span>：選択したタイマー時間（5分〜1時間）、室内の誰もメッセージを発言しなかった場合、安全のためサーバー上のログは痕跡なく即座に消去されます。</li>
+                        <li><span class="text-amber-400 font-bold">全員退室による消滅</span>：参加者全員が「退室」を押して部屋が空になった瞬間にログは完全抹消されます。</li>
+                        <li><span class="text-slate-200 font-semibold">回線切断時の保護</span>：一時的なWi-Fiの切断や、スマホのタブを閉じただけでデータが即座に消えることはありません。時間内であれば同じ設定で再合流可能です。</li>
+                    </ul>
+                </div>
+
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1.5">
+                    <p class="font-bold text-slate-200 text-[11.5px]">🔗 3. 部屋の共有と招待</p>
+                    <p class="text-slate-400 text-[10.5px]">
+                        「招待」ボタンをクリックすると、現在の「部屋ID」と「部屋パスワード」が埋め込まれた専用URLがクリップボードにコピーされます。このURLを共有するだけで、仲間を簡単に同じ暗号空間へ呼び出すことができます。
+                    </p>
+                </div>
+
+                <div class="bg-red-950/40 p-3 rounded-xl border border-red-900/60 space-y-1.5">
+                    <p class="font-bold text-red-400 text-[11.5px]">❌ 4. 禁止事項</p>
+                    <p class="text-slate-400 text-[10.5px]">
+                        ・違法な取引、犯罪の謀議、人道に反するコンテンツの共有・送信。<br>
+                        ・ボットや自動スクリプトを用いたサーバーへの過度なアクセス、スパム行為。
+                    </p>
+                </div>
+            </div>
+            
+            <button id="closeGuideBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-md mt-1 shrink-0">規約と安全上のルールを理解しました</button>
+        </div>
+    </div>
+
+    <!-- 画像拡大モーダル -->
+    <div id="imageModal" class="fixed inset-0 bg-black/90 backdrop-filter backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-200 pointer-events-none">
+        <div id="modalImgWrapper" class="w-full h-full flex items-center justify-center overflow-hidden relative">
+            <img id="modalTargetImg" src="" alt="拡大画像" class="select-text">
+        </div>
+        <div id="modalCloseBtn" class="absolute top-4 right-4 text-white bg-slate-900/80 rounded-full p-2 cursor-pointer border border-slate-700 z-50">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+        import {
+            getDatabase, ref, push, onValue, set, remove, child,
+            query, orderByChild, limitToLast, get, update, onDisconnect
+        } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+
+        const $ = id => document.getElementById(id);
+        
+        // Firebase設定
+        const firebaseConfig = {
+            apiKey: "AIzaSyCsRidc0smUQDaBwq-oki5NzxSHx6-ljiw",
+            authDomain: "nezuochat.firebaseapp.com",
+            databaseURL: "https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "nezuochat",
+            storageBucket: "nebasestorage.app",
+            messagingSenderId: "154725381397",
+            appId: "1:154725381397:web:8742ccd957e20cee8ce51c"
+        };
+        
+        const firebaseApp = initializeApp(firebaseConfig);
+        const db = getDatabase(firebaseApp);
+
+        const modalImg = $("modalTargetImg");
+        const imgWrapper = $("modalImgWrapper");
+
+        let isTimelineScrolledDown = false; 
+        let isComposing = false; 
+        let curR = null, curP = null, curN = null, curT = null, rawR = null;
+        let serverTimeOffset = 0;
+        let unsubscribeChat = null, unsubscribePres = null, unsubscribeRoomConfig = null;
+        let isProcessingExit = false;
+        let isWatcherMode = false; 
+        let myUid = null;
+        let isSelfSending = false; 
+        let officialUserTimeoutTimer = null; 
+        let lastUserInteractionTime = Date.now(); 
+        
+        const LOG_PAGE_SIZE = 100; 
+        const OFFICIAL_TIMEOUT_MS = 30 * 60 * 1000; 
+
+        const OFFICIAL_ROOM_HASH = CryptoJS.SHA256("公式部屋").toString();
+        const chatTimeline = $('chatTimeline');
+
+        let renderedMsgIds = new Set();
+
+        const initializeUserIdentity = () => {
+            let localUid = localStorage.getItem("nez_pure_session_uid");
+            if (!localUid) {
+                localUid = "u-" + Math.random().toString(36).substr(2, 9) + "-" + Date.now().toString(36);
+                localStorage.setItem("nez_pure_session_uid", localUid);
+            }
+            myUid = localUid;
+            return myUid;
+        };
+
+        const hideSplash = () => {
+            const splash = $("appSplash");
+            if (splash) {
+                splash.style.opacity = "0";
+                splash.style.transition = "opacity 0.2s ease-out";
+                setTimeout(() => splash.remove(), 200);
+            }
+        };
+
+        window.playYoutubeInline = function(buttonElement, vid) {
+            const container = buttonElement.closest('.msg-card').querySelector('.yt-placeholder');
+            if (container) {
+                const cleanVid = encodeURIComponent(vid);
+                container.innerHTML = `<iframe class="w-full h-full aspect-video" src="https://www.youtube.com/embed/${cleanVid}?autoplay=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+            }
+        };
+
+        window.openImageModal = function(src) {
+            const modal = $("imageModal");
+            if (!modalImg) return;
+            scale = 1; translateX = 0; translateY = 0; baseTranslateX = 0; baseTranslateY = 0;
+            modalImg.style.transform = `translate(0px, 0px) scale(1)`;
+            modalImg.src = src;
+            modal.classList.remove("hidden");
+            setTimeout(() => { modal.classList.remove("opacity-0", "pointer-events-none"); }, 10);
+        };
+
+        window.closeImageModal = function() {
+            const modal = $("imageModal");
+            if (!modal || !modalImg) return;
+            modal.classList.add("opacity-0", "pointer-events-none");
+            setTimeout(() => { modal.classList.add("hidden"); modalImg.src = ""; }, 200);
+        };
+        
+        chatTimeline.addEventListener('scroll', () => {
+            isTimelineScrolledDown = chatTimeline.scrollTop > 15; 
+        }, { passive: true });
+
+        window.scrollToLatest = function() { chatTimeline.scrollTop = 0; isTimelineScrolledDown = false; };
+        window.scrollToOldest = function() { chatTimeline.scrollTop = chatTimeline.scrollHeight; isTimelineScrolledDown = true; };
+
+        $("toTopBtn").onclick = () => { scrollToLatest(); };
+        $("toBottomBtn").onclick = () => { scrollToOldest(); };
+
+        const toggleClearBtn = (val) => {
+            const btn = $("clearBtn");
+            if (val && val.length > 0) {
+                btn.style.opacity = "1";
+                btn.style.pointerEvents = "auto";
+            } else {
+                btn.style.opacity = "0";
+                btn.style.pointerEvents = "none";
+            }
+        };
+
+        const setLobbyButtonsState = (enabled) => {
+            $("enterBtn").disabled = !enabled;
+            $("enterBtn").innerText = enabled ? "入室する" : "処理中...";
+            $("officialRoomBtn").disabled = !enabled;
+            $("officialRoomBtn").innerText = enabled ? "公式部屋" : "処理中...";
+        };
+
+        const startBackgroundTimeSync = () => {
+            onValue(ref(db, ".info/serverTimeOffset"), (snap) => {
+                serverTimeOffset = snap.val() || 0;
+            });
+        };
+
+        const getServerNow = () => Date.now() + serverTimeOffset;
+
+        const refreshUserActivity = () => {
+            lastUserInteractionTime = Date.now();
+        };
+        window.addEventListener("click", refreshUserActivity, { passive: true });
+        window.addEventListener("keydown", refreshUserActivity, { passive: true });
+        window.addEventListener("touchstart", refreshUserActivity, { passive: true });
+
+        const startOfficialUserTimeoutTimer = () => {
+            stopOfficialUserTimeoutTimer();
+            officialUserTimeoutTimer = setInterval(() => {
+                if (curR === OFFICIAL_ROOM_HASH && !isProcessingExit) {
+                    if (Date.now() - lastUserInteractionTime > OFFICIAL_TIMEOUT_MS) {
+                        isProcessingExit = true;
+                        localStorage.removeItem("active_room_session");
+                        stopOfficialUserTimeoutTimer();
+                        alert("公式部屋で30分以上操作（発言・画面操作）がなかったため、自動退室しました。");
+                        isProcessingExit = false;
+                        exitRoomActionPure();
+                    }
+                }
+            }, 30000); 
+        };
+
+        const stopOfficialUserTimeoutTimer = () => {
+            if (officialUserTimeoutTimer) {
+                clearInterval(officialUserTimeoutTimer);
+                officialUserTimeoutTimer = null;
+            }
+        };
+
+        const clearSubscriptions = () => {
+            if (unsubscribeChat) { unsubscribeChat(); unsubscribeChat = null; }
+            if (unsubscribePres) { unsubscribePres(); unsubscribePres = null; }
+            if (unsubscribeRoomConfig) { unsubscribeRoomConfig(); unsubscribeRoomConfig = null; }
+            stopOfficialUserTimeoutTimer();
+            renderedMsgIds.clear();
+        };
+
+        const showLobby = (msg = "") => {
+            curR = null; 
+            clearSubscriptions();
+            localStorage.removeItem("active_room_session");
+            if (msg) { 
+                $("errMsg").innerText = msg; 
+                $("errMsg").style.display = "block"; 
+            } else {
+                $("errMsg").style.display = "none";
+            }
+            $("mainApp").style.display = "none"; $("lobby").style.display = "flex";
+            setLobbyButtonsState(true);
+            hideSplash();
+
+            const savedName = localStorage.getItem("nez_ni"), savedTripKey = localStorage.getItem("nez_tk");
+            if (savedName) { $("ni").value = savedName; $("watcher_ni").value = savedName; } 
+            if (savedTripKey) { $("tk").value = savedTripKey; $("watcher_tk").value = savedTripKey; }
+            updateTripPreview(); updateWatcherTripPreview();
+        };
+
+        const enc = (t, k, isOfficial = false) => {
+            if (isOfficial) return t || "";
+            return t ? CryptoJS.AES.encrypt(t, k).toString() : "";
+        };
+
+        const textDec = (c, k, isOfficial = false) => { 
+            if (isOfficial) return c || null;
+            try { 
+                if (!c) return null;
+                const bytes = CryptoJS.AES.decrypt(c, k);
+                const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
+                return decryptedText || null;
+            } catch(e) { return null; } 
+        };
+
+        const esc = t => (t || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+        function formatFullDateTime(timestamp) {
+            if (!timestamp) return "";
+            const d = new Date(timestamp);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const date = String(d.getDate()).padStart(2, '0');
+            const hours = String(d.getHours()).padStart(2, '0');
+            const minutes = String(d.getMinutes()).padStart(2, '0');
+            const seconds = String(d.getSeconds()).padStart(2, '0');
+            return `${year}/${month}/${date} ${hours}:${minutes}:${seconds}`;
+        }
+
+        window.initAudioBridge = function(audioEl, wrapperId) {
+            const container = document.getElementById(wrapperId);
+            if (!container) return;
+
+            const playBtn = container.querySelector('.audio-play-btn');
+            const seekbar = container.querySelector('.audio-seekbar');
+            const timeTxt = container.querySelector('.audio-time');
+
+            audioEl.onplay = () => {
+                document.querySelectorAll('audio').forEach(a => { if (a !== audioEl) a.pause(); });
+                document.querySelectorAll('.audio-element-wrapper').forEach(w => w.classList.remove('audio-playing-wrapper'));
+                container.classList.add('audio-playing-wrapper');
+                playBtn.innerHTML = `<svg class="w-3 h-3 text-emerald-400" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+            };
+
+            audioEl.onpause = audioEl.onended = () => {
+                container.classList.remove('audio-playing-wrapper');
+                playBtn.innerHTML = `<svg class="w-3 h-3 text-slate-300" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+            };
+
+            audioEl.ontimeupdate = () => {
+                if (!audioEl.duration) return;
+                const pct = (audioEl.currentTime / audioEl.duration) * 100;
+                seekbar.value = pct;
+                timeTxt.innerText = `${fmtTime(audioEl.currentTime)}/${fmtTime(audioEl.duration)}`;
+            };
+
+            audioEl.onloadedmetadata = () => {
+                timeTxt.innerText = `00:00/${fmtTime(audioEl.duration)}`;
+            };
+
+            playBtn.onclick = () => { if (audioEl.paused) { audioEl.play().catch(()=>{}); } else { audioEl.pause(); } };
+            seekbar.oninput = () => { if (!audioEl.duration) return; audioEl.currentTime = (seekbar.value / 100) * audioEl.duration; };
+
+            function fmtTime(s) {
+                if (isNaN(s)) return "00:00";
+                const m = Math.floor(s / 60); const sec = Math.floor(s % 60);
+                return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+            }
+        };
+
+        function createMessageElement(m, pass, isOfficial = false) {
+            const txt = textDec(m.text, pass, isOfficial); if (!txt) return null;
+            const div = document.createElement("div"); div.className = "msg-wrap animate-fade-in";
+            div.setAttribute("data-timestamp", m.time);
+            const fullTimeStr = formatFullDateTime(m.time);
+            
+            if (m.type === "sys") {
+                div.innerHTML = `<div class="sys-msg text-center text-[10px] font-bold text-slate-400 my-1 bg-slate-800/60 border border-slate-700/50 py-1 px-3 rounded-lg inline-block mx-auto">${esc(txt)} <span class="text-slate-500 font-normal ml-1">${fullTimeStr}</span></div>`;
+                div.className = "msg-wrap text-center w-full justify-center items-center";
+            } else {
+                const sN = textDec(m.nEnc, pass, isOfficial) || "???";
+                const sT = textDec(m.tEnc, pass, isOfficial) || "";
+                const cardClass = "msg-card msg bg-slate-900/90 text-slate-200 px-3 py-2 rounded-xl border border-slate-800 shadow-md max-w-sm inline-block break-all w-full sm:w-auto";
+                
+                const parsedHtml = parseMessageContentToHtml(txt);
+                
+                div.innerHTML = `<div class="text-[11px] font-bold text-slate-400 mb-0.5 pl-1">${esc(sN)}<span class="text-green-400 font-mono">${esc(sT)}</span> <span class="text-slate-500 font-normal">${fullTimeStr}</span></div>
+                    <div class="${cardClass}">${parsedHtml}</div>`;
+            }
+            return div;
+        }
+
+        function insertMessageInChronologicalOrder(el) {
+            const ts = parseInt(el.getAttribute("data-timestamp"), 10);
+            const children = Array.from(chatTimeline.children);
+
+            for (let i = 0; i < children.length; i++) {
+                const child = children[i];
+                const childTs = parseInt(child.getAttribute("data-timestamp"), 10);
+                if (!isNaN(childTs) && ts > childTs) {
+                    chatTimeline.insertBefore(el, child);
+                    return;
+                }
+            }
+            chatTimeline.appendChild(el);
+        }
+
+        function parseMessageContentToHtml(text) {
+            const ytRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/i;
+            const audioRegex = /\.(mp3|wav|aac|m4a|ogg|flac)(?:\?.*)?$/i;
+            const urlRegex = /(https?:\/\/[^\s\n]+)/gi;
+
+            let urlMap = [];
+            let placeholderText = text.replace(urlRegex, (url) => {
+                const id = `__URL_PLACEHOLDER_${urlMap.length}__`;
+                urlMap.push({ id, original: url });
+                return id;
+            });
+
+            let escapedText = esc(placeholderText);
+            escapedText = escapedText.replace(/\n/g, "<br>").replace(/ /g, "&nbsp;");
+
+            urlMap.forEach(item => {
+                const url = item.original;
+                const safeUrl = esc(url);
+                const cleanUrl = url.replace(/[?#].*$/, '');
+                let replacement = "";
+
+                const ytMatch = url.match(ytRegex);
+                if (ytMatch && ytMatch[1]) {
+                    const vid = esc(ytMatch[1]);
+                    replacement = `<div class="inline-block my-1.5 rounded-lg overflow-hidden border border-slate-700 bg-black max-w-sm w-full">
+                        <div class="yt-placeholder relative aspect-video bg-cover bg-center" style="background-image: url('https://img.youtube.com/vi/${vid}/mqdefault.jpg');"></div>
+                        <div class="bg-slate-900/90 p-2 flex justify-between gap-2 text-xs border-t border-slate-800">
+                            <button onclick="playYoutubeInline(this, '${vid}')" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-2 rounded transition text-center">その場で再生</button>
+                            <a href="https://www.youtube.com/watch?v=${vid}" target="_blank" rel="noopener noreferrer" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-1 px-2 rounded transition text-center flex items-center justify-center">公式へ</a>
+                        </div>
+                    </div>`;
+                }
+                else if (/\.(jpeg|jpg|gif|png|webp|bmp)(?:\?.*)?$/i.test(cleanUrl) || /^data:image\//i.test(url)) {
+                    replacement = `<div class="inline-block my-1 max-w-[240px] overflow-hidden rounded-lg border border-slate-800 bg-slate-950 shadow-inner">
+                        <img src="${safeUrl}" alt="送信画像" class="max-h-48 w-full object-cover cursor-pointer hover:opacity-90 active:scale-95 transition" onclick="openImageModal('${safeUrl}')">
+                    </div>`;
+                }
+                else if (audioRegex.test(cleanUrl)) {
+                    const audioId = `aud-${Math.random().toString(36).substr(2, 9)}`;
+                    const wrapId = `wrap-${audioId}`;
+                    
+                    setTimeout(() => {
+                        const aEl = document.getElementById(audioId);
+                        if (aEl) window.initAudioBridge(aEl, wrapId);
+                    }, 60);
+
+                    replacement = `<div id="${wrapId}" class="audio-element-wrapper my-2 block w-full min-w-[220px] sm:min-w-[250px] p-2 rounded-xl border border-slate-700 bg-slate-800/90 shadow-md transition-all duration-300">
+                        <audio id="${audioId}" src="${safeUrl}" preload="metadata" class="hidden"></audio>
+                        <div class="flex items-center gap-2 h-7">
+                            <button class="audio-play-btn w-7 h-7 flex items-center justify-center bg-slate-700 hover:bg-slate-600 active:scale-90 rounded-full shrink-0 transition focus:outline-none">
+                                <svg class="w-3.5 h-3.5 text-slate-200" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                            </button>
+                            <span class="text-[9px] font-bold text-indigo-400 select-none shrink-0">AUDIO</span>
+                            <input type="range" class="audio-seekbar flex-1 h-1 bg-slate-600 rounded-lg appearance-none cursor-pointer focus:outline-none" value="0" min="0" max="100">
+                            <span class="audio-time text-[8px] font-mono text-slate-400 select-none tracking-tighter shrink-0">00:00/00:00</span>
+                        </div>
+                        <div class="mt-2 pt-1.5 border-t border-slate-700/50">
+                            <a href="${safeUrl}" target="_blank" download rel="noopener noreferrer" class="w-full h-7 px-2 flex items-center justify-center gap-1 bg-slate-700 hover:bg-indigo-600 text-slate-200 hover:text-white rounded-lg text-[10px] font-bold tracking-wide transition shadow-sm" title="ファイルをローカルに保存">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24 stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+                                <span>オーディオファイルをダウンロード</span>
+                            </a>
+                        </div>
+                    </div>`;
+                }
+                else {
+                    replacement = `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:underline break-all font-medium">${safeUrl}</a>`;
+                }
+
+                escapedText = escapedText.replace(item.id, `<br>${replacement}<br>`);
+            });
+
+            escapedText = escapedText.replace(/^(<br>)+|(<br>)+$/g, '').replace(/(<br>){3,}/g, '<br><br>');
+            return escapedText;
+        }
+
+        let scale = 1;
+        let translateX = 0, translateY = 0;
+        let startX = 0, startY = 0;
+        let startDistance = 0;
+        let isDragging = false;
+        let baseTranslateX = 0, baseTranslateY = 0;
+
+        function clampTransforms() {
+            if (!modalImg || scale <= 1) { translateX = 0; translateY = 0; return; }
+            const wrapRect = imgWrapper.getBoundingClientRect();
+            const currentWidth = modalImg.offsetWidth * scale;
+            const currentHeight = modalImg.offsetHeight * scale;
+            let maxTx = (currentWidth - wrapRect.width) / 2;
+            let maxTy = (currentHeight - wrapRect.height) / 2;
+            if (maxTx < 0) maxTx = 0; if (maxTy < 0) maxTy = 0;
+            translateX = Math.min(Math.max(translateX, -maxTx), maxTx);
+            translateY = Math.min(Math.max(translateY, -maxTy), maxTy);
+        }
+
+        $("imageModal").addEventListener("click", (e) => {
+            if (e.target.id === "imageModal" || e.target.id === "modalImgWrapper") closeImageModal();
+        });
+        $("modalCloseBtn").onclick = (e) => { e.stopPropagation(); closeImageModal(); };
+
+        function getDistance(t1, t2) { return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY); }
+
+        $("imageModal").addEventListener("touchstart", (e) => {
+            if (e.touches.length === 1) {
+                isDragging = true; startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+                baseTranslateX = translateX; baseTranslateY = translateY;
+            } else if (e.touches.length === 2) {
+                isDragging = false; startDistance = getDistance(e.touches[0], e.touches[1]);
+            }
+        }, { passive: true });
+
+        $("imageModal").addEventListener("touchmove", (e) => {
+            if (!modalImg) return;
+            if (scale > 1 || e.touches.length > 1) { if (e.cancelable) e.preventDefault(); }
+            if (isDragging && e.touches.length === 1 && scale > 1) {
+                const dx = e.touches[0].clientX - startX; const dy = e.touches[0].clientY - startY;
+                translateX = baseTranslateX + dx; translateY = baseTranslateY + dy;
+                clampTransforms();
+                modalImg.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+            } else if (e.touches.length === 2) {
+                const distance = getDistance(e.touches[0], e.touches[1]);
+                const factor = distance / startDistance;
+                scale = Math.min(Math.max(1, scale * factor), 5);
+                startDistance = distance;
+                clampTransforms();
+                modalImg.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+            }
+        }, { passive: false });
+
+        $("imageModal").addEventListener("touchend", (e) => {
+            if (!modalImg) return;
+            if (e.touches.length === 0) {
+                isDragging = false;
+                if (scale <= 1) {
+                    scale = 1; translateX = 0; translateY = 0;
+                    modalImg.style.transition = "transform 0.15s ease-out";
+                    modalImg.style.transform = `translate(0px, 0px) scale(1)`;
+                    setTimeout(() => { modalImg.style.transition = "none"; }, 150);
+                } else {
+                    clampTransforms();
+                    modalImg.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+                }
+            } else if (e.touches.length === 1) {
+                isDragging = true; startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+                baseTranslateX = translateX; baseTranslateY = translateY;
+            }
+        }, { passive: true });
+
+        function generateTripString(name, key) {
+            if (!name || !key) return "";
+            try { 
+                const salt = "NEZU_ONETIME_SALT_2026_🔥";
+                return "◆" + CryptoJS.SHA256(`${name}:${salt}:${key}`).toString().slice(0, 6); 
+            } catch(e) { return ""; }
+        }
+
+        function updateTripPreview() { 
+            const n = $("ni").value.replace(/[\s\u3000]+/g, "").trim(); 
+            const tk = $("tk").value.trim(); 
+            if (n && tk) {
+                $("tp").innerText = generateTripString(n, tk); $("tp").style.display = "inline-block";
+            } else {
+                $("tp").innerText = ""; $("tp").style.display = "none";
+            }
+        }
+
+        function updateWatcherTripPreview() { 
+            const n = $("watcher_ni").value.replace(/[\s\u3000]+/g, "").trim(); 
+            const tk = $("watcher_tk").value.trim(); 
+            if (n && tk) {
+                $("watcher_tp").innerText = generateTripString(n, tk); $("watcher_tp").style.display = "inline-block";
+            } else {
+                $("watcher_tp").innerText = ""; $("watcher_tp").style.display = "none";
+            }
+        }
+
+        function handleIncomingBatch(snapshot, isOfficial) {
+            const incomingMsgs = [];
+            snapshot.forEach(s => {
+                const m = s.val();
+                if (m && m.time) {
+                    m._key = s.key;
+                    incomingMsgs.push(m);
+                }
+            });
+
+            if (incomingMsgs.length === 0) return;
+            incomingMsgs.sort((a, b) => b.time - a.time);
+
+            incomingMsgs.forEach(m => {
+                if (!renderedMsgIds.has(m._key)) {
+                    const el = createMessageElement(m, curP, isOfficial);
+                    if (el) {
+                        renderedMsgIds.add(m._key);
+                        insertMessageInChronologicalOrder(el);
+                    }
+                }
+            });
+        }
+
+        async function cleanRoomDataImmediate() {
+            if (!curR || curR === OFFICIAL_ROOM_HASH) return;
+            try {
+                const targetR = curR;
+                clearSubscriptions();
+                const wipes = {};
+                wipes[`rooms/${targetR}`] = null;
+                wipes[`chat/${targetR}`] = null;
+                wipes[`presence/${targetR}`] = null;
+                await update(ref(db), wipes);
+                console.log("🧹 Strict Active/Clean Mode: 全データを破棄しました。");
+            } catch(e) {
+                console.error("破棄不整合フォールバック:", e);
+                try {
+                    await remove(ref(db, `rooms/${curR}`));
+                    await remove(ref(db, `chat/${curR}`));
+                    await remove(ref(db, `presence/${curR}`));
+                } catch(inner) { console.error("完全破棄失敗:", inner); }
+            }
+        }
+
+        async function join(rID, pass, name, trip, maxLimit, selectRoomMin, isDirectOfficialClick = false, isSessionRestore = false) {
+            try {
+                $("errMsg").style.display = "none";
+                setLobbyButtonsState(false);
+                initializeUserIdentity();
+
+                const targetRoomID = (rID === "official-room" || rID === "公式部屋") ? "公式部屋" : rID;
+                const hashId = (targetRoomID === "公式部屋") ? OFFICIAL_ROOM_HASH : CryptoJS.SHA256(targetRoomID).toString();
+                const isOfficial = (hashId === OFFICIAL_ROOM_HASH);
+                
+                if (isSessionRestore) {
+                    const sessionData = localStorage.getItem("active_room_session");
+                    if (sessionData) {
+                        const s = JSON.parse(sessionData);
+                        isWatcherMode = !!s.isWatcherMode;
+                    } else { isWatcherMode = false; }
+                } else if (isOfficial && isDirectOfficialClick) {
+                    isWatcherMode = true;
+                } else { 
+                    isWatcherMode = false; 
+                }
+
+                // 入室前に確実に以前のリスナーを全て解除
+                clearSubscriptions();
+
+                curR = hashId; rawR = targetRoomID; curP = pass;
+                if (isWatcherMode) { curN = ""; curT = ""; } else { curN = name; curT = trip || ""; }
+
+                if (isOfficial) {
+                    maxLimit = 10; selectRoomMin = 999999999;
+                    $("copyBtn").style.display = "none";
+                    lastUserInteractionTime = Date.now();
+                    startOfficialUserTimeoutTimer(); 
+                } else {
+                    $("copyBtn").style.display = "block";
+                    stopOfficialUserTimeoutTimer();
+                }
+
+                let ROOM_LIFETIME = (selectRoomMin * 60) * 1000;
+                const NOW = getServerNow();
+
+                const chatRef = ref(db, `chat/${curR}`);
+                const pRef = ref(db, `presence/${curR}`);
+                const roomRef = ref(db, `rooms/${curR}`);
+                const myRef = ref(db, `presence/${curR}/${myUid}`);
+
+                let finalMax = maxLimit;
+
+                const roomSnap = await get(roomRef);
+                let roomExistsInDb = roomSnap.exists();
+                let lastKnownActivity = NOW;
+
+                if (roomExistsInDb) {
+                    const rData = roomSnap.val() || {};
+                    lastKnownActivity = rData.lastActivity || NOW;
+                    ROOM_LIFETIME = (isOfficial ? 999999999 : (rData.roomMin || selectRoomMin)) * 60 * 1000;
+                    if (rData.max !== undefined) finalMax = isOfficial ? 10 : Number(rData.max);
+
+                    if (!isOfficial && (NOW - lastKnownActivity > ROOM_LIFETIME)) {
+                        await cleanRoomDataImmediate();
+                        roomExistsInDb = false;
+                        lastKnownActivity = NOW;
+                    }
+                }
+
+                let isReentry = isSessionRestore;
+                if (!roomExistsInDb && !isOfficial) {
+                    isReentry = false; 
+                    await set(roomRef, { max: finalMax, roomMin: selectRoomMin, lastActivity: NOW });
+                }
+
+                const pSnap = await get(pRef);
+
+                if (!isWatcherMode) {
+                    if (pSnap.exists() && roomExistsInDb) {
+                        const users = pSnap.val() || {}; 
+                        let currentActiveCount = 0;
+
+                        for (const k of Object.keys(users)) {
+                            // 30秒以上生存確認が取れない古いセッションは削除
+                            if (users[k].lastSeen && (NOW - users[k].lastSeen > 30000) && k !== myUid) {
+                                await remove(ref(db, `presence/${curR}/${k}`)).catch(()=>{});
+                                continue;
+                            }
+
+                            currentActiveCount++;
+                            if (k === myUid) {
+                                isReentry = true;
+                                continue;
+                            }
+                        }
+                        if (!isReentry && currentActiveCount >= finalMax) { showLobby(`部屋が満員です（上限 ${finalMax} 名）`); return; }
+                    }
+
+                    if (!isOfficial) {
+                        await update(roomRef, { lastActivity: NOW }).catch(()=>{});
+                    }
+
+                    const myIdentityPayload = { 
+                        nEnc: enc(name, pass, isOfficial), 
+                        tEnc: enc(trip || "", pass, isOfficial), 
+                        enteredAt: NOW,
+                        lastSeen: NOW 
+                    };
+                    
+                    await onDisconnect(myRef).remove();
+                    await set(myRef, myIdentityPayload);
+
+                    if (!isReentry) {
+                        await push(chatRef, { type: "sys", text: enc(`${name}${trip || ""} が入室しました`, pass, isOfficial), time: NOW }); 
+                    }
+                    
+                    localStorage.setItem("nez_ni", name);
+                    if (!isOfficial) localStorage.setItem("nez_tk", $("tk").value.trim());
+                }
+
+                localStorage.setItem("active_room_session", JSON.stringify({
+                    rawR, curP, curN: isWatcherMode ? "" : name, curT: isWatcherMode ? "" : (trip || ""), maxLimit, selectRoomMin, isWatcherMode
+                }));
+                localStorage.setItem("nez_ri", targetRoomID);
+                localStorage.setItem("nez_pi", pass);
+
+                $("roomDisplay").innerText = targetRoomID; 
+                $("lobby").style.display = "none"; $("mainApp").style.display = "flex";
+                $("errMsg").style.display = "none";
+
+                if (isWatcherMode) {
+                    $("input-container").style.display = "none"; $("watcher-banner").style.display = "block"; updateWatcherTripPreview();
+                    $("exitBtn").innerText = "ロビーへ戻る"; 
+                } else {
+                    $("input-container").style.display = "flex"; $("watcher-banner").style.display = "none";
+                    $("exitBtn").innerText = "退室"; 
+                }
+
+                hideSplash();
+
+                renderedMsgIds.clear();
+                chatTimeline.innerHTML = "";
+
+                if (!isOfficial) {
+                    unsubscribeRoomConfig = onValue(roomRef, async (snap) => {
+                        const activeR = curR;
+                        if (!snap.exists() && activeR && !isProcessingExit) {
+                            isProcessingExit = true;
+                            clearSubscriptions();
+                            localStorage.removeItem("active_room_session");
+                            alert("この部屋は活動タイマー上限または全メンバー退出によりサーバーから完全抹消されました。");
+                            isProcessingExit = false;
+                            showLobby("部屋データがサーバーから完全抹消されました。");
+                        }
+                    });
+                }
+
+                unsubscribePres = onValue(pRef, async (s) => {
+                    if (!curR) return; 
+                    const users = s.val() || {}, frag = document.createDocumentFragment();
+                    let count = 0;
+
+                    Object.keys(users).forEach(k => {
+                        const n = textDec(users[k].nEnc, curP, isOfficial); if (!n) return;
+                        const trip = textDec(users[k].tEnc, curP, isOfficial) || "";
+                        count++;
+                        const span = document.createElement("span"); span.className = "user-chip"; span.innerText = n + trip; frag.appendChild(span);
+                    });
+
+                    $("presenceList").innerHTML = ""; $("presenceList").appendChild(frag); $("presenceCount").innerText = `[${count}/${finalMax}]`;
+                });
+
+                let chatQuery = isOfficial 
+                    ? query(chatRef, orderByChild("time"), limitToLast(LOG_PAGE_SIZE))
+                    : chatRef; 
+                
+                unsubscribeChat = onValue(chatQuery, async (snapshot) => {
+                    if (!curR) return;
+                    
+                    const currentNow = getServerNow();
+
+                    if (!isWatcherMode && !isOfficial) {
+                        await set(ref(db, `presence/${curR}/${myUid}/lastSeen`), currentNow).catch(()=>{});
+                    }
+
+                    if (!isOfficial && !isProcessingExit) {
+                        try {
+                            const roomSnap = await get(roomRef);
+                            if (roomSnap.exists()) {
+                                const rData = roomSnap.val();
+                                const lastAct = rData.lastActivity || currentNow;
+                                if (currentNow - lastAct > ROOM_LIFETIME) {
+                                    isProcessingExit = true;
+                                    await cleanRoomDataImmediate(); 
+                                    isProcessingExit = false;
+                                    alert("最後の発言から一定時間が経過したため、ログをサーバーから完全消去しました。");
+                                    showLobby("発言タイムアウトにより自動消滅しました。");
+                                    return;
+                                }
+                            }
+                        } catch(err) { console.error(err); }
+                    }
+
+                    handleIncomingBatch(snapshot, isOfficial);
+
+                    if (isSelfSending || !isTimelineScrolledDown) { 
+                        scrollToLatest(); 
+                        isSelfSending = false;
+                    }
+                });
+
+            } catch (e) {
+                console.error(e);
+                showLobby(`❌ 入室エラー\n原因: ${e.message}`);
+            } finally {
+                setLobbyButtonsState(true); 
+            }
+        }
+
+        async function sendMessage() {
+            if (!curR || isWatcherMode) return; 
+            const input = $("mi"); const txt = input.value.trim(); 
+            if (!txt) return;
+            
+            const isOfficial = (curR === OFFICIAL_ROOM_HASH);
+            toggleClearBtn(""); input.value = ""; input.rows = 1; input.style.height = "auto";
+            
+            isSelfSending = true;
+            scrollToLatest(); 
+            if (isOfficial) refreshUserActivity(); 
+
+            try {
+                const NOW = getServerNow();
+                const chatRef = ref(db, `chat/${curR}`);
+                
+                const sessionUpdates = {};
+                if (!isOfficial) {
+                    sessionUpdates[`rooms/${curR}/lastActivity`] = NOW;
+                }
+                sessionUpdates[`presence/${curR}/${myUid}/lastSeen`] = NOW;
+                await update(ref(db), sessionUpdates).catch(()=>{});
+
+                await push(chatRef, { 
+                    type: "msg", 
+                    nEnc: enc(curN, curP, isOfficial), 
+                    tEnc: enc(curT || "", curP, isOfficial), 
+                    text: enc(txt, curP, isOfficial), 
+                    time: NOW 
+                });
+
+                // フロントエンド側での古いメッセージ個別削除処理は、Firebaseセキュリティルールの権限エラーの原因となるため、
+                // 公式部屋での発言失敗を防ぐためにオミット（定期削除はCloud Functions側で処理するのが安全です）
+            } catch (e) { alert("送信失敗: " + e.message); isSelfSending = false; }
+        }
+
+        $("mi").addEventListener("compositionstart", () => { isComposing = true; });
+        $("mi").addEventListener("compositionend", (e) => { 
+            isComposing = false; 
+            toggleClearBtn(e.target.value); 
+        });
+        $("mi").addEventListener("input", (e) => { 
+            toggleClearBtn(e.target.value); 
+            e.target.style.height = "auto";
+            const scrollHeight = e.target.scrollHeight;
+            e.target.style.height = (scrollHeight > 96 ? 96 : scrollHeight) + "px";
+            if (scrollHeight > 96) { e.target.style.overflowY = "auto"; } else { e.target.style.overflowY = "hidden"; }
+        });
+
+        $("mi").addEventListener("focus", () => { setTimeout(() => { scrollToLatest(); }, 150); });
+        $("mi").addEventListener("keydown", (e) => { 
+            if (e.key === "Enter" && !e.shiftKey) { 
+                if (isComposing) return; 
+                e.preventDefault(); 
+                sendMessage(); 
+            } else { if (!isTimelineScrolledDown) { scrollToLatest(); } }
+        });
+        
+        $("sendBtn").onclick = (e) => { e.preventDefault(); sendMessage(); };
+        $("clearBtn").onclick = (e) => { e.preventDefault(); $("mi").value = ""; $("mi").rows = 1; $("mi").style.height = "auto"; $("mi").style.overflowY = "hidden"; toggleClearBtn(""); $("mi").focus(); };
+
+        const executeJoinFromLobbyInputs = async () => {
+            const rawName = $("ni").value, tk = $("tk").value.trim(), r = $("ri").value.trim(), p = $("pi").value.trim();
+            const cleanName = rawName.replace(/[\s\u3000]+/g, "").trim();
+            const cleanRoom = r.replace(/[\s\u3000]+/g, "").trim();
+            if (!cleanName || !cleanRoom || !p) { setLobbyButtonsState(true); return false; }
+            setLobbyButtonsState(false);
+            
+            await join(
+                cleanRoom, p, cleanName, generateTripString(cleanName, tk), 
+                Number($("maxUsers").value), Number($("userTimeoutTime").value)
+            );
+            return true;
+        };
+
+        $("enterBtn").onclick = async () => {
+            const rawName = $("ni").value, r = $("ri").value.trim(), p = $("pi").value.trim();
+            const cleanName = rawName.replace(/[\s\u3000]+/g, "").trim();
+            const cleanRoom = r.replace(/[\s\u3000]+/g, "").trim();
+            if (!cleanName || !cleanRoom || !p) { alert("必須項目が入力されていません。"); return; }
+            await executeJoinFromLobbyInputs();
+        };
+
+        $("officialRoomBtn").onclick = async () => {
+            setLobbyButtonsState(false);
+            const rawName = $("ni").value;
+            const cleanName = rawName.replace(/[\s\u3000]+/g, "").trim();
+            const tk = $("tk").value.trim();
+            await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, tk), 10, 999999999, true);
+        };
+
+        $("watcherUpgradeBtn").onclick = async () => {
+            const rawName = $("watcher_ni").value, tk = $("watcher_tk").value.trim();
+            const cleanName = rawName.replace(/[\s\u3000]+/g, "").trim();
+            if (!cleanName || !tk) { alert("名前とトリップキーを入力してください。"); return; }
+            localStorage.setItem("nez_ni", cleanName); localStorage.setItem("nez_tk", tk);
+            $("ni").value = cleanName; $("tk").value = tk; updateTripPreview();
+            
+            // 重要：一度セッション情報を破棄してから入室することでisWatcherModeがtrueのまま残るバグを確実に防ぐ
+            localStorage.removeItem("active_room_session");
+            isWatcherMode = false;
+            
+            await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, tk), 10, 999999999, false, false);
+        };
+
+        async function exitRoomActionPure() {
+            try {
+                if (!isWatcherMode && curR) {
+                    const isOfficial = (curR === OFFICIAL_ROOM_HASH);
+                    const chatRef = ref(db, `chat/${curR}`);
+                    const pRef = ref(db, `presence/${curR}`);
+                    const myRef = ref(db, `presence/${curR}/${myUid}`);
+
+                    await remove(myRef).catch(()=>{});
+
+                    const presSnap = await get(pRef);
+                    const currentNow = getServerNow();
+                    let activeOthersCount = 0;
+
+                    if (presSnap.exists()) {
+                        const users = presSnap.val() || {};
+                        Object.keys(users).forEach(k => {
+                            if (users[k].lastSeen && (currentNow - users[k].lastSeen < 30000) && k !== myUid) {
+                                activeOthersCount++;
+                            }
+                        });
+                    }
+
+                    if (!isOfficial && activeOthersCount === 0) {
+                        await cleanRoomDataImmediate();
+                    } else {
+                        await push(chatRef, { type: "sys", text: enc(`${curN}${curT} が退室しました`, curP, isOfficial), time: currentNow }).catch(()=>{});
+                    }
+                }
+            } catch(e) { console.error("退室エラー:", e); }
+            finally {
+                showLobby();
+            }
+        }
+
+        async function exitRoom() {
+            if (isProcessingExit || !curR) return; 
+            isProcessingExit = true;
+            localStorage.removeItem("active_room_session");
+            stopOfficialUserTimeoutTimer();
+            await exitRoomActionPure();
+            isProcessingExit = false; 
+        }
+
+        $("exitBtn").onclick = () => { if (isWatcherMode || confirm("本当に退室しますか？\n一般部屋の場合、全員が退室するか、発言タイムアウトに達すると、サーバーからデータは必ず即座に完全破棄されます。")) exitRoom(); };
+
+        $("copyBtn").onclick = () => {
+            if (!rawR || !curP) return;
+            const shareUrl = `${window.location.protocol}//${window.location.host}${window.location.pathname}?r=${encodeURIComponent(rawR)}&p=${encodeURIComponent(curP)}`;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(shareUrl).then(() => alert("招待リンクをコピーしました！")).catch(() => fallbackCopy(shareUrl));
+            } else { fallbackCopy(shareUrl); }
+        };
+
+        function fallbackCopy(text) {
+            const textArea = document.createElement("textarea"); textArea.value = text;
+            Object.assign(textArea.style, { position: "fixed", top: "0", left: "0", width: "2em", height: "2em", background: "transparent", border: "none" });
+            document.body.appendChild(textArea); textArea.focus(); textArea.select();
+            try { document.execCommand('copy'); alert("招待リンクをコピーしました！"); } catch (err) { alert("URLコピー失敗。"); }
+            document.body.removeChild(textArea);
+        }
+
+        $("ni").addEventListener("input", (e) => { $("watcher_ni").value = e.target.value; updateTripPreview(); updateWatcherTripPreview(); });
+        $("tk").addEventListener("input", (e) => { $("watcher_tk").value = e.target.value; updateTripPreview(); updateWatcherTripPreview(); });
+        $("watcher_ni").addEventListener("input", (e) => { $("ni").value = e.target.value; updateTripPreview(); updateWatcherTripPreview(); });
+        $("watcher_tk").addEventListener("input", (e) => { $("tk").value = e.target.value; updateTripPreview(); updateWatcherTripPreview(); });
+
+        $("masterGenBtn").onclick = () => {
+            const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+            let rGen = "", pGen = "";
+            for (let i = 0; i < 10; i++) rGen += chars.charAt(Math.floor(Math.random() * chars.length));
+            for (let i = 0; i < 12; i++) pGen += chars.charAt(Math.floor(Math.random() * chars.length));
+            $("ri").value = rGen; $("pi").value = pGen; updateTripPreview();
+        };
+
+        $("openGuideBtn").onclick = () => $("guideCard").style.display = "flex";
+        $("closeGuideBtn").onclick = () => $("guideCard").style.display = "none";
+        $("focusBtn").onclick = () => { $("mi").focus(); setTimeout(() => { scrollToLatest(); }, 150); };
+
+        async function triggerSessionRestore() {
+            const sessionData = localStorage.getItem("active_room_session");
+            if (sessionData) {
+                try { 
+                    const s = JSON.parse(sessionData); 
+                    const savedName = localStorage.getItem("nez_ni") || "";
+                    const savedTripKey = localStorage.getItem("nez_tk") || "";
+                    const fullTripString = generateTripString(savedName, savedTripKey);
+                    
+                    await join(s.rawR, s.curP, savedName, fullTripString, s.maxLimit || 4, s.selectRoomMin || 30, !!s.isWatcherMode, true); 
+                    return true;
+                } catch(e) { localStorage.removeItem("active_room_session"); }
+            }
+            return false;
+        }
+
+        window.addEventListener("DOMContentLoaded", async () => {
+            startBackgroundTimeSync();
+            initializeUserIdentity();
+
+            const savedName = localStorage.getItem("nez_ni"), savedTripKey = localStorage.getItem("nez_tk");
+            const savedRoomId = localStorage.getItem("nez_ri"), savedRoomPass = localStorage.getItem("nez_pi");
+
+            if (savedName) { $("ni").value = savedName; $("watcher_ni").value = savedName; } 
+            if (savedTripKey) { $("tk").value = savedTripKey; $("watcher_tk").value = savedTripKey; }
+            if (savedRoomId) { $("ri").value = savedRoomId; }
+            if (savedRoomPass) { $("pi").value = savedRoomPass; }
+
+            const params = new URLSearchParams(window.location.search);
+            const r = params.get("r"), p = params.get("p"), n = params.get("n");
+            
+            if (r) $("ri").value = r; if (p) $("pi").value = p; if (n) $("ni").value = n;
+            updateTripPreview(); updateWatcherTripPreview();
+            setLobbyButtonsState(true);
+
+            const restored = await triggerSessionRestore(); 
+            if (restored) return;
+
+            if (r && p && !$("ni").value) { $("ni").focus(); }
+            $("lobby").style.display = "flex"; 
+            hideSplash();
+        });
+    </script>
+</body>
+</html>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>NEZU ONETIME CHAT (AtomicClean-v2.6.6-MaxStrict)</title>
+    <title>NEZU ONETIME CHAT (AtomicClean-v2.6.8-StrictActivity)</title>
     <script src="https://cdn.tailwindcss.com/"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
@@ -186,10 +186,10 @@
                 入力した共通パスワードを元にブラウザ側で暗号化（AES-256）してから送信します。共通パスワードはサーバーへ送信されません。
             </p>
             <p class="text-amber-400 font-bold">
-                ⚠️ 注意：暗号化空間ですがセキュリティは100%ではなく、画面のスクショや盗み見、個人情報の不用意な発言には十分ご注意ください。
+                ⚠️ 注意：タブ閉じや回線切断では部屋は消えません。最後の発言から一定時間が経過するか、全員が退室した瞬間にログは完全消去されます。
             </p>
             <p id="localModeIndicator" class="text-emerald-400 font-bold bg-emerald-950/30 border border-emerald-900/40 p-1 rounded text-[10px]">
-                🚀 Strict Clean Mode: 最後の1人が退室するか、活動タイムアウトが起きた瞬間に、サーバーから部屋データおよび全ログを痕跡なく完全消去します。
+                🚀 Strict Activity Mode: 生存確認は「発言（メッセージ送信）」のみで判定。ROM状態や切断に関わらず、会話が途絶えると自動消滅します。
             </p>
         </div>
         
@@ -222,7 +222,7 @@
 
         <details class="text-[10.5px] text-slate-400 bg-slate-950 p-2 rounded-xl border border-slate-800 shrink-0">
             <summary class="cursor-pointer font-bold select-none text-slate-300">⚙️ 部屋の最適化構成</summary>
-            <div class="grid grid-cols-3 gap-1.5 mt-1.5">
+            <div class="grid grid-cols-2 gap-1.5 mt-1.5">
                 <div>
                     <label class="block font-semibold mb-0.5 text-slate-400">人数制限</label>
                     <select id="maxUsers" class="w-full p-1 border border-slate-700 rounded-md bg-slate-800 text-white font-bold text-[11px] focus:outline-none">
@@ -230,15 +230,13 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block font-semibold mb-0.5 text-slate-400">発言タイムアウト</label>
+                    <label class="block font-semibold mb-0.5 text-slate-400">無発言自動消滅タイマー</label>
                     <select id="userTimeoutTime" class="w-full p-1 border border-slate-700 rounded-md bg-slate-800 text-white font-bold text-[11px] focus:outline-none">
-                        <option value="5">5分</option><option value="10">10分</option><option value="20">20分</option><option value="30" selected>30分</option><option value="60">1時間</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block font-semibold mb-0.5 text-slate-400">自動部屋消滅</label>
-                    <select id="roomCleanTime" class="w-full p-1 border border-slate-700 rounded-md bg-slate-800 text-white font-bold text-[11px] focus:outline-none">
-                        <option value="10">10分</option><option value="20">20分</option><option value="30">30分</option><option value="60" selected>1時間</option>
+                        <option value="5">5分発言なしで消滅</option>
+                        <option value="10">10分発言なしで消滅</option>
+                        <option value="20">20分発言なしで消滅</option>
+                        <option value="30" selected>30分発言なしで消滅</option>
+                        <option value="60">1時間発言なしで消滅</option>
                     </select>
                 </div>
             </div>
@@ -327,34 +325,26 @@
                         本システムは暗号規格である**AES-256**を使用し、ユーザーのブラウザ上でテキストを暗号化してから通信します。解読に必要な鍵（部屋パスワード）はサーバーに転送されません。
                     </p>
                     <p class="text-amber-400 font-bold text-[10.5px]">
-                        【免責・注意】ネットワーク上の通信は秘匿されますが、セキュリティは100%を保証するものではありません。画面のスクリーンショット、端末の直接的な覗き見、また不用意な個人情報の入力（名前、住所、連絡先など）には十分ご注意ください。本ツールの利用により生じた損害について、開発・管理者は一切の責任を負いません。
+                        【安全設計】タブを閉じたり回線が切れても、会話データは即座に消えません。ただし、誰も発言しない状態が指定時間続くと、サーバーからデータが完全抹消されます。
                     </p>
                 </div>
 
                 <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1.5">
-                    <p class="font-bold text-slate-200 text-[11.5px]">💡 2. 自動消滅の仕組み</p>
+                    <p class="font-bold text-slate-200 text-[11.5px]">💡 2. 自動消滅の仕組み（発言基準）</p>
                     <ul class="list-disc list-inside space-y-1 text-slate-400 pl-1">
                         <li>任意の「部屋ID」と「共通の部屋パスワード」を共有した仲間だけが合流できます。</li>
                         <li>「招待」ボタンから、部屋IDとパスワードが埋め込まれたURLを取得できます。</li>
-                        <li>室内の全員の発言が止まるか、最後の1人が「退室」をクリック、またはブラウザを閉じて接続が切れた際、サーバー上の部屋構成・ログデータは自動的にシステムから消去されます。</li>
+                        <li>**最後の発言（メッセージ送信）**から設定時間を過ぎると、安全装置が働きサーバー上のログデータは自動的に痕跡なく完全消去されます。</li>
+                        <li>全員が「退室」をクリックして誰もいなくなった場合も即時消滅します。</li>
                     </ul>
                 </div>
 
-                <div class="bg-amber-950/40 p-3 rounded-xl border border-amber-900/60 space-y-1.5">
-                    <p class="font-bold text-amber-400 text-[11.5px]">⚠️ 3. 運用上の注意点</p>
-                    <p class="text-slate-400">
-                        ・「発言タイムアウト」設定時間を過ぎて発言がない場合、安全装置が働き、自動的に部屋からキック（タイムアウト退室）されます。<br>
-                        ・パスワードを1文字でも間違えると、暗号が正常に復号できず「判読不能な文字列」のまま画面に表示されます。
-                    </p>
-                </div>
-
                 <div class="bg-red-950/40 p-3 rounded-xl border border-red-900/60 space-y-1.5">
-                    <p class="font-bold text-red-400 text-[11.5px]">❌ 4. 禁止事項</p>
+                    <p class="font-bold text-red-400 text-[11.5px]">❌ 3. 禁止事項</p>
                     <p class="text-slate-400">
                         以下の行為は固く禁止します。<br>
                         ・違法な取引、犯罪の謀議、人道に反するコンテンツの共有。<br>
-                        ・ボットやスクリプトを用いたサーバーへのスパム行為、不適切な負荷付与行為。<br>
-                        ※違反が認められた部屋や通信は、予告なくネットワーク層においてアクセス遮断を行う場合があります。
+                        ・ボットやスクリプトを用いたサーバーへのスパム行為。
                     </p>
                 </div>
             </div>
@@ -409,8 +399,7 @@
         let oldestLoadedTimestamp = null;
         let isPaginationEnding = false;
 
-        let USER_TIMEOUT = (30 * 60) * 1000; 
-        let ROOM_LIFETIME = (60 * 60) * 1000;
+        let ROOM_LIFETIME = (30 * 60) * 1000; 
 
         const OFFICIAL_ROOM_HASH = CryptoJS.SHA256("公式部屋").toString();
         const chatTimeline = $('chatTimeline');
@@ -439,7 +428,8 @@
         window.playYoutubeInline = function(buttonElement, vid) {
             const container = buttonElement.closest('.msg-card').querySelector('.yt-placeholder');
             if (container) {
-                container.innerHTML = `<iframe class="w-full h-full aspect-video" src="https://www.youtube.com/embed/${vid}?autoplay=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+                const cleanVid = encodeURIComponent(vid);
+                container.innerHTML = `<iframe class="w-full h-full aspect-video" src="https://www.youtube.com/embed/${cleanVid}?autoplay=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
             }
         };
 
@@ -614,7 +604,6 @@
             const ts = parseInt(el.getAttribute("data-timestamp"), 10);
             const children = chatTimeline.children;
             
-            // 最新順（降順：上が新しく、下に行くほど古い）
             for (let i = 0; i < children.length; i++) {
                 const child = children[i];
                 if (child.id === "officialPagerBtn") continue;
@@ -625,7 +614,6 @@
                 }
             }
             
-            // 一番古ければ下部（ボタンがある場合はその手前）に挿入
             const pager = $("officialPagerBtn");
             if (pager) {
                 chatTimeline.insertBefore(el, pager);
@@ -651,12 +639,13 @@
 
             urlMap.forEach(item => {
                 const url = item.original;
+                const safeUrl = esc(url);
                 const cleanUrl = url.replace(/[?#].*$/, '');
                 let replacement = "";
 
                 const ytMatch = url.match(ytRegex);
                 if (ytMatch && ytMatch[1]) {
-                    const vid = ytMatch[1];
+                    const vid = esc(ytMatch[1]);
                     replacement = `<div class="inline-block my-1.5 rounded-lg overflow-hidden border border-slate-700 bg-black max-w-sm w-full">
                         <div class="yt-placeholder relative aspect-video bg-cover bg-center" style="background-image: url('https://img.youtube.com/vi/${vid}/mqdefault.jpg');"></div>
                         <div class="bg-slate-900/90 p-2 flex justify-between gap-2 text-xs border-t border-slate-800">
@@ -667,7 +656,7 @@
                 }
                 else if (/\.(jpeg|jpg|gif|png|webp|bmp)(?:\?.*)?$/i.test(cleanUrl) || /^data:image\//i.test(url)) {
                     replacement = `<div class="inline-block my-1 max-w-[240px] overflow-hidden rounded-lg border border-slate-800 bg-slate-950 shadow-inner">
-                        <img src="${url}" alt="送信画像" class="max-h-48 w-full object-cover cursor-pointer hover:opacity-90 active:scale-95 transition" onclick="openImageModal('${url}')">
+                        <img src="${safeUrl}" alt="送信画像" class="max-h-48 w-full object-cover cursor-pointer hover:opacity-90 active:scale-95 transition" onclick="openImageModal('${safeUrl}')">
                     </div>`;
                 }
                 else if (audioRegex.test(cleanUrl)) {
@@ -680,20 +669,20 @@
                     }, 60);
 
                     replacement = `<div id="${wrapId}" class="audio-element-wrapper my-1 block w-full min-w-[210px] sm:min-w-[230px] h-8 px-2 flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/90 shadow-md transition-all duration-300">
-                        <audio id="${audioId}" src="${url}" preload="metadata" class="hidden"></audio>
+                        <audio id="${audioId}" src="${safeUrl}" preload="metadata" class="hidden"></audio>
                         <button class="audio-play-btn w-6 h-6 flex items-center justify-center bg-slate-700 hover:bg-slate-600 active:scale-90 rounded-full shrink-0 transition focus:outline-none">
                             <svg class="w-3 h-3 text-slate-200" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                         </button>
                         <span class="text-[9px] font-bold text-indigo-400 select-none shrink-0">AUDIO</span>
                         <input type="range" class="audio-seekbar flex-1 h-1 bg-slate-600 rounded-lg appearance-none cursor-pointer focus:outline-none" value="0" min="0" max="100">
                         <span class="audio-time text-[8px] font-mono text-slate-400 select-none tracking-tighter shrink-0">00:00/00:00</span>
-                        <a href="${url}" target="_blank" download rel="noopener noreferrer" class="w-6 h-6 flex items-center justify-center bg-slate-700 hover:bg-slate-600 hover:text-emerald-400 text-slate-300 rounded-full shrink-0 transition" title="ファイルをダウンロード">
+                        <a href="${safeUrl}" target="_blank" download rel="noopener noreferrer" class="w-6 h-6 flex items-center justify-center bg-slate-700 hover:bg-slate-600 hover:text-emerald-400 text-slate-300 rounded-full shrink-0 transition" title="ファイルをダウンロード">
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24 stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
                         </a>
                     </div>`;
                 }
                 else {
-                    replacement = `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:underline break-all font-medium">${url}</a>`;
+                    replacement = `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:underline break-all font-medium">${safeUrl}</a>`;
                 }
 
                 escapedText = escapedText.replace(item.id, `<br>${replacement}<br>`);
@@ -866,7 +855,7 @@
                 wipes[`chat/${curR}`] = null;
                 wipes[`presence/${curR}`] = null;
                 await update(ref(db), wipes);
-                console.log("🧹 Strict Clean Mode: 全データをサーバーから完全消去しました。");
+                console.log("🧹 Strict Clean Mode: 全データをサーバーから痕跡なく完全消去しました。");
             } catch(e) {
                 console.error("消去エラー、フォールバック実行:", e);
                 try {
@@ -877,7 +866,7 @@
             }
         }
 
-        async function join(rID, pass, name, trip, maxLimit, selectUserMin, selectRoomMin, isDirectOfficialClick = false, isSessionRestore = false) {
+        async function join(rID, pass, name, trip, maxLimit, selectRoomMin, isDirectOfficialClick = false, isSessionRestore = false) {
             try {
                 $("errMsg").style.display = "none";
                 setLobbyButtonsState(false);
@@ -904,23 +893,15 @@
                 if (isWatcherMode) { curN = ""; curT = ""; } else { curN = name; curT = trip; }
 
                 if (isOfficial) {
-                    maxLimit = 10; selectUserMin = 30; selectRoomMin = 999999999;
+                    maxLimit = 10; selectRoomMin = 999999999;
                     $("copyBtn").style.display = "none";
                 } else {
                     $("copyBtn").style.display = "block";
                 }
 
-                USER_TIMEOUT = (selectUserMin * 60) * 1000; 
-                ROOM_LIFETIME = (selectRoomMin * 60) * 1000 + 1000;
+                ROOM_LIFETIME = (selectRoomMin * 60) * 1000;
 
                 const NOW = getServerNow();
-
-                localStorage.setItem("active_room_session", JSON.stringify({
-                    rawR, curP, curN: isWatcherMode ? "" : curN, curT: isWatcherMode ? "" : curT, maxLimit, selectUserMin, selectRoomMin, isWatcherMode
-                }));
-                
-                localStorage.setItem("nez_ri", targetRoomID);
-                localStorage.setItem("nez_pi", pass);
 
                 const chatRef = ref(db, `chat/${curR}`);
                 const pRef = ref(db, `presence/${curR}`);
@@ -929,99 +910,79 @@
 
                 let finalMax = maxLimit;
 
-                // 部屋の存在可否確認を厳密化
                 const roomSnap = await get(roomRef);
-                const roomExistsInDb = roomSnap.exists();
+                let roomExistsInDb = roomSnap.exists();
+                let lastKnownActivity = NOW;
 
                 if (roomExistsInDb) {
-                    const rData = roomSnap.val();
-                    USER_TIMEOUT = (isOfficial ? 30 : (rData.userMin || selectUserMin)) * 60 * 1000; 
-                    ROOM_LIFETIME = (isOfficial ? 999999999 : (rData.roomMin || selectRoomMin)) * 60 * 1000 + 1000;
+                    const rData = roomSnap.val() || {};
+                    lastKnownActivity = rData.lastActivity || NOW;
+                    ROOM_LIFETIME = (isOfficial ? 999999999 : (rData.roomMin || selectRoomMin)) * 60 * 1000;
                     if (rData.max !== undefined) finalMax = isOfficial ? 10 : Number(rData.max);
-                } else {
-                    if (!isOfficial) {
-                        await set(roomRef, { max: finalMax, userMin: selectUserMin, roomMin: selectRoomMin, lastActivity: NOW });
+
+                    if (!isOfficial && (NOW - lastKnownActivity > ROOM_LIFETIME)) {
+                        await cleanRoomDataImmediate();
+                        roomExistsInDb = false;
+                        lastKnownActivity = NOW;
                     }
                 }
 
+                // 【最重要】部屋データが完全に消滅していた場合、セッション復元(isSessionRestore)であっても新規作成モードにフォールバックさせる
                 let isReentry = isSessionRestore;
+                if (!roomExistsInDb && !isOfficial) {
+                    isReentry = false; 
+                    await set(roomRef, { max: finalMax, roomMin: selectRoomMin, lastActivity: NOW });
+                }
+
+                const pSnap = await get(pRef);
 
                 if (!isWatcherMode) {
-                    const pSnap = await get(pRef);
-                    if (pSnap.exists()) {
+                    if (pSnap.exists() && roomExistsInDb) {
                         const users = pSnap.val() || {}; 
                         let currentActiveCount = 0;
 
                         for (const k of Object.keys(users)) {
-                            const isUserAlive = (NOW - (users[k].lastSeen || NOW) <= USER_TIMEOUT);
-
+                            currentActiveCount++;
                             if (k === myUid) {
-                                // 部屋が一度消滅して再生成された直後の場合、DBにゴミがなければ無条件に新規入室として扱う
-                                if (!roomExistsInDb && !isSessionRestore) {
-                                    continue;
-                                }
-                                
                                 const activeN = textDec(users[k].nEnc, pass, isOfficial);
                                 const activeT = textDec(users[k].tEnc, pass, isOfficial) || "";
                                 if (activeN === name && activeT === trip) { 
                                     isReentry = true; 
                                     continue; 
-                                } else {
-                                    if (isUserAlive) {
-                                        showLobby(`【再入室拒否】セッション名またはトリップが一致しません。`);
-                                        return;
-                                    }
                                 }
                             }
-
-                            if (isUserAlive) {
-                                currentActiveCount++;
-                                const activeN = textDec(users[k].nEnc, pass, isOfficial);
-                                if (k !== myUid && activeN === name) {
-                                    showLobby(`【エラー】「${name}」は室内に存在します。`);
-                                    return;
-                                }
+                            const activeN = textDec(users[k].nEnc, pass, isOfficial);
+                            if (k !== myUid && activeN === name) {
+                                showLobby(`【エラー】「${name}」は室内に存在します。`);
+                                return;
                             }
                         }
                         if (!isReentry && currentActiveCount >= finalMax) { showLobby(`部屋が満員です（上限 ${finalMax} 名）`); return; }
                     }
 
+                    await onDisconnect(ref(db)).cancel().catch(()=>{});
+                    await onDisconnect(myRef).remove().catch(()=>{});
+
+                    // 部屋に入った瞬間に即座に生存確認（lastActivity）を更新し、ゾンビ化判定を防ぐ
                     if (!isOfficial) {
-                        const disconnectWipes = {};
-                        disconnectWipes[`rooms/${curR}`] = null;
-                        disconnectWipes[`chat/${curR}`] = null;
-                        disconnectWipes[`presence/${curR}`] = null;
-                        
-                        const checkPresSnap = await get(pRef);
-                        let liveOthers = 0;
-                        if (checkPresSnap.exists()) {
-                            const currentUsers = checkPresSnap.val() || {};
-                            Object.keys(currentUsers).forEach(uid => {
-                                if (uid !== myUid && (NOW - (currentUsers[uid].lastSeen || NOW) <= USER_TIMEOUT)) {
-                                    liveOthers++;
-                                }
-                            });
-                        }
-                        
-                        if (liveOthers === 0) {
-                            await onDisconnect(ref(db)).update(disconnectWipes);
-                        } else {
-                            await onDisconnect(myRef).remove();
-                        }
-                    } else {
-                        await onDisconnect(myRef).remove();
+                        await update(roomRef, { lastActivity: NOW }).catch(()=>{});
                     }
 
                     if (!isReentry) {
-                        await set(myRef, { nEnc: enc(name, pass, isOfficial), tEnc: enc(trip, pass, isOfficial), lastSeen: NOW });
+                        await set(myRef, { nEnc: enc(name, pass, isOfficial), tEnc: enc(trip, pass, isOfficial), enteredAt: NOW });
                         await push(chatRef, { type: "sys", text: enc(`${name}${trip} が入室しました`, pass, isOfficial), time: NOW }); 
-                    } else {
-                        await update(myRef, { lastSeen: NOW });
                     }
                     
                     localStorage.setItem("nez_ni", name);
                     if (!isOfficial) localStorage.setItem("nez_tk", $("tk").value.trim());
                 }
+
+                // ローカルセッションを安全に同期保存
+                localStorage.setItem("active_room_session", JSON.stringify({
+                    rawR, curP, curN: isWatcherMode ? "" : curN, curT: isWatcherMode ? "" : curT, maxLimit, selectRoomMin, isWatcherMode
+                }));
+                localStorage.setItem("nez_ri", targetRoomID);
+                localStorage.setItem("nez_pi", pass);
 
                 $("roomDisplay").innerText = targetRoomID; 
                 $("lobby").style.display = "none"; $("mainApp").style.display = "flex";
@@ -1044,83 +1005,26 @@
                     unsubscribeRoomConfig = onValue(roomRef, async (snap) => {
                         if (!snap.exists() && curR && !isProcessingExit) {
                             isProcessingExit = true;
-                            alert("部屋データが破棄されたか、タイムアウト制限により自動消滅しました。");
+                            // 部屋構成リスナーによる破綻を防ぐためローカルセッションを消去
+                            localStorage.removeItem("active_room_session");
+                            alert("この部屋は活動タイマー上限または全メンバー退出により完全消去されました。");
                             isProcessingExit = false;
-                            showLobby("部屋が即時完全消去されました。");
+                            showLobby("部屋データがサーバーから完全抹消されました。");
                         }
                     });
                 }
 
                 unsubscribePres = onValue(pRef, async (s) => {
                     if (!curR) return; 
-                    const users = s.val() || {}, frag = document.createDocumentFragment(), currentNow = getServerNow();
+                    const users = s.val() || {}, frag = document.createDocumentFragment();
                     let count = 0;
-                    let amIExpired = false;
-                    let liveCountExcludingMe = 0;
 
                     Object.keys(users).forEach(k => {
-                        const isUserAlive = (currentNow - (users[k].lastSeen || currentNow) <= USER_TIMEOUT);
-                        if (!isUserAlive) {
-                            if (k === myUid) amIExpired = true;
-                            return;
-                        }
                         const n = textDec(users[k].nEnc, curP, isOfficial); if (!n) return;
                         const trip = textDec(users[k].tEnc, curP, isOfficial) || "";
-                        
                         count++;
-                        if (k !== myUid) liveCountExcludingMe++;
                         const span = document.createElement("span"); span.className = "user-chip"; span.innerText = n + trip; frag.appendChild(span);
                     });
-
-                    if (amIExpired && !isWatcherMode && !isProcessingExit) {
-                        isProcessingExit = true;
-                        alert("一定時間発言がなかったため、自動タイムアウト退室しました。");
-                        
-                        if (!isOfficial && liveCountExcludingMe === 0) {
-                            await cleanRoomDataImmediate();
-                        } else {
-                            await push(chatRef, { 
-                                type: "sys", 
-                                text: enc(`${curN}${curT} が発言タイムアウトのため自動退出しました`, curP, isOfficial), 
-                                time: currentNow 
-                            }).catch(()=>{});
-                            await set(myRef, null).catch(()=>{});
-                        }
-                        isProcessingExit = false;
-                        showLobby("一定時間発言がなかったためタイムアウトしました。");
-                        return;
-                    }
-
-                    if (!isOfficial && !isProcessingExit) {
-                        try {
-                            const roomSnap = await get(roomRef);
-                            if (roomSnap.exists()) {
-                                const rData = roomSnap.val();
-                                const lastAct = rData.lastActivity || currentNow;
-                                if (currentNow - lastAct > ROOM_LIFETIME) {
-                                    isProcessingExit = true;
-                                    await cleanRoomDataImmediate();
-                                    isProcessingExit = false;
-                                    alert("部屋の有効期限（発言活動なし）が経過したため、データを完全消去しました。");
-                                    showLobby("部屋の有効期限が切れたため自動消滅しました。");
-                                    return;
-                                }
-                            }
-                        } catch(roomCheckErr) { console.error(roomCheckErr); }
-                    }
-
-                    if (!isOfficial && !isWatcherMode && !isProcessingExit) {
-                        const disconnectWipes = {};
-                        disconnectWipes[`rooms/${curR}`] = null;
-                        disconnectWipes[`chat/${curR}`] = null;
-                        disconnectWipes[`presence/${curR}`] = null;
-                        
-                        if (liveCountExcludingMe === 0) {
-                            await onDisconnect(ref(db)).update(disconnectWipes).catch(()=>{});
-                        } else {
-                            await onDisconnect(ref(db)).update({ [`presence/${curR}/${myUid}`]: null }).catch(()=>{});
-                        }
-                    }
 
                     $("presenceList").innerHTML = ""; $("presenceList").appendChild(frag); $("presenceCount").innerText = `[${count}/${finalMax}]`;
                 });
@@ -1128,9 +1032,28 @@
                 let limitCount = isOfficial ? 50 : 200; 
                 let chatQuery = query(chatRef, orderByChild("time"), limitToLast(limitCount));
                 
-                unsubscribeChat = onValue(chatQuery, (snapshot) => {
+                unsubscribeChat = onValue(chatQuery, async (snapshot) => {
                     if (!curR) return;
                     
+                    if (!isOfficial && !isProcessingExit) {
+                        try {
+                            const roomSnap = await get(roomRef);
+                            if (roomSnap.exists()) {
+                                const rData = roomSnap.val();
+                                const currentNow = getServerNow();
+                                const lastAct = rData.lastActivity || currentNow;
+                                if (currentNow - lastAct > ROOM_LIFETIME) {
+                                    isProcessingExit = true;
+                                    await cleanRoomDataImmediate();
+                                    isProcessingExit = false;
+                                    alert("最後の発言から一定時間が経過したため、ログをサーバーから完全消去しました。");
+                                    showLobby("発言タイムアウトにより自動消滅しました。");
+                                    return;
+                                }
+                            }
+                        } catch(err) { console.error(err); }
+                    }
+
                     let hasNewMessage = false;
                     const incomingMsgs = [];
                     
@@ -1142,7 +1065,6 @@
                         }
                     });
 
-                    // サーバーから取得したデータを一度時間ベースで昇順ソートする（古いデータから順にタイムラインに反映）
                     incomingMsgs.sort((a, b) => a.time - b.time);
 
                     if (incomingMsgs.length > 0) {
@@ -1192,10 +1114,8 @@
 
             try {
                 const NOW = getServerNow();
-                const myRef = ref(db, `presence/${curR}/${myUid}`);
                 const roomRef = ref(db, `rooms/${curR}`);
                 
-                await update(myRef, { lastSeen: NOW });
                 if (!isOfficial) {
                     await update(roomRef, { lastActivity: NOW }).catch(()=>{});
                 }
@@ -1244,7 +1164,7 @@
             
             await join(
                 cleanRoom, p, cleanName, generateTripString(cleanName, tk), 
-                Number($("maxUsers").value), Number($("userTimeoutTime").value), Number($("roomCleanTime").value)
+                Number($("maxUsers").value), Number($("userTimeoutTime").value)
             );
             return true;
         };
@@ -1262,7 +1182,7 @@
             const rawName = $("ni").value;
             const cleanName = rawName.replace(/[\s\u3000]+/g, "").trim();
             const tk = $("tk").value.trim();
-            await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, tk), 10, 30, 999999999, true);
+            await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, tk), 10, 999999999, true);
         };
 
         $("watcherUpgradeBtn").onclick = async () => {
@@ -1271,7 +1191,7 @@
             if (!cleanName || !tk) { alert("名前とトリップキーを入力してください。"); return; }
             localStorage.setItem("nez_ni", cleanName); localStorage.setItem("nez_tk", tk);
             $("ni").value = cleanName; $("tk").value = tk; updateTripPreview();
-            await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, tk), 10, 30, 999999999, false, false);
+            await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, tk), 10, 999999999, false, false);
         };
 
         async function exitRoom() {
@@ -1280,31 +1200,27 @@
             localStorage.removeItem("active_room_session");
 
             try {
+                await onDisconnect(ref(db)).cancel().catch(()=>{});
                 if (!isWatcherMode) {
                     const isOfficial = (curR === OFFICIAL_ROOM_HASH);
                     const chatRef = ref(db, `chat/${curR}`);
                     const pRef = ref(db, `presence/${curR}`);
                     const myRef = ref(db, `presence/${curR}/${myUid}`);
 
+                    await set(myRef, null).catch(()=>{});
+
                     const presSnap = await get(pRef);
-                    let activeOthersCount = 0;
                     const currentNow = getServerNow();
+                    let activeOthersCount = 0;
 
                     if (presSnap.exists()) {
                         const users = presSnap.val() || {};
-                        Object.keys(users).forEach(k => {
-                            if (k !== myUid && (currentNow - (users[k].lastSeen || currentNow) <= USER_TIMEOUT)) { 
-                                activeOthersCount++; 
-                            }
-                        });
+                        activeOthersCount = Object.keys(users).length;
                     }
 
                     if (!isOfficial && activeOthersCount === 0) {
-                        await onDisconnect(ref(db)).cancel().catch(()=>{});
                         await cleanRoomDataImmediate();
                     } else {
-                        await onDisconnect(ref(db)).cancel().catch(()=>{});
-                        await set(myRef, null).catch(()=>{});
                         await push(chatRef, { type: "sys", text: enc(`${curN}${curT} が退室しました`, curP, isOfficial), time: currentNow }).catch(()=>{});
                     }
                 }
@@ -1314,7 +1230,7 @@
             showLobby(); 
         }
 
-        $("exitBtn").onclick = () => { if (isWatcherMode || confirm("本当に退室しますか？\nあなたが最後の1人の場合、データは即座に完全破棄されます。")) exitRoom(); };
+        $("exitBtn").onclick = () => { if (isWatcherMode || confirm("本当に退室しますか？\n全員が退室、または発言が途絶えると、サーバーからデータは即座に完全破棄されます。")) exitRoom(); };
 
         $("copyBtn").onclick = () => {
             if (!rawR || !curP) return;
@@ -1358,7 +1274,7 @@
                     const savedTripKey = localStorage.getItem("nez_tk") || "";
                     const fullTripString = generateTripString(savedName, savedTripKey);
                     
-                    await join(s.rawR, s.curP, savedName, fullTripString, s.maxLimit, s.selectUserMin || 30, s.selectRoomMin || 60, !!s.isWatcherMode, true); 
+                    await join(s.rawR, s.curP, savedName, fullTripString, s.maxLimit, s.selectRoomMin || 30, !!s.isWatcherMode, true); 
                     return true;
                 } catch(e) { localStorage.removeItem("active_room_session"); }
             }
@@ -1389,7 +1305,7 @@
                 if (checkRi && checkPi) {
                     if (checkRi === "公式部屋" || checkRi === "official-room" || checkPi === "official_public_pass") {
                         const cleanName = (savedName || "").replace(/[\s\u3000]+/g, "").trim();
-                        await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, savedTripKey || ""), 10, 30, 999999999, true);
+                        await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, savedTripKey || ""), 10, 999999999, true);
                         return;
                     } else if (savedName || n) {
                         const autoJoined = await executeJoinFromLobbyInputs(); 

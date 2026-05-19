@@ -61,6 +61,16 @@
             animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; 
         }
 
+        @keyframes audioPlayingPulse {
+            0% { border-color: rgba(79, 70, 229, 0.4); box-shadow: 0 0 4px rgba(79, 70, 229, 0.2); }
+            50% { border-color: rgba(0, 255, 102, 0.8); box-shadow: 0 0 10px rgba(0, 255, 102, 0.3); }
+            100% { border-color: rgba(79, 70, 229, 0.4); box-shadow: 0 0 4px rgba(79, 70, 229, 0.2); }
+        }
+        .audio-playing-wrapper {
+            animation: audioPlayingPulse 2s infinite ease-in-out;
+            background: rgba(15, 23, 42, 0.95) !important;
+        }
+
         #chatTimeline {
             flex: 1 1 0%;
             overflow-y: auto;
@@ -93,6 +103,11 @@
             border-left: 4px solid var(--primary);
             will-change: transform, opacity;
         }
+
+        .audio-seekbar::-webkit-slider-runnable-track { background: #334155; height: 4px; border-radius: 2px; }
+        .audio-seekbar::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; background: #00ff66; height: 10px; width: 10px; border-radius: 50%; margin-top: -3px; cursor: pointer; }
+        .audio-seekbar::-moz-range-track { background: #334155; height: 4px; border-radius: 2px; }
+        .audio-seekbar::-moz-range-thumb { background: #00ff66; height: 10px; width: 10px; border-radius: 50%; cursor: pointer; border: none; }
 
         #floating-nav {
             position: absolute;
@@ -154,14 +169,6 @@
         #modalTargetImg:active {
             cursor: grabbing;
         }
-
-        audio::-webkit-media-controls-panel {
-            background-color: #1e293b;
-        }
-        audio::-webkit-media-controls-current-time-display,
-        audio::-webkit-media-controls-time-remaining-display {
-            color: #f8fafc;
-        }
     </style>
 </head>
 <body class="flex items-start justify-center p-2 pt-4 text-slate-100 h-full w-screen overflow-hidden">
@@ -182,7 +189,7 @@
                 部屋パスワードを用いてブラウザ側でAES-256暗号化を行う使い捨てチャットです。生データや暗号鍵はサーバーに送信されず、退室や時間経過でログは完全消去されます。
             </p>
             <p class="text-emerald-400 font-bold bg-emerald-950/30 border border-emerald-900/40 p-1 rounded">
-                ⚠️ 公式部屋は常設されています（ログ100件保存）
+                ⚠️ 公式部屋は常設されています（1ページ50件、過去ログ閲覧可）
             </p>
         </div>
         
@@ -315,7 +322,7 @@
         </div>
     </div>
 
-    <!-- 📑 統合ガイドモーダル -->
+    <!-- 👑 統合ガイドモーダル -->
     <div id="guideCard" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-slate-900 p-5 rounded-2xl max-w-md w-full max-h-[85vh] overflow-y-auto shadow-2xl flex flex-col gap-4 border border-slate-800 select-text">
             <h3 class="font-black text-sm text-indigo-400 border-b border-slate-800 pb-2 flex items-center gap-1 shrink-0">📖 セキュリティ構造 ＆ 利用規約</h3>
@@ -335,7 +342,7 @@
                     <p class="font-bold text-slate-200">💡 基本的な使い方</p>
                     <ul class="list-disc list-inside space-y-1 text-slate-400 pl-1 text-[10.5px]">
                         <li>特定の相手と話す場合は、独自の「部屋ID」と「部屋パスワード」を取り決めて入室してください。</li>
-                        <li>入室後に右上にある「招待」ボタンを押すと、現在の部屋IDと部屋パスワードを含んだ秘密の招待URLがクリップボードにコピーされます。</li>
+                        <li>入室後に右上にある「招待」ボタンを押すと、現在の部屋ID and 部屋パスワードを含んだ秘密の招待URLがクリップボードにコピーされます。</li>
                         <li>「トリップ暗号」を入力すると、自分の名前の横に <span class="text-green-400 font-mono">◆a1b2c3</span> のような固有値が表示され、他人のなりすましを防止できます。</li>
                     </ul>
                 </div>
@@ -344,7 +351,7 @@
                     <p class="font-bold text-red-400 flex items-center gap-1 text-[11.5px]">🚫 絶対禁止事項</p>
                     <p class="text-[10.5px] text-slate-400">当空間は完全匿名の一時利用を想定していますが、以下の行為は固くお断りします。</p>
                     <ul class="list-disc list-inside space-y-0.5 text-red-300 text-[10px] pl-1">
-                        <li>他者の権利を侵害する名誉毀損・誹謗中傷・脅脅行為</li>
+                        <li>他者の権利を侵害する名誉毀損・誹謗中傷・脅迫行為</li>
                         <li>公式部屋などパブリック空間での過度な荒らし行為、スパム連投</li>
                         <li>違法コンテンツのリンク共有、または犯罪行為の計画・唆し</li>
                         <li>システムの脆弱性を狙った不正なリクエストやサーバーへの攻撃</li>
@@ -371,7 +378,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
         import {
             getDatabase, ref, push, onValue, set, remove,
-            query, orderByChild, limitToLast, get, update, onDisconnect, onChildAdded, startAfter
+            query, orderByChild, limitToLast, get, update, onDisconnect, onChildAdded, startAfter, endBefore
         } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
         const $ = id => document.getElementById(id);
@@ -398,6 +405,9 @@
         let isProcessingExit = false;
         let isWatcherMode = false; 
         let myUid = null;
+        
+        let oldestLoadedTimestamp = null;
+        let isPaginationEnding = false;
 
         let USER_TIMEOUT = (30 * 60 + 1) * 1000; 
         let ROOM_LIFETIME = (60 * 60) * 1000;
@@ -540,6 +550,47 @@
             return `${year}/${month}/${date} ${hours}:${minutes}:${seconds}`;
         }
 
+        window.initAudioBridge = function(audioEl, wrapperId) {
+            const container = document.getElementById(wrapperId);
+            if (!container) return;
+
+            const playBtn = container.querySelector('.audio-play-btn');
+            const seekbar = container.querySelector('.audio-seekbar');
+            const timeTxt = container.querySelector('.audio-time');
+
+            audioEl.onplay = () => {
+                document.querySelectorAll('audio').forEach(a => { if (a !== audioEl) a.pause(); });
+                document.querySelectorAll('.audio-element-wrapper').forEach(w => w.classList.remove('audio-playing-wrapper'));
+                container.classList.add('audio-playing-wrapper');
+                playBtn.innerHTML = `<svg class="w-3.5 h-3.5 text-emerald-400" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+            };
+
+            audioEl.onpause = audioEl.onended = () => {
+                container.classList.remove('audio-playing-wrapper');
+                playBtn.innerHTML = `<svg class="w-3.5 h-3.5 text-slate-300" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+            };
+
+            audioEl.ontimeupdate = () => {
+                if (!audioEl.duration) return;
+                const pct = (audioEl.currentTime / audioEl.duration) * 100;
+                seekbar.value = pct;
+                timeTxt.innerText = `${fmtTime(audioEl.currentTime)}/${fmtTime(audioEl.duration)}`;
+            };
+
+            audioEl.onloadedmetadata = () => {
+                timeTxt.innerText = `00:00/${fmtTime(audioEl.duration)}`;
+            };
+
+            playBtn.onclick = () => { if (audioEl.paused) { audioEl.play().catch(()=>{}); } else { audioEl.pause(); } };
+            seekbar.oninput = () => { if (!audioEl.duration) return; audioEl.currentTime = (seekbar.value / 100) * audioEl.duration; };
+
+            function fmtTime(s) {
+                if (isNaN(s)) return "00:00";
+                const m = Math.floor(s / 60); const sec = Math.floor(s % 60);
+                return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+            }
+        };
+
         function createMessageElement(m, pass, isOfficial = false) {
             const txt = textDec(m.text, pass, isOfficial); if (!txt) return null;
             const div = document.createElement("div"); div.className = "msg-wrap animate-fade-in";
@@ -550,185 +601,93 @@
                 div.className = "msg-wrap text-center w-full justify-center items-center";
             } else {
                 const sN = textDec(m.nEnc, pass, isOfficial) || "???", sT = textDec(m.tEnc, pass, isOfficial) || "";
-                const cardClass = "msg-card msg bg-slate-900/90 text-slate-200 px-3 py-2 rounded-xl border border-slate-800 shadow-md max-w-sm inline-block break-all";
+                const cardClass = "msg-card msg bg-slate-900/90 text-slate-200 px-3 py-2 rounded-xl border border-slate-800 shadow-md max-w-sm inline-block break-all w-full sm:w-auto";
                 
-                const mediaContainerId = `media-container-${Math.random().toString(36).substr(2, 9)}`;
-                const parsedResult = parseMessageContent(txt, mediaContainerId);
-                const hasOnlyMedia = parsedResult.textHtml.trim() === "" && parsedResult.hasMediaPending;
+                const parsedHtml = parseMessageContentToHtml(txt);
                 
-                const contentBody = hasOnlyMedia 
-                    ? `<div id="${mediaContainerId}"></div>` 
-                    : `<div class="text-sm leading-relaxed">${parsedResult.textHtml}</div><div id="${mediaContainerId}"></div>`;
-
                 div.innerHTML = `<div class="text-[11px] font-bold text-slate-400 mb-0.5 pl-1">${esc(sN)}<span class="text-green-400 font-mono">${esc(sT)}</span> <span class="text-slate-500 font-normal">${fullTimeStr}</span></div>
-                    <div class="${cardClass}">
-                        ${contentBody}
-                    </div>`;
-                    
-                if (parsedResult.asyncHandler) {
-                    parsedResult.asyncHandler();
-                }
+                    <div class="${cardClass}">${parsedHtml}</div>`;
             }
             return div;
         }
 
-        function parseMessageContent(text, containerId) {
-            const words = text.split(/\s+/);
-            let cleanText = text;
-            let hasMediaPending = false;
-            let asyncHandler = null;
-
+        /* 🎵 メディアやURLの前後に自動で適切なマージンと改行を付与する高精度パーサー */
+        function parseMessageContentToHtml(text) {
             const ytRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/i;
-            const imgRegex = /\.(jpeg|jpg|gif|png|webp|bmp)(?:\?.*)?$/i;
             const audioRegex = /\.(mp3|wav|aac|m4a|ogg|flac)(?:\?.*)?$/i;
+            const urlRegex = /(https?:\/\/[^\s\n]+)/gi;
 
-            for (const word of words) {
-                if (/^https?:\/\/[^\s]+$/i.test(word)) {
-                    // 1. YouTubeの判定
-                    const ytMatch = word.match(ytRegex);
-                    if (ytMatch && ytMatch[1]) {
-                        const vid = ytMatch[1];
-                        cleanText = cleanText.replace(word, "");
-                        hasMediaPending = true;
-                        
-                        asyncHandler = () => {
-                            setTimeout(() => {
-                                const target = $(containerId);
-                                if (target) {
-                                    target.innerHTML = `
-                                        <div class="mt-2 rounded-lg overflow-hidden border border-slate-700 bg-black max-w-sm w-full">
-                                            <div class="yt-placeholder relative aspect-video bg-cover bg-center" style="background-image: url('https://img.youtube.com/vi/${vid}/mqdefault.jpg');"></div>
-                                            <div class="bg-slate-900/90 p-2 flex justify-between gap-2 text-xs border-t border-slate-800">
-                                                <button onclick="playYoutubeInline(this, '${vid}')" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-2 rounded transition text-center">その場で再生</button>
-                                                <a href="https://www.youtube.com/watch?v=${vid}" target="_blank" rel="noopener noreferrer" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-1 px-2 rounded transition text-center flex items-center justify-center">YouTube公式へ</a>
-                                            </div>
-                                        </div>`;
-                                }
-                            }, 50);
-                        };
-                        continue;
-                    }
+            let urlMap = [];
+            // URLを一旦独自のIDに置き換えて退避
+            let placeholderText = text.replace(urlRegex, (url) => {
+                const id = `__URL_PLACEHOLDER_${urlMap.length}__`;
+                urlMap.push({ id, original: url });
+                return id;
+            });
 
-                    // 2. d.kuku.lu の判定（画像ページ・ファイルパスの自動処理）
-                    if (word.includes('d.kuku.lu/')) {
-                        const kukuMatch = word.match(/d\.kuku\.lu\/([a-zA-Z0-9]+)/i);
-                        if (kukuMatch) {
-                            const fileId = kukuMatch[1];
-                            const directUrl = `https://d.kuku.lu/b/${fileId}`;
-                            const thumbUrl = `https://d.kuku.lu/thumbnail.php?id=${fileId}`;
-                            
-                            cleanText = cleanText.replace(word, "");
-                            hasMediaPending = true;
+            // HTMLのエスケープ処理
+            let escapedText = esc(placeholderText);
 
-                            const isAudio = audioRegex.test(word);
+            // スペースによる不要な改行をなくし、純粋な改行のみを<br>に変換
+            escapedText = escapedText.replace(/\n/g, "<br>").replace(/ /g, "&nbsp;");
 
-                            asyncHandler = () => {
-                                setTimeout(() => {
-                                    const target = $(containerId);
-                                    if (!target) return;
+            // 退避しておいたURL（メディア）を順次展開
+            urlMap.forEach(item => {
+                const url = item.original;
+                const cleanUrl = url.replace(/[?#].*$/, '');
+                let replacement = "";
 
-                                    if (isAudio) {
-                                        target.innerHTML = `
-                                            <div class="mt-2 w-full max-w-[260px] p-2 rounded-xl border border-slate-800 bg-slate-950 shadow-md">
-                                                <p class="text-[10px] text-slate-400 font-bold mb-1 px-1 truncate">🎵 kuku.lu オーディオ</p>
-                                                <audio controls src="${esc(directUrl)}" class="w-full h-8 rounded-lg text-xs focus:outline-none" preload="metadata"></audio>
-                                            </div>`;
-                                    } else {
-                                        target.innerHTML = `
-                                            <div class="mt-2 max-w-[240px] overflow-hidden rounded-lg border border-slate-800 bg-slate-950 shadow-inner">
-                                                <img src="${esc(thumbUrl)}" alt="送信画像" class="max-h-48 w-full object-cover cursor-pointer hover:opacity-90 active:scale-95 transition" onerror="this.onerror=null; this.src='${esc(directUrl)}';" onclick="openImageModal('${esc(directUrl)}')">
-                                            </div>`;
-                                    }
-                                }, 50);
-                            };
-                        }
-                        continue;
-                    } 
-                    
-                    // 3. ギガファイル便の判定（★画像表示に対応するようアップデート）
-                    if (word.includes('gigafile.nu/')) {
-                        const gigaMatch = word.match(/https?:\/\/(?:([^.]+)\.)?gigafile\.nu\/(?:download\.php\?file=)?([a-zA-Z0-9-]+)/i);
-                        if (gigaMatch) {
-                            const subDomain = gigaMatch[1] || "www";
-                            const fileId = gigaMatch[2];
-                            const directUrl = `https://${subDomain}.gigafile.nu/download.php?file=${fileId}`;
-                            cleanText = cleanText.replace(word, "");
-                            hasMediaPending = true;
-
-                            const isAudio = audioRegex.test(word);
-                            const isImage = imgRegex.test(word); // URL末尾の拡張子チェック
-
-                            asyncHandler = () => {
-                                setTimeout(() => {
-                                    const target = $(containerId);
-                                    if (!target) return;
-
-                                    if (isAudio) {
-                                        target.innerHTML = `
-                                            <div class="mt-2 w-full max-w-[260px] p-2 rounded-xl border border-slate-800 bg-slate-950 shadow-md">
-                                                <p class="text-[10px] text-slate-400 font-bold mb-1 px-1 truncate">🎵 ギガファイル オーディオ</p>
-                                                <audio controls src="${esc(directUrl)}" class="w-full h-8 rounded-lg text-xs focus:outline-none" preload="metadata"></audio>
-                                            </div>`;
-                                    } else if (isImage) {
-                                        // 画像URLだった場合は、ダイレクトDL用URLを直接imgタグにマッピングして描画
-                                        target.innerHTML = `
-                                            <div class="mt-2 max-w-[240px] overflow-hidden rounded-lg border border-slate-800 bg-slate-950 shadow-inner">
-                                                <img src="${esc(directUrl)}" alt="送信画像" class="max-h-48 w-full object-cover cursor-pointer hover:opacity-90 active:scale-95 transition" onclick="openImageModal('${esc(directUrl)}')">
-                                            </div>`;
-                                    } else {
-                                        target.innerHTML = `
-                                            <div class="mt-2 max-w-[240px] p-2.5 rounded-lg border border-amber-900/50 bg-amber-950/20 text-xs text-amber-300">
-                                                <div class="font-bold flex items-center gap-1 mb-1">📦 GigaFile便 共有データ</div>
-                                                <a href="${esc(word)}" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:underline block truncate font-semibold">ダウンロードページを開く ↗</a>
-                                            </div>`;
-                                    }
-                                }, 50);
-                            };
-                        }
-                        continue;
-                    }
-
-                    // 4. 一般的な直接リンク画像および音声の描画処理
-                    const cleanUrl = word.replace(/[?#].*$/, '');
-                    if (imgRegex.test(cleanUrl) || /^data:image\//i.test(word)) {
-                        cleanText = cleanText.replace(word, "");
-                        hasMediaPending = true;
-                        asyncHandler = () => {
-                            setTimeout(() => {
-                                const target = $(containerId);
-                                if (target) {
-                                    target.innerHTML = `
-                                        <div class="mt-2 max-w-[240px] overflow-hidden rounded-lg border border-slate-800 bg-slate-950 shadow-inner">
-                                            <img src="${esc(word)}" alt="送信画像" class="max-h-48 w-full object-cover cursor-pointer hover:opacity-90 active:scale-95 transition" onclick="openImageModal('${esc(word)}')">
-                                        </div>`;
-                                }
-                            }, 50);
-                        };
-                    } 
-                    else if (audioRegex.test(cleanUrl)) {
-                        cleanText = cleanText.replace(word, "");
-                        hasMediaPending = true;
-                        asyncHandler = () => {
-                            setTimeout(() => {
-                                const target = $(containerId);
-                                if (target) {
-                                    target.innerHTML = `
-                                        <div class="mt-2 w-full max-w-[260px] p-2 rounded-xl border border-slate-700 bg-slate-800 shadow-md">
-                                            <p class="text-[10px] text-slate-400 font-bold mb-1 px-1 truncate">🎵 インラインオーディオ</p>
-                                            <audio controls src="${esc(word)}" class="w-full h-8 rounded-lg text-xs focus:outline-none" preload="metadata"></audio>
-                                        </div>`;
-                                }
-                            }, 50);
-                        };
-                    }
+                // 1. YouTubeリンクの変換
+                const ytMatch = url.match(ytRegex);
+                if (ytMatch && ytMatch[1]) {
+                    const vid = ytMatch[1];
+                    replacement = `<!-- MEDIA_BLOCK --><div class="block my-2 rounded-lg overflow-hidden border border-slate-700 bg-black max-w-sm w-full">
+                        <div class="yt-placeholder relative aspect-video bg-cover bg-center" style="background-image: url('https://img.youtube.com/vi/${vid}/mqdefault.jpg');"></div>
+                        <div class="bg-slate-900/90 p-2 flex justify-between gap-2 text-xs border-t border-slate-800">
+                            <button onclick="playYoutubeInline(this, '${vid}')" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-2 rounded transition text-center">その場で再生</button>
+                            <a href="https://www.youtube.com/watch?v=${vid}" target="_blank" rel="noopener noreferrer" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-1 px-2 rounded transition text-center flex items-center justify-center">公式へ</a>
+                        </div>
+                    </div><!-- /MEDIA_BLOCK -->`;
                 }
-            }
+                // 2. 画像リンクの変換
+                else if (/\.(jpeg|jpg|gif|png|webp|bmp)(?:\?.*)?$/i.test(cleanUrl) || /^data:image\//i.test(url)) {
+                    replacement = `<!-- MEDIA_BLOCK --><div class="block my-2 max-w-[240px] overflow-hidden rounded-lg border border-slate-800 bg-slate-950 shadow-inner">
+                        <img src="${url}" alt="送信画像" class="max-h-48 w-full object-cover cursor-pointer hover:opacity-90 active:scale-95 transition" onclick="openImageModal('${url}')">
+                    </div><!-- /MEDIA_BLOCK -->`;
+                }
+                // 3. 音楽ファイル(オーディオプレイヤー)の変換
+                else if (audioRegex.test(cleanUrl)) {
+                    const audioId = `aud-${Math.random().toString(36).substr(2, 9)}`;
+                    const wrapId = `wrap-${audioId}`;
+                    
+                    setTimeout(() => {
+                        const aEl = document.getElementById(audioId);
+                        if (aEl) window.initAudioBridge(aEl, wrapId);
+                    }, 60);
 
-            cleanText = cleanText.trim();
-            let textHtml = esc(cleanText);
-            textHtml = textHtml.replace(/(https?:\/\/[^\s]+)/gi, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:underline">$1</a>');
+                    replacement = `<!-- MEDIA_BLOCK --><div id="${wrapId}" class="audio-element-wrapper my-2.5 block w-full min-w-[260px] sm:min-w-[300px] h-10 px-3 flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/90 shadow-md transition-all duration-300">
+                        <audio id="${audioId}" src="${url}" preload="metadata" class="hidden"></audio>
+                        <button class="audio-play-btn w-7 h-7 flex items-center justify-center bg-slate-700 hover:bg-slate-600 active:scale-90 rounded-full shrink-0 transition focus:outline-none">
+                            <svg class="w-3.5 h-3.5 text-slate-200" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        </button>
+                        <span class="text-[10px] font-bold text-indigo-400 select-none shrink-0 max-w-[45px] truncate">MUSIC</span>
+                        <input type="range" class="audio-seekbar flex-1 h-1 bg-slate-600 rounded-lg appearance-none cursor-pointer focus:outline-none" value="0" min="0" max="100">
+                        <span class="audio-time text-[9px] font-mono text-slate-400 select-none tracking-tighter shrink-0">00:00/00:00</span>
+                    </div><!-- /MEDIA_BLOCK -->`;
+                }
+                // 4. 通常のテキストハイパーリンクの変換（上下にマージンを持った独立ブロック化）
+                else {
+                    replacement = `<!-- MEDIA_BLOCK --><div class="block my-1.5"><a href="${url}" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:underline break-all font-medium">${url}</a></div><!-- /MEDIA_BLOCK -->`;
+                }
 
-            return { textHtml, hasMediaPending, asyncHandler };
+                escapedText = escapedText.replace(item.id, replacement);
+            });
+
+            // メディアブロックの前後にある重複した改行<br>（ユーザーの手動改行）をクリーンアップして均一な「1段あき」に成形
+            escapedText = escapedText.replace(/(?:<br>|&nbsp;)*<!-- MEDIA_BLOCK -->/g, '<div class="h-2"></div><!-- MEDIA_BLOCK -->');
+            escapedText = escapedText.replace(/<!-- \/MEDIA_BLOCK -->(?:<br>|&nbsp;)*/g, '<!-- /MEDIA_BLOCK --><div class="h-2"></div>');
+
+            return escapedText;
         }
 
         let scale = 1;
@@ -742,21 +701,13 @@
         const imgWrapper = $("modalImgWrapper");
 
         function clampTransforms() {
-            if (scale <= 1) {
-                translateX = 0;
-                translateY = 0;
-                return;
-            }
+            if (scale <= 1) { translateX = 0; translateY = 0; return; }
             const wrapRect = imgWrapper.getBoundingClientRect();
             const currentWidth = modalImg.offsetWidth * scale;
             const currentHeight = modalImg.offsetHeight * scale;
-
             let maxTx = (currentWidth - wrapRect.width) / 2;
             let maxTy = (currentHeight - wrapRect.height) / 2;
-
-            if (maxTx < 0) maxTx = 0;
-            if (maxTy < 0) maxTy = 0;
-
+            if (maxTx < 0) maxTx = 0; if (maxTy < 0) maxTy = 0;
             translateX = Math.min(Math.max(translateX, -maxTx), maxTx);
             translateY = Math.min(Math.max(translateY, -maxTy), maxTy);
         }
@@ -778,9 +729,7 @@
         }, { passive: true });
 
         $("imageModal").addEventListener("touchmove", (e) => {
-            if (scale > 1 || e.touches.length > 1) {
-                if (e.cancelable) e.preventDefault();
-            }
+            if (scale > 1 || e.touches.length > 1) { if (e.cancelable) e.preventDefault(); }
             if (isDragging && e.touches.length === 1 && scale > 1) {
                 const dx = e.touches[0].clientX - startX; const dy = e.touches[0].clientY - startY;
                 translateX = baseTranslateX + dx; translateY = baseTranslateY + dy;
@@ -842,6 +791,55 @@
             }
         }
 
+        window.loadMoreOfficialPastLogs = async function(buttonEl) {
+            if (!curR || !oldestLoadedTimestamp || isPaginationEnding) return;
+            buttonEl.disabled = true;
+            buttonEl.innerText = "読み込み中...";
+            
+            try {
+                const isOfficial = (curR === OFFICIAL_ROOM_HASH);
+                const chatRef = ref(db, `chat/${curR}`);
+                const pastQuery = query(chatRef, orderByChild("time"), endBefore(oldestLoadedTimestamp), limitToLast(50));
+                
+                const snap = await get(pastQuery);
+                const fetchedMsgs = [];
+                
+                snap.forEach(s => {
+                    const m = s.val();
+                    if (m && m.time) fetchedMsgs.push(m);
+                });
+
+                if (fetchedMsgs.length === 0) {
+                    isPaginationEnding = true;
+                    buttonEl.innerText = "これ以上ログはありません";
+                    setTimeout(() => buttonEl.remove(), 1500);
+                    return;
+                }
+
+                fetchedMsgs.sort((a, b) => b.time - a.time);
+                oldestLoadedTimestamp = fetchedMsgs[fetchedMsgs.length - 1].time;
+
+                fetchedMsgs.forEach(m => {
+                    const el = createMessageElement(m, curP, isOfficial);
+                    if (el) chatTimeline.appendChild(el);
+                });
+
+                buttonEl.disabled = false;
+                buttonEl.innerText = "さらに古いログを読み込む（50件）";
+                
+                if (fetchedMsgs.length < 50) {
+                    isPaginationEnding = true;
+                    buttonEl.innerText = "すべてのログを読み込みました";
+                    setTimeout(() => buttonEl.remove(), 1500);
+                }
+
+            } catch(e) {
+                console.error("過去ログの取得に失敗しました:", e);
+                buttonEl.disabled = false;
+                buttonEl.innerText = "再試行する";
+            }
+        };
+
         async function join(rID, pass, name, trip, maxLimit, selectRomMin, selectRoomMin, isDirectOfficialClick = false, isSessionRestore = false) {
             try {
                 $("errMsg").style.display = "none";
@@ -873,11 +871,8 @@
                     clearSubscriptions(); 
                 }
 
-                if (isWatcherMode) {
-                    curR = hashId; rawR = targetRoomID; curP = pass; curN = ""; curT = "";
-                } else {
-                    curR = hashId; rawR = targetRoomID; curP = pass; curN = name; curT = trip;
-                }
+                curR = hashId; rawR = targetRoomID; curP = pass;
+                if (isWatcherMode) { curN = ""; curT = ""; } else { curN = name; curT = trip; }
 
                 if (isOfficial) {
                     selectRomMin = 30; maxLimit = 10; selectRoomMin = 999999999;
@@ -913,12 +908,9 @@
                     } else {
                         if (!isOfficial) await set(roomRef, { max: finalMax, romMin: selectRomMin, roomMin: selectRoomMin, lastActivity: NOW });
                     }
-                } catch (roomErr) {
-                    console.warn("部屋構成の設定をスキップしました:", roomErr);
-                }
+                } catch (roomErr) { console.warn("部屋構成の設定をスキップ:", roomErr); }
 
                 if (unsubscribeConn) { unsubscribeConn = null; }
-                
                 let isReentry = isSessionRestore;
 
                 if (!isWatcherMode) {
@@ -931,13 +923,9 @@
                             if (k === myUid) {
                                 const activeN = textDec(users[k].nEnc, pass, isOfficial);
                                 const activeT = textDec(users[k].tEnc, pass, isOfficial) || "";
-                                
-                                if (activeN === name && activeT === trip) {
-                                    isReentry = true;
-                                    continue; 
-                                } else {
+                                if (activeN === name && activeT === trip) { isReentry = true; continue; } else {
                                     if (NOW - (users[k].lastSeen || NOW) <= USER_TIMEOUT) {
-                                        showLobby(`【再入室拒否】以前のセッション情報と「名前」または「トリップ」が一致しません。\n公式部屋等へ再入室する場合はしばらく待つか、前と同じ名前・トリップを設定してください。`);
+                                        showLobby(`【再入室拒否】セッション名またはトリップが一致しません。`);
                                         return;
                                     }
                                 }
@@ -948,7 +936,7 @@
                                 currentActiveCount++;
                                 const activeN = textDec(users[k].nEnc, pass, isOfficial);
                                 if (k !== myUid && activeN === name) {
-                                    showLobby(`【入室エラー】「${name}」という名前はすでに部屋の中で使用されています。`);
+                                    showLobby(`【エラー】「${name}」は室内に存在します。`);
                                     return;
                                 }
                             }
@@ -964,11 +952,7 @@
                     });
 
                     await set(myRef, { nEnc: enc(name, pass, isOfficial), tEnc: enc(trip, pass, isOfficial), lastSeen: NOW });
-                    
-                    if (!isReentry) {
-                        await push(chatRef, { type: "sys", text: enc(`${name}${trip} が入室しました`, pass, isOfficial), time: NOW });
-                    }
-                    
+                    if (!isReentry) { await push(chatRef, { type: "sys", text: enc(`${name}${trip} が入室しました`, pass, isOfficial), time: NOW }); }
                     localStorage.setItem("nez_ni", name);
                     if (!isOfficial) localStorage.setItem("nez_tk", $("tk").value.trim());
                 }
@@ -996,30 +980,30 @@
                     Object.keys(users).forEach(k => {
                         const n = textDec(users[k].nEnc, curP, isOfficial); if (!n) return;
                         const trip = textDec(users[k].tEnc, curP, isOfficial) || "";
-                        
                         if (currentNow - (users[k].lastSeen || currentNow) > USER_TIMEOUT) {
                             if (!isOfficial && (trackedUserStates[k] === "active" || trackedUserStates[k] === undefined)) {
-                                if (users[k].nEnc && k === myUid && !isWatcherMode) { try { push(chatRef, { type: "sys", text: enc(`${n}${trip} がタイムアウト自動退室しました`, curP, isOfficial), time: currentNow }); } catch(e){} }
+                                if (users[k].nEnc && k === myUid && !isWatcherMode) { try { push(chatRef, { type: "sys", text: enc(`${n}${trip} がタイムアウト離脱しました`, curP, isOfficial), time: currentNow }); } catch(e){} }
                             }
                             return;
                         }
-                        
-                        currentActiveUids.add(k);
-                        count++;
+                        currentActiveUids.add(k); count++;
                         const span = document.createElement("span"); span.className = "user-chip"; span.innerText = n + trip; frag.appendChild(span);
                     });
 
-                    trackedUserStates = {};
-                    currentActiveUids.forEach(activeUid => { trackedUserStates[activeUid] = "active"; });
+                    trackedUserStates = {}; currentActiveUids.forEach(activeUid => { trackedUserStates[activeUid] = "active"; });
                     $("presenceList").innerHTML = ""; $("presenceList").appendChild(frag); $("presenceCount").innerText = `[${count}/${finalMax}]`;
                 });
 
                 chatTimeline.innerHTML = ""; 
-                let chatQuery = isOfficial ? query(chatRef, orderByChild("time"), limitToLast(100)) : query(chatRef, orderByChild("time"));
+                isPaginationEnding = false;
+                
+                let limitCount = isOfficial ? 50 : 200; 
+                let chatQuery = query(chatRef, orderByChild("time"), limitToLast(limitCount));
                 
                 const chatSnap = await get(chatQuery);
                 const initialMsgs = [];
                 let maxTimestampInSnapshot = 0;
+                oldestLoadedTimestamp = null;
                 
                 chatSnap.forEach(s => {
                     const m = s.val();
@@ -1035,11 +1019,24 @@
                     if (el) chatTimeline.appendChild(el);
                 });
                 
+                if (initialMsgs.length > 0) {
+                    oldestLoadedTimestamp = initialMsgs[initialMsgs.length - 1].time;
+                }
+
+                if (isOfficial && initialMsgs.length >= 50) {
+                    const pagerBtn = document.createElement("button");
+                    pagerBtn.id = "officialPagerBtn";
+                    pagerBtn.className = "w-full py-2.5 my-2 text-xs font-bold text-indigo-400 bg-slate-900 border border-slate-800 rounded-xl hover:bg-slate-850 transition-all shrink-0";
+                    pagerBtn.innerText = "さらに古いログを読み込む（50件）";
+                    pagerBtn.onclick = function() { window.loadMoreOfficialPastLogs(this); };
+                    chatTimeline.appendChild(pagerBtn);
+                }
+                
                 scrollToLatest();
 
                 let trackingStartTime = maxTimestampInSnapshot > 0 ? maxTimestampInSnapshot : NOW;
-
                 const nextChatQuery = query(chatRef, orderByChild("time"), startAfter(trackingStartTime));
+                
                 unsubscribeChat = onChildAdded(nextChatQuery, s => {
                     const m = s.val(); 
                     if (!m || m.time <= trackingStartTime) return;
@@ -1063,10 +1060,8 @@
 
             } catch (e) {
                 console.error(e);
-                showLobby(`❌ 入室に失敗しました\n原因: ${e.message}`);
-            } finally {
-                setLobbyButtonsState(true);
-            }
+                showLobby(`❌ エラー\n原因: ${e.message}`);
+            } finally { setLobbyButtonsState(true); }
         }
 
         async function sendMessage() {
@@ -1087,7 +1082,7 @@
                     text: enc(txt, curP, isOfficial), 
                     time: NOW 
                 });
-            } catch (e) { alert("送信に失敗しました: " + e.message); }
+            } catch (e) { alert("送信失敗: " + e.message); }
         }
 
         $("mi").addEventListener("compositionstart", () => { isComposing = true; });
@@ -1105,9 +1100,7 @@
             if (e.key === "Enter" && !e.shiftKey) { 
                 if (isComposing) return; 
                 e.preventDefault(); sendMessage(); 
-            } else {
-                if (!isTimelineScrolledDown) { scrollToLatest(); }
-            }
+            } else { if (!isTimelineScrolledDown) { scrollToLatest(); } }
         });
         
         $("sendBtn").onclick = (e) => { e.preventDefault(); sendMessage(); };
@@ -1145,7 +1138,6 @@
             if (!cleanName || !tk) { alert("名前とトリップキーを入力してください。"); return; }
             localStorage.setItem("nez_ni", cleanName); localStorage.setItem("nez_tk", tk);
             $("ni").value = cleanName; $("tk").value = tk; updateTripPreview();
-            
             await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, tk), 10, 30, 999999999, false, false);
         };
 
@@ -1166,9 +1158,7 @@
                     if (presSnap.exists()) {
                         const users = presSnap.val() || {};
                         Object.keys(users).forEach(k => {
-                            if (k !== myUid && (currentNow - (users[k].lastSeen || currentNow) <= USER_TIMEOUT)) {
-                                otherUsersCount++;
-                            }
+                            if (k !== myUid && (currentNow - (users[k].lastSeen || currentNow) <= USER_TIMEOUT)) { otherUsersCount++; }
                         });
                     }
 
@@ -1181,9 +1171,7 @@
                         await remove(myRef).catch(()=>{});
                     }
                 }
-            } catch(e) {
-                console.error("退室処理中のエラー:", e);
-            }
+            } catch(e) { console.error("退室処理エラー:", e); }
             isProcessingExit = false; showLobby();
         }
 
@@ -1205,26 +1193,10 @@
             document.body.removeChild(textArea);
         }
 
-        $("ni").addEventListener("input", (e) => {
-            $("watcher_ni").value = e.target.value;
-            updateTripPreview();
-            updateWatcherTripPreview();
-        });
-        $("tk").addEventListener("input", (e) => {
-            $("watcher_tk").value = e.target.value;
-            updateTripPreview();
-            updateWatcherTripPreview();
-        });
-        $("watcher_ni").addEventListener("input", (e) => {
-            $("ni").value = e.target.value;
-            updateTripPreview();
-            updateWatcherTripPreview();
-        });
-        $("watcher_tk").addEventListener("input", (e) => {
-            $("tk").value = e.target.value;
-            updateTripPreview();
-            updateWatcherTripPreview();
-        });
+        $("ni").addEventListener("input", (e) => { $("watcher_ni").value = e.target.value; updateTripPreview(); updateWatcherTripPreview(); });
+        $("tk").addEventListener("input", (e) => { $("watcher_tk").value = e.target.value; updateTripPreview(); updateWatcherTripPreview(); });
+        $("watcher_ni").addEventListener("input", (e) => { $("ni").value = e.target.value; updateTripPreview(); updateWatcherTripPreview(); });
+        $("watcher_tk").addEventListener("input", (e) => { $("tk").value = e.target.value; updateTripPreview(); updateWatcherTripPreview(); });
 
         $("masterGenBtn").onclick = () => {
             const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -1236,7 +1208,6 @@
 
         $("openGuideBtn").onclick = () => $("guideCard").style.display = "flex";
         $("closeGuideBtn").onclick = () => $("guideCard").style.display = "none";
-        
         $("focusBtn").onclick = () => { $("mi").focus(); setTimeout(() => { scrollToLatest(); }, 150); };
 
         async function triggerSessionRestore() {
@@ -1246,32 +1217,16 @@
                     const s = JSON.parse(sessionData); 
                     const savedName = localStorage.getItem("nez_ni") || "";
                     const savedTripKey = localStorage.getItem("nez_tk") || "";
-                    
                     const fullTripString = generateTripString(savedName, savedTripKey);
                     
-                    await join(
-                        s.rawR, 
-                        s.curP, 
-                        savedName, 
-                        fullTripString, 
-                        s.maxLimit, 
-                        s.selectRomMin, 
-                        s.selectRoomMin,
-                        !!s.isWatcherMode, 
-                        true
-                    ); 
+                    await join(s.rawR, s.curP, savedName, fullTripString, s.maxLimit, s.selectRomMin, s.selectRoomMin, !!s.isWatcherMode, true); 
                     return true;
-                } catch(e) { 
-                    localStorage.removeItem("active_room_session"); 
-                }
+                } catch(e) { localStorage.removeItem("active_room_session"); }
             }
             return false;
         }
 
-        onValue(ref(db, ".info/serverTimeOffset"), (snap) => { 
-            serverTimeOffset = snap.val() || 0; 
-            isOffsetLoaded = true;
-        }, { onlyOnce: true });
+        onValue(ref(db, ".info/serverTimeOffset"), (snap) => { serverTimeOffset = snap.val() || 0; isOffsetLoaded = true; }, { onlyOnce: true });
 
         window.addEventListener("DOMContentLoaded", async () => {
             const savedName = localStorage.getItem("nez_ni"), savedTripKey = localStorage.getItem("nez_tk");
@@ -1285,24 +1240,15 @@
             const params = new URLSearchParams(window.location.search);
             const r = params.get("r"), p = params.get("p"), n = params.get("n");
             
-            if (r) $("ri").value = r; 
-            if (p) $("pi").value = p; 
-            if (n) $("ni").value = n;
-            
+            if (r) $("ri").value = r; if (p) $("pi").value = p; if (n) $("ni").value = n;
             updateTripPreview(); updateWatcherTripPreview();
             setLobbyButtonsState(true);
 
-            const restored = await triggerSessionRestore();
-            if (restored) return;
+            const restored = await triggerSessionRestore(); if (restored) return;
 
-            if (!r && !p) {
-                $("lobby").style.display = "flex"; 
-                hideSplash();
-                return;
-            }
+            if (!r && !p) { $("lobby").style.display = "flex"; hideSplash(); return; }
 
-            const checkRi = $("ri").value.trim();
-            const checkPi = $("pi").value.trim();
+            const checkRi = $("ri").value.trim(); const checkPi = $("pi").value.trim();
             if (checkRi && checkPi) {
                 if (checkRi === "公式部屋" || checkRi === "official-room" || checkPi === "official_public_pass") {
                     setLobbyButtonsState(false);
@@ -1312,17 +1258,11 @@
                     await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, tk), 10, 30, 999999999, true);
                     return;
                 } else if ($("ni").value || n) {
-                    const autoJoined = await executeJoinFromLobbyInputs();
-                    if (autoJoined) return;
+                    const autoJoined = await executeJoinFromLobbyInputs(); if (autoJoined) return;
                 }
             }
-
-            $("lobby").style.display = "flex"; 
-            hideSplash();
-
-            if (r && p && !$("ni").value) {
-                $("ni").focus();
-            }
+            $("lobby").style.display = "flex"; hideSplash();
+            if (r && p && !$("ni").value) { $("ni").focus(); }
         });
     </script>
 </body>

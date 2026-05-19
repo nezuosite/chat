@@ -601,18 +601,17 @@
                         continue;
                     }
 
-                    // 2. kuku.lu の確実な自動解析ロジック（CORSのHEADを排除）
+                    // 2. kuku.lu の最適化自動解析ロジック
                     if (word.includes('d.kuku.lu/')) {
                         const kukuMatch = word.match(/https?:\/\/d\.kuku\.lu\/(?:p\/|b\/)?([a-zA-Z0-9]+)/i);
                         if (kukuMatch) {
                             const fileId = kukuMatch[1];
-                            // 表示URL用(/p/)から、生ファイル配信用URL(/b/)へ強制変換
                             const directUrl = `https://d.kuku.lu/b/${fileId}`;
                             cleanText = cleanText.replace(word, "");
                             hasMediaPending = true;
 
-                            // メッセージ全体、またはURLに音声を示す文字列があるかで分岐判定
-                            const isAudio = audioRegex.test(text);
+                            // 全体テキストではなく、該当word自体に音声拡張子があるか、またはメッセージにオーディオ等の文脈が含まれるかで正確に分岐
+                            const isAudio = audioRegex.test(word) || audioRegex.test(text);
 
                             asyncHandler = () => {
                                 setTimeout(() => {
@@ -637,16 +636,19 @@
                         continue;
                     } 
                     
-                    // 3. ギガファイル便の自動拡張子解析・判定ロジック
+                    // 3. ギガファイル便の最適化判定ロジック
                     if (word.includes('gigafile.nu/')) {
-                        const gigaMatch = word.match(/https?:\/\/(?:[^.]+\.)?gigafile\.nu\/(?:download\.php\?file=)?([a-zA-Z0-9-]+)/i);
+                        // サブドメインやdownload.php構造を汎用的に解析
+                        const gigaMatch = word.match(/https?:\/\/(?:([^.]+)\.)?gigafile\.nu\/(?:download\.php\?file=)?([a-zA-Z0-9-]+)/i);
                         if (gigaMatch) {
-                            const fileId = gigaMatch[1];
-                            const directUrl = `https://gigafile.nu/download.php?file=${fileId}`;
+                            const subDomain = gigaMatch[1] || "www";
+                            const fileId = gigaMatch[2];
+                            // ブラウザがインライン表示・再生用ストリームとして解釈可能なURLに成形
+                            const directUrl = `https://${subDomain}.gigafile.nu/download.php?file=${fileId}`;
                             cleanText = cleanText.replace(word, "");
                             hasMediaPending = true;
 
-                            const isAudio = audioRegex.test(text);
+                            const isAudio = audioRegex.test(word) || audioRegex.test(text);
 
                             asyncHandler = () => {
                                 setTimeout(() => {

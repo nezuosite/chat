@@ -64,8 +64,8 @@
                         <button id="ytHostSyncTriggerBtn" class="bg-amber-600 hover:bg-amber-500 text-white font-bold text-[10px] px-2.5 py-0.5 rounded transition shadow hidden">📡 ルーム同期を開始</button>
                     </div>
                     <div class="flex items-center gap-1">
-                        <button id="ytMiniMuteBtn" class="text-slate-400 px-1 text-xs" disabled>🔊</button>
-                        <input type="range" id="ytMiniVolume" min="0" max="100" value="50" step="1" class="w-16 h-1 bg-neutral-800 rounded appearance-none cursor-pointer accent-emerald-500" disabled>
+                        <button id="ytMiniMuteBtn" class="text-slate-400 px-1 text-xs" disabled>🔇</button>
+                        <input type="range" id="ytMiniVolume" min="0" max="100" value="0" step="1" class="w-16 h-1 bg-neutral-800 rounded appearance-none cursor-pointer accent-emerald-500" disabled>
                     </div>
                 </div>
             </div>
@@ -109,7 +109,6 @@
                 </div>
             </div>
 
-            <!-- flex-direction: column-reverse に合わせて新着が下に固定されます -->
             <div id="chatTimeline" class="select-text flex-1 min-h-0"></div>
 
             <div class="px-2.5 py-2 bg-neutral-900 border-t border-neutral-950 flex items-center justify-between text-xs shrink-0 select-none">
@@ -133,7 +132,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-        import { getDatabase, ref, push, onValue, set, update, remove, query, orderByChild, onChildAdded, get } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+        import { getDatabase, ref, push, onValue, set, update, remove, query, orderByChild, onChildAdded, get, off, onDisconnect } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
         const $ = id => document.getElementById(id);
         
@@ -161,14 +160,13 @@
         let isHostSyncActive = false;    
         let globalVideoStateCache = null;
         
-        let currentVolumeLevel = localStorage.getItem("or_vol") !== null ? parseInt(localStorage.getItem("or_vol"), 10) : 50; 
+        let currentVolumeLevel = localStorage.getItem("or_vol") !== null ? parseInt(localStorage.getItem("or_vol"), 10) : 0; 
         isGuestFreeMode = localStorage.getItem("or_freemode") === "true"; 
         isUserApprovedSync = localStorage.getItem("or_approved") !== "false"; 
 
         let currentConnectionCount = 0;
         let hasJoined = false;
 
-        // ホスト引き継ぎ処理
         window.__handOverHost = async function(targetUid, targetName) {
             if (!amIOwner || !globalVideoStateCache) return;
             if (confirm(`${targetName} さんにホスト権限を譲渡しますか？`)) {
@@ -340,11 +338,26 @@
             }
             
             lastLoadedVideoId = state.videoId;
-            if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; }
+            activateShield(2000);
+
+            if (ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
+                try {
+                    ytPlayer.loadVideoById({
+                        videoId: state.videoId,
+                        startSeconds: Math.max(0, Math.floor(targetTime))
+                    });
+                    setTimeout(() => {
+                        applyPlayerControl(state.status, targetTime);
+                    }, 400);
+                    return;
+                } catch (e) {
+                    try { ytPlayer.destroy(); } catch(err){}
+                    ytPlayer = null;
+                }
+            }
             
             const buildPlayer = () => {
                 if (!isYtReady || !window.YT?.Player) { setTimeout(buildPlayer, 30); return; }
-                activateShield(2000);
                 
                 ytPlayer = new YT.Player('ytPlayer', {
                     videoId: state.videoId,
@@ -381,24 +394,34 @@
             if (!ytPlayer || typeof ytPlayer.getPlayerState !== 'function') return;
             try {
                 const curTime = ytPlayer.getCurrentTime();
-                // 誤差が1.5秒以上ある時のみシーク（通信削減とカクつき防止）
                 if (Math.abs(curTime - targetTime) > 1.5) {
                     ytPlayer.seekTo(targetTime, true);
                 }
-                if (status === "playing" && ytPlayer.getPlayerState() !== 1) {
+                const pState = ytPlayer.getPlayerState();
+                if (status === "playing" && pState !== 1) {
                     ytPlayer.playVideo();
-                } else if (status === "paused" && ytPlayer.getPlayerState() !== 2) {
+                } else if (status === "paused" && pState !== 2) {
                     ytPlayer.pauseVideo();
                 }
             } catch(e){}
         }
 
         function bindPresenceListener() {
-            onValue(ref(db, `presence/${ROOM_PATH}`), (snapshot) => {
+            onValue(ref(db, `presence/${ROOM_PATH}`), async (snapshot) => {
                 const users = snapshot.val() || {};
                 let userEntries = Object.values(users);
                 currentConnectionCount = userEntries.length;
                 $("presenceCount").innerText = currentConnectionCount;
+
+                // 【修正強化】参加者が0人の場合、データベース上の不要データを完全に消去・リセット
+                if (currentConnectionCount === 0) {
+                    $("userListContent").innerHTML = `<div class="text-neutral-600 p-1 text-center text-[10px]">ユーザーがいません</div>`;
+                    try {
+                        await remove(ref(db, `chat/${ROOM_PATH}`));
+                        await remove(ref(db, `rooms/${ROOM_PATH}`));
+                    } catch(e) { console.error(e); }
+                    return;
+                }
 
                 const myIndex = userEntries.findIndex(u => u.uid === uid);
                 if (myIndex > -1) {
@@ -420,7 +443,7 @@
 
                     listHtml += `<div class="flex items-center justify-between py-1 px-1.5 bg-neutral-950"><div class="truncate mr-2">${nameLabel}</div><div class="shrink-0">${actionBtn}</div></div>`;
                 });
-                $("userListContent").innerHTML = listHtml || `<div class="text-neutral-600 p-1 text-center text-[10px]">ユーザーがいません</div>`;
+                $("userListContent").innerHTML = listHtml;
             });
         }
 
@@ -435,7 +458,17 @@
             localStorage.setItem("or_joined", "true");
             if (key) { localStorage.setItem("or_key", key); } else { localStorage.removeItem("or_key"); }
 
-            await set(ref(db, `presence/${ROOM_PATH}/${uid}`), { name: curN, lastSeen: Date.now(), uid: uid });
+            // 【修正強化】二重リスナー防止のため既存の監視設定を全解除
+            off(ref(db, `chat/${ROOM_PATH}`));
+            off(ref(db, `rooms/${ROOM_PATH}/videoState`));
+            $("chatTimeline").innerHTML = "";
+
+            const myPresenceRef = ref(db, `presence/${ROOM_PATH}/${uid}`);
+            await set(myPresenceRef, { name: curN, lastSeen: Date.now(), uid: uid });
+            
+            // 【新規実装】タブ消去・回線切断時に自動で退室（presenceから消去）する設定を追加
+            onDisconnect(myPresenceRef).remove();
+
             lastActivityTime = Date.now(); 
 
             $("loginFormContainer").classList.add("hidden");
@@ -482,7 +515,6 @@
                             ${linkify(m.text)}${embedHtml}
                         </div>`;
                 }
-                // column-reverseのためprependで下から上に追加されていきます
                 $("chatTimeline").prepend(div);
             });
 
@@ -572,12 +604,12 @@
         }
 
         function onPlayerStateChange(event) {
-            if (!ytPlayer || isLocalAction || !globalVideoStateCache) return;
+            if (!ytPlayer || !globalVideoStateCache) return;
             const pState = event.data;
             const curTime = ytPlayer.getCurrentTime ? ytPlayer.getCurrentTime() : 0;
             const duration = ytPlayer.getDuration ? ytPlayer.getDuration() : 0;
 
-            if (pState === YT.PlayerState.ENDED) {
+            if (pState === 0) { 
                 if (amIOwner) {
                     activateShield(1200);
                     const stopPos = duration > 0 ? duration - 0.5 : 0;
@@ -589,23 +621,21 @@
                 return;
             }
 
-            if (amIOwner && !isHostSyncActive) return;
-            if (!amIOwner && (isGuestFreeMode || !isHostSyncActive)) return;
+            if (isLocalAction) return;
 
-            if (amIOwner && isHostSyncActive) {
-                // 再生・一時停止のトリガー時、無駄な連続書き込みを防ぐDiffチェック
+            if (amIOwner) {
+                if (!isHostSyncActive) return;
                 if (pState === 1 && globalVideoStateCache.status !== "playing") {
                     update(ref(db, `rooms/${ROOM_PATH}/videoState`), { status: "playing", currentTime: curTime, timestamp: Date.now() });
                 } else if (pState === 2 && globalVideoStateCache.status !== "paused") {
                     update(ref(db, `rooms/${ROOM_PATH}/videoState`), { status: "paused", currentTime: curTime, timestamp: Date.now() });
                 }
             } else {
-                // ゲスト側の再生状態ループ防止（カクつき撲滅）
-                if (isUserApprovedSync && isHostSyncActive) {
+                if (isUserApprovedSync && isHostSyncActive && !isGuestFreeMode) {
                     if (globalVideoStateCache.status === "playing" && pState === 2) {
-                        setTimeout(() => { if(!isGuestFreeMode && !isLocalAction && ytPlayer && isHostSyncActive) { try{ytPlayer.playVideo();}catch(e){} } }, 200);
+                        setTimeout(() => { if(!isGuestFreeMode && !isLocalAction && ytPlayer && isHostSyncActive) { try{ytPlayer.playVideo();}catch(e){} } }, 150);
                     } else if (globalVideoStateCache.status === "paused" && pState === 1) {
-                        setTimeout(() => { if(!isGuestFreeMode && !isLocalAction && ytPlayer && isHostSyncActive) { try{ytPlayer.pauseVideo();}catch(e){} } }, 200);
+                        setTimeout(() => { if(!isGuestFreeMode && !isLocalAction && ytPlayer && isHostSyncActive) { try{ytPlayer.pauseVideo();}catch(e){} } }, 150);
                     }
                 }
             }

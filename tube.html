@@ -160,7 +160,8 @@
         let isHostSyncActive = false;    
         let globalVideoStateCache = null;
         
-        let currentVolumeLevel = localStorage.getItem("or_vol") !== null ? parseInt(localStorage.getItem("or_vol"), 10) : 0; 
+        // 【毎回音量を0にする修正】初期音量は常に0。localStorageには保存しない
+        let currentVolumeLevel = 0;
         isGuestFreeMode = localStorage.getItem("or_freemode") === "true"; 
         isUserApprovedSync = localStorage.getItem("or_approved") !== "false"; 
 
@@ -241,7 +242,6 @@
         $("ytMiniVolume").oninput = () => {
             const vol = parseInt($("ytMiniVolume").value, 10);
             currentVolumeLevel = vol;
-            localStorage.setItem("or_vol", vol);
             updateMuteIcon(vol);
             if (ytPlayer && typeof ytPlayer.setVolume === 'function') {
                 if (vol === 0) {
@@ -255,17 +255,17 @@
 
         $("ytMiniMuteBtn").onclick = () => {
             if (ytPlayer && typeof ytPlayer.isMuted === 'function' && ytPlayer.isMuted()) {
-                const targetVol = currentVolumeLevel > 0 ? currentVolumeLevel : 30;
+                const targetVol = 30; // ミュート解除時は標準値30を割り当て
                 $("ytMiniVolume").value = targetVol; 
                 ytPlayer.unMute(); 
                 ytPlayer.setVolume(targetVol);
                 updateMuteIcon(targetVol);
                 currentVolumeLevel = targetVol;
-                localStorage.setItem("or_vol", targetVol);
             } else if (ytPlayer && typeof ytPlayer.mute === 'function') {
                 ytPlayer.mute(); 
                 $("ytMiniVolume").value = 0; 
                 updateMuteIcon(0);
+                currentVolumeLevel = 0;
             }
         };
 
@@ -297,7 +297,6 @@
         }
 
         async function leaveRoom(isAuto = false) {
-            if (!hasJoined) return;
             if (sliderIntervalId) clearInterval(sliderIntervalId);
             if (timeoutCheckIntervalId) clearInterval(timeoutCheckIntervalId);
             
@@ -306,6 +305,7 @@
             localStorage.removeItem("or_approved");
             sessionStorage.removeItem("or_active_session");
 
+            if (!hasJoined) return;
             try {
                 await push(ref(db, `chat/${ROOM_PATH}`), { 
                     type: "sys", 
@@ -338,17 +338,33 @@
             }
             
             lastLoadedVideoId = state.videoId;
-            activateShield(2000);
+            activateShield(2500); 
 
             if (ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
                 try {
+                    // 【毎回音量を0にする修正】動画読込時は常にミュートを強制
+                    ytPlayer.mute();
+                    ytPlayer.setVolume(0);
+                    
                     ytPlayer.loadVideoById({
                         videoId: state.videoId,
                         startSeconds: Math.max(0, Math.floor(targetTime))
                     });
-                    setTimeout(() => {
-                        applyPlayerControl(state.status, targetTime);
-                    }, 400);
+                    
+                    let checkReadyLoop = 0;
+                    const checkStateAndPlay = setInterval(() => {
+                        checkReadyLoop++;
+                        if (!ytPlayer || checkReadyLoop > 20) { clearInterval(checkStateAndPlay); return; }
+                        
+                        const pState = ytPlayer.getPlayerState();
+                        if (pState === 1 || pState === 2 || pState === 3 || pState === -1) {
+                            clearInterval(checkStateAndPlay);
+                            // 読込完了後もミュートを維持
+                            ytPlayer.mute();
+                            ytPlayer.setVolume(0);
+                            applyPlayerControl(state.status, targetTime);
+                        }
+                    }, 150);
                     return;
                 } catch (e) {
                     try { ytPlayer.destroy(); } catch(err){}
@@ -371,17 +387,13 @@
                     events: {
                         'onReady': () => {
                             try {
-                                if (currentVolumeLevel > 0) {
-                                    ytPlayer.unMute(); 
-                                    ytPlayer.setVolume(currentVolumeLevel);
-                                } else {
-                                    ytPlayer.mute(); 
-                                    ytPlayer.setVolume(0);
-                                }
+                                // 【毎回音量を0にする修正】初期プレイヤー生成完了時に完全ミュート化
+                                ytPlayer.mute(); 
+                                ytPlayer.setVolume(0);
                                 applyPlayerControl(state.status, targetTime);
                             } catch(e){}
-                            $("ytMiniVolume").value = currentVolumeLevel;
-                            updateMuteIcon(currentVolumeLevel);
+                            $("ytMiniVolume").value = 0;
+                            updateMuteIcon(0);
                         },
                         'onStateChange': onPlayerStateChange
                     }
@@ -394,11 +406,14 @@
             if (!ytPlayer || typeof ytPlayer.getPlayerState !== 'function') return;
             try {
                 const curTime = ytPlayer.getCurrentTime();
-                if (Math.abs(curTime - targetTime) > 1.5) {
+                if (Math.abs(curTime - targetTime) > 2.0) {
                     ytPlayer.seekTo(targetTime, true);
                 }
                 const pState = ytPlayer.getPlayerState();
                 if (status === "playing" && pState !== 1) {
+                    // 【毎回音量を0にする修正】ブラウザの自動再生ブロックに干渉されないようミュート状態で再生
+                    ytPlayer.mute();
+                    ytPlayer.setVolume(0);
                     ytPlayer.playVideo();
                 } else if (status === "paused" && pState !== 2) {
                     ytPlayer.pauseVideo();
@@ -413,7 +428,6 @@
                 currentConnectionCount = userEntries.length;
                 $("presenceCount").innerText = currentConnectionCount;
 
-                // 【修正強化】参加者が0人の場合、データベース上の不要データを完全に消去・リセット
                 if (currentConnectionCount === 0) {
                     $("userListContent").innerHTML = `<div class="text-neutral-600 p-1 text-center text-[10px]">ユーザーがいません</div>`;
                     try {
@@ -458,7 +472,6 @@
             localStorage.setItem("or_joined", "true");
             if (key) { localStorage.setItem("or_key", key); } else { localStorage.removeItem("or_key"); }
 
-            // 【修正強化】二重リスナー防止のため既存の監視設定を全解除
             off(ref(db, `chat/${ROOM_PATH}`));
             off(ref(db, `rooms/${ROOM_PATH}/videoState`));
             $("chatTimeline").innerHTML = "";
@@ -466,9 +479,7 @@
             const myPresenceRef = ref(db, `presence/${ROOM_PATH}/${uid}`);
             await set(myPresenceRef, { name: curN, lastSeen: Date.now(), uid: uid });
             
-            // 【新規実装】タブ消去・回線切断時に自動で退室（presenceから消去）する設定を追加
             onDisconnect(myPresenceRef).remove();
-
             lastActivityTime = Date.now(); 
 
             $("loginFormContainer").classList.add("hidden");
@@ -483,8 +494,10 @@
             $("ytPlaceholder").style.display = "none";
             $("placeholderStatusText").innerText = "チャットにYouTubeのURLを貼るとシアターに読み込まれます";
 
-            $("ytMiniVolume").value = currentVolumeLevel;
-            updateMuteIcon(currentVolumeLevel);
+            // 【毎回音量を0にする修正】入室時もスライダーとインジケーターを0（ミュート）に固定
+            currentVolumeLevel = 0;
+            $("ytMiniVolume").value = 0;
+            updateMuteIcon(0);
 
             const chatRef = ref(db, `chat/${ROOM_PATH}`);
             onChildAdded(query(chatRef, orderByChild("time")), (snapshot) => {
@@ -609,6 +622,12 @@
             const curTime = ytPlayer.getCurrentTime ? ytPlayer.getCurrentTime() : 0;
             const duration = ytPlayer.getDuration ? ytPlayer.getDuration() : 0;
 
+            // 【毎回音量を0にする修正】状態変化（バッファリングやシークなど含む）が起きるたびに音量を0に制限
+            try {
+                ytPlayer.mute();
+                ytPlayer.setVolume(0);
+            } catch(e){}
+
             if (pState === 0) { 
                 if (amIOwner) {
                     activateShield(1200);
@@ -632,10 +651,22 @@
                 }
             } else {
                 if (isUserApprovedSync && isHostSyncActive && !isGuestFreeMode) {
-                    if (globalVideoStateCache.status === "playing" && pState === 2) {
-                        setTimeout(() => { if(!isGuestFreeMode && !isLocalAction && ytPlayer && isHostSyncActive) { try{ytPlayer.playVideo();}catch(e){} } }, 150);
+                    if (globalVideoStateCache.status === "playing" && pState !== 1 && pState !== 3) {
+                        setTimeout(() => { 
+                            if(!isGuestFreeMode && !isLocalAction && ytPlayer && isHostSyncActive) { 
+                                try { 
+                                    ytPlayer.mute();
+                                    ytPlayer.setVolume(0);
+                                    ytPlayer.playVideo(); 
+                                } catch(e){} 
+                            } 
+                        }, 200);
                     } else if (globalVideoStateCache.status === "paused" && pState === 1) {
-                        setTimeout(() => { if(!isGuestFreeMode && !isLocalAction && ytPlayer && isHostSyncActive) { try{ytPlayer.pauseVideo();}catch(e){} } }, 150);
+                        setTimeout(() => { 
+                            if(!isGuestFreeMode && !isLocalAction && ytPlayer && isHostSyncActive) { 
+                                try { ytPlayer.pauseVideo(); } catch(e){} 
+                            } 
+                        }, 200);
                     }
                 }
             }
@@ -770,11 +801,22 @@
                     ytPlayer.pauseVideo();
                     if(isHostSyncActive) update(ref(db, `rooms/${ROOM_PATH}/videoState`), { status: "paused", currentTime: ytPlayer.getCurrentTime(), timestamp: Date.now() });
                 } else {
+                    // 【毎回音量を0にする修正】手動再生時も音量を0にリセットして再生
+                    ytPlayer.mute();
+                    ytPlayer.setVolume(0);
                     ytPlayer.playVideo();
                     if(isHostSyncActive) update(ref(db, `rooms/${ROOM_PATH}/videoState`), { status: "playing", currentTime: ytPlayer.getCurrentTime(), timestamp: Date.now() });
                 }
             } else {
-                if (isGuestFreeMode || !isHostSyncActive) { if (pState === 1) ytPlayer.pauseVideo(); else ytPlayer.playVideo(); }
+                if (isGuestFreeMode || !isHostSyncActive) { 
+                    if (pState === 1) {
+                        ytPlayer.pauseVideo();
+                    } else {
+                        ytPlayer.mute();
+                        ytPlayer.setVolume(0);
+                        ytPlayer.playVideo(); 
+                    }
+                }
             }
         };
 
@@ -782,7 +824,10 @@
         $("ytMiniSlider").onchange = () => {
             const targetTime = Number($("ytMiniSlider").value);
             if (ytPlayer && typeof ytPlayer.seekTo === 'function') { 
-                activateShield(1000); ytPlayer.seekTo(targetTime, true); 
+                activateShield(1000); 
+                ytPlayer.mute();
+                ytPlayer.setVolume(0);
+                ytPlayer.seekTo(targetTime, true); 
                 if (amIOwner && isHostSyncActive) {
                     update(ref(db, `rooms/${ROOM_PATH}/videoState`), { currentTime: targetTime, timestamp: Date.now() });
                 }
@@ -819,8 +864,10 @@
             $("ki").value = localStorage.getItem("or_key") || "";
             updateTripPreview();
             
-            $("ytMiniVolume").value = currentVolumeLevel;
-            updateMuteIcon(currentVolumeLevel);
+            // 【毎回音量を0にする修正】DOM構築完了時にインジケーターを0に初期化
+            currentVolumeLevel = 0;
+            $("ytMiniVolume").value = 0;
+            updateMuteIcon(0);
             
             bindPresenceListener();
 

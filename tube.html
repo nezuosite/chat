@@ -1,970 +1,1295 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Nezu Tube Chat - </title>
-    <script src="https://cdn.tailwindcss.com/"></script>
-    <style>
-        :root { --bg: #0a0a0a; --border: #222222; }
-        html, body {
-            height: 100dvh; width: 100vw; margin: 0; padding: 0; overflow: hidden;
-            background-color: var(--bg); color: #f8fafc;
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Meiryo", Arial, sans-serif;
-            -webkit-user-select: none; user-select: none; position: fixed; inset: 0;
-        }
-        .select-text { -webkit-user-select: text; user-select: text; }
-        
-        #chatTimeline { 
-            flex: 1; 
-            overflow-y: auto; 
-            padding: 12px; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 10px; 
-            background-color: #050505; 
-            -webkit-overflow-scrolling: touch; 
-        }
-        #chatTimeline::-webkit-scrollbar { width: 4px; }
-        #chatTimeline::-webkit-scrollbar-thumb { background: #262626; border-radius: 9999px; }
-        .fixed-viewport { position: absolute; inset: 0; display: flex; flex-direction: column; overflow: hidden; height: 100dvh; }
-        @supports (-webkit-touch-callout: none) { .fixed-viewport { height: -webkit-fill-available; } }
-        #userListDropdown { max-height: 0px; transition: max-height 0.2s ease-out; overflow: hidden; }
-        #userListDropdown.open { max-height: 160px; overflow-y: auto; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#09090b">
+<title>Nezu Tube Chat</title>
+<style>
+/* ── Reset & Base ─────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#09090b;--surface:#111113;--surface2:#18181b;--border:#27272a;--border2:#3f3f46;
+  --text:#f4f4f5;--muted:#71717a;--muted2:#52525b;
+  --indigo:#6366f1;--indigo-dim:#312e81;--indigo-glow:rgba(99,102,241,.25);
+  --amber:#f59e0b;--amber-dim:#451a03;--amber-glow:rgba(245,158,11,.2);
+  --emerald:#10b981;--emerald-dim:#064e3b;--emerald-glow:rgba(16,185,129,.2);
+  --rose:#f43f5e;--rose-dim:#4c0519;--rose-glow:rgba(244,63,94,.2);
+  --safe:env(safe-area-inset-bottom,0px);
+}
+html,body{
+  height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(--text);
+  font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",
+    "Meiryo",system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+  -webkit-user-select:none;user-select:none;
+  touch-action:manipulation;
+  overscroll-behavior:none;
+}
+input,textarea{font-family:inherit;-webkit-user-select:text;user-select:text}
+button{cursor:pointer;font-family:inherit;border:none;background:none}
+button:focus-visible{outline:2px solid var(--indigo);outline-offset:2px}
+a{color:var(--indigo);text-decoration:none}
+a:hover{text-decoration:underline}
 
-        .dropdown-arrow {
-            display: inline-block;
-            width: 8px;
-            height: 5px;
-            margin-left: 6px;
-            vertical-align: middle;
-            background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 5'%3E%3Cpath fill='%23737373' d='M0 0h8L4 5z'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-size: contain;
-            background-position: center;
-            transition: transform 0.2s ease;
-        }
-        
-        #userListDropdown.open ~ div #toggleUserListBtn .dropdown-arrow,
-        #mainApp:has(#userListDropdown.open) .dropdown-arrow {
-            transform: rotate(180deg);
-        }
-    </style>
+/* ── Layout ───────────────────────────────────────────────────────── */
+#app{
+  position:fixed;inset:0;display:flex;flex-direction:column;
+  height:100dvh;overflow:hidden;
+}
+@supports(-webkit-touch-callout:none){
+  #app{height:-webkit-fill-available}
+}
+/* PC: horizontal split */
+@media(min-width:768px){
+  #app{flex-direction:row}
+  #left-pane{width:55%;max-height:100%;border-right:1px solid var(--border);border-bottom:none}
+  #right-pane{flex:1;min-width:0}
+}
+/* Mobile: vertical split */
+#left-pane{
+  display:flex;flex-direction:column;background:#000;
+  border-bottom:1px solid var(--border);
+  max-height:50vh;flex-shrink:0;
+}
+@media(min-width:768px){#left-pane{max-height:100%}}
+#right-pane{
+  display:flex;flex-direction:column;background:var(--surface);
+  flex:1;min-height:0;overflow:hidden;
+}
+
+/* ── Video Area ───────────────────────────────────────────────────── */
+#yt-wrap{position:relative;width:100%;aspect-ratio:16/9;background:#000;flex-shrink:0}
+#ytPlayer{width:100%;height:100%;display:block}
+#yt-placeholder{
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:#050507;z-index:10;gap:6px;pointer-events:none;
+}
+#yt-placeholder .brand{color:var(--indigo);font-size:10px;font-weight:800;letter-spacing:.2em;text-transform:uppercase}
+#yt-placeholder .hint{color:var(--muted);font-size:10px;text-align:center;padding:0 16px;line-height:1.5}
+
+/* ── Guest Confirm Overlay ────────────────────────────────────────── */
+#guest-overlay{
+  position:absolute;inset:0;background:rgba(0,0,0,.96);z-index:30;
+  display:none;align-items:center;justify-content:center;padding:16px;
+}
+#guest-overlay.show{display:flex}
+.overlay-card{
+  background:var(--surface2);border:1px solid var(--border);border-radius:14px;
+  padding:20px;max-width:300px;width:100%;text-align:center;
+  box-shadow:0 20px 60px rgba(0,0,0,.8);
+}
+.overlay-card .oc-label{font-size:9px;font-weight:800;letter-spacing:.2em;color:var(--indigo);text-transform:uppercase;margin-bottom:8px}
+.overlay-card .oc-host{font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px}
+.overlay-card .oc-desc{font-size:10px;color:#a1a1aa;line-height:1.6;margin-bottom:14px}
+.overlay-btns{display:flex;gap:8px}
+.btn-decline{flex:1;padding:8px;border-radius:8px;font-size:11px;font-weight:700;background:var(--surface2);color:var(--muted);border:1px solid var(--border);transition:background .15s}
+.btn-decline:hover{background:var(--border)}
+.btn-accept{flex:1;padding:8px;border-radius:8px;font-size:11px;font-weight:700;background:var(--indigo);color:#fff;transition:background .15s,box-shadow .15s;box-shadow:0 0 12px var(--indigo-glow)}
+.btn-accept:hover{background:#4f46e5}
+
+/* ── Player Controls ──────────────────────────────────────────────── */
+#player-controls{
+  background:var(--surface);border-top:1px solid var(--border);
+  padding:8px 10px;flex-shrink:0;display:flex;flex-direction:column;gap:6px;
+}
+.ctrl-row{display:flex;align-items:center;gap:8px;width:100%}
+#mini-playpause{
+  background:var(--surface2);border:1px solid var(--border);color:var(--text);
+  border-radius:6px;padding:2px 8px;font-size:13px;min-width:32px;
+  transition:background .15s;flex-shrink:0;
+}
+#mini-playpause:hover:not(:disabled){background:var(--border2)}
+#mini-playpause:disabled{opacity:.4}
+#mini-time{font-size:10px;font-family:"SF Mono","JetBrains Mono",monospace;color:var(--muted);flex-shrink:0;white-space:nowrap}
+#mini-slider{
+  flex:1;height:4px;border-radius:2px;cursor:pointer;
+  accent-color:var(--indigo);background:var(--border2);
+  -webkit-appearance:none;appearance:none;
+}
+#mini-slider::-webkit-slider-thumb{width:12px;height:12px;border-radius:50%;background:var(--indigo);-webkit-appearance:none;cursor:pointer}
+#mini-slider:disabled{opacity:.4;cursor:not-allowed}
+.ctrl-row2{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ctrl-left{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.ctrl-right{display:flex;align-items:center;gap:4px}
+/* Role Badge */
+#role-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:2px 8px;border-radius:20px;font-size:10px;font-weight:800;
+  letter-spacing:.05em;white-space:nowrap;transition:all .2s;
+  border:1px solid transparent;
+}
+.badge-host-sync{background:var(--amber-dim);color:var(--amber);border-color:rgba(245,158,11,.3);box-shadow:0 0 8px var(--amber-glow)}
+.badge-host-nosync{background:var(--surface2);color:#a1a1aa;border-color:var(--border)}
+.badge-guest-sync{background:var(--emerald-dim);color:var(--emerald);border-color:rgba(16,185,129,.3);box-shadow:0 0 8px var(--emerald-glow)}
+.badge-guest-free{background:var(--surface2);color:#a1a1aa;border-color:var(--border)}
+.badge-guest-nosync{background:var(--surface2);color:#a1a1aa;border-color:var(--border)}
+/* Sync Toggle Btn */
+#sync-toggle-btn{
+  padding:2px 10px;border-radius:20px;font-size:10px;font-weight:800;
+  transition:all .15s;white-space:nowrap;
+}
+.stb-start{background:var(--amber-dim);color:var(--amber);border:1px solid rgba(245,158,11,.4)}
+.stb-start:hover{background:rgba(245,158,11,.25)}
+.stb-stop{background:var(--rose-dim);color:var(--rose);border:1px solid rgba(244,63,94,.4)}
+.stb-stop:hover{background:rgba(244,63,94,.25)}
+#mini-mute{
+  background:var(--surface2);border:1px solid var(--border);color:var(--text);
+  border-radius:6px;padding:2px 6px;font-size:11px;
+  transition:background .15s;flex-shrink:0;
+}
+#mini-mute:hover:not(:disabled){background:var(--border2)}
+#mini-mute:disabled{opacity:.4}
+#mini-vol{
+  width:60px;height:4px;border-radius:2px;cursor:pointer;
+  accent-color:var(--emerald);background:var(--border2);
+  -webkit-appearance:none;appearance:none;
+}
+#mini-vol::-webkit-slider-thumb{width:10px;height:10px;border-radius:50%;background:var(--emerald);-webkit-appearance:none;cursor:pointer}
+#mini-vol:disabled{opacity:.4}
+
+/* ── URL Input Bar ────────────────────────────────────────────────── */
+#url-bar{
+  display:none;padding:8px;background:var(--surface2);
+  border-top:1px solid var(--border);flex-shrink:0;
+}
+#url-bar.show{display:flex;gap:6px;align-items:center}
+#url-input{
+  flex:1;background:var(--bg);border:1px solid var(--border);border-radius:10px;
+  color:var(--text);font-size:12px;padding:6px 12px;
+  transition:border-color .15s;
+}
+#url-input:focus{outline:none;border-color:var(--indigo)}
+.btn-send{
+  background:var(--indigo);color:#fff;font-size:11px;font-weight:700;
+  padding:6px 14px;border-radius:10px;transition:background .15s;
+  box-shadow:0 2px 8px var(--indigo-glow);flex-shrink:0;
+}
+.btn-send:hover{background:#4f46e5}
+.btn-send:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── Right Pane Header ────────────────────────────────────────────── */
+#chat-header{
+  background:var(--surface2);border-bottom:1px solid var(--border);
+  padding:8px 10px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;
+}
+.header-row1{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+/* Status pill at top-left */
+#status-pill{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:3px 10px;border-radius:20px;font-size:10px;font-weight:800;
+  letter-spacing:.06em;white-space:nowrap;transition:all .25s;
+  border:1px solid transparent;flex-shrink:0;
+}
+.sp-host-sync{background:var(--amber-dim);color:var(--amber);border-color:rgba(245,158,11,.35);box-shadow:0 0 10px var(--amber-glow)}
+.sp-host-nosync{background:var(--surface);color:#a1a1aa;border-color:var(--border)}
+.sp-syncing{background:var(--emerald-dim);color:var(--emerald);border-color:rgba(16,185,129,.35);box-shadow:0 0 10px var(--emerald-glow)}
+.sp-free{background:var(--surface);color:#a1a1aa;border-color:var(--border)}
+.sp-nosync{background:var(--surface);color:#a1a1aa;border-color:var(--border)}
+.sp-pending{background:var(--rose-dim);color:var(--rose);border-color:rgba(244,63,94,.35)}
+/* Live dot */
+.live-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;transition:background .3s}
+.dot-off{background:var(--muted2)}
+.dot-amber{background:var(--amber);animation:pulse .9s ease-in-out infinite}
+.dot-green{background:var(--emerald);animation:pulse .9s ease-in-out infinite}
+.dot-rose{background:var(--rose)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* Presence toggle */
+#presence-btn{
+  display:flex;align-items:center;gap:5px;
+  background:var(--bg);border:1px solid var(--border);border-radius:8px;
+  padding:3px 8px;font-size:11px;font-weight:700;color:var(--text);
+  transition:background .15s;white-space:nowrap;min-width:0;
+}
+#presence-btn:hover{background:var(--border)}
+#presence-count{color:var(--indigo);font-family:monospace}
+.chevron{display:inline-block;font-size:8px;color:var(--muted);transition:transform .2s;margin-left:2px}
+.chevron.open{transform:rotate(180deg)}
+
+/* Exit btn */
+#exit-btn{
+  display:none;background:rgba(244,63,94,.1);color:var(--rose);
+  border:1px solid rgba(244,63,94,.3);border-radius:8px;
+  font-size:10px;font-weight:700;padding:3px 10px;
+  transition:all .15s;flex-shrink:0;white-space:nowrap;
+}
+#exit-btn.show{display:block}
+#exit-btn:hover{background:rgba(244,63,94,.2)}
+
+/* Presence dropdown */
+#user-list{
+  max-height:0;overflow:hidden;transition:max-height .25s ease-out;
+}
+#user-list.open{max-height:150px;overflow-y:auto}
+#user-list-inner{
+  background:var(--bg);border:1px solid var(--border);border-radius:8px;
+  overflow:hidden;
+}
+.user-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:5px 10px;border-bottom:1px solid var(--border);font-size:11px;
+}
+.user-row:last-child{border-bottom:none}
+.user-name{font-family:monospace;color:#a1a1aa;truncate:ellipsis;overflow:hidden;white-space:nowrap}
+.user-name.me{color:var(--indigo);font-weight:700}
+.user-meta{font-size:9px;color:var(--muted2);flex-shrink:0;white-space:nowrap;margin-left:4px}
+.btn-transfer{
+  font-size:9px;color:var(--amber);background:var(--bg);
+  border:1px solid var(--border);border-radius:4px;padding:1px 5px;
+  transition:background .15s;flex-shrink:0;
+}
+.btn-transfer:hover{background:var(--amber-dim)}
+
+/* Login form */
+#login-form{display:flex;flex-direction:column;gap:6px}
+.login-row{display:flex;gap:6px}
+.inp-name{
+  flex:1;min-width:0;background:var(--bg);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);font-size:12px;padding:5px 10px;
+  transition:border-color .15s;
+}
+.inp-name:focus{outline:none;border-color:var(--indigo)}
+.inp-key{
+  width:90px;background:var(--bg);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);font-size:12px;padding:5px 10px;
+  transition:border-color .15s;
+}
+.inp-key:focus{outline:none;border-color:var(--indigo)}
+.btn-enter{
+  background:var(--indigo);color:#fff;font-size:11px;font-weight:700;
+  padding:5px 14px;border-radius:8px;transition:background .15s;flex-shrink:0;
+  box-shadow:0 2px 8px var(--indigo-glow);
+}
+.btn-enter:hover{background:#4f46e5}
+.trip-preview{font-size:10px;color:var(--muted2);padding:0 2px}
+.trip-preview span{color:var(--indigo);font-family:monospace}
+
+/* Sync Status Bar (bottom of right pane header) */
+#sync-bar{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:4px 0 0;
+}
+#sync-time{font-size:10px;font-family:monospace;color:var(--muted2);white-space:nowrap}
+.sync-actions{display:flex;gap:6px;align-items:center;flex-shrink:0}
+#claim-host-btn{
+  display:none;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;
+  background:rgba(245,158,11,.12);color:var(--amber);border:1px solid rgba(245,158,11,.35);
+  transition:all .15s;white-space:nowrap;
+}
+#claim-host-btn.show{display:block}
+#claim-host-btn:hover{background:rgba(245,158,11,.25)}
+#free-mode-btn{
+  display:none;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;
+  transition:all .15s;white-space:nowrap;
+}
+#free-mode-btn.show{display:block}
+.fmb-free{background:var(--surface2);color:#a1a1aa;border:1px solid var(--border)}
+.fmb-free:hover{background:var(--border)}
+.fmb-return{background:rgba(99,102,241,.15);color:var(--indigo);border:1px solid rgba(99,102,241,.35)}
+.fmb-return:hover{background:rgba(99,102,241,.25)}
+
+/* ── Chat Timeline ────────────────────────────────────────────────── */
+#timeline{
+  flex:1;min-height:0;overflow-y:auto;
+  padding:10px 10px;display:flex;flex-direction:column;gap:8px;
+  background:var(--bg);-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+  align-items:flex-start;
+}
+#timeline::-webkit-scrollbar{width:3px}
+#timeline::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.msg{display:flex;flex-direction:column;max-width:86%;word-break:break-word;align-items:flex-start;align-self:flex-start}
+.msg.me{align-items:flex-start;align-self:flex-start}
+.msg-meta{font-size:9px;color:var(--muted2);font-family:monospace;margin-bottom:2px;display:flex;align-items:center;gap:4px}
+.msg-meta .name.me{color:var(--indigo)}
+.msg-bubble{
+  background:var(--surface2);color:var(--text);
+  border:1px solid var(--border);border-radius:14px;
+  padding:7px 12px;font-size:12px;line-height:1.55;
+  -webkit-user-select:text;user-select:text;
+}
+.msg.me .msg-bubble{background:var(--indigo-dim);border-color:rgba(99,102,241,.3)}
+.yt-card{
+  margin-top:8px;background:var(--bg);border:1px solid var(--border);
+  border-radius:10px;overflow:hidden;max-width:220px;
+}
+.yt-card img{width:100%;height:auto;display:block}
+.yt-card-btn{
+  width:100%;padding:6px;font-size:10px;font-weight:700;
+  background:var(--indigo);color:#fff;text-align:center;
+  transition:background .15s;display:block;
+}
+.yt-card-btn:hover{background:#4f46e5}
+.sys-msg{
+  align-self:flex-start;font-size:10px;color:var(--muted2);
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:20px;padding:3px 12px;text-align:left;
+  max-width:90%;-webkit-user-select:text;user-select:text;
+}
+
+/* ── Chat Input ───────────────────────────────────────────────────── */
+#chat-input-area{
+  display:none;padding:8px;background:var(--surface2);border-top:1px solid var(--border);
+  flex-shrink:0;gap:6px;
+  padding-bottom:calc(8px + var(--safe));
+}
+#chat-input-area.show{display:flex;align-items:flex-end}
+#chat-textarea{
+  flex:1;min-width:0;background:var(--bg);border:1px solid var(--border);
+  border-radius:12px;color:var(--text);font-size:13px;padding:8px 12px;
+  resize:none;line-height:1.4;max-height:80px;overflow-y:auto;
+  transition:border-color .15s;
+  -webkit-user-select:text;user-select:text;
+}
+#chat-textarea:focus{outline:none;border-color:var(--indigo)}
+.btn-chat-send{
+  background:var(--indigo);color:#fff;font-size:12px;font-weight:700;
+  padding:8px 14px;border-radius:12px;transition:background .15s;flex-shrink:0;
+  align-self:flex-end;box-shadow:0 2px 8px var(--indigo-glow);
+}
+.btn-chat-send:hover:not(:disabled){background:#4f46e5}
+.btn-chat-send:disabled{opacity:.4;cursor:not-allowed}
+
+/* Mobile keyboard trigger — removed */
+
+/* ── Utilities ─────────────────────────────────────────────────────── */
+.hidden{display:none!important}
+</style>
 </head>
 <body>
 
-    <div id="mainApp" class="fixed-viewport bg-black flex flex-col md:flex-row">
-        <!-- 左ペイン: 動画 -->
-        <div class="w-full md:w-[55%] flex flex-col bg-black border-b md:border-b-0 md:border-r border-neutral-900 shrink-0 max-h-[60vh] md:max-h-full min-h-0">
-            <div class="bg-black flex items-center justify-center relative aspect-video w-full min-h-0" id="ytPlayerContainer">
-                <div id="ytPlaceholder" class="absolute inset-0 flex flex-col items-center justify-center text-neutral-500 font-bold text-[11px] p-4 text-center bg-neutral-950 z-20">
-                    <p class="text-indigo-500 tracking-wider text-xs mb-1">Nezu Tube Chat</p>
-                    <p id="placeholderStatusText"></p>
-                </div>
+<div id="app">
 
-                <div id="guestConfirmOverlay" class="absolute inset-0 bg-black/95 z-30 flex flex-col items-center justify-center p-4 text-center hidden">
-                    <div class="max-w-xs bg-neutral-900 p-5 rounded-xl border border-neutral-800 space-y-4 shadow-2xl">
-                        <div class="text-indigo-500 text-sm font-bold tracking-widest"></div>
-                        <h4 class="text-xs font-bold text-indigo-400" id="guestConfirmHostName"></h4>
-                        <p class="text-[10px] text-slate-300 leading-normal"></p>
-                        <div class="flex gap-2 pt-1">
-                            <button id="guestConfirmDeclineBtn" class="flex-1 bg-neutral-800 hover:bg-neutral-700 text-slate-400 py-1.5 rounded text-xs font-bold transition"></button>
-                            <button id="guestConfirmAcceptBtn" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-1.5 rounded text-xs font-bold transition shadow-lg shadow-indigo-600/20"></button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="w-full h-full">
-                    <div id="ytPlayer" class="w-full h-full"></div>
-                </div>
-            </div>
-            
-            <div id="ytEmbeddedControls" class="bg-neutral-950 p-2 flex flex-col gap-1.5 border-t border-neutral-900 text-xs shrink-0">
-                <div class="flex items-center gap-2 w-full">
-                    <button id="ytMiniPlayPauseBtn" class="font-bold text-slate-300 bg-neutral-900 px-2 py-0.5 rounded border border-neutral-800 min-w-[50px] text-[10px]" disabled></button>
-                    <span id="ytMiniTimeDisplay" class="font-mono text-slate-400">00:00</span>
-                    <input type="range" id="ytMiniSlider" min="0" max="100" value="0" step="1" class="flex-1 h-1 bg-neutral-800 rounded appearance-none cursor-pointer accent-indigo-500" disabled>
-                </div>
-                <div class="flex items-center justify-between gap-2 w-full pt-0.5">
-                    <div class="flex items-center gap-2">
-                        <span id="ytBadge" class="border px-1.5 py-0.5 rounded text-[9px] font-bold text-neutral-400 border-neutral-800 bg-black"></span>
-                        <button id="ytHostSyncTriggerBtn" class="bg-amber-600 hover:bg-amber-500 text-white font-bold text-[10px] px-2.5 py-0.5 rounded transition shadow hidden"></button>
-                    </div>
-                    <div class="flex items-center gap-1">
-                        <button id="ytMiniMuteBtn" class="text-slate-400 px-1.5 py-0.5 text-[10px] font-bold border border-neutral-800 bg-neutral-900 rounded" disabled></button>
-                        <input type="range" id="ytMiniVolume" min="0" max="100" value="0" step="1" class="w-16 h-1 bg-neutral-800 rounded appearance-none cursor-pointer accent-emerald-500" disabled>
-                    </div>
-                </div>
-            </div>
-
-            <div id="inputAreaContainer" class="p-2 flex items-center gap-2 w-full bg-neutral-900 border-t border-neutral-800 shrink-0 hidden">
-                <textarea id="mi" placeholder="YouTubeURL..." rows="1" class="flex-1 px-3 py-1.5 border border-neutral-800 bg-black rounded-xl text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none max-h-16 select-text" disabled></textarea>
-                <button id="sendBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-xl font-bold text-xs transition shrink-0 flex items-center justify-center tracking-wider shadow-sm" disabled>
-                    送信
-                </button>
-            </div>
+  <!-- ══ LEFT PANE: Video ══════════════════════════════════════════ -->
+  <div id="left-pane">
+    <!-- Video -->
+    <div id="yt-wrap">
+      <div id="yt-placeholder">
+        <div class="brand">Nezu Tube Chat</div>
+        <div class="hint" id="placeholder-hint">YouTubeのURLを貼り付けて動画を共有できます</div>
+      </div>
+      <!-- Guest confirm overlay -->
+      <div id="guest-overlay">
+        <div class="overlay-card">
+          <div class="oc-label">🎬 同期リクエスト</div>
+          <div class="oc-host" id="oc-host-name"></div>
+          <div class="oc-desc">ホストの動画に同期しますか？<br>後からいつでも切り替えられます。</div>
+          <div class="overlay-btns">
+            <button class="btn-decline" id="oc-decline">自由視聴</button>
+            <button class="btn-accept" id="oc-accept">▶ 同期する</button>
+          </div>
         </div>
-
-        <!-- 右ペイン: チャット -->
-        <div class="flex-1 flex flex-col bg-neutral-950 min-w-0 min-h-0 overflow-hidden relative">
-            <div id="authHeaderBlock" class="p-2.5 bg-neutral-900 border-b border-neutral-800 flex flex-col gap-2 shrink-0">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2 min-w-0">
-                        <span id="topLiveIndicator" class="w-1.5 h-1.5 bg-neutral-700 rounded-full shrink-0"></span>
-                        <button id="toggleUserListBtn" class="flex items-center gap-1.5 bg-neutral-950 hover:bg-neutral-800 border border-neutral-800/80 px-2.5 py-1 rounded-md text-xs font-bold tracking-wider text-slate-300 transition select-none">
-                            <span>参加者:</span>
-                            <span id="presenceCount" class="font-mono text-indigo-400">0</span>
-                            <span class="dropdown-arrow"></span>
-                        </button>
-                    </div>
-                    <button id="exitBtn" class="bg-red-950/40 text-red-400 hover:bg-red-900/60 font-bold text-[10px] px-2.5 py-1 rounded border border-red-900/60 hidden transition tracking-wide shadow-sm shrink-0">退出</button>
-                </div>
-
-                <div id="userListDropdown" class="bg-black rounded border border-neutral-800/80 mx-0.5">
-                    <div id="userListContent" class="p-1.5 flex flex-col gap-1 divide-y divide-neutral-900 text-[11px] font-mono"></div>
-                </div>
-
-                <div class="flex flex-col gap-1.5" id="loginFormContainer">
-                    <div class="flex gap-1.5">
-                        <input type="text" id="ni" placeholder="名前 (10文字)" class="flex-1 min-w-0 px-2 py-1 bg-black border border-neutral-800 rounded text-xs text-white focus:ring-1 focus:ring-indigo-500 select-text">
-                        <input type="password" id="ki" placeholder="トリップキー (任意)" class="w-24 px-2 py-1 bg-black border border-neutral-800 rounded text-xs text-white focus:ring-1 focus:ring-indigo-500 select-text">
-                        <button id="enterBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold px-3 py-1 rounded transition shrink-0">入室</button>
-                    </div>
-                    <div class="text-[10px] text-neutral-400 px-1 truncate">
-                        表示名: <span id="tripPreview" class="text-indigo-400 font-mono">---</span>
-                    </div>
-                </div>
-            </div>
-
-            <div id="chatTimeline" class="select-text flex-1 min-h-0"></div>
-
-            <div class="px-2.5 py-2 bg-neutral-900 border-t border-t-neutral-950 flex items-center justify-between text-xs shrink-0 select-none w-full overflow-hidden">
-                <div class="flex items-center gap-2 min-w-0">
-                    <span id="ytSyncStatusIndicator" class="px-2 py-0.5 rounded text-[10px] font-bold border border-neutral-800 bg-neutral-950 text-neutral-400 whitespace-nowrap"></span>
-                    <span id="ytSyncTimeDisplay" class="text-[10px] font-mono text-neutral-500 whitespace-nowrap">00:00 / 00:00</span>
-                </div>
-                <div class="flex gap-1.5 items-center shrink-0">
-                    <button id="ytClaimHostBtn" class="bg-amber-950/60 text-amber-400 border border-amber-900/80 px-2.5 py-0.5 rounded text-[10px] font-bold hover:bg-amber-900 transition hidden shadow-sm whitespace-nowrap">ホスト取得</button>
-                    <button id="ytGuestModeBtn" class="px-2.5 py-0.5 rounded text-[10px] font-bold border border-neutral-700 transition hidden whitespace-nowrap"></button>
-                </div>
-            </div>
-
-            <div id="mobileKeyboardBlock" class="p-2 w-full bg-neutral-900 border-t border-neutral-800 shrink-0 md:hidden hidden">
-                <button id="openKeyboardBtn" class="w-full bg-neutral-800 hover:bg-neutral-700 text-slate-300 font-bold py-2 rounded-xl text-xs transition flex items-center justify-center gap-1.5" disabled>
-                    <span>⌨</span> メッセージを入力
-                </button>
-            </div>
-        </div>
+      </div>
+      <div id="ytPlayer"></div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-        import { getDatabase, ref, push, onValue, set, update, remove, query, orderByChild, onChildAdded, get, off, onDisconnect } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
-
-        const $ = id => document.getElementById(id);
-        
-        const DB_URL = "https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app";
-        const firebaseApp = initializeApp({ databaseURL: DB_URL });
-        const db = getDatabase(firebaseApp);
-
-        const ROOM_PATH = "one_global_room";
-        const TRIP_SALT = "NezuTubeSecretSalt_2026"; 
-        const INACTIVE_TIMEOUT = 30 * 60 * 1000; // 30分
-
-        let ytPlayer = null, isYtReady = false;
-        let isUserDraggingSlider = false;
-        let isComposing = false;
-        let sliderIntervalId = null;
-        let lastLoadedVideoId = null;
-        let isLocalAction = false;
-        let actionShieldTimeout = null;
-
-        // ─── サーバー時間オフセット ───────────────────────────────────────
-        // Firebase の .info/serverTimeOffset はサーバー時刻 - クライアント時刻 (ms)
-        // serverNow() = Date.now() + serverTimeOffset でサーバー時刻を推定できる
-        let serverTimeOffset = 0;
-        onValue(ref(db, ".info/serverTimeOffset"), (snap) => {
-            serverTimeOffset = snap.val() || 0;
-        });
-        const serverNow = () => Date.now() + serverTimeOffset;
-
-        // 最終アクティビティはサーバー時刻(推定)で記録
-        let lastActivityServerTime = serverNow();
-        let timeoutCheckIntervalId = null;
-        // ─────────────────────────────────────────────────────────────────
-
-        let amIOwner = false;            
-        let isUserApprovedSync = false;  
-        let isGuestFreeMode = false;     
-        let isHostSyncActive = false;    
-        let globalVideoStateCache = null;
-        
-        let currentVolumeLevel = 0;
-        isGuestFreeMode = localStorage.getItem("or_freemode") === "true"; 
-        isUserApprovedSync = localStorage.getItem("or_approved") !== "false"; 
-
-        let currentConnectionCount = 0;
-        let hasJoined = false;
-
-        window.__handOverHost = async function(targetUid, targetName) {
-            if (!amIOwner || !globalVideoStateCache) return;
-            if (confirm(`${targetName} にホストを譲渡しますか？`)) {
-                try {
-                    activateShield(2000);
-                    await update(ref(db, `rooms/${ROOM_PATH}/videoState`), {
-                        owner: targetUid,
-                        ownerName: targetName,
-                        timestamp: serverNow(),
-                        isSyncing: false
-                    });
-                    await push(ref(db, `chat/${ROOM_PATH}`), { type: "sys", text: ` → ${targetName} にホストを譲渡しました`, time: serverNow(), fromUid: uid, fallbackName: curN });
-                    $("userListDropdown").classList.remove("open");
-                } catch(e) { alert("失敗しました"); }
-            }
-        };
-
-        const activateShield = (duration = 800) => {
-            isLocalAction = true;
-            if (actionShieldTimeout) clearTimeout(actionShieldTimeout);
-            actionShieldTimeout = setTimeout(() => { isLocalAction = false; }, duration);
-        };
-
-        const esc = t => (t || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-        const linkify = t => esc(t).replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:underline break-all">$1</a>');
-
-        function generateTrip(key) {
-            if (!key) return "";
-            const combined = key + TRIP_SALT;
-            let hash = 0;
-            for (let i = 0; i < combined.length; i++) {
-                hash = (hash << 5) - hash + combined.charCodeAt(i);
-                hash |= 0;
-            }
-            let trip = Math.abs(hash).toString(36).substring(0, 5);
-            while (trip.length < 5) { trip += "X"; } 
-            return "◆" + trip;
-        }
-
-        function updateTripPreview() {
-            if (!$("loginFormContainer") || $("loginFormContainer").classList.contains("hidden")) return;
-            const name = $("ni").value.replace(/[\s\u3000]+/g, "").trim() || "";
-            const key = $("ki").value;
-            const trip = generateTrip(key);
-            $("tripPreview").innerText = name.slice(0, 10) + trip;
-        }
-        if ($("ni")) $("ni").oninput = updateTripPreview;
-        if ($("ki")) $("ki").oninput = updateTripPreview;
-
-        (() => {
-            if (window.YT && window.YT.Player) { isYtReady = true; return; }
-            window.onYouTubeIframeAPIReady = () => { isYtReady = true; };
-            const t = document.createElement('script'); t.src = "https://www.youtube.com/iframe_api"; t.async = true;
-            document.head.appendChild(t);
-        })();
-
-        function extractVideoId(url) {
-            if(!url) return null;
-            const match = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]{11}).*/);
-            return (match && match[2].length === 11) ? match[2] : null;
-        }
-
-        function formatTime(seconds) {
-            if (isNaN(seconds) || seconds < 0) return "00:00";
-            return `${Math.floor(seconds / 60).toString().padStart(2, "0")}:${Math.floor(seconds % 60).toString().padStart(2, "0")}`;
-        }
-
-        // サーバー時刻を HH:MM 形式で返す
-        function formatServerTime(serverMs) {
-            return new Date(serverMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-        }
-
-        function updateMuteIcon(vol) {
-            $("ytMiniMuteBtn").innerText = vol === 0 ? "🔇" : "🔊";
-        }
-
-        $("ytMiniVolume").oninput = () => {
-            const vol = parseInt($("ytMiniVolume").value, 10);
-            currentVolumeLevel = vol;
-            updateMuteIcon(vol);
-            if (ytPlayer && typeof ytPlayer.setVolume === 'function') {
-                if (vol === 0) {
-                    ytPlayer.mute();
-                } else {
-                    ytPlayer.unMute();
-                    ytPlayer.setVolume(vol);
-                }
-            }
-        };
-
-        $("ytMiniMuteBtn").onclick = () => {
-            if (ytPlayer && typeof ytPlayer.isMuted === 'function' && ytPlayer.isMuted()) {
-                const targetVol = 30; 
-                $("ytMiniVolume").value = targetVol; 
-                ytPlayer.unMute(); 
-                ytPlayer.setVolume(targetVol);
-                updateMuteIcon(targetVol);
-                currentVolumeLevel = targetVol;
-            } else if (ytPlayer && typeof ytPlayer.mute === 'function') {
-                ytPlayer.mute(); 
-                $("ytMiniVolume").value = 0; 
-                updateMuteIcon(0);
-                currentVolumeLevel = 0;
-            }
-        };
-
-        window.__loadSharedVideo = function(vId) {
-            if (!vId || !hasJoined) return;
-            setSharedVideoLive(vId);
-        };
-
-        async function setSharedVideoLive(vId) {
-            amIOwner = true; isUserApprovedSync = true; isGuestFreeMode = false; isHostSyncActive = false;
-            localStorage.setItem("or_freemode", "false");
-            localStorage.setItem("or_approved", "true");
-            activateShield(2000);
-            await set(ref(db, `rooms/${ROOM_PATH}/videoState`), {
-                videoId: vId, status: "paused", currentTime: 0, timestamp: serverNow(), owner: uid, ownerName: curN, isSyncing: false
-            });
-            updateControlsUI();
-        }
-
-        async function checkAndCleanUpRoom() {
-            try {
-                await remove(ref(db, `presence/${ROOM_PATH}/${uid}`));
-                const snap = await get(ref(db, `presence/${ROOM_PATH}`));
-                if (!snap.exists() || Object.keys(snap.val()).length === 0) {
-                    await set(ref(db, `chat/${ROOM_PATH}`), null);
-                    await set(ref(db, `rooms/${ROOM_PATH}`), null);
-                }
-            } catch (e) { console.error(e); }
-        }
-
-        async function leaveRoom(isAuto = false) {
-            if (sliderIntervalId) clearInterval(sliderIntervalId);
-            if (timeoutCheckIntervalId) clearInterval(timeoutCheckIntervalId);
-            
-            localStorage.removeItem("or_joined");
-            localStorage.removeItem("or_freemode");
-            localStorage.removeItem("or_approved");
-            sessionStorage.removeItem("or_active_session");
-
-            if (!hasJoined) return;
-            try {
-                await push(ref(db, `chat/${ROOM_PATH}`), { 
-                    type: "sys", 
-                    text: isAuto ? `が30分無言のため自動退出しました` : `が退出しました`, 
-                    time: serverNow(), 
-                    fromUid: uid, 
-                    fallbackName: curN 
-                });
-                await checkAndCleanUpRoom();
-            } catch(e){}
-            window.location.reload();
-        }
-
-        $("toggleUserListBtn").onclick = (e) => {
-            e.preventDefault();
-            $("userListDropdown").classList.toggle("open");
-        };
-
-        let curN = ""; 
-        const uid = (() => {
-            let id = localStorage.getItem("or_uid");
-            if (!id) { id = crypto.randomUUID(); localStorage.setItem("or_uid", id); }
-            return id;
-        })();
-
-        function buildAndSyncPlayer(state, targetTime) {
-            if (ytPlayer && lastLoadedVideoId === state.videoId) {
-                applyPlayerControl(state.status, targetTime);
-                return;
-            }
-            
-            lastLoadedVideoId = state.videoId;
-            activateShield(2500); 
-
-            if (ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
-                try {
-                    ytPlayer.mute();
-                    ytPlayer.setVolume(0);
-                    ytPlayer.loadVideoById({
-                        videoId: state.videoId,
-                        startSeconds: Math.max(0, Math.floor(targetTime))
-                    });
-                    
-                    let checkReadyLoop = 0;
-                    const checkStateAndPlay = setInterval(() => {
-                        checkReadyLoop++;
-                        if (!ytPlayer || checkReadyLoop > 20) { clearInterval(checkStateAndPlay); return; }
-                        
-                        const pState = ytPlayer.getPlayerState();
-                        if (pState === 1 || pState === 2 || pState === 3 || pState === -1) {
-                            clearInterval(checkStateAndPlay);
-                            ytPlayer.mute();
-                            ytPlayer.setVolume(0);
-                            applyPlayerControl(state.status, targetTime);
-                        }
-                    }, 150);
-                    return;
-                } catch (e) {
-                    try { ytPlayer.destroy(); } catch(err){}
-                    ytPlayer = null;
-                }
-            }
-            
-            const buildPlayer = () => {
-                if (!isYtReady || !window.YT?.Player) { setTimeout(buildPlayer, 50); return; }
-                
-                ytPlayer = new YT.Player('ytPlayer', {
-                    videoId: state.videoId,
-                    playerVars: { 
-                        'autoplay': 1, 
-                        'playsinline': 1, 
-                        'controls': 1, 
-                        'rel': 0, 
-                        'mute': 1,
-                        'start': Math.max(0, Math.floor(targetTime)) 
-                    },
-                    events: {
-                        'onReady': () => {
-                            try {
-                                ytPlayer.mute(); 
-                                ytPlayer.setVolume(0);
-                                applyPlayerControl(state.status, targetTime);
-                            } catch(e){}
-                            $("ytMiniVolume").value = 0;
-                            updateMuteIcon(0);
-                        },
-                        'onStateChange': onPlayerStateChange
-                    }
-                });
-            };
-            buildPlayer();
-        }
-
-        function applyPlayerControl(status, targetTime) {
-            if (!ytPlayer || typeof ytPlayer.getPlayerState !== 'function') return;
-            try {
-                const curTime = ytPlayer.getCurrentTime();
-                if (Math.abs(curTime - targetTime) > 2.0) {
-                    ytPlayer.seekTo(targetTime, true);
-                }
-                const pState = ytPlayer.getPlayerState();
-                if (status === "playing" && pState !== 1) {
-                    ytPlayer.mute();
-                    ytPlayer.setVolume(0);
-                    ytPlayer.playVideo();
-                } else if (status === "paused" && pState !== 2) {
-                    ytPlayer.pauseVideo();
-                }
-            } catch(e){}
-        }
-
-        function bindPresenceListener() {
-            onValue(ref(db, `presence/${ROOM_PATH}`), async (snapshot) => {
-                const users = snapshot.val() || {};
-                let userEntries = Object.values(users);
-                currentConnectionCount = userEntries.length;
-                $("presenceCount").innerText = currentConnectionCount;
-
-                if (currentConnectionCount === 0) {
-                    $("userListContent").innerHTML = `<div class="text-neutral-600 p-1 text-center text-[10px]">誰もいません</div>`;
-                    try {
-                        await set(ref(db, `chat/${ROOM_PATH}`), null);
-                        await set(ref(db, `rooms/${ROOM_PATH}`), null);
-                    } catch(e) { console.error(e); }
-                    return;
-                }
-
-                const myIndex = userEntries.findIndex(u => u.uid === uid);
-                if (myIndex > -1) {
-                    const myData = userEntries.splice(myIndex, 1)[0];
-                    userEntries.unshift(myData); 
-                }
-
-                let listHtml = "";
-                userEntries.forEach(u => {
-                    const isMe = (u.uid === uid);
-                    // 入室時刻をサーバー時刻から表示
-                    const joinedAt = u.joinedAt ? `<span class="text-neutral-600 ml-1">${formatServerTime(u.joinedAt)}入室</span>` : "";
-                    const nameLabel = isMe && hasJoined 
-                        ? `<span class="text-indigo-400 font-bold">${esc(u.name)} (自分)</span>${joinedAt}` 
-                        : `<span class="text-slate-300">${esc(u.name)}</span>${joinedAt}`;
-                    
-                    let actionBtn = "";
-                    if (hasJoined && amIOwner && !isMe) {
-                        actionBtn = `<button onclick="window.__handOverHost('${esc(u.uid)}','${esc(u.name)}')" class="text-[9px] text-amber-500 hover:text-amber-400 bg-neutral-950 px-1 py-0.5 rounded border border-neutral-800 transition">譲渡</button>`;
-                    } else if (globalVideoStateCache && globalVideoStateCache.owner === u.uid) {
-                        actionBtn = `<span class="text-[10px] text-amber-400 font-sans font-bold">👑</span>`;
-                    }
-
-                    listHtml += `<div class="flex items-center justify-between py-1 px-1.5 bg-neutral-950"><div class="truncate mr-2">${nameLabel}</div><div class="shrink-0">${actionBtn}</div></div>`;
-                });
-                $("userListContent").innerHTML = listHtml;
-            });
-        }
-
-        async function joinRoom(name, key = "", isAutoRestore = false) {
-            if(hasJoined) return;
-            hasJoined = true;
-            
-            const trip = generateTrip(key);
-            curN = name + trip;
-            
-            localStorage.setItem("or_name", name);
-            localStorage.setItem("or_joined", "true");
-            if (key) { localStorage.setItem("or_key", key); } else { localStorage.removeItem("or_key"); }
-
-            off(ref(db, `chat/${ROOM_PATH}`));
-            off(ref(db, `rooms/${ROOM_PATH}/videoState`));
-            $("chatTimeline").innerHTML = "";
-
-            // ─── presence にサーバー時刻の joinedAt を書き込む ───────────────
-            const joinServerTime = serverNow();
-            lastActivityServerTime = joinServerTime;
-
-            const myPresenceRef = ref(db, `presence/${ROOM_PATH}/${uid}`);
-            await set(myPresenceRef, { 
-                name: curN, 
-                lastSeen: joinServerTime,      // 後方互換
-                lastActive: joinServerTime,    // タイムアウト判定用
-                joinedAt: joinServerTime,      // 入室時刻 (サーバー時間)
-                uid: uid 
-            });
-            
-            onDisconnect(myPresenceRef).remove();
-            // ─────────────────────────────────────────────────────────────────
-
-            $("loginFormContainer").classList.add("hidden");
-            $("exitBtn").classList.remove("hidden");
-            $("toggleUserListBtn").classList.remove("hidden");
-            $("inputAreaContainer").classList.remove("hidden");
-            $("mobileKeyboardBlock").classList.remove("hidden");
-
-            $("mi").disabled = false; $("sendBtn").disabled = false;
-            $("openKeyboardBtn").disabled = false; $("ytMiniPlayPauseBtn").disabled = false;
-            $("ytMiniVolume").disabled = false; $("ytMiniMuteBtn").disabled = false;
-            $("ytPlaceholder").style.display = "none";
-            $("placeholderStatusText").innerText = "YouTubeURLを入力して動画を共有";
-
-            currentVolumeLevel = 0;
-            $("ytMiniVolume").value = 0;
-            updateMuteIcon(0);
-
-            const chatRef = ref(db, `chat/${ROOM_PATH}`);
-            onChildAdded(query(chatRef, orderByChild("time")), (snapshot) => {
-                const m = snapshot.val(); if (!m) return;
-                const div = document.createElement("div");
-                div.className = "w-full flex flex-col items-start my-1";
-                // メッセージの time はサーバー時刻で記録されているのでそのまま表示
-                const time = m.time ? new Date(m.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
-                const isMe = (m.fromUid === uid || m.uid === uid);
-
-                if (m.type === "sys") {
-                    let sysText = isMe ? `${esc(curN)} ${m.text}` : (m.fallbackName || "") + m.text;
-                    div.innerHTML = `<div class="text-[10px] text-neutral-500 mx-auto text-center bg-neutral-900 border border-neutral-800 py-0.5 px-3 rounded-full">${sysText} <span class="text-neutral-600">${time}</span></div>`;
-                    div.className = "w-full text-center my-1";
-                } else {
-                    const extractedId = extractVideoId(m.text);
-                    let embedHtml = extractedId ? `
-                    <div class="mt-1.5 w-full max-w-[220px] bg-black rounded-lg p-1 border border-neutral-800 shrink-0">
-                        <img src="https://img.youtube.com/vi/${extractedId}/mqdefault.jpg" class="w-full h-auto rounded block">
-                        <button onclick="window.__loadSharedVideo('${extractedId}')" class="w-full mt-1 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] py-1 rounded font-bold transition block">▶ この動画を共有再生</button>
-                    </div>` : "";
-
-                    const crownBtn = (amIOwner && !isMe) ? `<button onclick="window.__handOverHost('${esc(m.uid || '')}','${esc(m.name)}')" class="ml-1.5 text-[9px] text-amber-500 hover:text-amber-400 bg-neutral-900 px-1 rounded border border-neutral-800 transition inline-block">譲</button>` : "";
-                    const displayName = isMe ? esc(curN) : esc(m.name);
-                    
-                    div.innerHTML = `
-                        <div class="text-[9px] ${isMe ? 'text-indigo-400' : 'text-neutral-400'} pl-1 mb-0.5 font-mono flex items-center">${displayName} ${!isMe ? crownBtn : ''} <span class="text-neutral-600 ml-1 font-sans">${time}</span></div>
-                        <div class="bg-neutral-900 text-slate-200 px-3 py-1.5 rounded-2xl border border-neutral-800 max-w-[85%] break-all text-xs leading-normal select-text">
-                            ${linkify(m.text)}${embedHtml}
-                        </div>`;
-                }
-                
-                const timeline = $("chatTimeline");
-                const isAtTop = timeline.scrollTop <= 10;
-                
-                timeline.prepend(div);
-                
-                if (isMe || isAtTop) {
-                    timeline.scrollTop = 0;
-                }
-            });
-
-            onValue(ref(db, `rooms/${ROOM_PATH}/videoState`), (snapshot) => {
-                if (!snapshot.exists()) {
-                    globalVideoStateCache = null; amIOwner = false;
-                    if (ytPlayer) { try { ytPlayer.destroy(); } catch(e){} ytPlayer = null; }
-                    lastLoadedVideoId = null; isUserApprovedSync = false; isGuestFreeMode = false;
-                    $("ytPlaceholder").style.display = "flex"; updateControlsUI(); return;
-                }
-
-                const state = snapshot.val();
-                globalVideoStateCache = state;
-                const newAmIOwner = (state.owner === uid);
-                if (amIOwner !== newAmIOwner) {
-                    amIOwner = newAmIOwner;
-                    if (amIOwner) isUserApprovedSync = true;
-                }
-
-                isHostSyncActive = !!state.isSyncing;
-                let targetTime = state.currentTime;
-                if (state.status === "playing" && isHostSyncActive) {
-                    targetTime += ((serverNow() - state.timestamp) / 1000); 
-                }
-
-                if (amIOwner) {
-                    $("guestConfirmOverlay").classList.add("hidden");
-                    updateControlsUI();
-                } else {
-                    if (isGuestFreeMode || !isHostSyncActive) { 
-                        updateControlsUI(); 
-                        if (lastLoadedVideoId !== state.videoId || !ytPlayer) buildAndSyncPlayer(state, state.currentTime);
-                        return; 
-                    }
-                    if (lastLoadedVideoId !== state.videoId) {
-                        if (localStorage.getItem("or_approved") === "true") {
-                            isUserApprovedSync = true;
-                        } else {
-                            isUserApprovedSync = false;
-                            $("guestConfirmHostName").innerText = `${state.ownerName} の動画に参加しますか？`;
-                            $("guestConfirmOverlay").classList.remove("hidden");
-                            $("ytPlaceholder").style.display = "none";
-                            updateControlsUI();
-                            return;
-                        }
-                    }
-                    if (!isUserApprovedSync) return;
-                }
-
-                $("ytPlaceholder").style.display = "none";
-                $("guestConfirmOverlay").classList.add("hidden");
-                updateControlsUI();
-
-                if (lastLoadedVideoId !== state.videoId || !ytPlayer) {
-                    buildAndSyncPlayer(state, targetTime);
-                } else {
-                    if (isLocalAction) return;
-                    applyPlayerControl(state.status, targetTime);
-                }
-            });
-
-            if (sliderIntervalId) clearInterval(sliderIntervalId);
-            sliderIntervalId = setInterval(() => {
-                if (!ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') return;
-                if (!isUserDraggingSlider) {
-                    try {
-                        const curTime = ytPlayer.getCurrentTime(); const duration = ytPlayer.getDuration();
-                        if (duration > 0) {
-                            $("ytMiniSlider").max = Math.floor(duration); $("ytMiniSlider").value = Math.floor(curTime);
-                            $("ytSyncTimeDisplay").innerText = `${formatTime(curTime)} / ${formatTime(duration)}`;
-                            $("ytMiniTimeDisplay").innerText = formatTime(curTime);
-                        }
-                        $("ytMiniPlayPauseBtn").innerText = ytPlayer.getPlayerState() === 1 ? "⏸" : "▶";
-                    } catch(e){}
-                }
-            }, 500);
-
-            // ─── タイムアウトチェック: サーバー時間基準 ───────────────────────
-            if (timeoutCheckIntervalId) clearInterval(timeoutCheckIntervalId);
-            timeoutCheckIntervalId = setInterval(async () => {
-                const now = serverNow();
-                if (now - lastActivityServerTime > INACTIVE_TIMEOUT) {
-                    leaveRoom(true);
-                    return;
-                }
-                // presence の lastActive を定期更新（切断復帰後のゴースト防止）
-                try {
-                    await update(ref(db, `presence/${ROOM_PATH}/${uid}`), {
-                        lastActive: lastActivityServerTime,
-                        lastSeen: now
-                    });
-                } catch(e){}
-            }, 10000);
-            // ─────────────────────────────────────────────────────────────────
-
-            if (!isAutoRestore && !sessionStorage.getItem("or_active_session")) {
-                sessionStorage.setItem("or_active_session", "true");
-                // 入室メッセージにサーバー時刻を埋め込む
-                await push(ref(db, `chat/${ROOM_PATH}`), { 
-                    type: "sys", 
-                    text: `が入室しました`, 
-                    time: serverNow(),    // ← サーバー時刻
-                    fromUid: uid, 
-                    fallbackName: curN 
-                });
-            }
-        }
-
-        function onPlayerStateChange(event) {
-            if (!ytPlayer || !globalVideoStateCache) return;
-            const pState = event.data;
-            const curTime = ytPlayer.getCurrentTime ? ytPlayer.getCurrentTime() : 0;
-            const duration = ytPlayer.getDuration ? ytPlayer.getDuration() : 0;
-
-            if (pState === 0) { 
-                if (amIOwner) {
-                    activateShield(1200);
-                    const stopPos = duration > 0 ? duration - 0.5 : 0;
-                    ytPlayer.seekTo(stopPos, true); ytPlayer.pauseVideo();
-                    update(ref(db, `rooms/${ROOM_PATH}/videoState`), { status: "paused", currentTime: stopPos, timestamp: serverNow() });
-                } else if (isGuestFreeMode || !isHostSyncActive) {
-                    ytPlayer.seekTo(duration > 0 ? duration - 0.5 : 0, true); ytPlayer.pauseVideo();
-                }
-                return;
-            }
-
-            if (isLocalAction) return;
-
-            if (amIOwner) {
-                if (!isHostSyncActive) return;
-                if (pState === 1 && globalVideoStateCache.status !== "playing") {
-                    update(ref(db, `rooms/${ROOM_PATH}/videoState`), { status: "playing", currentTime: curTime, timestamp: serverNow() });
-                } else if (pState === 2 && globalVideoStateCache.status !== "paused") {
-                    update(ref(db, `rooms/${ROOM_PATH}/videoState`), { status: "paused", currentTime: curTime, timestamp: serverNow() });
-                }
-            } else {
-                if (isUserApprovedSync && isHostSyncActive && !isGuestFreeMode) {
-                    if (globalVideoStateCache.status === "playing" && pState !== 1 && pState !== 3) {
-                        setTimeout(() => { 
-                            if(!isGuestFreeMode && !isLocalAction && ytPlayer && isHostSyncActive) { 
-                                try { 
-                                    ytPlayer.mute();
-                                    ytPlayer.setVolume(0);
-                                    ytPlayer.playVideo(); 
-                                } catch(e){} 
-                            } 
-                        }, 200);
-                    } else if (globalVideoStateCache.status === "paused" && pState === 1) {
-                        setTimeout(() => { 
-                            if(!isGuestFreeMode && !isLocalAction && ytPlayer && isHostSyncActive) { 
-                                try { ytPlayer.pauseVideo(); } catch(e){} 
-                            } 
-                        }, 200);
-                    }
-                }
-            }
-        }
-
-        async function toggleHostSync() {
-            if (!amIOwner || !ytPlayer || !globalVideoStateCache) return;
-            try {
-                activateShield(1500);
-                const currentPos = ytPlayer.getCurrentTime ? ytPlayer.getCurrentTime() : 0;
-                const isPlaying = (ytPlayer.getPlayerState() === 1);
-                isHostSyncActive = !isHostSyncActive;
-                
-                await update(ref(db, `rooms/${ROOM_PATH}/videoState`), {
-                    status: isPlaying ? "playing" : "paused",
-                    currentTime: currentPos,
-                    timestamp: serverNow(),
-                    isSyncing: isHostSyncActive
-                });
-                updateControlsUI();
-            } catch (e) { console.error(e); }
-        }
-        $("ytHostSyncTriggerBtn").onclick = (e) => { e.preventDefault(); toggleHostSync(); };
-
-        function updateControlsUI() {
-            const syncBtn = $("ytHostSyncTriggerBtn");
-            if (amIOwner) {
-                $("ytClaimHostBtn").style.display = "none"; $("ytGuestModeBtn").style.display = "none";
-                $("ytMiniSlider").disabled = false; syncBtn.classList.remove("hidden");
-                
-                if (isHostSyncActive) {
-                    $("ytBadge").innerText = "同期中";
-                    $("ytBadge").className = "border px-1.5 py-0.5 rounded text-[9px] font-bold text-amber-400 border-amber-950 bg-amber-950/60";
-                    $("ytSyncStatusIndicator").innerText = "ホスト・同期ON";
-                    $("ytSyncStatusIndicator").className = "px-2 py-0.5 rounded text-[9px] font-bold bg-amber-950/60 text-amber-400 border border-amber-900/60 shadow-sm shadow-amber-950/50 whitespace-nowrap";
-                    $("topLiveIndicator").className = "w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse";
-                    syncBtn.innerText = "同期を停止";
-                    syncBtn.className = "bg-rose-700 hover:bg-rose-600 text-white font-bold text-[10px] px-2.5 py-0.5 rounded transition shadow select-none";
-                } else {
-                    $("ytBadge").innerText = "ホスト";
-                    $("ytBadge").className = "border px-1.5 py-0.5 rounded text-[9px] font-bold text-neutral-400 border-neutral-800 bg-black";
-                    $("ytSyncStatusIndicator").innerText = "ホスト (同期OFF)";
-                    $("ytSyncStatusIndicator").className = "px-2 py-0.5 rounded text-[9px] font-bold bg-neutral-900 text-neutral-400 border border-neutral-800 whitespace-nowrap";
-                    $("topLiveIndicator").className = "w-1.5 h-1.5 bg-neutral-600 rounded-full";
-                    syncBtn.innerText = "同期を開始";
-                    syncBtn.className = "bg-amber-600 hover:bg-amber-500 text-white font-bold text-[10px] px-2.5 py-0.5 rounded transition shadow select-none";
-                }
-            } else {
-                $("ytGuestModeBtn").style.display = "block";
-                syncBtn.classList.add("hidden");
-                
-                if (!isHostSyncActive) {
-                    $("ytGuestModeBtn").style.display = "none"; $("ytMiniSlider").disabled = false;
-                    $("ytBadge").innerText = "自由";
-                    $("ytBadge").className = "border px-1.5 py-0.5 rounded text-[9px] font-bold text-neutral-400 border-neutral-800 bg-black";
-                    $("ytSyncStatusIndicator").innerText = "同期なし";
-                    $("ytSyncStatusIndicator").className = "px-2 py-0.5 rounded text-[9px] font-bold bg-neutral-900 text-neutral-400 border border-neutral-800 whitespace-nowrap";
-                    $("topLiveIndicator").className = "w-1.5 h-1.5 bg-neutral-600 rounded-full";
-                    $("ytClaimHostBtn").style.display = "block";
-                } else if (isGuestFreeMode) {
-                    $("ytGuestModeBtn").innerText = "同期に戻る";
-                    $("ytGuestModeBtn").className = "px-2.5 py-0.5 rounded text-[10px] font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/10 transition whitespace-nowrap";
-                    $("ytMiniSlider").disabled = false;
-                    $("ytBadge").innerText = "自由視聴";
-                    $("ytBadge").className = "border px-1.5 py-0.5 rounded text-[9px] font-bold text-neutral-400 border-neutral-800 bg-black";
-                    $("ytSyncStatusIndicator").innerText = "フリーモード";
-                    $("ytSyncStatusIndicator").className = "px-2 py-0.5 rounded text-[9px] font-bold bg-neutral-900 text-neutral-400 border border-neutral-800 whitespace-nowrap";
-                    $("topLiveIndicator").className = "w-1.5 h-1.5 bg-neutral-600 rounded-full";
-                    $("ytClaimHostBtn").style.display = "block";
-                } else {
-                    $("ytGuestModeBtn").innerText = "自由視聴";
-                    $("ytGuestModeBtn").className = "px-2.5 py-0.5 rounded text-[10px] font-bold text-slate-300 border border-neutral-700 bg-neutral-900 hover:bg-neutral-800 transition whitespace-nowrap";
-                    $("ytMiniSlider").disabled = true;
-                    $("ytBadge").innerText = "同期";
-                    $("ytBadge").className = "border px-1.5 py-0.5 rounded text-[9px] font-bold text-emerald-400 border-emerald-950 bg-emerald-950/30";
-                    
-                    if (isUserApprovedSync) {
-                        $("ytSyncStatusIndicator").innerText = "同期中";
-                        $("ytSyncStatusIndicator").className = "px-2 py-0.5 rounded text-[9px] font-bold bg-emerald-950/60 text-emerald-400 border border-emerald-900/60 whitespace-nowrap";
-                        $("topLiveIndicator").className = "w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse";
-                    } else {
-                        $("ytSyncStatusIndicator").innerText = "未承認";
-                        $("ytSyncStatusIndicator").className = "px-2 py-0.5 rounded text-[9px] font-bold bg-rose-950/60 text-rose-400 border border-rose-900/60 animate-pulse whitespace-nowrap";
-                        $("topLiveIndicator").className = "w-1.5 h-1.5 bg-rose-500 rounded-full";
-                    }
-                    $("ytClaimHostBtn").style.display = "block";
-                }
-            }
-        }
-
-        function forceGuestSyncResume() {
-            if (globalVideoStateCache && globalVideoStateCache.isSyncing) {
-                let targetTime = globalVideoStateCache.currentTime;
-                if (globalVideoStateCache.status === "playing") {
-                    targetTime += ((serverNow() - globalVideoStateCache.timestamp) / 1000);
-                }
-                buildAndSyncPlayer(globalVideoStateCache, targetTime);
-            }
-        }
-
-        $("ytGuestModeBtn").onclick = (e) => {
-            e.preventDefault(); isGuestFreeMode = !isGuestFreeMode;
-            localStorage.setItem("or_freemode", isGuestFreeMode ? "true" : "false");
-            if (!isGuestFreeMode) { isUserApprovedSync = true; localStorage.setItem("or_approved", "true"); $("guestConfirmOverlay").classList.add("hidden"); forceGuestSyncResume(); }
-            updateControlsUI();
-        };
-
-        $("ytClaimHostBtn").onclick = async (e) => {
-            e.preventDefault(); if (!globalVideoStateCache) return;
-            amIOwner = true; isGuestFreeMode = false; isUserApprovedSync = true; isHostSyncActive = false; 
-            localStorage.setItem("or_freemode", "false");
-            localStorage.setItem("or_approved", "true");
-            activateShield(2000);
-            await set(ref(db, `rooms/${ROOM_PATH}/videoState`), {
-                videoId: globalVideoStateCache.videoId,
-                status: (ytPlayer && ytPlayer.getPlayerState() === 1) ? "playing" : "paused",
-                currentTime: (ytPlayer && typeof ytPlayer.getCurrentTime === 'function') ? ytPlayer.getCurrentTime() : 0,
-                timestamp: serverNow(), owner: uid, ownerName: curN, isSyncing: false
-            });
-            updateControlsUI();
-        };
-
-        $("guestConfirmAcceptBtn").onclick = () => { isUserApprovedSync = true; localStorage.setItem("or_approved", "true"); $("guestConfirmOverlay").classList.add("hidden"); updateControlsUI(); forceGuestSyncResume(); };
-        $("guestConfirmDeclineBtn").onclick = () => { isGuestFreeMode = true; localStorage.setItem("or_freemode", "true"); localStorage.setItem("or_approved", "false"); $("guestConfirmOverlay").classList.add("hidden"); updateControlsUI(); };
-
-        $("ytMiniPlayPauseBtn").onclick = () => {
-            if (!ytPlayer || typeof ytPlayer.getPlayerState !== 'function') return;
-            const pState = ytPlayer.getPlayerState();
-            if (amIOwner) {
-                activateShield(600);
-                if (pState === 1) {
-                    ytPlayer.pauseVideo();
-                    if(isHostSyncActive) update(ref(db, `rooms/${ROOM_PATH}/videoState`), { status: "paused", currentTime: ytPlayer.getCurrentTime(), timestamp: serverNow() });
-                } else {
-                    ytPlayer.mute();
-                    ytPlayer.setVolume(0);
-                    ytPlayer.playVideo();
-                    if(isHostSyncActive) update(ref(db, `rooms/${ROOM_PATH}/videoState`), { status: "playing", currentTime: ytPlayer.getCurrentTime(), timestamp: serverNow() });
-                }
-            } else {
-                if (isGuestFreeMode || !isHostSyncActive) { 
-                    if (pState === 1) {
-                        ytPlayer.pauseVideo();
-                    } else {
-                        ytPlayer.mute();
-                        ytPlayer.setVolume(0);
-                        ytPlayer.playVideo(); 
-                    }
-                }
-            }
-        };
-
-        $("ytMiniSlider").oninput = () => { isUserDraggingSlider = true; };
-        $("ytMiniSlider").onchange = () => {
-            const targetTime = Number($("ytMiniSlider").value);
-            if (ytPlayer && typeof ytPlayer.seekTo === 'function') { 
-                activateShield(1000); 
-                ytPlayer.mute();
-                ytPlayer.setVolume(0);
-                ytPlayer.seekTo(targetTime, true); 
-                if (amIOwner && isHostSyncActive) {
-                    update(ref(db, `rooms/${ROOM_PATH}/videoState`), { currentTime: targetTime, timestamp: serverNow() });
-                }
-            }
-            isUserDraggingSlider = false;
-        };
-
-        async function sendMessage() {
-            const txt = $("mi").value.trim(); if (!txt || isComposing) return;
-            $("mi").value = ""; $("mi").rows = 1;
-            // ─── 発言でサーバー時間基準の lastActivity を更新 ────────────────
-            lastActivityServerTime = serverNow();
-            // ─────────────────────────────────────────────────────────────────
-            try {
-                await push(ref(db, `chat/${ROOM_PATH}`), { 
-                    name: curN, 
-                    text: txt, 
-                    time: serverNow(),   // ← サーバー時刻
-                    uid: uid, 
-                    fromUid: uid 
-                });
-            } catch (e) { alert("送信に失敗しました"); }
-        }
-
-        $("openKeyboardBtn").onclick = (e) => { e.preventDefault(); $("mi").focus(); };
-        $("mi").addEventListener("compositionstart", () => { isComposing = true; });
-        $("mi").addEventListener("compositionend", () => { isComposing = false; });
-        $("mi").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !isComposing) { e.preventDefault(); sendMessage(); } });
-        $("sendBtn").onclick = (e) => { e.preventDefault(); sendMessage(); };
-
-        $("enterBtn").onclick = () => {
-            const n = $("ni").value.replace(/[\s\u3000]+/g, "").trim();
-            if (!n) { alert("名前を入力してください"); return; }
-            joinRoom(n.slice(0, 10), $("ki").value);
-        };
-
-        $("exitBtn").onclick = () => { if (confirm("退出しますか？")) leaveRoom(false); };
-        window.addEventListener("beforeunload", () => { if(hasJoined && currentConnectionCount <= 1) checkAndCleanUpRoom(); });
-
-        window.addEventListener("DOMContentLoaded", () => {
-            const savedName = localStorage.getItem("or_name") || "";
-            $("ni").value = savedName ? savedName : `ゲスト${Math.floor(100 + Math.random() * 900)}`;
-            $("ki").value = localStorage.getItem("or_key") || "";
-            updateTripPreview();
-            
-            currentVolumeLevel = 0;
-            $("ytMiniVolume").value = 0;
-            updateMuteIcon(0);
-            
-            bindPresenceListener();
-
-            if (localStorage.getItem("or_joined") === "true" && savedName) {
-                joinRoom(savedName.slice(0, 10), localStorage.getItem("or_key") || "", true);
-            }
-            
-            if (window.visualViewport) {
-                window.visualViewport.addEventListener('resize', () => {
-                    document.body.style.height = window.visualViewport.height + 'px';
-                    $("mainApp").style.height = window.visualViewport.height + 'px';
-                    window.scrollTo(0, 0);
-                });
-            }
-        });
-    </script>
+    <!-- Player Controls -->
+    <div id="player-controls">
+      <div class="ctrl-row">
+        <button id="mini-playpause" disabled>▶</button>
+        <span id="mini-time">00:00</span>
+        <input type="range" id="mini-slider" min="0" max="100" value="0" step="1" disabled>
+      </div>
+      <div class="ctrl-row2">
+        <div class="ctrl-left">
+          <span id="role-badge" class="badge-host-nosync">ホスト</span>
+          <button id="sync-toggle-btn" class="stb-start hidden">同期を開始</button>
+        </div>
+        <div class="ctrl-right">
+          <button id="mini-mute" disabled>🔇</button>
+          <input type="range" id="mini-vol" min="0" max="100" value="0" step="1" disabled>
+        </div>
+      </div>
+    </div>
+
+    <!-- URL Input -->
+    <div id="url-bar">
+      <input type="url" id="url-input" placeholder="YouTubeのURLを貼り付け..." autocomplete="off" inputmode="url">
+      <button class="btn-send" id="url-send" disabled>共有</button>
+    </div>
+  </div>
+
+  <!-- ══ RIGHT PANE: Chat ══════════════════════════════════════════ -->
+  <div id="right-pane">
+
+    <!-- Header -->
+    <div id="chat-header">
+      <div class="header-row1">
+        <!-- Status Pill (most prominent) -->
+        <div id="status-pill" class="sp-nosync">
+          <span class="live-dot dot-off" id="live-dot"></span>
+          <span id="status-text">---</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;min-width:0">
+          <!-- Presence toggle -->
+          <button id="presence-btn">
+            <span>参加者</span>
+            <span id="presence-count">0</span>人
+            <span class="chevron" id="chevron">▼</span>
+          </button>
+          <button id="exit-btn">退出</button>
+        </div>
+      </div>
+
+      <!-- User list dropdown -->
+      <div id="user-list">
+        <div id="user-list-inner"></div>
+      </div>
+
+      <!-- Login form -->
+      <div id="login-form">
+        <div class="login-row">
+          <input type="text" id="ni" class="inp-name" placeholder="名前（10文字まで）" maxlength="20" autocomplete="username">
+          <input type="password" id="ki" class="inp-key" placeholder="トリップキー" autocomplete="current-password">
+          <button class="btn-enter" id="enter-btn">入室</button>
+        </div>
+        <div class="trip-preview">表示名: <span id="trip-preview">---</span></div>
+      </div>
+
+      <!-- Sync bar -->
+      <div id="sync-bar">
+        <span id="sync-time">00:00 / 00:00</span>
+        <div class="sync-actions">
+          <button id="claim-host-btn">👑 ホスト取得</button>
+          <button id="free-mode-btn" class="fmb-free">自由視聴</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Timeline -->
+    <div id="timeline" role="log" aria-live="polite" aria-label="チャット"></div>
+
+    <!-- Chat input (PC & focused mobile) -->
+    <div id="chat-input-area">
+      <textarea id="chat-textarea" rows="1" placeholder="メッセージを入力... (Enter送信)" aria-label="メッセージ入力"></textarea>
+      <button class="btn-chat-send" id="chat-send" disabled>送信</button>
+    </div>
+
+  </div>
+
+</div>
+
+<script type="module">
+import { initializeApp }           from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getDatabase, ref, push, onValue, set, update, remove, query,
+         orderByChild, onChildAdded, get, off, onDisconnect, limitToLast }
+                                   from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+
+/* ── Constants ─────────────────────────────────────────────────────── */
+const DB_URL        = "https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app";
+const ROOM          = "one_global_room";
+const TRIP_SALT     = "NezuTubeSecretSalt_2026";
+const INACTIVE_MS   = 30 * 60 * 1000;   // 30 min
+const SYNC_DRIFT_S  = 1.5;              // seek if drift > this many seconds
+const PRESENCE_HB   = 15_000;           // heartbeat interval ms
+const CHAT_LIMIT    = 100;              // max messages to load
+
+/* ── Firebase ──────────────────────────────────────────────────────── */
+const app = initializeApp({ databaseURL: DB_URL });
+const db  = getDatabase(app);
+
+/* ── DOM refs ──────────────────────────────────────────────────────── */
+const $  = id => document.getElementById(id);
+const el = {
+  app:         $("app"),
+  // left
+  ytWrap:      $("yt-wrap"),
+  ytPlayer:    $("ytPlayer"),
+  placeholder: $("yt-placeholder"),
+  placeholderHint: $("placeholder-hint"),
+  guestOverlay:$("guest-overlay"),
+  ocHostName:  $("oc-host-name"),
+  ocAccept:    $("oc-accept"),
+  ocDecline:   $("oc-decline"),
+  controls:    $("player-controls"),
+  playPause:   $("mini-playpause"),
+  miniTime:    $("mini-time"),
+  slider:      $("mini-slider"),
+  roleBadge:   $("role-badge"),
+  syncToggle:  $("sync-toggle-btn"),
+  mute:        $("mini-mute"),
+  vol:         $("mini-vol"),
+  urlBar:      $("url-bar"),
+  urlInput:    $("url-input"),
+  urlSend:     $("url-send"),
+  // right
+  statusPill:  $("status-pill"),
+  liveDot:     $("live-dot"),
+  statusText:  $("status-text"),
+  presenceBtn: $("presence-btn"),
+  presenceCount:$("presence-count"),
+  chevron:     $("chevron"),
+  exitBtn:     $("exit-btn"),
+  userList:    $("user-list"),
+  userListInner:$("user-list-inner"),
+  loginForm:   $("login-form"),
+  ni:          $("ni"),
+  ki:          $("ki"),
+  enterBtn:    $("enter-btn"),
+  tripPreview: $("trip-preview"),
+  syncBar:     $("sync-bar"),
+  syncTime:    $("sync-time"),
+  claimHost:   $("claim-host-btn"),
+  freeMode:    $("free-mode-btn"),
+  timeline:    $("timeline"),
+  chatArea:    $("chat-input-area"),
+  chatTA:      $("chat-textarea"),
+  chatSend:    $("chat-send"),
+};
+
+/* ── Server time offset ─────────────────────────────────────────────── */
+let srvOffset = 0;
+onValue(ref(db, ".info/serverTimeOffset"), s => { srvOffset = s.val() || 0; });
+const srvNow = () => Date.now() + srvOffset;
+
+/* ── UID / Session ──────────────────────────────────────────────────── */
+const uid = (() => {
+  let id = localStorage.getItem("or_uid");
+  if (!id) { id = crypto.randomUUID(); localStorage.setItem("or_uid", id); }
+  return id;
+})();
+
+/* ── State ──────────────────────────────────────────────────────────── */
+let ytPlayer     = null;
+let isYtReady    = false;
+let hasJoined    = false;
+let curN         = "";          // display name
+let amIOwner     = false;
+let isHostSync   = false;       // host has sync ON
+let isGuestFree  = false;       // guest free mode
+let isSyncApproved = false;     // guest approved sync
+let videoCache   = null;        // latest videoState snapshot
+let lastVideoId  = null;
+let lastActivityTs = srvNow();
+
+let isDragging      = false;
+let isComposing     = false;
+let isLocalAct      = false;
+let shieldTimer     = null;
+let sliderTimer     = null;
+let hbTimer         = null;
+let inactiveTimer   = null;
+let chatUnsubscribe = null;    // cleanup fn for onChildAdded
+
+/* ── Shield (suppress remote→local feedback loops) ─────────────────── */
+function shield(ms = 800) {
+  isLocalAct = true;
+  if (shieldTimer) clearTimeout(shieldTimer);
+  shieldTimer = setTimeout(() => { isLocalAct = false; }, ms);
+}
+
+/* ── Helpers ────────────────────────────────────────────────────────── */
+const esc  = t => (t||"").replace(/[&<>"']/g,
+  c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const linkify = t => esc(t).replace(/(https?:\/\/[^\s<>"]+)/g,
+  '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+const fmtTime = s => {
+  if (!isFinite(s)||s<0) return "00:00";
+  return `${String(Math.floor(s/60)).padStart(2,"0")}:${String(Math.floor(s%60)).padStart(2,"0")}`;
+};
+const fmtClock = ts => new Date(ts).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+const extractVid = url => {
+  if (!url) return null;
+  const m = url.match(/(?:youtu\.be\/|[?&]v=|embed\/)([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : null;
+};
+const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; };
+
+/* ── Trip ───────────────────────────────────────────────────────────── */
+function tripHash(key) {
+  if (!key) return "";
+  const s = key + TRIP_SALT;
+  let h = 0;
+  for (let i=0;i<s.length;i++) { h=(h<<5)-h+s.charCodeAt(i); h|=0; }
+  let t = Math.abs(h).toString(36).slice(0,5);
+  while (t.length<5) t+="x";
+  return "◆"+t;
+}
+
+function updateTripPreview() {
+  const name = el.ni.value.replace(/[\s\u3000]+/g,"").trim().slice(0,10);
+  const trip = tripHash(el.ki.value);
+  el.tripPreview.textContent = (name||"名無し")+trip;
+}
+el.ni.addEventListener("input", updateTripPreview);
+el.ki.addEventListener("input", updateTripPreview);
+
+/* ── YouTube IFrame API ─────────────────────────────────────────────── */
+(() => {
+  if (window.YT?.Player) { isYtReady=true; return; }
+  window.onYouTubeIframeAPIReady = () => { isYtReady=true; };
+  const s = document.createElement("script");
+  s.src = "https://www.youtube.com/iframe_api";
+  s.async = true;
+  document.head.appendChild(s);
+})();
+
+/* ── Player management ──────────────────────────────────────────────── */
+function getTargetTime(state) {
+  if (!state) return 0;
+  let t = state.currentTime || 0;
+  if (state.status === "playing" && state.isSyncing) {
+    t += (srvNow() - (state.timestamp||srvNow())) / 1000;
+  }
+  return Math.max(0, t);
+}
+
+function buildPlayer(videoId, startSec) {
+  const build = () => {
+    if (!isYtReady||!window.YT?.Player) { setTimeout(build,100); return; }
+    lastVideoId = videoId;
+    ytPlayer = new YT.Player("ytPlayer", {
+      videoId,
+      playerVars:{autoplay:1,playsinline:1,controls:1,rel:0,mute:1,
+                  start:Math.max(0,Math.floor(startSec))},
+      events:{
+        onReady(e){ e.target.mute(); e.target.setVolume(0); el.vol.value=0; updateMuteIcon(0); },
+        onStateChange: onPlayerStateChange
+      }
+    });
+  };
+  build();
+}
+
+function loadOrSwap(videoId, targetTime) {
+  if (!videoId) return;
+  // Already loaded same video — just seek/play/pause
+  if (ytPlayer && lastVideoId===videoId) {
+    applyControl(videoCache?.status||"paused", targetTime);
+    return;
+  }
+  lastVideoId = videoId;
+  shield(2500);
+  // If player exists, load new video into it
+  if (ytPlayer?.loadVideoById) {
+    try {
+      ytPlayer.mute(); ytPlayer.setVolume(0);
+      ytPlayer.loadVideoById({videoId, startSeconds:Math.max(0,Math.floor(targetTime))});
+      el.vol.value=0; updateMuteIcon(0);
+      return;
+    } catch {
+      try { ytPlayer.destroy(); } catch {}
+      ytPlayer = null;
+    }
+  }
+  buildPlayer(videoId, targetTime);
+}
+
+function applyControl(status, targetTime) {
+  if (!ytPlayer?.getPlayerState) return;
+  try {
+    const cur  = ytPlayer.getCurrentTime();
+    const pst  = ytPlayer.getPlayerState();
+    if (Math.abs(cur - targetTime) > SYNC_DRIFT_S) ytPlayer.seekTo(targetTime, true);
+    if (status==="playing" && pst!==1) { ytPlayer.mute(); ytPlayer.setVolume(0); ytPlayer.playVideo(); }
+    else if (status==="paused" && pst!==2) ytPlayer.pauseVideo();
+  } catch {}
+}
+
+function onPlayerStateChange(e) {
+  if (!videoCache) return;
+  const ps = e.data, ct = ytPlayer?.getCurrentTime?.()||0;
+
+  // Video ended
+  if (ps===0) {
+    const dur = ytPlayer?.getDuration?.()||0;
+    if (amIOwner) {
+      shield(1200);
+      ytPlayer.seekTo(Math.max(0,dur-0.5),true); ytPlayer.pauseVideo();
+      if (isHostSync) dbVideoUpdate({status:"paused",currentTime:Math.max(0,dur-0.5),timestamp:srvNow()});
+    } else if (isGuestFree||!isHostSync) {
+      ytPlayer.seekTo(Math.max(0,dur-0.5),true); ytPlayer.pauseVideo();
+    }
+    return;
+  }
+
+  if (isLocalAct) return;
+
+  if (amIOwner) {
+    if (!isHostSync) return;
+    if (ps===1 && videoCache.status!=="playing")
+      dbVideoUpdate({status:"playing",currentTime:ct,timestamp:srvNow()});
+    else if (ps===2 && videoCache.status!=="paused")
+      dbVideoUpdate({status:"paused",currentTime:ct,timestamp:srvNow()});
+  } else {
+    if (!isSyncApproved||!isHostSync||isGuestFree) return;
+    if (videoCache.status==="playing" && ps!==1 && ps!==3) {
+      setTimeout(()=>{ if (!isLocalAct&&!isGuestFree&&isHostSync&&ytPlayer)
+        { try{ytPlayer.mute();ytPlayer.setVolume(0);ytPlayer.playVideo();}catch{} } },200);
+    } else if (videoCache.status==="paused" && ps===1) {
+      setTimeout(()=>{ if (!isLocalAct&&!isGuestFree&&isHostSync&&ytPlayer)
+        { try{ytPlayer.pauseVideo();}catch{} } },200);
+    }
+  }
+}
+
+/* ── DB helpers ─────────────────────────────────────────────────────── */
+const videoRef   = () => ref(db, `rooms/${ROOM}/videoState`);
+const dbVideoSet = d => set(videoRef(), d);
+const dbVideoUpd = d => update(videoRef(), d);
+// Debounced version for slider
+const dbVideoUpdate = debounce(dbVideoUpd, 150);
+
+function updateMuteIcon(v) { el.mute.textContent = v===0?"🔇":"🔊"; }
+
+/* ── UI: role / status ──────────────────────────────────────────────── */
+function updateUI() {
+  const pill    = el.statusPill;
+  const dot     = el.liveDot;
+  const rb      = el.roleBadge;
+  const st      = el.syncToggle;
+
+  // Clear classes helper
+  const setClass = (elem, ...classes) => { elem.className = classes.join(" "); };
+
+  // ── HOST ──
+  if (amIOwner) {
+    el.claimHost.classList.remove("show");
+    el.freeMode.classList.remove("show");
+    el.slider.disabled = false;
+    st.classList.remove("hidden");
+
+    if (isHostSync) {
+      // HOST + SYNC ON
+      setClass(pill, "sp-host-sync");
+      dot.className  = "live-dot dot-amber";
+      el.statusText.textContent = "🔴 ホスト・同期中";
+      setClass(rb, "badge-host-sync");
+      rb.textContent = "👑 同期中";
+      st.textContent = "同期を停止";
+      setClass(st, "stb-stop");
+    } else {
+      // HOST + SYNC OFF
+      setClass(pill, "sp-host-nosync");
+      dot.className  = "live-dot dot-off";
+      el.statusText.textContent = "👑 ホスト";
+      setClass(rb, "badge-host-nosync");
+      rb.textContent = "👑 ホスト";
+      st.textContent = "同期を開始";
+      setClass(st, "stb-start");
+    }
+    return;
+  }
+
+  // ── GUEST ──
+  st.classList.add("hidden");
+
+  if (!isHostSync) {
+    // No active sync
+    el.claimHost.classList.add("show");
+    el.freeMode.classList.remove("show");
+    el.slider.disabled = false;
+    setClass(pill, "sp-nosync");
+    dot.className = "live-dot dot-off";
+    el.statusText.textContent = "同期なし";
+    setClass(rb, "badge-guest-nosync");
+    rb.textContent = "ゲスト";
+    return;
+  }
+
+  // Host sync is ON
+  el.claimHost.classList.add("show");
+  el.freeMode.classList.add("show");
+
+  if (isGuestFree) {
+    // GUEST + FREE
+    el.slider.disabled = false;
+    setClass(pill, "sp-free");
+    dot.className = "live-dot dot-off";
+    el.statusText.textContent = "🎧 自由視聴中";
+    setClass(rb, "badge-guest-free");
+    rb.textContent = "自由視聴";
+    el.freeMode.textContent   = "← 同期に戻る";
+    setClass(el.freeMode, "fmb-return","show");
+  } else if (isSyncApproved) {
+    // GUEST + SYNCING
+    el.slider.disabled = true;
+    setClass(pill, "sp-syncing");
+    dot.className = "live-dot dot-green";
+    el.statusText.textContent = "🟢 ゲスト・同期中";
+    setClass(rb, "badge-guest-sync");
+    rb.textContent = "🔄 同期中";
+    el.freeMode.textContent   = "自由視聴";
+    setClass(el.freeMode, "fmb-free","show");
+  } else {
+    // GUEST + PENDING (not approved)
+    el.slider.disabled = true;
+    setClass(pill, "sp-pending");
+    dot.className = "live-dot dot-rose";
+    el.statusText.textContent = "⏳ 同期待機中";
+    setClass(rb, "badge-guest-nosync");
+    rb.textContent = "待機中";
+    el.freeMode.textContent   = "自由視聴";
+    setClass(el.freeMode, "fmb-free","show");
+  }
+}
+
+/* ── Video state listener ────────────────────────────────────────────── */
+function bindVideoState() {
+  onValue(videoRef(), snap => {
+    if (!snap.exists()) {
+      videoCache=null; amIOwner=false; isHostSync=false;
+      if (ytPlayer) { try{ytPlayer.destroy();}catch{}; ytPlayer=null; }
+      lastVideoId=null; isSyncApproved=false; isGuestFree=false;
+      el.placeholder.style.display="flex";
+      el.placeholderHint.textContent="YouTubeのURLを貼り付けて動画を共有できます";
+      updateUI(); return;
+    }
+
+    const state = snap.val();
+    videoCache   = state;
+    const wasOwner = amIOwner;
+    amIOwner    = (state.owner===uid);
+    if (!wasOwner&&amIOwner) isSyncApproved=true;
+    isHostSync  = !!state.isSyncing;
+
+    const targetTime = getTargetTime(state);
+
+    // ── HOST ──
+    if (amIOwner) {
+      el.guestOverlay.classList.remove("show");
+      el.placeholder.style.display="none";
+      updateUI();
+      if (lastVideoId!==state.videoId||!ytPlayer) loadOrSwap(state.videoId, targetTime);
+      return;
+    }
+
+    // ── GUEST ──
+    if (!isHostSync) {
+      updateUI();
+      if (lastVideoId!==state.videoId||!ytPlayer) loadOrSwap(state.videoId, state.currentTime||0);
+      return;
+    }
+
+    // Host sync is ON — check approval
+    if (lastVideoId!==state.videoId&&lastVideoId!==null) {
+      const approved = localStorage.getItem("or_approved")==="true";
+      if (!approved) {
+        isSyncApproved=false;
+        el.ocHostName.textContent=`${state.ownerName||"ホスト"}の動画に参加しますか？`;
+        el.guestOverlay.classList.add("show");
+        el.placeholder.style.display="none";
+        updateUI(); return;
+      }
+      isSyncApproved=true;
+    }
+
+    if (!isSyncApproved) { updateUI(); return; }
+
+    el.guestOverlay.classList.remove("show");
+    el.placeholder.style.display="none";
+    updateUI();
+
+    if (lastVideoId!==state.videoId||!ytPlayer) {
+      loadOrSwap(state.videoId, targetTime);
+    } else if (!isLocalAct&&!isGuestFree) {
+      applyControl(state.status, targetTime);
+    }
+  });
+}
+
+/* ── Presence ───────────────────────────────────────────────────────── */
+function bindPresence() {
+  onValue(ref(db, `presence/${ROOM}`), async snap => {
+    const users = Object.values(snap.val()||{});
+    el.presenceCount.textContent = users.length;
+
+    if (users.length===0) {
+      el.userListInner.innerHTML=`<div style="color:var(--muted2);font-size:10px;text-align:center;padding:8px">誰もいません</div>`;
+      try { await set(ref(db,`chat/${ROOM}`),null); await set(ref(db,`rooms/${ROOM}`),null); } catch{}
+      return;
+    }
+
+    // Self first
+    users.sort((a,b)=>(a.uid===uid?-1:b.uid===uid?1:0));
+
+    el.userListInner.innerHTML = users.map(u=>{
+      const isMe = u.uid===uid;
+      const nameCls = isMe?"user-name me":"user-name";
+      const label   = esc(u.name)+(isMe?" (自分)":"");
+      const joined  = u.joinedAt?fmtClock(u.joinedAt):"";
+      const isOwner = videoCache&&videoCache.owner===u.uid;
+
+      let action="";
+      if (hasJoined&&amIOwner&&!isMe)
+        action=`<button class="btn-transfer" onclick="window.__handOver('${esc(u.uid)}','${esc(u.name)}')">譲渡</button>`;
+      else if (isOwner)
+        action=`<span style="color:var(--amber);font-size:11px">👑</span>`;
+
+      return `<div class="user-row">
+        <div style="display:flex;align-items:center;min-width:0;gap:4px">
+          <span class="${nameCls}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${label}</span>
+          ${joined?`<span class="user-meta">${joined}入室</span>`:""}
+        </div>
+        <div style="flex-shrink:0">${action}</div>
+      </div>`;
+    }).join("");
+  });
+}
+
+/* ── Hand over host ─────────────────────────────────────────────────── */
+window.__handOver = async (targetUid, targetName) => {
+  if (!amIOwner||!videoCache) return;
+  if (!confirm(`${targetName} にホストを譲渡しますか？`)) return;
+  shield(2000);
+  await update(videoRef(), {owner:targetUid,ownerName:targetName,timestamp:srvNow(),isSyncing:false});
+  await push(ref(db,`chat/${ROOM}`),{type:"sys",text:`→ ${targetName} にホストを譲渡しました`,time:srvNow(),fromUid:uid,fallbackName:curN});
+  el.userList.classList.remove("open");
+  el.chevron.classList.remove("open");
+};
+
+/* ── Chat ────────────────────────────────────────────────────────────── */
+function addMessage(m, key) {
+  // Deduplicate
+  if (document.getElementById("msg-"+key)) return;
+
+  const isMe = (m.fromUid===uid||m.uid===uid);
+  const time  = m.time?fmtClock(m.time):"";
+
+  const el_ = document.createElement("div");
+  el_.id = "msg-"+key;
+
+  if (m.type==="sys") {
+    el_.className = "sys-msg";
+    const who = isMe?esc(curN):(m.fallbackName?esc(m.fallbackName):"");
+    el_.innerHTML = `${who}${esc(m.text)} <span style="color:var(--muted2);font-size:9px">${time}</span>`;
+  } else {
+    el_.className = `msg ${isMe?"me":"other"}`;
+    const vid = extractVid(m.text||"");
+    const crownBtn = amIOwner&&!isMe&&(m.uid||m.fromUid)
+      ? `<button onclick="window.__handOver('${esc(m.uid||m.fromUid)}','${esc(m.name)}')" style="font-size:9px;color:var(--amber);background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:1px 4px;margin-left:4px;cursor:pointer">譲</button>`
+      : "";
+    const embedHtml = vid ? `
+      <div class="yt-card">
+        <img src="https://img.youtube.com/vi/${vid}/mqdefault.jpg" alt="thumbnail" loading="lazy">
+        <button class="yt-card-btn" onclick="window.__shareVid('${vid}')">▶ この動画を共有再生</button>
+      </div>` : "";
+    el_.innerHTML = `
+      <div class="msg-meta">
+        <span class="name ${isMe?"me":""}">${esc(m.name||curN)}</span>
+        ${!isMe?crownBtn:""}
+        <span style="font-family:sans-serif;font-size:9px;color:var(--muted2)">${time}</span>
+      </div>
+      <div class="msg-bubble">${linkify(m.text||"")}${embedHtml}</div>`;
+  }
+
+  // Insert at top (newest first)
+  el.timeline.insertBefore(el_, el.timeline.firstChild);
+  el.timeline.scrollTop = 0;}
+
+function bindChat() {
+  // Clean up previous listener
+  if (chatUnsubscribe) { chatUnsubscribe(); chatUnsubscribe=null; }
+  el.timeline.innerHTML="";
+
+  const chatRef = query(ref(db,`chat/${ROOM}`), orderByChild("time"), limitToLast(CHAT_LIMIT));
+  const unsub = onChildAdded(chatRef, snap => {
+    addMessage(snap.val(), snap.key);
+  });
+  chatUnsubscribe = () => off(chatRef, "child_added", unsub);
+}
+
+/* ── Send message ────────────────────────────────────────────────────── */
+async function sendMsg() {
+  const txt = el.chatTA.value.trim();
+  if (!txt||isComposing) return;
+  el.chatTA.value=""; el.chatTA.style.height="auto";
+  lastActivityTs = srvNow();
+  try {
+    await push(ref(db,`chat/${ROOM}`),{name:curN,text:txt,time:srvNow(),uid,fromUid:uid});
+  } catch { alert("送信に失敗しました"); }
+}
+
+/* ── Share video ─────────────────────────────────────────────────────── */
+window.__shareVid = vid => { if (hasJoined) setVideoLive(vid); };
+
+async function setVideoLive(vid) {
+  amIOwner=true; isSyncApproved=true; isGuestFree=false; isHostSync=false;
+  localStorage.setItem("or_approved","true");
+  shield(2000);
+  await dbVideoSet({videoId:vid,status:"paused",currentTime:0,timestamp:srvNow(),
+                    owner:uid,ownerName:curN,isSyncing:false});
+  updateUI();
+}
+
+/* ── Join / Leave ────────────────────────────────────────────────────── */
+async function joinRoom(name, key="", isRestore=false) {
+  if (hasJoined) return;
+  hasJoined = true;
+
+  const trip = tripHash(key);
+  curN = name.slice(0,10)+trip;
+
+  localStorage.setItem("or_name", name.slice(0,10));
+  localStorage.setItem("or_joined","true");
+  if (key) localStorage.setItem("or_key",key); else localStorage.removeItem("or_key");
+
+  const joinTs = srvNow();
+  lastActivityTs = joinTs;
+
+  const presRef = ref(db,`presence/${ROOM}/${uid}`);
+  await set(presRef,{name:curN,uid,joinedAt:joinTs,lastActive:joinTs});
+  onDisconnect(presRef).remove();
+
+  // UI: show chat
+  el.loginForm.classList.add("hidden");
+  el.exitBtn.classList.add("show");
+  el.urlBar.classList.add("show");
+  el.chatArea.classList.add("show");
+  el.urlInput.disabled=false; el.urlSend.disabled=false;
+  el.playPause.disabled=false; el.vol.disabled=false; el.mute.disabled=false;
+  el.chatSend.disabled=false;
+  el.placeholder.style.display="flex";
+
+  bindChat();
+  bindVideoState();
+
+  // Slider polling
+  if (sliderTimer) clearInterval(sliderTimer);
+  sliderTimer = setInterval(()=>{
+    if (!ytPlayer?.getCurrentTime||isDragging) return;
+    try {
+      const cur = ytPlayer.getCurrentTime();
+      const dur = ytPlayer.getDuration();
+      if (dur>0) {
+        el.slider.max  = String(Math.floor(dur));
+        el.slider.value= String(Math.floor(cur));
+        el.syncTime.textContent  = `${fmtTime(cur)} / ${fmtTime(dur)}`;
+        el.miniTime.textContent  = fmtTime(cur);
+      }
+      const ps = ytPlayer.getPlayerState();
+      el.playPause.textContent = ps===1?"⏸":"▶";
+    } catch {}
+  }, 333);
+
+  // Presence heartbeat
+  if (hbTimer) clearInterval(hbTimer);
+  hbTimer = setInterval(async ()=>{
+    try { await update(ref(db,`presence/${ROOM}/${uid}`),{lastActive:lastActivityTs}); } catch {}
+  }, PRESENCE_HB);
+
+  // Inactive check
+  if (inactiveTimer) clearInterval(inactiveTimer);
+  inactiveTimer = setInterval(()=>{
+    if (srvNow()-lastActivityTs>INACTIVE_MS) leaveRoom(true);
+  }, 30_000);
+
+  if (!isRestore&&!sessionStorage.getItem("or_sess")) {
+    sessionStorage.setItem("or_sess","1");
+    await push(ref(db,`chat/${ROOM}`),{type:"sys",text:"が入室しました",time:srvNow(),fromUid:uid,fallbackName:curN});
+  }
+}
+
+async function cleanRoom() {
+  try {
+    await remove(ref(db,`presence/${ROOM}/${uid}`));
+    const snap = await get(ref(db,`presence/${ROOM}`));
+    if (!snap.exists()||Object.keys(snap.val()).length===0) {
+      await set(ref(db,`chat/${ROOM}`),null);
+      await set(ref(db,`rooms/${ROOM}`),null);
+    }
+  } catch {}
+}
+
+async function leaveRoom(isAuto=false) {
+  if (sliderTimer) clearInterval(sliderTimer);
+  if (hbTimer) clearInterval(hbTimer);
+  if (inactiveTimer) clearInterval(inactiveTimer);
+  if (chatUnsubscribe) chatUnsubscribe();
+
+  ["or_joined","or_key"].forEach(k=>localStorage.removeItem(k));
+  sessionStorage.removeItem("or_sess");
+
+  if (!hasJoined) return;
+  try {
+    await push(ref(db,`chat/${ROOM}`),{type:"sys",
+      text: isAuto?"が30分無言のため自動退出しました":"が退出しました",
+      time:srvNow(),fromUid:uid,fallbackName:curN});
+    await cleanRoom();
+  } catch {}
+  window.location.reload();
+}
+
+/* ── Control events ──────────────────────────────────────────────────── */
+// Play/Pause
+el.playPause.addEventListener("click", ()=>{
+  if (!ytPlayer?.getPlayerState) return;
+  const ps = ytPlayer.getPlayerState();
+  if (amIOwner) {
+    shield(600);
+    if (ps===1) {
+      ytPlayer.pauseVideo();
+      if (isHostSync) dbVideoUpdate({status:"paused",currentTime:ytPlayer.getCurrentTime(),timestamp:srvNow()});
+    } else {
+      ytPlayer.mute(); ytPlayer.setVolume(0); ytPlayer.playVideo();
+      if (isHostSync) dbVideoUpdate({status:"playing",currentTime:ytPlayer.getCurrentTime(),timestamp:srvNow()});
+    }
+  } else if (isGuestFree||!isHostSync) {
+    if (ps===1) ytPlayer.pauseVideo();
+    else { ytPlayer.mute(); ytPlayer.setVolume(0); ytPlayer.playVideo(); }
+  }
+});
+
+// Slider
+el.slider.addEventListener("pointerdown", ()=>{ isDragging=true; });
+el.slider.addEventListener("input",       ()=>{ isDragging=true; });
+el.slider.addEventListener("change", ()=>{
+  const t = Number(el.slider.value);
+  if (ytPlayer?.seekTo) {
+    shield(1000); ytPlayer.mute(); ytPlayer.setVolume(0); ytPlayer.seekTo(t,true);
+    if (amIOwner&&isHostSync) dbVideoUpdate({currentTime:t,timestamp:srvNow()});
+  }
+  isDragging=false;
+});
+el.slider.addEventListener("pointerup", ()=>{ isDragging=false; });
+
+// Volume
+el.vol.addEventListener("input", ()=>{
+  const v = Number(el.vol.value);
+  updateMuteIcon(v);
+  if (ytPlayer?.setVolume) {
+    if (v===0) ytPlayer.mute();
+    else { ytPlayer.unMute(); ytPlayer.setVolume(v); }
+  }
+});
+el.mute.addEventListener("click", ()=>{
+  if (!ytPlayer) return;
+  if (ytPlayer.isMuted?.()) {
+    const v=30; el.vol.value=v; ytPlayer.unMute(); ytPlayer.setVolume(v); updateMuteIcon(v);
+  } else {
+    ytPlayer.mute(); el.vol.value=0; updateMuteIcon(0);
+  }
+});
+
+// Sync toggle (host)
+el.syncToggle.addEventListener("click", async ()=>{
+  if (!amIOwner||!ytPlayer||!videoCache) return;
+  shield(1500);
+  const cur  = ytPlayer.getCurrentTime?.()||0;
+  const play = ytPlayer.getPlayerState()===1;
+  isHostSync = !isHostSync;
+  await dbVideoUpd({status:play?"playing":"paused",currentTime:cur,timestamp:srvNow(),isSyncing:isHostSync});
+  updateUI();
+});
+
+// URL send
+async function shareUrl() {
+  const vid = extractVid(el.urlInput.value.trim());
+  if (!vid) { alert("有効なYouTube URLを入力してください"); return; }
+  el.urlInput.value="";
+  await setVideoLive(vid);
+}
+el.urlSend.addEventListener("click", shareUrl);
+el.urlInput.addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); shareUrl(); }});
+
+// Guest overlay
+el.ocAccept.addEventListener("click", ()=>{
+  isSyncApproved=true; localStorage.setItem("or_approved","true");
+  el.guestOverlay.classList.remove("show");
+  updateUI();
+  if (videoCache) { const t=getTargetTime(videoCache); loadOrSwap(videoCache.videoId,t); }
+});
+el.ocDecline.addEventListener("click", ()=>{
+  isGuestFree=true; localStorage.setItem("or_approved","false");
+  el.guestOverlay.classList.remove("show");
+  updateUI();
+  if (videoCache) loadOrSwap(videoCache.videoId, videoCache.currentTime||0);
+});
+
+// Claim host
+el.claimHost.addEventListener("click", async ()=>{
+  if (!videoCache) return;
+  amIOwner=true; isGuestFree=false; isSyncApproved=true; isHostSync=false;
+  localStorage.setItem("or_approved","true");
+  shield(2000);
+  await dbVideoSet({
+    videoId:videoCache.videoId,
+    status: ytPlayer?.getPlayerState()===1?"playing":"paused",
+    currentTime: ytPlayer?.getCurrentTime?.()||0,
+    timestamp:srvNow(),owner:uid,ownerName:curN,isSyncing:false
+  });
+  updateUI();
+});
+
+// Free mode
+el.freeMode.addEventListener("click", ()=>{
+  isGuestFree=!isGuestFree;
+  localStorage.setItem("or_approved", isGuestFree?"false":"true");
+  if (!isGuestFree) {
+    isSyncApproved=true;
+    el.guestOverlay.classList.remove("show");
+    if (videoCache) { const t=getTargetTime(videoCache); loadOrSwap(videoCache.videoId,t); }
+  }
+  updateUI();
+});
+
+// Presence toggle
+el.presenceBtn.addEventListener("click", ()=>{
+  el.userList.classList.toggle("open");
+  el.chevron.classList.toggle("open");
+});
+
+// Chat
+el.chatTA.addEventListener("compositionstart", ()=>{ isComposing=true; });
+el.chatTA.addEventListener("compositionend",   ()=>{ isComposing=false; });
+el.chatTA.addEventListener("keydown", e=>{
+  if (e.key==="Enter"&&!e.shiftKey&&!isComposing) { e.preventDefault(); sendMsg(); }
+});
+// Auto-resize textarea
+el.chatTA.addEventListener("input", ()=>{
+  lastActivityTs = srvNow();
+  el.chatTA.style.height="auto";
+  el.chatTA.style.height=Math.min(el.chatTA.scrollHeight,80)+"px";
+});
+el.chatSend.addEventListener("click", ()=>sendMsg());
+// Enter room
+el.enterBtn.addEventListener("click", ()=>{
+  const n = el.ni.value.replace(/[\s\u3000]+/g,"").trim();
+  if (!n) { alert("名前を入力してください"); return; }
+  joinRoom(n, el.ki.value);
+});
+el.ni.addEventListener("keydown", e=>{ if(e.key==="Enter") el.enterBtn.click(); });
+
+// Exit
+el.exitBtn.addEventListener("click", ()=>{ if(confirm("退出しますか？")) leaveRoom(false); });
+
+/* ── Keyboard / Visual Viewport resize (iOS fix) ──────────────────────── */
+if (window.visualViewport) {
+  let rafId;
+  const onVVResize = () => {
+    cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(()=>{
+      const h = window.visualViewport.height;
+      el.app.style.height = h+"px";
+      window.scrollTo(0,0);
+    });
+  };
+  window.visualViewport.addEventListener("resize", onVVResize);
+  window.visualViewport.addEventListener("scroll", onVVResize);
+}
+
+/* ── Beforeunload cleanup ─────────────────────────────────────────────── */
+window.addEventListener("pagehide", ()=>{ if(hasJoined) cleanRoom(); });
+window.addEventListener("beforeunload", ()=>{ if(hasJoined) cleanRoom(); });
+
+/* ── Init ─────────────────────────────────────────────────────────────── */
+window.addEventListener("DOMContentLoaded", ()=>{
+  // Restore saved name
+  const savedName = localStorage.getItem("or_name")||"";
+  el.ni.value = savedName||`ゲスト${100+Math.floor(Math.random()*900)}`;
+  el.ki.value = localStorage.getItem("or_key")||"";
+  updateTripPreview();
+
+  el.vol.value=0; updateMuteIcon(0);
+  updateUI();
+  bindPresence();
+
+  // Auto-restore session
+  if (localStorage.getItem("or_joined")==="true"&&savedName) {
+    joinRoom(savedName, localStorage.getItem("or_key")||"", true);
+  }
+});
+</script>
 </body>
 </html>

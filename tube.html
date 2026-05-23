@@ -12,10 +12,10 @@
 :root{
   --bg:#09090b;--sf:#111113;--sf2:#18181b;--bd:#27272a;--bd2:#3f3f46;
   --tx:#f4f4f5;--mu:#71717a;--mu2:#52525b;
-  --in:#6366f1;--in-d:#312e81;--in-g:rgba(99,102,241,.22);
+  --in:#6366f1;--in-d:#312e81;--in-g:rgba(99,102,241,.2);
   --am:#f59e0b;--am-d:#451a03;--am-g:rgba(245,158,11,.18);
   --em:#10b981;--em-d:#064e3b;--em-g:rgba(16,185,129,.18);
-  --ro:#f43f5e;--ro-d:#4c0519;--ro-g:rgba(244,63,94,.18);
+  --ro:#f43f5e;--ro-d:#4c0519;
   --safe:env(safe-area-inset-bottom,0px);
 }
 html,body{
@@ -37,7 +37,8 @@ a{color:var(--in)}a:hover{text-decoration:underline}
   #lp{width:55%;max-height:100%;border-right:1px solid var(--bd);border-bottom:none}
   #rp{flex:1;min-width:0}
 }
-#lp{display:flex;flex-direction:column;background:#000;border-bottom:1px solid var(--bd);max-height:50vh;flex-shrink:0}
+#lp{display:flex;flex-direction:column;background:#000;
+    border-bottom:1px solid var(--bd);max-height:50vh;flex-shrink:0}
 @media(min-width:768px){#lp{max-height:100%}}
 #rp{display:flex;flex-direction:column;background:var(--sf);flex:1;min-height:0;overflow:hidden}
 
@@ -49,13 +50,13 @@ a{color:var(--in)}a:hover{text-decoration:underline}
 #yph .brand{color:var(--in);font-size:10px;font-weight:800;letter-spacing:.2em;text-transform:uppercase}
 #yph .hint{color:var(--mu);font-size:10px;text-align:center;padding:0 16px;line-height:1.5}
 
-/* ── Guest overlay ── */
+/* guest sync overlay */
 #gov{position:absolute;inset:0;background:rgba(0,0,0,.96);z-index:30;
   display:none;align-items:center;justify-content:center;padding:16px}
 #gov.show{display:flex}
 .ovc{background:var(--sf2);border:1px solid var(--bd);border-radius:14px;
-  padding:20px;max-width:300px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.8)}
-.ovc .ol{font-size:9px;font-weight:800;letter-spacing:.2em;color:var(--in);
+  padding:20px;max-width:300px;width:100%;text-align:center}
+.ovc .ol{font-size:9px;font-weight:800;letter-spacing:.15em;color:var(--in);
   text-transform:uppercase;margin-bottom:8px}
 .ovc .oh{font-size:12px;font-weight:700;color:var(--tx);margin-bottom:6px}
 .ovc .od{font-size:10px;color:#a1a1aa;line-height:1.6;margin-bottom:14px}
@@ -64,99 +65,97 @@ a{color:var(--in)}a:hover{text-decoration:underline}
   background:var(--sf2);color:var(--mu);border:1px solid var(--bd);transition:background .15s}
 .btn-dec:hover{background:var(--bd)}
 .btn-acc{flex:1;padding:8px;border-radius:8px;font-size:11px;font-weight:700;
-  background:var(--in);color:#fff;transition:background .15s;box-shadow:0 0 12px var(--in-g)}
+  background:var(--in);color:#fff;transition:background .15s}
 .btn-acc:hover{background:#4f46e5}
 
-/* ── Player controls ── */
-#pc{background:var(--sf);border-top:1px solid var(--bd);
-  padding:7px 10px;flex-shrink:0;display:flex;flex-direction:column;gap:5px}
-.cr{display:flex;align-items:center;gap:7px;width:100%}
+/*
+  ── プレイヤーコントロールバー ──
+  ホスト: 再生ボタン + シークバー + 時間 + 同期ボタン  → 全部表示
+  ゲスト(同期中): 状態表示のみ (コントロール非表示)
+  ゲスト(自由): 非表示 (YT標準UIに任せる)
+  未入室: 非表示
+*/
+#pc{
+  background:var(--sf);border-top:1px solid var(--bd);
+  padding:6px 9px;flex-shrink:0;display:none;flex-direction:column;gap:5px
+}
+#pc.host{display:flex}        /* ホスト用: 全コントロール */
+#pc.guest-sync{display:flex}  /* ゲスト同期中: 状態行のみ */
+
+/* ホスト用コントロール行 (ゲスト同期中は非表示) */
+.host-ctrl{display:none}
+#pc.host .host-ctrl{display:flex;align-items:center;gap:6px;width:100%}
+
+/* 再生ボタン */
 #mpp{background:var(--sf2);border:1px solid var(--bd);color:var(--tx);
-  border-radius:6px;padding:2px 8px;font-size:13px;min-width:32px;
+  border-radius:6px;padding:2px 8px;font-size:14px;min-width:32px;
   transition:background .15s;flex-shrink:0}
-#mpp:hover:not(:disabled){background:var(--bd2)}
-#mpp:disabled{opacity:.4}
-#mt{font-size:10px;font-family:"SF Mono",monospace;color:var(--mu);flex-shrink:0;white-space:nowrap}
+#mpp:hover{background:var(--bd2)}
+
+/* 時間表示 */
+#mt{font-size:10px;font-family:monospace;color:var(--mu);flex-shrink:0;white-space:nowrap}
+
+/* シークバー */
 #ms{flex:1;height:4px;border-radius:2px;cursor:pointer;
   accent-color:var(--in);background:var(--bd2);-webkit-appearance:none;appearance:none}
-#ms::-webkit-slider-thumb{width:12px;height:12px;border-radius:50%;
+#ms::-webkit-slider-thumb{width:14px;height:14px;border-radius:50%;
   background:var(--in);-webkit-appearance:none;cursor:pointer}
-#ms:disabled{opacity:.4;cursor:not-allowed}
-.cr2{display:flex;align-items:center;justify-content:space-between;gap:6px}
-.cl{display:flex;align-items:center;gap:5px;flex-shrink:0}
-.cri{display:flex;align-items:center;gap:4px;flex-shrink:0}
 
-#rb{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;
-  font-size:10px;font-weight:800;white-space:nowrap;transition:all .2s;border:1px solid transparent;flex-shrink:0}
-.rb-hs{background:var(--am-d);color:var(--am);border-color:rgba(245,158,11,.3);box-shadow:0 0 6px var(--am-g)}
-.rb-hn{background:var(--sf2);color:#a1a1aa;border-color:var(--bd)}
-.rb-gs{background:var(--em-d);color:var(--em);border-color:rgba(16,185,129,.3);box-shadow:0 0 6px var(--em-g)}
-.rb-gf{background:var(--sf2);color:#a1a1aa;border-color:var(--bd)}
-.rb-gn{background:var(--sf2);color:#a1a1aa;border-color:var(--bd)}
-
-#stb{padding:2px 9px;border-radius:20px;font-size:10px;font-weight:800;
-  transition:all .15s;white-space:nowrap;border:1px solid transparent}
+/* 同期ボタン */
+#stb{padding:2px 10px;border-radius:20px;font-size:10px;font-weight:800;
+  transition:all .15s;white-space:nowrap;border:1px solid transparent;flex-shrink:0}
 .stb-go{background:var(--am-d);color:var(--am);border-color:rgba(245,158,11,.4)}
-.stb-go:hover{background:rgba(245,158,11,.2)}
+.stb-go:hover{background:rgba(245,158,11,.18)}
 .stb-st{background:var(--ro-d);color:var(--ro);border-color:rgba(244,63,94,.4)}
-.stb-st:hover{background:rgba(244,63,94,.2)}
-#stb.hidden{display:none}
+.stb-st:hover{background:rgba(244,63,94,.18)}
 
-#mm{background:var(--sf2);border:1px solid var(--bd);color:var(--tx);
-  border-radius:6px;padding:2px 6px;font-size:11px;transition:background .15s;flex-shrink:0}
-#mm:hover:not(:disabled){background:var(--bd2)}
-#mm:disabled{opacity:.4}
-#mv{width:56px;height:4px;border-radius:2px;cursor:pointer;
-  accent-color:var(--em);background:var(--bd2);-webkit-appearance:none;appearance:none}
-#mv::-webkit-slider-thumb{width:10px;height:10px;border-radius:50%;
-  background:var(--em);-webkit-appearance:none;cursor:pointer}
-#mv:disabled{opacity:.4}
+/* 状態行 (ホスト・ゲスト同期中共通) */
+.state-row{display:flex;align-items:center;gap:6px}
+#sp{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;
+  font-size:10px;font-weight:800;white-space:nowrap;transition:all .2s;
+  border:1px solid transparent;flex-shrink:0}
+.sp-hs{background:var(--am-d);color:var(--am);border-color:rgba(245,158,11,.35);box-shadow:0 0 7px var(--am-g)}
+.sp-hn{background:var(--sf2);color:#a1a1aa;border-color:var(--bd)}
+.sp-sy{background:var(--em-d);color:var(--em);border-color:rgba(16,185,129,.35);box-shadow:0 0 7px var(--em-g)}
+.sp-no,.sp-fr{background:var(--sf2);color:#a1a1aa;border-color:var(--bd)}
+.sp-pe{background:var(--ro-d);color:var(--ro);border-color:rgba(244,63,94,.35)}
+.ld{width:6px;height:6px;border-radius:50%;flex-shrink:0;transition:background .25s}
+.ld-off{background:var(--mu2)}
+.ld-am{background:var(--am);animation:blink .9s ease-in-out infinite}
+.ld-gr{background:var(--em);animation:blink .9s ease-in-out infinite}
+.ld-ro{background:var(--ro)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+#stime{font-size:10px;font-family:monospace;color:var(--mu2);white-space:nowrap;margin-left:auto}
 
-/* ── URL bar ── */
-#ub{display:none;padding:7px 8px;background:var(--sf2);
+/* ── URL bar (ホストのみ) ── */
+#ub{display:none;padding:6px 8px;background:var(--sf2);
   border-top:1px solid var(--bd);flex-shrink:0;gap:6px;align-items:center}
 #ub.show{display:flex}
-#ui{flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:10px;
-  color:var(--tx);font-size:12px;padding:5px 10px;transition:border-color .15s}
+#ui{flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:9px;
+  color:var(--tx);font-size:12px;padding:5px 9px;transition:border-color .15s}
 #ui:focus{outline:none;border-color:var(--in)}
-.bsend{background:var(--in);color:#fff;font-size:11px;font-weight:700;
-  padding:5px 12px;border-radius:10px;transition:background .15s;
-  box-shadow:0 2px 8px var(--in-g);flex-shrink:0}
-.bsend:hover{background:#4f46e5}
-.bsend:disabled{opacity:.4;cursor:not-allowed}
+.bsh{background:var(--in);color:#fff;font-size:11px;font-weight:700;
+  padding:5px 12px;border-radius:9px;transition:background .15s;
+  box-shadow:0 2px 6px var(--in-g);flex-shrink:0}
+.bsh:hover{background:#4f46e5}
 
-/* ── Right header (compact 1-line) ── */
+/* ── Right header (1行) ── */
 #ch{background:var(--sf2);border-bottom:1px solid var(--bd);
   padding:5px 8px;flex-shrink:0;display:flex;flex-direction:column;gap:4px}
-#hr1{display:flex;align-items:center;gap:5px;min-width:0;overflow:hidden;flex-wrap:nowrap}
+#hr1{display:flex;align-items:center;gap:5px;overflow:hidden;flex-wrap:nowrap}
 
-/* Status pill */
-#sp{display:inline-flex;align-items:center;gap:4px;
-  padding:2px 8px;border-radius:20px;font-size:10px;font-weight:800;
-  white-space:nowrap;transition:all .25s;border:1px solid transparent;flex-shrink:0}
-.sp-hs{background:var(--am-d);color:var(--am);border-color:rgba(245,158,11,.35);box-shadow:0 0 8px var(--am-g)}
-.sp-hn{background:var(--sf);color:#a1a1aa;border-color:var(--bd)}
-.sp-sy{background:var(--em-d);color:var(--em);border-color:rgba(16,185,129,.35);box-shadow:0 0 8px var(--em-g)}
-.sp-fr{background:var(--sf);color:#a1a1aa;border-color:var(--bd)}
-.sp-no{background:var(--sf);color:#a1a1aa;border-color:var(--bd)}
-.sp-pe{background:var(--ro-d);color:var(--ro);border-color:rgba(244,63,94,.35)}
-.ld{width:6px;height:6px;border-radius:50%;flex-shrink:0;transition:background .3s}
-.ld-off{background:var(--mu2)}
-.ld-am{background:var(--am);animation:pulse .9s ease-in-out infinite}
-.ld-gr{background:var(--em);animation:pulse .9s ease-in-out infinite}
-.ld-ro{background:var(--ro)}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-
+/* ヘッダーボタン共通 */
 .hbtn{display:none;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;
   transition:all .15s;white-space:nowrap;flex-shrink:0;border:1px solid transparent}
 .hbtn.show{display:block}
-#claim{background:rgba(245,158,11,.1);color:var(--am);border-color:rgba(245,158,11,.3)}
+#claim{background:rgba(245,158,11,.1);color:var(--am);border-color:rgba(245,158,11,.28)}
 #claim:hover{background:rgba(245,158,11,.2)}
 .fm-fr{background:var(--sf2);color:#a1a1aa;border-color:var(--bd)}
 .fm-fr:hover{background:var(--bd)}
-.fm-rt{background:rgba(99,102,241,.12);color:var(--in);border-color:rgba(99,102,241,.3)}
-.fm-rt:hover{background:rgba(99,102,241,.22)}
+.fm-rt{background:rgba(99,102,241,.1);color:var(--in);border-color:rgba(99,102,241,.28)}
+.fm-rt:hover{background:rgba(99,102,241,.2)}
 
+/* 参加者ボタン */
 #pbtn{display:flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--bd);
   border-radius:7px;padding:2px 7px;font-size:10px;font-weight:700;color:var(--tx);
   transition:background .15s;white-space:nowrap;flex-shrink:0;margin-left:auto}
@@ -165,16 +164,14 @@ a{color:var(--in)}a:hover{text-decoration:underline}
 .chv{font-size:7px;color:var(--mu);transition:transform .2s}
 .chv.open{transform:rotate(180deg)}
 
-#xbtn{display:none;background:rgba(244,63,94,.08);color:var(--ro);
-  border:1px solid rgba(244,63,94,.25);border-radius:7px;font-size:10px;font-weight:700;
+/* 退出ボタン */
+#xbtn{display:none;background:rgba(244,63,94,.07);color:var(--ro);
+  border:1px solid rgba(244,63,94,.22);border-radius:7px;font-size:10px;font-weight:700;
   padding:2px 8px;transition:all .15s;flex-shrink:0;white-space:nowrap}
 #xbtn.show{display:block}
-#xbtn:hover{background:rgba(244,63,94,.18)}
+#xbtn:hover{background:rgba(244,63,94,.16)}
 
-#stime{font-size:10px;font-family:monospace;color:var(--mu2);white-space:nowrap;display:none}
-#stime.show{display:block}
-
-/* User list */
+/* 参加者リスト */
 #ul{max-height:0;overflow:hidden;transition:max-height .22s ease-out}
 #ul.open{max-height:140px;overflow-y:auto}
 #uli{background:var(--bg);border:1px solid var(--bd);border-radius:7px;overflow:hidden}
@@ -185,11 +182,12 @@ a{color:var(--in)}a:hover{text-decoration:underline}
 .un.me{color:var(--in);font-weight:700}
 .um{font-size:9px;color:var(--mu2);flex-shrink:0;white-space:nowrap;margin-left:4px}
 .btr{font-size:9px;color:var(--am);background:var(--bg);border:1px solid var(--bd);
-  border-radius:4px;padding:1px 5px;transition:background .15s;flex-shrink:0;cursor:pointer}
+  border-radius:4px;padding:1px 5px;cursor:pointer;transition:background .12s;flex-shrink:0;font-family:inherit}
 .btr:hover{background:var(--am-d)}
 
-/* Login form */
+/* ログインフォーム */
 #lf{display:flex;flex-direction:column;gap:5px}
+#lf.gone{display:none}
 .lr{display:flex;gap:5px}
 .inp-n{flex:1;min-width:0;background:var(--bg);border:1px solid var(--bd);border-radius:7px;
   color:var(--tx);font-size:12px;padding:4px 9px;transition:border-color .15s}
@@ -198,15 +196,14 @@ a{color:var(--in)}a:hover{text-decoration:underline}
   color:var(--tx);font-size:12px;padding:4px 9px;transition:border-color .15s}
 .inp-k:focus{outline:none;border-color:var(--in)}
 .btn-en{background:var(--in);color:#fff;font-size:11px;font-weight:700;
-  padding:4px 12px;border-radius:7px;transition:background .15s;
-  flex-shrink:0;box-shadow:0 2px 6px var(--in-g)}
+  padding:4px 12px;border-radius:7px;transition:background .15s;flex-shrink:0}
 .btn-en:hover{background:#4f46e5}
 .tp{font-size:10px;color:var(--mu2)}
 .tp span{color:var(--in);font-family:monospace}
 
 /* ── Timeline ── */
-#tl{flex:1;min-height:0;overflow-y:auto;padding:8px 9px;
-  display:flex;flex-direction:column;gap:7px;
+#tl{flex:1;min-height:0;overflow-y:auto;
+  padding:8px 9px;display:flex;flex-direction:column;gap:7px;
   background:var(--bg);-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
   align-items:flex-start}
 #tl::-webkit-scrollbar{width:3px}
@@ -216,25 +213,25 @@ a{color:var(--in)}a:hover{text-decoration:underline}
   display:flex;align-items:center;gap:3px;flex-wrap:wrap}
 .mmeta .mn{color:#a1a1aa}
 .mmeta .mn.me{color:var(--in)}
-.mbub{background:var(--sf2);color:var(--tx);border:1px solid var(--bd);border-radius:12px;
-  padding:6px 11px;font-size:12px;line-height:1.55;-webkit-user-select:text;user-select:text}
-.msg.me .mbub{background:var(--in-d);border-color:rgba(99,102,241,.28)}
+.mbub{background:var(--sf2);color:var(--tx);border:1px solid var(--bd);
+  border-radius:12px;padding:6px 11px;font-size:12px;line-height:1.55;
+  -webkit-user-select:text;user-select:text}
+.msg.me .mbub{background:var(--in-d);border-color:rgba(99,102,241,.25)}
 .ytcard{margin-top:7px;background:var(--bg);border:1px solid var(--bd);
   border-radius:9px;overflow:hidden;max-width:210px}
 .ytcard img{width:100%;height:auto;display:block}
 .ytcard-btn{width:100%;padding:5px;font-size:10px;font-weight:700;
   background:var(--in);color:#fff;text-align:center;
-  transition:background .15s;display:block;cursor:pointer;border:none}
+  transition:background .15s;display:block;cursor:pointer;border:none;font-family:inherit}
 .ytcard-btn:hover{background:#4f46e5}
 .sysmsg{align-self:flex-start;font-size:10px;color:var(--mu2);
-  background:var(--sf2);border:1px solid var(--bd);
-  border-radius:20px;padding:2px 10px;
-  max-width:95%;-webkit-user-select:text;user-select:text}
+  background:var(--sf2);border:1px solid var(--bd);border-radius:20px;
+  padding:2px 10px;max-width:95%;-webkit-user-select:text;user-select:text}
 
-/* ── Chat input ── */
-#cia{display:none;padding:7px 8px;background:var(--sf2);
+/* ── チャット入力 ── */
+#cia{display:none;padding:6px 8px;background:var(--sf2);
   border-top:1px solid var(--bd);flex-shrink:0;gap:6px;
-  padding-bottom:calc(7px + var(--safe))}
+  padding-bottom:calc(6px + var(--safe))}
 #cia.show{display:flex;align-items:flex-end}
 #cta{flex:1;min-width:0;background:var(--bg);border:1px solid var(--bd);
   border-radius:11px;color:var(--tx);font-size:13px;padding:7px 11px;
@@ -243,22 +240,22 @@ a{color:var(--in)}a:hover{text-decoration:underline}
 #cta:focus{outline:none;border-color:var(--in)}
 .bcs{background:var(--in);color:#fff;font-size:12px;font-weight:700;
   padding:7px 13px;border-radius:11px;transition:background .15s;
-  flex-shrink:0;align-self:flex-end;box-shadow:0 2px 7px var(--in-g)}
+  flex-shrink:0;align-self:flex-end;box-shadow:0 2px 6px var(--in-g)}
 .bcs:hover:not(:disabled){background:#4f46e5}
-.bcs:disabled{opacity:.4;cursor:not-allowed}
+.bcs:disabled{opacity:.35;cursor:not-allowed}
 </style>
 </head>
 <body>
 <div id="app">
 
-  <!-- ══ LEFT: Video ══ -->
+  <!-- ══ LEFT: 動画 ══ -->
   <div id="lp">
     <div id="yw">
       <div id="yph">
         <div class="brand">Nezu Tube Chat</div>
-        <div class="hint" id="yph-hint">YouTubeのURLを貼り付けて動画を共有</div>
+        <div class="hint" id="yph-hint">入室後にYouTube URLを共有できます</div>
       </div>
-      <!-- 同期確認オーバーレイ（ゲスト用） -->
+      <!-- ゲスト: 新動画の同期確認 -->
       <div id="gov">
         <div class="ovc">
           <div class="ol">🎬 同期リクエスト</div>
@@ -273,41 +270,41 @@ a{color:var(--in)}a:hover{text-decoration:underline}
       <div id="ytPlayer"></div>
     </div>
 
-    <!-- プレイヤーコントロール -->
+    <!--
+      プレイヤーコントロール
+      .host       → ホスト用 (再生・シーク・同期ボタン + 状態)
+      .guest-sync → ゲスト同期中 (状態表示のみ)
+      未入室/ゲスト自由視聴 → display:none
+    -->
     <div id="pc">
-      <div class="cr">
-        <button id="mpp" disabled>▶</button>
+      <!-- ホストのみ: 再生 + シーク + 時間 -->
+      <div class="host-ctrl">
+        <button id="mpp">▶</button>
         <span id="mt">00:00</span>
-        <input type="range" id="ms" min="0" max="100" value="0" step="1" disabled>
+        <input type="range" id="ms" min="0" max="100" value="0" step="1">
       </div>
-      <div class="cr2">
-        <div class="cl">
-          <span id="rb" class="rb-hn">---</span>
-          <button id="stb" class="stb-go hidden">同期を開始</button>
-        </div>
-        <div class="cri">
-          <button id="mm" disabled>🔇</button>
-          <input type="range" id="mv" min="0" max="100" value="0" step="1" disabled>
-        </div>
-      </div>
-    </div>
-
-    <!-- URL共有バー -->
-    <div id="ub">
-      <input type="url" id="ui" placeholder="YouTubeのURLを貼り付け..." autocomplete="off" inputmode="url">
-      <button class="bsend" id="us" disabled>共有</button>
-    </div>
-  </div>
-
-  <!-- ══ RIGHT: Chat ══ -->
-  <div id="rp">
-    <!-- コンパクトヘッダー (1行) -->
-    <div id="ch">
-      <div id="hr1">
+      <!-- ホスト・ゲスト同期中: 状態 + 時間 + [同期ボタン] -->
+      <div class="state-row">
         <div id="sp" class="sp-no">
           <span class="ld ld-off" id="ld"></span>
           <span id="stx">---</span>
         </div>
+        <button id="stb" class="stb-go">同期を開始</button>
+        <span id="stime">00:00 / 00:00</span>
+      </div>
+    </div>
+
+    <!-- URL入力 (ホストのみ) -->
+    <div id="ub">
+      <input type="url" id="ui" placeholder="YouTubeのURLを貼り付け..." autocomplete="off" inputmode="url">
+      <button class="bsh" id="us">共有</button>
+    </div>
+  </div>
+
+  <!-- ══ RIGHT: チャット ══ -->
+  <div id="rp">
+    <div id="ch">
+      <div id="hr1">
         <button id="claim" class="hbtn">👑 ホスト取得</button>
         <button id="fmode" class="hbtn fm-fr">自由視聴</button>
         <button id="pbtn">
@@ -316,7 +313,6 @@ a{color:var(--in)}a:hover{text-decoration:underline}
         </button>
         <button id="xbtn">退出</button>
       </div>
-      <div id="stime">00:00 / 00:00</div>
       <div id="ul"><div id="uli"></div></div>
       <div id="lf">
         <div class="lr">
@@ -338,946 +334,683 @@ a{color:var(--in)}a:hover{text-decoration:underline}
 </div>
 
 <script type="module">
-import { initializeApp }       from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { initializeApp }   from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import { getDatabase, ref, push, onValue, set, update, remove,
          query, orderByChild, onChildAdded, get, off,
          onDisconnect, limitToLast }
-                               from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+                           from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
-/* ════════════════════════════════════════
-   定数
-════════════════════════════════════════ */
+/* ══ 定数 ══ */
 const DB_URL      = "https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app";
 const ROOM        = "one_global_room";
 const TRIP_SALT   = "NezuTubeSecretSalt_2026";
-const INACTIVE_MS = 30 * 60 * 1000;   // 30分
-const DRIFT_S     = 1.5;              // この秒数以上ズレたらシーク
-const HB_MS       = 15_000;           // presence ハートビート
-const CHAT_LIMIT  = 100;
+const INACTIVE_MS = 30 * 60 * 1000;
+const DRIFT_S     = 1.5;
+const HB_MS       = 20_000;
+const CHAT_LIMIT  = 80;
 
-/* ════════════════════════════════════════
-   Firebase
-════════════════════════════════════════ */
-const fbApp = initializeApp({ databaseURL: DB_URL });
-const db    = getDatabase(fbApp);
+/* ══ Firebase ══ */
+const db = getDatabase(initializeApp({ databaseURL: DB_URL }));
 
-/* ════════════════════════════════════════
-   DOM
-════════════════════════════════════════ */
-const $  = id => document.getElementById(id);
-const el = {
+/* ══ DOM ══ */
+const $ = id => document.getElementById(id);
+const E = {
   app:$("app"),
-  // 左ペイン
   yw:$("yw"), yph:$("yph"), yphHint:$("yph-hint"),
-  ytDiv:$("ytPlayer"),
   gov:$("gov"), ocHost:$("oc-host"), ocAcc:$("oc-acc"), ocDec:$("oc-dec"),
-  mpp:$("mpp"), mt:$("mt"), ms:$("ms"),
-  rb:$("rb"), stb:$("stb"), mm:$("mm"), mv:$("mv"),
+  pc:$("pc"), mpp:$("mpp"), mt:$("mt"), ms:$("ms"),
+  sp:$("sp"), ld:$("ld"), stx:$("stx"), stb:$("stb"), stime:$("stime"),
   ub:$("ub"), ui:$("ui"), us:$("us"),
-  // 右ペイン
-  sp:$("sp"), ld:$("ld"), stx:$("stx"),
   claim:$("claim"), fmode:$("fmode"),
   pbtn:$("pbtn"), pcCnt:$("pc-cnt"), chv:$("chv"),
-  xbtn:$("xbtn"), stime:$("stime"),
+  xbtn:$("xbtn"),
   ul:$("ul"), uli:$("uli"),
   lf:$("lf"), ni:$("ni"), ki:$("ki"), eb:$("eb"), tpv:$("tpv"),
-  tl:$("tl"),
-  cia:$("cia"), cta:$("cta"), cs:$("cs"),
+  tl:$("tl"), cia:$("cia"), cta:$("cta"), cs:$("cs"),
 };
 
-/* ════════════════════════════════════════
-   サーバー時刻オフセット
-════════════════════════════════════════ */
-let _srvOff = 0;
-onValue(ref(db, ".info/serverTimeOffset"), s => { _srvOff = s.val() || 0; });
-const srvNow = () => Date.now() + _srvOff;
+/* ══ サーバー時刻 ══ */
+let _off = 0;
+onValue(ref(db, ".info/serverTimeOffset"), s => { _off = s.val() || 0; });
+const now = () => Date.now() + _off;
 
-/* ════════════════════════════════════════
-   UID (永続)
-════════════════════════════════════════ */
+/* ══ UID ══ */
 const uid = (() => {
   let id = localStorage.getItem("or_uid");
   if (!id) { id = crypto.randomUUID(); localStorage.setItem("or_uid", id); }
   return id;
 })();
 
-/* ════════════════════════════════════════
-   アプリ状態
-   
-   ▼ 役割の定義
-   amIOwner   : 自分が現在のホストか
-   isHostSync : ホストが「同期ON」にしているか (DB の isSyncing フラグ)
-   isGuestFree: ゲストが「自由視聴モード」を選んでいるか
-   isSyncOk   : ゲストが同期を承認済みか
-   
-   ▼ 再生制御の権限
-   ホスト      → 常にプレイヤーを自由に操作できる
-                 同期ONのとき → 操作をDBに書いてゲストに配信
-                 同期OFFのとき→ 自分だけ再生 (DBに書かない)
-   ゲスト(同期): ホストの状態を受信して追従するだけ / 自分では操作不可
-   ゲスト(自由): 自分自身で再生操作できる (DBには書かない)
-════════════════════════════════════════ */
-let ytPlayer    = null;
-let isYtReady   = false;
-let hasJoined   = false;
-let curN        = "";          // 表示名 (name + trip)
+/* ══ 状態
+  ─────────────────────────────────────────
+  役割と操作権限:
 
-// ── 同期状態 ──
-let amIOwner    = false;       // 自分がホストか
-let isHostSync  = false;       // ホストが同期ONか (DB値)
-let isGuestFree = false;       // ゲスト自由視聴モード
-let isSyncOk    = false;       // ゲストが同期承認済みか
+  ホスト
+    同期ON  → 再生/シーク/一時停止 → DBに書いてゲストへ配信
+    同期OFF → 自分だけ再生 (DBに書かない)
+    → 独自コントロール: 再生・シーク・同期ボタン・状態表示
 
-// ── キャッシュ ──
-let vCache      = null;        // 最新の videoState スナップショット
-let lastVid     = null;        // 最後にロードした videoId ("" で初期化)
+  ゲスト(同期中)
+    → DB状態に自動追従。独自コントロール一切触れない。
+    → 状態表示のみ
 
-// ── タイマー系 ──
-let isDrag      = false;
-let isComp      = false;
-let slTmr       = null;
-let hbTmr       = null;
-let inTmr       = null;
-let chatUnsub   = null;
-let lastActTs   = srvNow();
+  ゲスト(自由視聴)
+    → YouTube標準UIだけ使う。独自コントロール非表示。
+    → 状態表示なし (ただしヘッダーの切替ボタンあり)
 
-// ── ローカルアクション保護 ──
-// shield は「自分がDBに書いた後、その変更が onValue で返ってきても無視する」ための仕組み
-// ※ ゲストの同期追従には影響させない
-let _shieldUntil = 0;
-const shield  = (ms = 800) => { _shieldUntil = Date.now() + ms; };
-const shielded = () => amIOwner && Date.now() < _shieldUntil;
-// ホストのみ shield を使用。ゲストは常に DB に従う。
+  未入室
+    → 全コントロール非表示
+  ─────────────────────────────────────────
+══ */
+let ytp        = null;
+let ytReady    = false;
+let joined     = false;
+let curN       = "";
 
-/* ════════════════════════════════════════
-   ユーティリティ
-════════════════════════════════════════ */
-const esc = t => (t || "").replace(/[&<>"']/g,
-  c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+let amIOwner   = false;
+let isHostSync = false;
+let isGuestFree= false;
+let isSyncOk   = false;
+
+let vCache     = null;
+let lastVid    = null;
+
+let isDrag     = false;
+let isComp     = false;
+let lastActTs  = now();
+let slTmr=null, hbTmr=null, inTmr=null, chatUnsub=null;
+
+// shield: ホストが自分でDB書いた後に自分のonValue反応を抑制
+let shieldUntil = 0;
+const shield   = (ms=800) => { shieldUntil = Date.now() + ms; };
+const shielded = () => amIOwner && Date.now() < shieldUntil;
+
+/* ══ ユーティリティ ══ */
+const esc = t => (t||"").replace(/[&<>"']/g,
+  c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const linkify = t => esc(t).replace(/(https?:\/\/[^\s<>"]+)/g,
   '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
 const fmtT = s => {
-  if (!isFinite(s) || s < 0) return "00:00";
-  return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+  if (!isFinite(s)||s<0) return "00:00";
+  return `${String(Math.floor(s/60)).padStart(2,"0")}:${String(Math.floor(s%60)).padStart(2,"0")}`;
 };
-const fmtCk = ts => new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+const fmtCk = ts => new Date(ts).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
 const exVid = url => {
   if (!url) return null;
   const m = url.match(/(?:youtu\.be\/|[?&]v=|embed\/)([A-Za-z0-9_-]{11})/);
   return m ? m[1] : null;
 };
 
-/* ════════════════════════════════════════
-   トリップ生成
-════════════════════════════════════════ */
+/* ══ Trip ══ */
 function tripHash(key) {
   if (!key) return "";
-  const s = key + TRIP_SALT;
-  let h = 0;
-  for (let i = 0; i < s.length; i++) { h = (h << 5) - h + s.charCodeAt(i); h |= 0; }
-  let t = Math.abs(h).toString(36).slice(0, 5);
-  while (t.length < 5) t += "x";
-  return "◆" + t;
+  let h=0; const s=key+TRIP_SALT;
+  for(let i=0;i<s.length;i++){h=(h<<5)-h+s.charCodeAt(i);h|=0;}
+  let t=Math.abs(h).toString(36).slice(0,5);
+  while(t.length<5) t+="x";
+  return "◆"+t;
 }
-function updateTP() {
-  const n = el.ni.value.replace(/[\s\u3000]+/g, "").trim().slice(0, 10);
-  el.tpv.textContent = (n || "名無し") + tripHash(el.ki.value);
+function updateTP(){
+  const n=E.ni.value.replace(/[\s\u3000]+/g,"").trim().slice(0,10);
+  E.tpv.textContent=(n||"名無し")+tripHash(E.ki.value);
 }
-el.ni.addEventListener("input", updateTP);
-el.ki.addEventListener("input", updateTP);
+E.ni.addEventListener("input",updateTP);
+E.ki.addEventListener("input",updateTP);
 
-/* ════════════════════════════════════════
-   YouTube IFrame API
-════════════════════════════════════════ */
-(() => {
-  if (window.YT?.Player) { isYtReady = true; return; }
-  window.onYouTubeIframeAPIReady = () => { isYtReady = true; };
-  const s = document.createElement("script");
-  s.src = "https://www.youtube.com/iframe_api";
-  s.async = true;
+/* ══ YT API ══ */
+(()=>{
+  if(window.YT?.Player){ytReady=true;return;}
+  window.onYouTubeIframeAPIReady=()=>{ytReady=true;};
+  const s=document.createElement("script");
+  s.src="https://www.youtube.com/iframe_api";s.async=true;
   document.head.appendChild(s);
 })();
 
-/* ════════════════════════════════════════
-   プレイヤー操作
-════════════════════════════════════════ */
-
-/** DB の videoState から「今再生すべき位置」を計算 */
-function calcTargetTime(state) {
-  let t = state.currentTime || 0;
-  if (state.status === "playing" && state.isSyncing) {
-    t += (srvNow() - (state.timestamp || srvNow())) / 1000;
-  }
-  return Math.max(0, t);
+/* ══ プレイヤー ══ */
+function calcT(state){
+  let t=state.currentTime||0;
+  if(state.status==="playing"&&state.isSyncing)
+    t+=(now()-(state.timestamp||now()))/1000;
+  return Math.max(0,t);
 }
 
-/** プレイヤーを新規作成 */
-function buildPlayer(videoId, startSec) {
-  const tryBuild = () => {
-    if (!isYtReady || !window.YT?.Player) { setTimeout(tryBuild, 100); return; }
-    lastVid = videoId;
-    ytPlayer = new YT.Player("ytPlayer", {
-      videoId,
-      playerVars: {
-        autoplay: 1, playsinline: 1, controls: 1, rel: 0, mute: 1,
-        start: Math.max(0, Math.floor(startSec)),
+function buildPlayer(vid,sec){
+  const go=()=>{
+    if(!ytReady||!window.YT?.Player){setTimeout(go,120);return;}
+    lastVid=vid;
+    ytp=new YT.Player("ytPlayer",{
+      videoId:vid,
+      playerVars:{
+        autoplay:1,playsinline:1,controls:1,rel:0,
+        // ミュートしない (ユーザーが音量を自分で操作)
+        // ただし自動再生のためブラウザポリシー回避で最初だけmute
+        mute:1,
+        start:Math.max(0,Math.floor(sec))
       },
-      events: {
-        onReady: e => { e.target.mute(); e.target.setVolume(0); el.mv.value = 0; updMute(0); },
-        onStateChange: onPlayerStateChange,
+      events:{
+        onReady: e => {
+          // 初回のみミュート解除を促す (自動再生制限対策)
+          // ユーザーがYT標準UIで音量操作するので何もしない
+        },
+        onStateChange: onPSC,
       },
     });
   };
-  tryBuild();
+  go();
 }
 
-/** 動画をロード or 切り替え */
-function loadOrSwap(videoId, targetSec) {
-  if (!videoId) return;
-  if (ytPlayer && lastVid === videoId) {
-    // 同じ動画 → シーク+再生状態だけ合わせる
-    applyControl(vCache?.status || "paused", targetSec);
-    return;
-  }
-  // 別動画 or 初回
-  lastVid = videoId;
-  if (ytPlayer?.loadVideoById) {
-    try {
-      ytPlayer.mute();
-      ytPlayer.setVolume(0);
-      ytPlayer.loadVideoById({ videoId, startSeconds: Math.max(0, Math.floor(targetSec)) });
-      el.mv.value = 0;
-      updMute(0);
+function loadVid(vid,sec){
+  if(!vid)return;
+  if(ytp&&lastVid===vid){applyCtrl(vCache?.status||"paused",sec);return;}
+  lastVid=vid;
+  if(ytp?.loadVideoById){
+    try{
+      ytp.loadVideoById({videoId:vid,startSeconds:Math.max(0,Math.floor(sec))});
       return;
-    } catch {
-      try { ytPlayer.destroy(); } catch {}
-      ytPlayer = null;
-    }
+    } catch{try{ytp.destroy();}catch{};ytp=null;}
   }
-  buildPlayer(videoId, targetSec);
+  buildPlayer(vid,sec);
 }
 
-/** 再生状態を適用 (シーク + 再生/停止) */
-function applyControl(status, targetSec) {
-  if (!ytPlayer?.getPlayerState) return;
-  try {
-    const cur = ytPlayer.getCurrentTime();
-    const ps  = ytPlayer.getPlayerState();
-    if (Math.abs(cur - targetSec) > DRIFT_S) {
-      ytPlayer.seekTo(targetSec, true);
-    }
-    if (status === "playing" && ps !== 1) {
-      ytPlayer.mute();
-      ytPlayer.setVolume(0);
-      ytPlayer.playVideo();
-    } else if (status === "paused" && ps !== 2) {
-      ytPlayer.pauseVideo();
-    }
-  } catch {}
+function applyCtrl(status,sec){
+  if(!ytp?.getPlayerState)return;
+  try{
+    const cur=ytp.getCurrentTime(), ps=ytp.getPlayerState();
+    if(Math.abs(cur-sec)>DRIFT_S) ytp.seekTo(sec,true);
+    if(status==="playing"&&ps!==1) ytp.playVideo();
+    else if(status==="paused"&&ps!==2) ytp.pauseVideo();
+  }catch{}
 }
 
-/* ════════════════════════════════════════
-   onPlayerStateChange
-   ホストの操作 → DB に書く
-   ゲスト(同期) → DB に絶対書かない / ホストに追従
-════════════════════════════════════════ */
-function onPlayerStateChange(event) {
-  if (!vCache) return;
-  const ps  = event.data;
-  const ct  = ytPlayer?.getCurrentTime?.() || 0;
-  const dur = ytPlayer?.getDuration?.() || 0;
+/* ══ onPlayerStateChange ══ */
+function onPSC(e){
+  if(!vCache)return;
+  const ps=e.data, ct=ytp?.getCurrentTime?.()||0, dur=ytp?.getDuration?.()||0;
 
-  // ── 動画終了 ──
-  if (ps === 0) {
-    const endPos = Math.max(0, dur - 0.5);
-    if (amIOwner) {
-      shield(1200);
-      ytPlayer.seekTo(endPos, true);
-      ytPlayer.pauseVideo();
-      if (isHostSync) writeVideoState({ status: "paused", currentTime: endPos, timestamp: srvNow() });
-    } else if (isGuestFree || !isHostSync) {
-      ytPlayer.seekTo(endPos, true);
-      ytPlayer.pauseVideo();
-    }
-    // ゲスト(同期中)は何もしない(ホストのstateを待つ)
-    return;
-  }
-
-  // ── ホスト ──
-  if (amIOwner) {
-    if (!isHostSync) return;   // 同期OFFならDBに書かない
-    if (shielded()) return;    // 自分のコード起因の変化は無視
-    // ユーザーが直接プレイヤーを操作した変化だけ書き込む
-    if (ps === 1 && vCache.status !== "playing") {
-      writeVideoState({ status: "playing", currentTime: ct, timestamp: srvNow() });
-    } else if (ps === 2 && vCache.status !== "paused") {
-      writeVideoState({ status: "paused", currentTime: ct, timestamp: srvNow() });
+  // 動画終了
+  if(ps===0){
+    const ep=Math.max(0,dur-0.5);
+    if(amIOwner){
+      shield(1200); ytp.seekTo(ep,true); ytp.pauseVideo();
+      if(isHostSync) wV({status:"paused",currentTime:ep,timestamp:now()});
+    } else if(isGuestFree||!isHostSync){
+      ytp.seekTo(ep,true); ytp.pauseVideo();
     }
     return;
   }
 
-  // ── ゲスト(同期中) ── DBに書くのは一切禁止。ホストに戻すだけ。
-  if (isSyncOk && isHostSync && !isGuestFree) {
-    // ホストが "playing" と言っているのにゲストが停止した → 再開
-    if (vCache.status === "playing" && ps !== 1 && ps !== 3) {
-      setTimeout(() => {
-        if (!ytPlayer || !isSyncOk || isGuestFree) return;
-        const cur2 = ytPlayer.getCurrentTime?.() || 0;
-        const ps2  = ytPlayer.getPlayerState?.();
-        if (ps2 !== 1) {
-          ytPlayer.mute();
-          ytPlayer.setVolume(0);
-          ytPlayer.playVideo();
-        }
-      }, 300);
+  // ホスト
+  if(amIOwner){
+    if(!isHostSync||shielded())return;
+    if(ps===1&&vCache.status!=="playing")
+      wV({status:"playing",currentTime:ct,timestamp:now()});
+    else if(ps===2&&vCache.status!=="paused")
+      wV({status:"paused",currentTime:ct,timestamp:now()});
+    return;
+  }
+
+  // ゲスト(同期中) — ホスト状態に戻す
+  if(isSyncOk&&isHostSync&&!isGuestFree){
+    if(vCache.status==="playing"&&ps!==1&&ps!==3){
+      setTimeout(()=>{
+        if(!ytp||!isSyncOk||isGuestFree)return;
+        if(ytp.getPlayerState?.()!==1) ytp.playVideo();
+      },300);
     }
-    // ホストが "paused" と言っているのにゲストが再生した → 停止
-    if (vCache.status === "paused" && ps === 1) {
-      setTimeout(() => {
-        if (!ytPlayer || !isSyncOk || isGuestFree) return;
-        if (ytPlayer.getPlayerState?.() === 1) ytPlayer.pauseVideo();
-      }, 300);
+    if(vCache.status==="paused"&&ps===1){
+      setTimeout(()=>{
+        if(!ytp||!isSyncOk||isGuestFree)return;
+        if(ytp.getPlayerState?.()===1) ytp.pauseVideo();
+      },300);
     }
   }
 }
 
-/* ════════════════════════════════════════
-   DB 書き込み (ホストのみ使用)
-════════════════════════════════════════ */
-const vRef = () => ref(db, `rooms/${ROOM}/videoState`);
+/* ══ DB書き込み (ホストのみ) ══ */
+const vRef = ()=>ref(db,`rooms/${ROOM}/videoState`);
+function wV(patch){if(!amIOwner)return; update(vRef(),patch).catch(()=>{});}
+function setV(data){return set(vRef(),data);}
 
-function writeVideoState(patch) {
-  // amIOwner のチェックを毎回してから書く
-  if (!amIOwner) return;
-  update(vRef(), patch).catch(() => {});
-}
-
-function setVideoState(data) {
-  return set(vRef(), data);
-}
-
-function updMute(v) { el.mm.textContent = v === 0 ? "🔇" : "🔊"; }
-
-/* ════════════════════════════════════════
-   UI 更新 (ステータス表示)
-   呼び出すたびに amIOwner / isHostSync / isGuestFree / isSyncOk を見て全部描画
-════════════════════════════════════════ */
-function updUI() {
-  const sc = (elem, ...c) => { elem.className = c.join(" "); };
+/* ══ UI描画 ══
+  コントロールバー (#pc) のクラスで制御:
+    .host       → ホスト表示
+    .guest-sync → ゲスト同期中 (状態のみ)
+    (なし)      → 非表示 (ゲスト自由・未入室)
+══ */
+function updUI(){
+  const pc=E.pc, stb=E.stb, sp=E.sp, ld=E.ld;
+  const sc=(el,...c)=>{el.className=c.join(" ");};
 
   // ── ホスト ──
-  if (amIOwner) {
-    sc(el.claim, "hbtn");           // 非表示
-    sc(el.fmode, "hbtn");           // 非表示
-    el.ms.disabled = false;
-    el.stb.classList.remove("hidden");
+  if(amIOwner){
+    pc.className = "host";
+    E.ub.classList.add("show");
+    sc(E.claim,"hbtn"); sc(E.fmode,"hbtn"); // 非表示
+    E.ms.disabled=false;
 
-    if (isHostSync) {
-      sc(el.sp, "sp-hs");
-      el.ld.className = "ld ld-am";
-      el.stx.textContent = "🔴 ホスト・同期中";
-      sc(el.rb, "rb-hs"); el.rb.textContent = "👑 同期中";
-      el.stb.textContent = "同期を停止"; sc(el.stb, "stb-st");
+    if(isHostSync){
+      sc(sp,"sp-hs"); ld.className="ld ld-am"; E.stx.textContent="🔴 ホスト・同期中";
+      stb.textContent="同期を停止"; sc(stb,"stb-st");
     } else {
-      sc(el.sp, "sp-hn");
-      el.ld.className = "ld ld-off";
-      el.stx.textContent = "👑 ホスト";
-      sc(el.rb, "rb-hn"); el.rb.textContent = "👑 ホスト";
-      el.stb.textContent = "同期を開始"; sc(el.stb, "stb-go");
+      sc(sp,"sp-hn"); ld.className="ld ld-off"; E.stx.textContent="👑 ホスト";
+      stb.textContent="同期を開始"; sc(stb,"stb-go");
     }
     return;
   }
 
   // ── ゲスト ──
-  el.stb.classList.add("hidden");
+  E.ub.classList.remove("show");
 
-  // 同期がそもそも無い
-  if (!isHostSync) {
-    sc(el.claim, "hbtn show");
-    sc(el.fmode, "hbtn");           // 非表示
-    el.ms.disabled = false;
-    sc(el.sp, "sp-no"); el.ld.className = "ld ld-off";
-    el.stx.textContent = "同期なし";
-    sc(el.rb, "rb-gn"); el.rb.textContent = "ゲスト";
+  if(!isHostSync){
+    // 同期なし → コントロール非表示
+    pc.className="";
+    sc(E.claim,"hbtn show"); sc(E.fmode,"hbtn");
     return;
   }
 
-  // 同期ON — ホスト取得ボタンは常に表示
-  sc(el.claim, "hbtn show");
+  // ホストの同期ON
+  sc(E.claim,"hbtn show");
 
-  if (isGuestFree) {
-    // 自由視聴モード
-    sc(el.fmode, "hbtn fm-rt show");
-    el.fmode.textContent = "← 同期に戻る";
-    el.ms.disabled = false;
-    sc(el.sp, "sp-fr"); el.ld.className = "ld ld-off";
-    el.stx.textContent = "🎧 自由視聴中";
-    sc(el.rb, "rb-gf"); el.rb.textContent = "自由視聴";
-  } else if (isSyncOk) {
-    // 同期中
-    sc(el.fmode, "hbtn fm-fr show");
-    el.fmode.textContent = "自由視聴";
-    el.ms.disabled = true;   // スライダー操作禁止
-    sc(el.sp, "sp-sy"); el.ld.className = "ld ld-gr";
-    el.stx.textContent = "🟢 ゲスト・同期中";
-    sc(el.rb, "rb-gs"); el.rb.textContent = "🔄 同期中";
+  if(isGuestFree){
+    // 自由視聴 → コントロール非表示 (YouTube標準UIだけ)
+    pc.className="";
+    sc(E.fmode,"hbtn fm-rt show"); E.fmode.textContent="← 同期に戻る";
+  } else if(isSyncOk){
+    // 同期中 → 状態のみ表示
+    pc.className="guest-sync";
+    sc(E.fmode,"hbtn fm-fr show"); E.fmode.textContent="自由視聴";
+    sc(sp,"sp-sy"); ld.className="ld ld-gr"; E.stx.textContent="🟢 同期中";
+    stb.textContent=""; // stbはguest-syncでは不要だがDOMは残す
   } else {
-    // 未承認 (確認待ち)
-    sc(el.fmode, "hbtn fm-fr show");
-    el.fmode.textContent = "自由視聴";
-    el.ms.disabled = true;
-    sc(el.sp, "sp-pe"); el.ld.className = "ld ld-ro";
-    el.stx.textContent = "⏳ 同期待機中";
-    sc(el.rb, "rb-gn"); el.rb.textContent = "待機中";
+    // 未承認
+    pc.className="guest-sync";
+    sc(E.fmode,"hbtn fm-fr show"); E.fmode.textContent="自由視聴";
+    sc(sp,"sp-pe"); ld.className="ld ld-ro"; E.stx.textContent="⏳ 待機中";
   }
 }
 
-/* ════════════════════════════════════════
-   videoState リスナー (メインの同期ロジック)
-════════════════════════════════════════ */
-function bindVideoState() {
-  onValue(vRef(), snap => {
-    // ── 動画なし ──
-    if (!snap.exists()) {
-      vCache = null; amIOwner = false; isHostSync = false;
-      if (ytPlayer) { try { ytPlayer.destroy(); } catch {} ytPlayer = null; }
-      lastVid = null; isSyncOk = false; isGuestFree = false;
-      el.yph.style.display = "flex";
-      updUI();
+/* ══ videoState リスナー ══ */
+function bindVideoState(){
+  onValue(vRef(),snap=>{
+    if(!snap.exists()){
+      vCache=null;amIOwner=false;isHostSync=false;
+      if(ytp){try{ytp.destroy();}catch{};ytp=null;}
+      lastVid=null;isSyncOk=false;isGuestFree=false;
+      E.yph.style.display="flex"; updUI(); return;
+    }
+
+    const st=snap.val(), prev=vCache?.videoId, wasOwner=amIOwner;
+    vCache=st; amIOwner=(st.owner===uid); isHostSync=!!st.isSyncing;
+    if(!wasOwner&&amIOwner){isSyncOk=true;isGuestFree=false;}
+
+    const tSec=calcT(st);
+    E.yph.style.display="none";
+
+    // ─ ホスト ─
+    if(amIOwner){
+      E.gov.classList.remove("show"); updUI();
+      if(lastVid!==st.videoId||!ytp) loadVid(st.videoId,tSec);
       return;
     }
 
-    const state = snap.val();
-    const prevVid   = vCache?.videoId;
-    const wasOwner  = amIOwner;
-    vCache          = state;
-    amIOwner        = (state.owner === uid);
-    isHostSync      = !!state.isSyncing;
-
-    // オーナーが変わって自分になった場合
-    if (!wasOwner && amIOwner) {
-      isSyncOk    = true;
-      isGuestFree = false;
-    }
-
-    const targetSec = calcTargetTime(state);
-    el.yph.style.display = "none";
-
-    // ══ ホスト ══
-    if (amIOwner) {
-      el.gov.classList.remove("show");
-      updUI();
-      // 動画が変わった or プレイヤーがない → ロード
-      if (lastVid !== state.videoId || !ytPlayer) {
-        loadOrSwap(state.videoId, targetSec);
-      }
-      // ホストは自分でプレイヤーを操作するのでここでは追従しない
-      return;
-    }
-
-    // ══ ゲスト ══
+    // ─ ゲスト ─
     updUI();
 
-    // ── 同期OFF → 自由に再生させる ──
-    if (!isHostSync) {
-      if (lastVid !== state.videoId || !ytPlayer) {
-        loadOrSwap(state.videoId, state.currentTime || 0);
-      }
+    if(!isHostSync){
+      if(lastVid!==st.videoId||!ytp) loadVid(st.videoId,st.currentTime||0);
       return;
     }
 
-    // ── 同期ON ──
+    // 動画が変わったら承認リセット
+    if(st.videoId!==prev&&prev!=null) isSyncOk=false;
 
-    // 新しい動画に変わった → 承認が必要か確認
-    if (state.videoId !== prevVid && prevVid != null) {
-      // 前の承認は新動画では無効
-      isSyncOk = false;
-    }
-
-    if (!isSyncOk) {
-      // 未承認 → オーバーレイを出す
-      el.ocHost.textContent = `${esc(state.ownerName || "ホスト")} の動画に参加しますか？`;
-      el.gov.classList.add("show");
-      updUI();
-      // プレイヤーだけはロードしておく (音なし・停止状態で)
-      if (lastVid !== state.videoId || !ytPlayer) {
-        loadOrSwap(state.videoId, state.currentTime || 0);
-      }
+    if(!isSyncOk){
+      E.ocHost.textContent=`${esc(st.ownerName||"ホスト")} の動画に参加しますか？`;
+      E.gov.classList.add("show"); updUI();
+      if(lastVid!==st.videoId||!ytp) loadVid(st.videoId,st.currentTime||0);
       return;
     }
 
-    // 承認済み
-    el.gov.classList.remove("show");
+    E.gov.classList.remove("show");
 
-    if (isGuestFree) {
-      // 自由視聴中 → 動画が違う場合だけロード (追従しない)
-      if (lastVid !== state.videoId || !ytPlayer) {
-        loadOrSwap(state.videoId, state.currentTime || 0);
-      }
+    if(isGuestFree){
+      if(lastVid!==st.videoId||!ytp) loadVid(st.videoId,st.currentTime||0);
       return;
     }
 
-    // ── 同期追従 ──
-    if (lastVid !== state.videoId || !ytPlayer) {
-      loadOrSwap(state.videoId, targetSec);
-    } else {
-      // ホストが書いた状態変化をそのまま適用
-      applyControl(state.status, targetSec);
-    }
+    // 同期追従
+    if(lastVid!==st.videoId||!ytp) loadVid(st.videoId,tSec);
+    else applyCtrl(st.status,tSec);
   });
 }
 
-/* ════════════════════════════════════════
-   Presence リスナー
-════════════════════════════════════════ */
-function bindPresence() {
-  onValue(ref(db, `presence/${ROOM}`), async snap => {
-    const users = Object.values(snap.val() || {});
-    el.pcCnt.textContent = users.length;
-
-    if (users.length === 0) {
-      el.uli.innerHTML = `<div style="color:var(--mu2);font-size:10px;text-align:center;padding:7px">誰もいません</div>`;
-      try {
-        await set(ref(db, `chat/${ROOM}`), null);
-        await set(ref(db, `rooms/${ROOM}`), null);
-      } catch {}
+/* ══ Presence ══ */
+function bindPresence(){
+  onValue(ref(db,`presence/${ROOM}`),async snap=>{
+    const users=Object.values(snap.val()||{});
+    E.pcCnt.textContent=users.length;
+    if(users.length===0){
+      E.uli.innerHTML=`<div style="color:var(--mu2);font-size:10px;text-align:center;padding:7px">誰もいません</div>`;
+      try{await set(ref(db,`chat/${ROOM}`),null);await set(ref(db,`rooms/${ROOM}`),null);}catch{}
       return;
     }
-
-    users.sort((a, b) => a.uid === uid ? -1 : b.uid === uid ? 1 : 0);
-    el.uli.innerHTML = users.map(u => {
-      const me      = u.uid === uid;
-      const isOwner = vCache?.owner === u.uid;
-      const nm      = esc(u.name) + (me ? " (自分)" : "");
-      const jt      = u.joinedAt ? fmtCk(u.joinedAt) : "";
-      let act       = isOwner && !me
-        ? `<span style="color:var(--am);font-size:11px">👑</span>`
-        : "";
-      if (hasJoined && amIOwner && !me) {
-        act = `<button class="btr" onclick="window.__ho('${esc(u.uid)}','${esc(u.name)}')">譲渡</button>`;
-      }
+    users.sort((a,b)=>a.uid===uid?-1:b.uid===uid?1:0);
+    E.uli.innerHTML=users.map(u=>{
+      const me=u.uid===uid, isOwner=vCache?.owner===u.uid;
+      let act=isOwner&&!me?`<span style="color:var(--am);font-size:11px">👑</span>`:"";
+      if(joined&&amIOwner&&!me)
+        act=`<button class="btr" onclick="window.__ho('${esc(u.uid)}','${esc(u.name)}')">譲渡</button>`;
       return `<div class="ur">
         <div style="display:flex;align-items:center;min-width:0;gap:3px">
-          <span class="un${me ? " me" : ""}">${nm}</span>
-          ${jt ? `<span class="um">${jt}入室</span>` : ""}
-        </div>
-        <div style="flex-shrink:0">${act}</div>
-      </div>`;
+          <span class="un${me?" me":""}">${esc(u.name)+(me?" (自分)":"")}</span>
+          ${u.joinedAt?`<span class="um">${fmtCk(u.joinedAt)}入室</span>`:""}
+        </div><div style="flex-shrink:0">${act}</div></div>`;
     }).join("");
   });
 }
 
-/* ════════════════════════════════════════
-   ホスト譲渡
-════════════════════════════════════════ */
-window.__ho = async (tuid, tname) => {
-  if (!amIOwner || !vCache) return;
-  if (!confirm(`${tname} にホストを譲渡しますか？`)) return;
+window.__ho=async(tuid,tname)=>{
+  if(!amIOwner||!vCache)return;
+  if(!confirm(`${tname} にホストを譲渡しますか？`))return;
   shield(2000);
-  await update(vRef(), { owner: tuid, ownerName: tname, timestamp: srvNow(), isSyncing: false });
-  await push(ref(db, `chat/${ROOM}`), {
-    type: "sys", text: `→ ${tname} にホストを譲渡しました`,
-    time: srvNow(), fromUid: uid, fallbackName: curN,
-  });
-  el.ul.classList.remove("open");
-  el.chv.classList.remove("open");
+  await update(vRef(),{owner:tuid,ownerName:tname,timestamp:now(),isSyncing:false});
+  await push(ref(db,`chat/${ROOM}`),{
+    type:"sys",text:`→ ${tname} にホストを譲渡しました`,time:now(),fromUid:uid,fallbackName:curN});
+  E.ul.classList.remove("open"); E.chv.classList.remove("open");
 };
 
-/* ════════════════════════════════════════
-   チャット
-════════════════════════════════════════ */
-function addMsg(m, key) {
-  if (document.getElementById("m" + key)) return;
-  const me   = m.fromUid === uid || m.uid === uid;
-  const time = m.time ? fmtCk(m.time) : "";
-  const div  = document.createElement("div");
-  div.id = "m" + key;
-
-  if (m.type === "sys") {
-    div.className = "sysmsg";
-    const who = me ? esc(curN) : (m.fallbackName ? esc(m.fallbackName) : "");
-    div.innerHTML = `${who}${esc(m.text)} <span style="color:var(--mu2);font-size:9px">${time}</span>`;
-  } else {
-    div.className = `msg${me ? " me" : ""}`;
-    const vid = exVid(m.text || "");
-    const crown = amIOwner && !me && (m.uid || m.fromUid)
-      ? `<button onclick="window.__ho('${esc(m.uid || m.fromUid)}','${esc(m.name)}')"
-           style="font-size:9px;color:var(--am);background:var(--bg);border:1px solid var(--bd);
-                  border-radius:4px;padding:1px 4px;cursor:pointer;font-family:inherit">譲</button>`
-      : "";
-    const embed = vid
-      ? `<div class="ytcard">
-           <img src="https://img.youtube.com/vi/${vid}/mqdefault.jpg" alt="" loading="lazy">
-           <button class="ytcard-btn" onclick="window.__sv('${vid}')">▶ この動画を共有再生</button>
-         </div>`
-      : "";
-    div.innerHTML = `
+/* ══ チャット ══ */
+function addMsg(m,key){
+  if(document.getElementById("m"+key))return;
+  const me=m.fromUid===uid||m.uid===uid;
+  const time=m.time?fmtCk(m.time):"";
+  const div=document.createElement("div");
+  div.id="m"+key;
+  if(m.type==="sys"){
+    div.className="sysmsg";
+    const who=me?esc(curN):(m.fallbackName?esc(m.fallbackName):"");
+    div.innerHTML=`${who}${esc(m.text)} <span style="color:var(--mu2);font-size:9px">${time}</span>`;
+  }else{
+    div.className=`msg${me?" me":""}`;
+    const vid=exVid(m.text||"");
+    const crown=amIOwner&&!me&&(m.uid||m.fromUid)
+      ?`<button onclick="window.__ho('${esc(m.uid||m.fromUid)}','${esc(m.name)}')"
+          style="font-size:9px;color:var(--am);background:var(--bg);border:1px solid var(--bd);
+                 border-radius:4px;padding:1px 4px;cursor:pointer;font-family:inherit">譲</button>`:"";
+    const embed=vid
+      ?`<div class="ytcard">
+          <img src="https://img.youtube.com/vi/${vid}/mqdefault.jpg" alt="" loading="lazy">
+          <button class="ytcard-btn" onclick="window.__sv('${vid}')">▶ この動画を共有再生</button>
+        </div>`:"";
+    div.innerHTML=`
       <div class="mmeta">
-        <span class="mn${me ? " me" : ""}">${esc(m.name || curN)}</span>
-        ${!me ? crown : ""}
+        <span class="mn${me?" me":""}">${esc(m.name||curN)}</span>
+        ${!me?crown:""}
         <span style="font-family:sans-serif;font-size:9px;color:var(--mu2)">${time}</span>
       </div>
-      <div class="mbub">${linkify(m.text || "")}${embed}</div>`;
+      <div class="mbub">${linkify(m.text||"")}${embed}</div>`;
   }
-
-  el.tl.insertBefore(div, el.tl.firstChild);
-  el.tl.scrollTop = 0;
+  E.tl.insertBefore(div,E.tl.firstChild);
+  E.tl.scrollTop=0;
 }
 
-function bindChat() {
-  if (chatUnsub) { chatUnsub(); chatUnsub = null; }
-  el.tl.innerHTML = "";
-  const cref = query(ref(db, `chat/${ROOM}`), orderByChild("time"), limitToLast(CHAT_LIMIT));
-  const fn = onChildAdded(cref, snap => addMsg(snap.val(), snap.key));
-  chatUnsub = () => off(cref, "child_added", fn);
+function bindChat(){
+  if(chatUnsub){chatUnsub();chatUnsub=null;}
+  E.tl.innerHTML="";
+  const cref=query(ref(db,`chat/${ROOM}`),orderByChild("time"),limitToLast(CHAT_LIMIT));
+  const fn=onChildAdded(cref,snap=>addMsg(snap.val(),snap.key));
+  chatUnsub=()=>off(cref,"child_added",fn);
 }
 
-/* ════════════════════════════════════════
-   メッセージ送信
-════════════════════════════════════════ */
-async function sendMsg() {
-  const txt = el.cta.value.trim();
-  if (!txt || isComp) return;
-  el.cta.value = "";
-  el.cta.style.height = "auto";
-  el.cta.blur();   // キーボードを閉じる
-  lastActTs = srvNow();
-  try {
-    await push(ref(db, `chat/${ROOM}`), {
-      name: curN, text: txt, time: srvNow(), uid, fromUid: uid,
-    });
-  } catch { alert("送信に失敗しました"); }
+/* ══ 送信 ══ */
+async function sendMsg(){
+  const txt=E.cta.value.trim();
+  if(!txt||isComp)return;
+  E.cta.value=""; E.cta.style.height="auto";
+  E.cta.blur(); lastActTs=now();
+  try{
+    await push(ref(db,`chat/${ROOM}`),{name:curN,text:txt,time:now(),uid,fromUid:uid});
+  }catch{alert("送信に失敗しました");}
 }
 
-/* ════════════════════════════════════════
-   動画共有
-════════════════════════════════════════ */
-window.__sv = vid => { if (hasJoined) setVidLive(vid); };
-
-async function setVidLive(vid) {
-  // 自分がホストになって新しい動画を設定
-  amIOwner    = true;
-  isSyncOk    = true;
-  isGuestFree = false;
-  isHostSync  = false;
+/* ══ 動画共有 ══ */
+window.__sv=vid=>{if(joined)setVidLive(vid);};
+async function setVidLive(vid){
+  amIOwner=true;isSyncOk=true;isGuestFree=false;isHostSync=false;
   shield(2000);
-  await setVideoState({
-    videoId: vid, status: "paused", currentTime: 0,
-    timestamp: srvNow(), owner: uid, ownerName: curN, isSyncing: false,
-  });
+  await setV({videoId:vid,status:"paused",currentTime:0,
+              timestamp:now(),owner:uid,ownerName:curN,isSyncing:false});
   updUI();
 }
 
-/* ════════════════════════════════════════
-   入室 / 退室
-════════════════════════════════════════ */
-async function joinRoom(name, key = "", isRestore = false) {
-  if (hasJoined) return;
-  hasJoined = true;
-  curN      = name.slice(0, 10) + tripHash(key);
+/* ══ 入室 ══ */
+async function joinRoom(name,key="",isRestore=false){
+  if(joined)return;
+  joined=true;
+  curN=name.slice(0,10)+tripHash(key);
+  localStorage.setItem("or_name",name.slice(0,10));
+  localStorage.setItem("or_joined","true");
+  if(key) localStorage.setItem("or_key",key); else localStorage.removeItem("or_key");
 
-  localStorage.setItem("or_name", name.slice(0, 10));
-  localStorage.setItem("or_joined", "true");
-  if (key) localStorage.setItem("or_key", key);
-  else localStorage.removeItem("or_key");
-
-  const ts = srvNow();
-  lastActTs = ts;
-
-  const pref = ref(db, `presence/${ROOM}/${uid}`);
-  await set(pref, { name: curN, uid, joinedAt: ts, lastActive: ts });
+  const ts=now(); lastActTs=ts;
+  const pref=ref(db,`presence/${ROOM}/${uid}`);
+  await set(pref,{name:curN,uid,joinedAt:ts,lastActive:ts});
   onDisconnect(pref).remove();
 
-  // UI を入室後状態に
-  el.lf.classList.add("hidden");
-  el.xbtn.classList.add("show");
-  el.ub.classList.add("show");
-  el.cia.classList.add("show");
-  el.stime.classList.add("show");
-  el.ui.disabled = false; el.us.disabled = false;
-  el.mpp.disabled = false; el.mv.disabled = false; el.mm.disabled = false;
-  el.cs.disabled = false;
-  el.yph.style.display = "flex";
+  // ログインフォームを完全に除去
+  E.lf.classList.add("gone");
+  E.xbtn.classList.add("show");
+  E.cia.classList.add("show");
+  E.cs.disabled=false;
+  E.yphHint.textContent="YouTubeのURLを共有バーに貼り付けてください";
 
   bindChat();
   bindVideoState();
 
-  // スライダー更新ループ (333ms)
-  if (slTmr) clearInterval(slTmr);
-  slTmr = setInterval(() => {
-    if (!ytPlayer?.getCurrentTime || isDrag) return;
-    try {
-      const cur = ytPlayer.getCurrentTime();
-      const dur = ytPlayer.getDuration();
-      if (dur > 0) {
-        el.ms.max   = String(Math.floor(dur));
-        el.ms.value = String(Math.floor(cur));
-        el.stime.textContent = `${fmtT(cur)} / ${fmtT(dur)}`;
-        el.mt.textContent    = fmtT(cur);
+  // スライダー+時間更新 (333ms)
+  if(slTmr) clearInterval(slTmr);
+  slTmr=setInterval(()=>{
+    if(!ytp?.getCurrentTime||isDrag)return;
+    try{
+      const cur=ytp.getCurrentTime(), dur=ytp.getDuration();
+      if(dur>0){
+        E.ms.max=String(Math.floor(dur));
+        E.ms.value=String(Math.floor(cur));
+        E.stime.textContent=`${fmtT(cur)} / ${fmtT(dur)}`;
+        E.mt.textContent=fmtT(cur);
       }
-      el.mpp.textContent = ytPlayer.getPlayerState() === 1 ? "⏸" : "▶";
-    } catch {}
-  }, 333);
+      // ホストのみ再生ボタン更新
+      if(amIOwner) E.mpp.textContent=ytp.getPlayerState()===1?"⏸":"▶";
+    }catch{}
+  },333);
 
   // Presence ハートビート
-  if (hbTmr) clearInterval(hbTmr);
-  hbTmr = setInterval(async () => {
-    try { await update(ref(db, `presence/${ROOM}/${uid}`), { lastActive: lastActTs }); } catch {}
-  }, HB_MS);
+  if(hbTmr) clearInterval(hbTmr);
+  hbTmr=setInterval(async()=>{
+    try{await update(ref(db,`presence/${ROOM}/${uid}`),{lastActive:lastActTs});}catch{}
+  },HB_MS);
 
   // 非アクティブチェック
-  if (inTmr) clearInterval(inTmr);
-  inTmr = setInterval(() => {
-    if (srvNow() - lastActTs > INACTIVE_MS) leaveRoom(true);
-  }, 30_000);
+  if(inTmr) clearInterval(inTmr);
+  inTmr=setInterval(()=>{
+    if(now()-lastActTs>INACTIVE_MS) leaveRoom(true);
+  },30_000);
 
-  // 入室メッセージ (リロード時は送らない)
-  if (!isRestore && !sessionStorage.getItem("or_sess")) {
-    sessionStorage.setItem("or_sess", "1");
-    await push(ref(db, `chat/${ROOM}`), {
-      type: "sys", text: "が入室しました",
-      time: srvNow(), fromUid: uid, fallbackName: curN,
-    });
+  if(!isRestore&&!sessionStorage.getItem("or_sess")){
+    sessionStorage.setItem("or_sess","1");
+    await push(ref(db,`chat/${ROOM}`),{
+      type:"sys",text:"が入室しました",time:now(),fromUid:uid,fallbackName:curN});
   }
 }
 
-async function cleanRoom() {
-  try {
-    await remove(ref(db, `presence/${ROOM}/${uid}`));
-    const s = await get(ref(db, `presence/${ROOM}`));
-    if (!s.exists() || Object.keys(s.val()).length === 0) {
-      await set(ref(db, `chat/${ROOM}`), null);
-      await set(ref(db, `rooms/${ROOM}`), null);
+/* ══ 退室 ══ */
+async function cleanRoom(){
+  try{
+    await remove(ref(db,`presence/${ROOM}/${uid}`));
+    const s=await get(ref(db,`presence/${ROOM}`));
+    if(!s.exists()||Object.keys(s.val()).length===0){
+      await set(ref(db,`chat/${ROOM}`),null);
+      await set(ref(db,`rooms/${ROOM}`),null);
     }
-  } catch {}
+  }catch{}
 }
-
-async function leaveRoom(auto = false) {
-  if (slTmr) clearInterval(slTmr);
-  if (hbTmr) clearInterval(hbTmr);
-  if (inTmr) clearInterval(inTmr);
-  if (chatUnsub) chatUnsub();
-  ["or_joined", "or_key"].forEach(k => localStorage.removeItem(k));
+async function leaveRoom(auto=false){
+  if(slTmr) clearInterval(slTmr);
+  if(hbTmr) clearInterval(hbTmr);
+  if(inTmr) clearInterval(inTmr);
+  if(chatUnsub) chatUnsub();
+  ["or_joined","or_key"].forEach(k=>localStorage.removeItem(k));
   sessionStorage.removeItem("or_sess");
-  if (!hasJoined) return;
-  try {
-    await push(ref(db, `chat/${ROOM}`), {
-      type: "sys",
-      text: auto ? "が30分無言のため自動退出しました" : "が退出しました",
-      time: srvNow(), fromUid: uid, fallbackName: curN,
-    });
+  if(!joined)return;
+  try{
+    await push(ref(db,`chat/${ROOM}`),{
+      type:"sys",
+      text:auto?"が30分無言のため自動退出しました":"が退出しました",
+      time:now(),fromUid:uid,fallbackName:curN});
     await cleanRoom();
-  } catch {}
+  }catch{}
   window.location.reload();
 }
 
-/* ════════════════════════════════════════
-   イベント: プレイヤーコントロール
-   ホスト → 操作可能 (同期ONならDBに書く)
-   ゲスト(同期中) → 操作不可
-   ゲスト(自由/同期OFF) → 操作可能 (DBには書かない)
-════════════════════════════════════════ */
+/* ══ イベント ══ */
 
-// 再生/停止ボタン
-el.mpp.addEventListener("click", () => {
-  if (!ytPlayer?.getPlayerState) return;
-  const ps = ytPlayer.getPlayerState();
-
-  if (amIOwner) {
-    shield(600);
-    if (ps === 1) {
-      ytPlayer.pauseVideo();
-      if (isHostSync) writeVideoState({ status: "paused", currentTime: ytPlayer.getCurrentTime(), timestamp: srvNow() });
-    } else {
-      ytPlayer.mute(); ytPlayer.setVolume(0); ytPlayer.playVideo();
-      if (isHostSync) writeVideoState({ status: "playing", currentTime: ytPlayer.getCurrentTime(), timestamp: srvNow() });
-    }
-    return;
-  }
-
-  // ゲスト
-  if (!isSyncOk || !isHostSync || isGuestFree) {
-    // 自由操作
-    if (ps === 1) ytPlayer.pauseVideo();
-    else { ytPlayer.mute(); ytPlayer.setVolume(0); ytPlayer.playVideo(); }
-  }
-  // 同期中のゲストはボタン操作無効 (スライダーも disabled になっているが念のため)
-});
-
-// シークスライダー
-el.ms.addEventListener("pointerdown", () => { isDrag = true; });
-el.ms.addEventListener("input",       () => { isDrag = true; });
-el.ms.addEventListener("change", () => {
-  const t = Number(el.ms.value);
-  if (ytPlayer?.seekTo) {
-    shield(1000);
-    ytPlayer.mute(); ytPlayer.setVolume(0); ytPlayer.seekTo(t, true);
-    // ホストが同期ONのときだけDBに書く
-    if (amIOwner && isHostSync) {
-      writeVideoState({ currentTime: t, timestamp: srvNow() });
-    }
-  }
-  isDrag = false;
-});
-el.ms.addEventListener("pointerup", () => { isDrag = false; });
-
-// 音量
-el.mv.addEventListener("input", () => {
-  const v = Number(el.mv.value);
-  updMute(v);
-  if (ytPlayer?.setVolume) {
-    if (v === 0) ytPlayer.mute();
-    else { ytPlayer.unMute(); ytPlayer.setVolume(v); }
-  }
-});
-el.mm.addEventListener("click", () => {
-  if (!ytPlayer) return;
-  if (ytPlayer.isMuted?.()) {
-    const v = 30; el.mv.value = v;
-    ytPlayer.unMute(); ytPlayer.setVolume(v); updMute(v);
-  } else {
-    ytPlayer.mute(); el.mv.value = 0; updMute(0);
+// ホスト: 再生/停止
+E.mpp.addEventListener("click",()=>{
+  if(!amIOwner||!ytp?.getPlayerState)return;
+  shield(600);
+  const ps=ytp.getPlayerState();
+  if(ps===1){
+    ytp.pauseVideo();
+    if(isHostSync) wV({status:"paused",currentTime:ytp.getCurrentTime(),timestamp:now()});
+  }else{
+    ytp.playVideo();
+    if(isHostSync) wV({status:"playing",currentTime:ytp.getCurrentTime(),timestamp:now()});
   }
 });
 
-// 同期トグル (ホストのみ)
-el.stb.addEventListener("click", async () => {
-  if (!amIOwner || !ytPlayer || !vCache) return;
-  const cur  = ytPlayer.getCurrentTime?.() || 0;
-  const play = ytPlayer.getPlayerState() === 1;
-  isHostSync = !isHostSync;
-  shield(1500);
-  await update(vRef(), {
-    status: play ? "playing" : "paused",
-    currentTime: cur, timestamp: srvNow(), isSyncing: isHostSync,
-  });
+// ホスト: シーク
+E.ms.addEventListener("pointerdown",()=>{isDrag=true;});
+E.ms.addEventListener("input",()=>{isDrag=true;});
+E.ms.addEventListener("change",()=>{
+  if(!amIOwner)return; // ゲストは操作できない
+  const t=Number(E.ms.value);
+  if(ytp?.seekTo){
+    shield(1000); ytp.seekTo(t,true);
+    if(isHostSync) wV({currentTime:t,timestamp:now()});
+  }
+  isDrag=false;
+});
+E.ms.addEventListener("pointerup",()=>{isDrag=false;});
+
+// ホスト: 同期トグル
+E.stb.addEventListener("click",async()=>{
+  if(!amIOwner||!ytp||!vCache)return;
+  const cur=ytp.getCurrentTime?.()||0, play=ytp.getPlayerState()===1;
+  isHostSync=!isHostSync; shield(1500);
+  await update(vRef(),{status:play?"playing":"paused",
+    currentTime:cur,timestamp:now(),isSyncing:isHostSync});
   updUI();
 });
 
-// URL 共有
-async function shareUrl() {
-  const vid = exVid(el.ui.value.trim());
-  if (!vid) { alert("有効なYouTube URLを入力してください"); return; }
-  el.ui.value = "";
-  await setVidLive(vid);
+// URL共有
+async function shareUrl(){
+  const vid=exVid(E.ui.value.trim());
+  if(!vid){alert("有効なYouTube URLを入力してください");return;}
+  E.ui.value=""; await setVidLive(vid);
 }
-el.us.addEventListener("click", shareUrl);
-el.ui.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); shareUrl(); } });
+E.us.addEventListener("click",shareUrl);
+E.ui.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();shareUrl();}});
 
 // ゲスト: 同期承認
-el.ocAcc.addEventListener("click", () => {
-  isSyncOk = true;
-  el.gov.classList.remove("show");
-  updUI();
-  if (vCache) applyControl(vCache.status, calcTargetTime(vCache));
+E.ocAcc.addEventListener("click",()=>{
+  isSyncOk=true; E.gov.classList.remove("show"); updUI();
+  if(vCache) applyCtrl(vCache.status,calcT(vCache));
 });
 
-// ゲスト: 同期拒否 → 自由視聴
-el.ocDec.addEventListener("click", () => {
-  isGuestFree = true;
-  isSyncOk    = true;   // 自由視聴でも "承認済み" にしておく (オーバーレイ再表示しない)
-  el.gov.classList.remove("show");
-  updUI();
+// ゲスト: 自由視聴を選択
+E.ocDec.addEventListener("click",()=>{
+  isGuestFree=true; isSyncOk=true;
+  E.gov.classList.remove("show"); updUI();
 });
 
 // ホスト取得
-el.claim.addEventListener("click", async () => {
-  if (!vCache) return;
-  amIOwner    = true;
-  isGuestFree = false;
-  isSyncOk    = true;
-  isHostSync  = false;
+E.claim.addEventListener("click",async()=>{
+  if(!vCache)return;
+  amIOwner=true;isGuestFree=false;isSyncOk=true;isHostSync=false;
   shield(2000);
-  await setVideoState({
-    videoId:     vCache.videoId,
-    status:      ytPlayer?.getPlayerState() === 1 ? "playing" : "paused",
-    currentTime: ytPlayer?.getCurrentTime?.() || 0,
-    timestamp:   srvNow(),
-    owner:       uid,
-    ownerName:   curN,
-    isSyncing:   false,
-  });
+  await setV({videoId:vCache.videoId,
+    status:ytp?.getPlayerState()===1?"playing":"paused",
+    currentTime:ytp?.getCurrentTime?.()||0,
+    timestamp:now(),owner:uid,ownerName:curN,isSyncing:false});
   updUI();
 });
 
-// 自由視聴 / 同期に戻る
-el.fmode.addEventListener("click", () => {
-  isGuestFree = !isGuestFree;
-  if (!isGuestFree) {
-    // 同期に戻る
-    isSyncOk = true;
-    el.gov.classList.remove("show");
-    if (vCache) applyControl(vCache.status, calcTargetTime(vCache));
+// 自由視聴 ↔ 同期
+E.fmode.addEventListener("click",()=>{
+  isGuestFree=!isGuestFree;
+  if(!isGuestFree){
+    isSyncOk=true; E.gov.classList.remove("show");
+    if(vCache) applyCtrl(vCache.status,calcT(vCache));
   }
   updUI();
 });
 
-// 参加者リスト開閉
-el.pbtn.addEventListener("click", () => {
-  el.ul.classList.toggle("open");
-  el.chv.classList.toggle("open");
+// 参加者
+E.pbtn.addEventListener("click",()=>{
+  E.ul.classList.toggle("open"); E.chv.classList.toggle("open");
 });
 
 // チャット
-el.cta.addEventListener("compositionstart", () => { isComp = true; });
-el.cta.addEventListener("compositionend",   () => { isComp = false; });
-el.cta.addEventListener("keydown", e => {
-  if (e.key === "Enter" && !e.shiftKey && !isComp) { e.preventDefault(); sendMsg(); }
+E.cta.addEventListener("compositionstart",()=>{isComp=true;});
+E.cta.addEventListener("compositionend",()=>{isComp=false;});
+E.cta.addEventListener("keydown",e=>{
+  if(e.key==="Enter"&&!e.shiftKey&&!isComp){e.preventDefault();sendMsg();}
 });
-el.cta.addEventListener("input", () => {
-  lastActTs = srvNow();
-  el.cta.style.height = "auto";
-  el.cta.style.height = Math.min(el.cta.scrollHeight, 76) + "px";
+E.cta.addEventListener("input",()=>{
+  lastActTs=now();
+  E.cta.style.height="auto";
+  E.cta.style.height=Math.min(E.cta.scrollHeight,76)+"px";
 });
-el.cs.addEventListener("click", () => sendMsg());
+E.cs.addEventListener("click",()=>sendMsg());
 
 // 入室
-el.eb.addEventListener("click", () => {
-  const n = el.ni.value.replace(/[\s\u3000]+/g, "").trim();
-  if (!n) { alert("名前を入力してください"); return; }
-  joinRoom(n, el.ki.value);
+E.eb.addEventListener("click",()=>{
+  const n=E.ni.value.replace(/[\s\u3000]+/g,"").trim();
+  if(!n){alert("名前を入力してください");return;}
+  joinRoom(n,E.ki.value);
 });
-el.ni.addEventListener("keydown", e => { if (e.key === "Enter") el.eb.click(); });
+E.ni.addEventListener("keydown",e=>{if(e.key==="Enter")E.eb.click();});
+E.ki.addEventListener("keydown",e=>{if(e.key==="Enter")E.eb.click();});
 
 // 退出
-el.xbtn.addEventListener("click", () => { if (confirm("退出しますか？")) leaveRoom(false); });
+E.xbtn.addEventListener("click",()=>{if(confirm("退出しますか？"))leaveRoom(false);});
 
-/* ════════════════════════════════════════
-   iOS ビューポート修正
-════════════════════════════════════════ */
-if (window.visualViewport) {
+/* ══ iOS viewport fix ══ */
+if(window.visualViewport){
   let raf;
-  const vvFix = () => {
+  const vvFix=()=>{
     cancelAnimationFrame(raf);
-    raf = requestAnimationFrame(() => {
-      el.app.style.height = window.visualViewport.height + "px";
-      window.scrollTo(0, 0);
+    raf=requestAnimationFrame(()=>{
+      E.app.style.height=window.visualViewport.height+"px";
+      window.scrollTo(0,0);
     });
   };
-  window.visualViewport.addEventListener("resize", vvFix);
-  window.visualViewport.addEventListener("scroll", vvFix);
+  window.visualViewport.addEventListener("resize",vvFix);
+  window.visualViewport.addEventListener("scroll",vvFix);
 }
 
-/* ════════════════════════════════════════
-   クリーンアップ
-════════════════════════════════════════ */
-window.addEventListener("pagehide",      () => { if (hasJoined) cleanRoom(); });
-window.addEventListener("beforeunload",  () => { if (hasJoined) cleanRoom(); });
+/* ══ クリーンアップ ══ */
+window.addEventListener("pagehide",()=>{if(joined)cleanRoom();});
+window.addEventListener("beforeunload",()=>{if(joined)cleanRoom();});
 
-/* ════════════════════════════════════════
-   初期化
-════════════════════════════════════════ */
-window.addEventListener("DOMContentLoaded", () => {
-  const sn = localStorage.getItem("or_name") || "";
-  el.ni.value = sn || `ゲスト${100 + Math.floor(Math.random() * 900)}`;
-  el.ki.value = localStorage.getItem("or_key") || "";
-  updateTP();
-  el.mv.value = 0; updMute(0);
-  updUI();
-  bindPresence();
-  if (localStorage.getItem("or_joined") === "true" && sn) {
-    joinRoom(sn, localStorage.getItem("or_key") || "", true);
-  }
+/* ══ 初期化 ══ */
+window.addEventListener("DOMContentLoaded",()=>{
+  const sn=localStorage.getItem("or_name")||"";
+  E.ni.value=sn||`ゲスト${100+Math.floor(Math.random()*900)}`;
+  E.ki.value=localStorage.getItem("or_key")||"";
+  updateTP(); updUI(); bindPresence();
+  if(localStorage.getItem("or_joined")==="true"&&sn)
+    joinRoom(sn,localStorage.getItem("or_key")||"",true);
 });
 </script>
 </body>

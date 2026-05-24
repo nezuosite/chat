@@ -18,6 +18,7 @@
   --em:#00ff66;--e2:#10b981;--eg:rgba(16,185,129,.12);
   --ro:#f43f5e;--rg:rgba(244,63,94,.12);
   --safe:env(safe-area-inset-bottom,0px);
+  --usr-color:#94a3b8;
 }
 html,body{
   height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(--tx);
@@ -40,16 +41,21 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 .spt{font-size:10px;font-weight:800;color:var(--m2);letter-spacing:.2em}
 
 /* ── Lobby ── */
-#lobby{display:none;position:fixed;inset:0;overflow-y:auto;overflow-x:hidden;background:var(--bg);padding:14px}
-.lbi{max-width:420px;margin:0 auto;padding-bottom:32px;display:flex;flex-direction:column;gap:12px}
-.lbt{font-size:15px;font-weight:900;color:#818cf8;text-align:center;letter-spacing:.05em}
+#lobby{display:none;position:fixed;inset:0;overflow:hidden;background:var(--bg)}
+.lbo{height:100%;display:flex;flex-direction:column;overflow:hidden}
+.lbh{padding:12px 14px 8px;flex-shrink:0}
+.lbt{font-size:15px;font-weight:900;color:#818cf8;text-align:center;letter-spacing:.05em;margin-bottom:8px}
+.lbsc{flex:1;overflow-y:auto;padding:0 14px 14px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.lbsc::-webkit-scrollbar{width:3px}
+.lbsc::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+.lbi{max-width:420px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
 .ibox{background:rgba(79,70,229,.07);border:1px solid rgba(99,102,241,.22);
-  border-radius:12px;padding:12px;font-size:10.5px;color:var(--mu);line-height:1.65}
+  border-radius:12px;padding:10px;font-size:10.5px;color:var(--mu);line-height:1.6}
 .ibox b{color:#a5b4fc}
 .abox{background:var(--ad);border:1px solid rgba(245,158,11,.25);
-  border-radius:8px;padding:8px 10px;font-size:10px;color:#fbbf24;margin-top:7px}
+  border-radius:8px;padding:7px 10px;font-size:10px;color:#fbbf24;margin-top:6px}
 .gbox{background:var(--eg);border:1px solid rgba(16,185,129,.25);
-  border-radius:8px;padding:8px 10px;font-size:10px;color:#34d399;font-weight:700;margin-top:6px}
+  border-radius:8px;padding:7px 10px;font-size:10px;color:#34d399;font-weight:700;margin-top:5px}
 #lberr{background:var(--rg);border:1px solid rgba(244,63,94,.3);
   border-radius:10px;padding:10px;font-size:11px;color:#fda4af;display:none;white-space:pre-wrap}
 .fg{display:flex;flex-direction:column;gap:3px}
@@ -61,8 +67,18 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 .tp{font-size:9px;font-family:monospace;color:var(--e2);background:var(--s2);
   border:1px solid var(--bd);padding:2px 6px;border-radius:4px;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis;max-width:110px;display:none;flex-shrink:0}
+
+/* 色選択 */
+.clrbox{display:flex;flex-direction:column;gap:5px}
+.clrlbl{font-size:10.5px;font-weight:700;color:var(--m2)}
+.clrpick{display:flex;flex-wrap:wrap;gap:5px}
+.clrc{width:22px;height:22px;border-radius:50%;cursor:pointer;border:2px solid transparent;
+  transition:all .15s;flex-shrink:0}
+.clrc:hover{transform:scale(1.15)}
+.clrc.sel{border-color:#fff;transform:scale(1.18);box-shadow:0 0 0 2px rgba(255,255,255,.3)}
+
 .brow{display:flex;gap:8px}
-.btn{border-radius:10px;font-weight:800;font-size:12px;padding:10px 16px;
+.btn{border-radius:10px;font-weight:800;font-size:12px;padding:9px 14px;
   transition:all .15s;cursor:pointer;border:none;font-family:inherit}
 .bp{background:var(--in);color:#fff;flex:1}.bp:hover{background:var(--i2)}
 .bo{background:#059669;color:#fff;flex:1}.bo:hover{background:#047857}
@@ -70,6 +86,14 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 .btn:disabled{opacity:.4;cursor:not-allowed}
 .glink{background:none;color:#818cf8;font-size:11px;font-weight:800;
   text-align:center;width:100%;padding:4px;cursor:pointer}
+
+/* mu select - 1〜10 as segmented */
+.museg{display:flex;flex-wrap:wrap;gap:4px}
+.museg button{background:var(--sf);color:var(--mu);border:1px solid var(--bd);
+  border-radius:7px;font-size:11px;font-weight:700;padding:4px 8px;
+  transition:all .15s;cursor:pointer;font-family:inherit;min-width:32px}
+.museg button.sel{background:var(--in);color:#fff;border-color:var(--in)}
+.museg button:hover:not(.sel){background:var(--bd)}
 
 /* ── App ── */
 #app{display:none;position:fixed;inset:0;flex-direction:column;overflow:hidden}
@@ -80,9 +104,7 @@ a{color:#818cf8}a:hover{text-decoration:underline}
   padding:7px 11px;flex-shrink:0;display:flex;flex-direction:column;gap:5px;
   backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:10}
 .hr{display:flex;align-items:center;gap:6px;min-width:0}
-.ld2{width:7px;height:7px;border-radius:50%;background:var(--in);
-  animation:bk .9s ease-in-out infinite;flex-shrink:0}
-@keyframes bk{0%,100%{opacity:1}50%{opacity:.2}}
+.ld2{width:7px;height:7px;border-radius:50%;background:var(--in);flex-shrink:0}
 .rn{font-weight:900;font-size:13px;color:#e2e8f0;overflow:hidden;
   text-overflow:ellipsis;white-space:nowrap;-webkit-user-select:text;user-select:text}
 .pc{font-size:11px;color:var(--m2);font-weight:700;flex-shrink:0}
@@ -94,12 +116,18 @@ a{color:#818cf8}a:hover{text-decoration:underline}
   border-radius:8px;font-size:10px;font-weight:700;padding:3px 9px;
   cursor:pointer;font-family:inherit;transition:background .15s}
 .bx:hover{background:rgba(244,63,94,.18)}
-#pl{display:flex;flex-wrap:wrap;gap:4px}
+
+/* 色変更ボタン(入室後) */
+.bclr{background:var(--sf);border:1px solid var(--bd);border-radius:8px;
+  font-size:10px;font-weight:700;padding:3px 9px;cursor:pointer;font-family:inherit;transition:background .15s}
+.bclr:hover{background:var(--bd)}
+
+#pl{display:flex;flex-wrap:wrap;gap:4px;max-height:48px;overflow:hidden}
 .chip{display:inline-flex;align-items:center;background:var(--sf);color:var(--mu);
   padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;border:1px solid var(--bd)}
 
 /* ── Watcher banner ── */
-#wb{display:none;background:rgba(16,185,129,.06);border-bottom:1px solid rgba(16,185,129,.2);padding:10px 11px}
+#wb{display:none;background:rgba(16,185,129,.06);border-bottom:1px solid rgba(16,185,129,.2);padding:10px 11px;flex-shrink:0}
 #wb.show{display:block}
 .wbt{font-size:10px;font-weight:800;color:var(--e2);text-align:center;margin-bottom:8px}
 .wbf{background:var(--s2);border:1px solid rgba(16,185,129,.18);border-radius:10px;
@@ -113,7 +141,7 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 .bwb:hover{background:#047857}
 
 /* ── Timeline ── */
-#tl{flex:1;min-height:0;overflow-y:auto;padding:10px 11px;
+#tl{flex:1;min-height:0;overflow-y:auto;padding:10px 11px 10px;
   display:flex;flex-direction:column;gap:9px;
   -webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 #tl::-webkit-scrollbar{width:3px}
@@ -123,15 +151,17 @@ a{color:#818cf8}a:hover{text-decoration:underline}
   background:rgba(30,41,59,.6);border:1px solid var(--bd);border-radius:20px;
   padding:2px 10px;-webkit-user-select:text;user-select:text;text-align:center}
 .mm{font-size:10px;font-weight:700;color:var(--mu);margin-bottom:2px;-webkit-user-select:text;user-select:text}
-.mm .trp{color:var(--e2);font-family:monospace}
+.mm .trp{color:var(--m2);font-family:monospace}
 .mm .ts{font-size:9px;font-weight:400;color:var(--m2);margin-left:4px}
+/* 吹き出し: 左ボーダー色はユーザー色 */
 .mb{background:rgba(30,41,59,.85);color:#e2e8f0;border:1px solid var(--bd);
-  border-left:3px solid var(--in);border-radius:0 12px 12px 12px;
+  border-left:3px solid var(--usr-color);border-radius:0 12px 12px 12px;
   padding:7px 11px;font-size:12px;line-height:1.6;max-width:90%;
   word-break:break-word;-webkit-user-select:text;user-select:text}
+.mm .un{color:var(--usr-color)}
 
 /* ── Media cards ── */
-.mc{margin-top:6px;margin-bottom:2px;background:var(--s2);border:1px solid var(--bd);
+.mc{margin-top:2px;margin-bottom:2px;background:var(--s2);border:1px solid var(--bd);
   border-radius:10px;overflow:hidden;max-width:240px}
 .mct{position:relative;width:100%;aspect-ratio:16/9;background:#000;overflow:hidden;cursor:pointer}
 .mct img{width:100%;height:100%;object-fit:cover;display:block;transition:opacity .2s}
@@ -139,7 +169,7 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 .mpi{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
 .mpi svg{width:44px;height:44px}
 .mcb{display:flex}
-.mcbtn{flex:1;padding:6px 4px;font-size:10px;font-weight:700;background:var(--in);color:#fff;
+.mcbtn{flex:1;padding:5px 4px;font-size:10px;font-weight:700;background:var(--in);color:#fff;
   text-align:center;display:block;cursor:pointer;border:none;font-family:inherit;
   transition:background .15s;text-decoration:none;border-top:1px solid rgba(255,255,255,.08)}
 .mcbtn:hover{background:var(--i2)}
@@ -149,10 +179,10 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 .mce iframe{position:absolute;inset:0;width:100%;height:100%;border:none}
 .mce.tk{aspect-ratio:9/16;max-width:150px}
 
-/* ── YT同期バー (チャット内) ── */
-.sbar{display:flex;align-items:center;gap:8px;margin-top:6px;margin-bottom:2px;
+/* 同期バー */
+.sbar{display:flex;align-items:center;gap:8px;margin-top:4px;margin-bottom:2px;
   background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);
-  border-radius:10px;padding:8px 10px;max-width:90%;cursor:default}
+  border-radius:10px;padding:7px 10px;max-width:90%;cursor:default}
 .sbar-info{flex:1;min-width:0}
 .sbar-ttl{font-size:10px;font-weight:700;color:#a5b4fc;margin-bottom:2px}
 .sbar-vid{font-size:9px;font-family:monospace;color:var(--m2);
@@ -162,7 +192,7 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 .sbar-btn:hover{background:var(--i2)}
 
 /* ── Audio player ── */
-.aw{margin-top:6px;margin-bottom:2px;background:rgba(15,23,42,.9);border:1px solid var(--bd);
+.aw{margin-top:4px;margin-bottom:2px;background:rgba(15,23,42,.9);border:1px solid var(--bd);
   border-radius:12px;padding:10px;max-width:280px;width:100%;transition:border-color .3s,box-shadow .3s}
 .aw.pl{border-color:rgba(0,255,102,.5);box-shadow:0 0 10px rgba(0,255,102,.15)}
 .ar{display:flex;align-items:center;gap:8px;height:28px}
@@ -181,12 +211,13 @@ a{color:#818cf8}a:hover{text-decoration:underline}
   font-size:9px;font-weight:700;color:var(--mu);text-decoration:none;transition:background .15s}
 .adl a:hover{background:var(--bd);color:var(--tx)}.adl a svg{width:11px;height:11px;flex-shrink:0}
 
-@keyframes fi{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
+@keyframes fi{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
 .fi{animation:fi .18s ease forwards}
 
 /* ── Input bar ── */
 #ib{background:rgba(15,23,42,.97);border-top:1px solid var(--bd);
   padding:8px 10px;flex-shrink:0;gap:7px;display:none;
+  padding-bottom:calc(8px + var(--safe));
   backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 #ib.show{display:flex;align-items:flex-end}
 #mi{flex:1;background:var(--s2);border:1px solid var(--bd);border-radius:11px;
@@ -200,8 +231,9 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 .bsd:hover{background:var(--i2)}.bsd svg{width:18px;height:18px;display:block}
 
 /* ── Float nav ── */
-#fn{position:absolute;right:11px;bottom:76px;z-index:50;
-  display:flex;flex-direction:column;gap:7px;pointer-events:none}
+#fn{position:absolute;right:11px;z-index:50;
+  display:flex;flex-direction:column;gap:7px;pointer-events:none;
+  bottom:70px}
 #fn button{pointer-events:auto;width:38px;height:38px;border-radius:9px;
   background:rgba(15,23,42,.85);border:1px solid var(--bd);color:var(--mu);
   display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -210,102 +242,127 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 #fn button:hover{background:rgba(30,41,59,.95);color:var(--tx)}
 #fn button svg{width:13px;height:13px}
 
-/* ── YT同期プレイヤー (画面下部に固定) ── */
-#ytdock{
-  position:fixed;bottom:0;left:0;right:0;z-index:200;
-  display:none;flex-direction:column;
-  background:#000;border-top:2px solid var(--bd);
-  /* 高さ: 動画16/9 + コントロール約48px */
-  max-height:60vh;
-  box-shadow:0 -4px 20px rgba(0,0,0,.6);
+/* ── 浮動動画プレイヤー ── */
+#ytfloat{
+  position:fixed;z-index:300;
+  background:#000;border:1px solid var(--bd);border-radius:12px;overflow:hidden;
+  box-shadow:0 8px 32px rgba(0,0,0,.7);
+  display:none;
+  touch-action:none;
+  bottom:80px;right:11px;
+  width:280px;
 }
-#ytdock.show{display:flex}
-/* コントロールバー */
-#ytdock-ctrl{
-  display:flex;align-items:center;gap:7px;padding:7px 10px;
-  background:rgba(15,23,42,.97);border-bottom:1px solid var(--bd);
-  flex-shrink:0;flex-wrap:nowrap;overflow:hidden;
+#ytfloat.show{display:block}
+#ytfloat-bar{
+  display:flex;align-items:center;gap:6px;
+  background:rgba(15,23,42,.98);padding:5px 8px;cursor:grab;
+  border-bottom:1px solid var(--bd);user-select:none;-webkit-user-select:none;
 }
-#ytdock-sp{
-  display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;
-  font-size:10px;font-weight:800;white-space:nowrap;border:1px solid transparent;
-  flex-shrink:0;transition:all .2s;
+#ytfloat-bar:active{cursor:grabbing}
+#ytfloat-sp{
+  display:inline-flex;align-items:center;gap:3px;padding:1px 7px;border-radius:20px;
+  font-size:9px;font-weight:800;white-space:nowrap;border:1px solid transparent;flex:1;
 }
-.dsp-host{background:var(--ad);color:var(--am);border-color:rgba(245,158,11,.35)}
-.dsp-sync{background:var(--eg);color:var(--em);border-color:rgba(0,255,102,.35)}
-.dsp-free{background:var(--s2);color:var(--mu);border-color:var(--bd)}
-.dld{width:6px;height:6px;border-radius:50%;flex-shrink:0}
-.dld-am{background:var(--am);animation:bk .9s ease-in-out infinite}
-.dld-gr{background:var(--em);animation:bk .9s ease-in-out infinite}
-.dld-off{background:var(--m2)}
-
-#ytdock-time{font-size:10px;font-family:monospace;color:var(--m2);white-space:nowrap;flex-shrink:0}
-#ytdock-stb{padding:2px 9px;border-radius:20px;font-size:10px;font-weight:800;
-  transition:all .15s;white-space:nowrap;border:1px solid transparent;
-  cursor:pointer;font-family:inherit;flex-shrink:0;display:none}
-#ytdock-stb.show{display:block}
-.dsync-go{background:var(--ad);color:var(--am);border-color:rgba(245,158,11,.35)}
-.dsync-go:hover{background:rgba(245,158,11,.2)}
-.dsync-st{background:var(--rg);color:var(--ro);border-color:rgba(244,63,94,.35)}
-.dsync-st:hover{background:rgba(244,63,94,.2)}
-#ytdock-fmb{padding:2px 9px;border-radius:20px;font-size:10px;font-weight:800;
-  transition:all .15s;white-space:nowrap;border:1px solid var(--bd);
-  background:var(--s2);color:var(--mu);cursor:pointer;font-family:inherit;
-  flex-shrink:0;display:none}
-#ytdock-fmb.show{display:block}
-#ytdock-fmb:hover{background:var(--bd)}
-.fmb-rt{background:rgba(79,70,229,.1)!important;color:#a5b4fc!important;border-color:rgba(99,102,241,.3)!important}
-#ytdock-pp{background:var(--s2);border:1px solid var(--bd);color:var(--tx);
-  border-radius:6px;padding:2px 8px;font-size:14px;flex-shrink:0;
-  cursor:pointer;transition:background .15s;display:none}
-#ytdock-pp.show{display:block}
-#ytdock-pp:hover{background:var(--b2)}
-#ytdock-close{background:var(--rg);color:var(--ro);border:1px solid rgba(244,63,94,.25);
-  border-radius:7px;font-size:10px;font-weight:700;padding:3px 9px;
-  margin-left:auto;flex-shrink:0;cursor:pointer;font-family:inherit;transition:background .15s}
-#ytdock-close:hover{background:rgba(244,63,94,.18)}
-
-/* 動画エリア */
-#ytdock-video{flex:1;min-height:0;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden}
-#ytdock-video>div{width:100%;aspect-ratio:16/9;max-height:100%}
-
+.fsp-host{background:var(--ad);color:var(--am);border-color:rgba(245,158,11,.35)}
+.fsp-sync{background:var(--eg);color:var(--em);border-color:rgba(0,255,102,.35)}
+.fsp-free{background:var(--s2);color:var(--mu);border-color:var(--bd)}
+.fld{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+@keyframes bk{0%,100%{opacity:1}50%{opacity:.2}}
+.fld-am{background:var(--am);animation:bk .9s ease-in-out infinite}
+.fld-gr{background:var(--em);animation:bk .9s ease-in-out infinite}
+.fld-off{background:var(--m2)}
+#ytfloat-pp{background:transparent;color:var(--tx);font-size:14px;padding:0 2px;
+  cursor:pointer;transition:color .15s;flex-shrink:0;display:none}
+#ytfloat-pp.show{display:block}
+#ytfloat-pp:hover{color:#fff}
+#ytfloat-rst{background:var(--sf);color:var(--mu);border:1px solid var(--bd);
+  border-radius:6px;font-size:9px;font-weight:700;padding:2px 7px;flex-shrink:0;
+  cursor:pointer;font-family:inherit;transition:background .15s}
+#ytfloat-rst:hover{background:var(--bd)}
+#ytfloat-cls{background:var(--rg);color:var(--ro);border:1px solid rgba(244,63,94,.25);
+  border-radius:6px;font-size:9px;font-weight:700;padding:2px 7px;flex-shrink:0;
+  cursor:pointer;font-family:inherit;transition:background .15s}
+#ytfloat-cls:hover{background:rgba(244,63,94,.18)}
+#ytfloat-stb{padding:2px 7px;border-radius:20px;font-size:9px;font-weight:800;
+  border:1px solid transparent;cursor:pointer;font-family:inherit;flex-shrink:0;display:none;transition:all .15s}
+#ytfloat-stb.show{display:block}
+.ystb-go{background:var(--ad);color:var(--am);border-color:rgba(245,158,11,.35)}
+.ystb-go:hover{background:rgba(245,158,11,.2)}
+.ystb-st{background:var(--rg);color:var(--ro);border-color:rgba(244,63,94,.35)}
+.ystb-st:hover{background:rgba(244,63,94,.2)}
+#ytfloat-fmb{padding:2px 7px;border-radius:20px;font-size:9px;font-weight:800;
+  border:1px solid var(--bd);background:var(--s2);color:var(--mu);
+  cursor:pointer;font-family:inherit;flex-shrink:0;display:none;transition:all .15s}
+#ytfloat-fmb.show{display:block}
+#ytfloat-fmb:hover{background:var(--bd)}
+.yfmb-rt{background:rgba(79,70,229,.1)!important;color:#a5b4fc!important;border-color:rgba(99,102,241,.3)!important}
+#ytfloat-time{font-size:9px;font-family:monospace;color:var(--m2);white-space:nowrap;flex-shrink:0}
+#ytfloat-video{width:100%;aspect-ratio:16/9;background:#000;display:block;position:relative}
+#ytfloat-video>div{position:absolute;inset:0}
 /* ゲスト同期承認オーバーレイ */
-#ytdock-overlay{
+#ytfloat-ov{
   display:none;position:absolute;inset:0;background:rgba(0,0,0,.92);z-index:10;
-  align-items:center;justify-content:center;padding:16px;
+  align-items:center;justify-content:center;padding:12px;
 }
-#ytdock-overlay.show{display:flex}
-.dovl{background:var(--sf);border:1px solid var(--bd);border-radius:14px;
-  padding:20px;max-width:300px;width:100%;text-align:center}
-.dovl-ttl{font-size:9px;font-weight:800;letter-spacing:.15em;color:#818cf8;
-  text-transform:uppercase;margin-bottom:8px}
-.dovl-h{font-size:12px;font-weight:700;color:var(--tx);margin-bottom:6px}
-.dovl-d{font-size:10px;color:var(--mu);line-height:1.6;margin-bottom:14px}
-.dovl-btns{display:flex;gap:8px}
-.dovl-dec{flex:1;padding:8px;border-radius:8px;font-size:11px;font-weight:700;
+#ytfloat-ov.show{display:flex}
+.fovl{background:var(--sf);border:1px solid var(--bd);border-radius:12px;
+  padding:16px;max-width:260px;width:100%;text-align:center}
+.fovl-ttl{font-size:9px;font-weight:800;letter-spacing:.12em;color:#818cf8;
+  text-transform:uppercase;margin-bottom:6px}
+.fovl-h{font-size:11px;font-weight:700;color:var(--tx);margin-bottom:5px}
+.fovl-d{font-size:10px;color:var(--mu);line-height:1.5;margin-bottom:12px}
+.fovl-btns{display:flex;gap:7px}
+.fovl-dec{flex:1;padding:7px;border-radius:7px;font-size:10px;font-weight:700;
   background:var(--sf);color:var(--mu);border:1px solid var(--bd);
   cursor:pointer;font-family:inherit;transition:background .15s}
-.dovl-dec:hover{background:var(--bd)}
-.dovl-acc{flex:1;padding:8px;border-radius:8px;font-size:11px;font-weight:700;
+.fovl-dec:hover{background:var(--bd)}
+.fovl-acc{flex:1;padding:7px;border-radius:7px;font-size:10px;font-weight:700;
   background:var(--in);color:#fff;cursor:pointer;font-family:inherit;transition:background .15s}
-.dovl-acc:hover{background:var(--i2)}
+.fovl-acc:hover{background:var(--i2)}
 
 /* ── Modals ── */
-#gmod,#imod{display:none;position:fixed;inset:0;background:rgba(0,0,0,.87);z-index:900;
+#gmod,#imod,#clrmod{display:none;position:fixed;inset:0;background:rgba(0,0,0,.87);z-index:900;
   align-items:center;justify-content:center;padding:14px;
   backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
-#gmod.show,#imod.show{display:flex}
+#gmod.show,#imod.show,#clrmod.show{display:flex}
 .gc{background:var(--sf);border:1px solid var(--bd);border-radius:16px;padding:18px;
   max-width:420px;width:100%;max-height:85vh;overflow-y:auto;
   display:flex;flex-direction:column;gap:12px;-webkit-user-select:text;user-select:text}
 .gs{background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:11px;
   font-size:10.5px;color:var(--mu);line-height:1.7}
 .gs h4{font-size:11px;font-weight:800;margin-bottom:6px}
-#imod img{max-width:100%;max-height:85vh;object-fit:contain;border-radius:8px}
+
+/* 画像モーダル (ピンチズーム対応) */
+#imod{cursor:zoom-out;touch-action:none}
+#imod-wrap{position:relative;max-width:100%;max-height:85vh;
+  display:flex;align-items:center;justify-content:center;overflow:hidden}
+#imod img{max-width:100%;max-height:85vh;object-fit:contain;border-radius:8px;
+  transform-origin:center center;transition:transform .05s linear;
+  touch-action:none;pointer-events:none}
 .cx{position:absolute;top:12px;right:12px;background:rgba(15,23,42,.85);
   border:1px solid var(--bd);border-radius:50%;width:34px;height:34px;
   display:flex;align-items:center;justify-content:center;color:var(--tx);
-  font-size:16px;cursor:pointer;font-family:inherit;line-height:1}
+  font-size:16px;cursor:pointer;font-family:inherit;line-height:1;z-index:10}
+
+/* 色変更モーダル */
+.clrmc{background:var(--sf);border:1px solid var(--bd);border-radius:14px;
+  padding:16px;max-width:320px;width:100%;display:flex;flex-direction:column;gap:12px}
+.clrmc h3{font-size:12px;font-weight:900;color:#a5b4fc}
+.clrpick2{display:flex;flex-wrap:wrap;gap:8px}
+.clrc2{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;
+  transition:all .15s;flex-shrink:0;position:relative}
+.clrc2:hover{transform:scale(1.15)}
+.clrc2.sel{border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.35)}
+.clrc2.sel::after{content:"✓";position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;font-size:12px;color:#fff;font-weight:900;text-shadow:0 1px 2px rgba(0,0,0,.8)}
+.clr-prev{padding:10px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;font-size:12px}
+.clr-btns{display:flex;gap:8px}
+.clr-ok{flex:1;background:var(--in);color:#fff;border-radius:8px;font-size:11px;
+  font-weight:800;padding:8px;cursor:pointer;font-family:inherit;transition:background .15s}
+.clr-ok:hover{background:var(--i2)}
+.clr-cancel{background:var(--sf);color:var(--mu);border:1px solid var(--bd);border-radius:8px;
+  font-size:11px;font-weight:700;padding:8px 12px;cursor:pointer;font-family:inherit;transition:background .15s}
+.clr-cancel:hover{background:var(--bd)}
 </style>
 </head>
 <body>
@@ -313,48 +370,54 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 <div id="splash"><div class="spin"></div><p class="spt">CONNECTING...</p></div>
 
 <!-- ══ Lobby ══ -->
-<div id="lobby"><div class="lbi">
-  <h1 class="lbt">⚡ NEZU ONETIME CHAT</h1>
-  <div class="ibox">
-    <b>🔒 ブラウザ完結型 E2E 暗号化チャット</b><br>
-    メッセージはAES-256でブラウザ内暗号化してから送信。部屋パスワードはサーバーに届きません。
-    <div class="abox">⚠️ 30分無発言 または 全員退室 でログは即座に完全抹消されます。</div>
-    <div class="gbox">🚀 Strict Activity Mode — メッセージ送信の有無で生存判定</div>
-  </div>
-  <div id="lberr"></div>
-  <div class="fg"><label class="fl">表示名 <span style="color:var(--ro)">*</span></label>
-    <input type="text" id="ni" class="inp" placeholder="ニックネーム（最大10文字）" maxlength="10" autocomplete="username">
-  </div>
-  <div class="fg"><label class="fl">トリップキー（なりすまし防止・任意）</label>
-    <div class="rw">
-      <input type="text" id="tk" class="inp" placeholder="任意の秘密キー" autocomplete="off" spellcheck="false" style="flex:1">
-      <span id="tpv" class="tp"></span>
+<div id="lobby">
+  <div class="lbo">
+    <div class="lbh">
+      <h1 class="lbt">⚡ NEZU ONETIME CHAT</h1>
+    </div>
+    <div class="lbsc">
+      <div class="lbi">
+        <div class="ibox">
+          <b>🔒 ブラウザ完結型 E2E 暗号化チャット</b><br>
+          メッセージはAES-256でブラウザ内暗号化してから送信。部屋パスワードはサーバーに届きません。
+          <div class="abox">⚠️ 30分無発言 または 全員退室 でログは即座に完全抹消されます。</div>
+          <div class="gbox">🚀 Strict Activity Mode — メッセージ送信の有無で生存判定</div>
+        </div>
+        <div id="lberr"></div>
+        <div class="fg"><label class="fl">表示名 <span style="color:var(--ro)">*</span></label>
+          <input type="text" id="ni" class="inp" placeholder="ニックネーム（最大10文字）" maxlength="10" autocomplete="username">
+        </div>
+        <div class="fg"><label class="fl">トリップキー（なりすまし防止・任意）</label>
+          <div class="rw">
+            <input type="text" id="tk" class="inp" placeholder="任意の秘密キー" autocomplete="off" spellcheck="false" style="flex:1">
+            <span id="tpv" class="tp"></span>
+          </div>
+        </div>
+        <!-- 文字色選択 (ロビー) -->
+        <div class="clrbox">
+          <div class="clrlbl">文字色</div>
+          <div class="clrpick" id="lbClrPick"></div>
+        </div>
+        <div class="fg"><label class="fl">部屋ID <span style="color:var(--ro)">*</span></label>
+          <input type="text" id="ri" class="inp" placeholder="部屋名" autocomplete="off" autocapitalize="off" spellcheck="false">
+        </div>
+        <div class="fg"><label class="fl">部屋パスワード <span style="color:var(--ro)">*</span></label>
+          <input type="text" id="pi" class="inp" placeholder="メンバー共通パスワード" autocomplete="off" autocapitalize="off" spellcheck="false">
+        </div>
+        <div class="fg">
+          <label class="fl">人数制限</label>
+          <div class="museg" id="muSeg"></div>
+        </div>
+        <div class="brow">
+          <button class="btn bq" id="gnBtn">自動生成</button>
+          <button class="btn bp" id="enBtn">入室する</button>
+          <button class="btn bo" id="ofBtn">公式部屋</button>
+        </div>
+        <button class="glink" id="gdBtn">📖 セキュリティガイド・利用規約（必読）</button>
+      </div>
     </div>
   </div>
-  <div class="fg"><label class="fl">部屋ID <span style="color:var(--ro)">*</span></label>
-    <input type="text" id="ri" class="inp" placeholder="部屋名" autocomplete="off" autocapitalize="off" spellcheck="false">
-  </div>
-  <div class="fg"><label class="fl">部屋パスワード <span style="color:var(--ro)">*</span></label>
-    <input type="text" id="pi" class="inp" placeholder="メンバー共通パスワード" autocomplete="off" autocapitalize="off" spellcheck="false">
-  </div>
-  <details style="background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:10px">
-    <summary style="cursor:pointer;font-size:10.5px;font-weight:700;color:var(--mu);user-select:none">⚙️ 部屋の詳細設定</summary>
-    <div style="margin-top:10px">
-      <div style="font-size:10px;font-weight:600;color:var(--m2);margin-bottom:3px">人数制限</div>
-      <select id="mu" class="inp" style="width:auto">
-        <option value="2">2名</option><option value="3">3名</option>
-        <option value="4" selected>4名</option><option value="5">5名</option>
-        <option value="6">6名</option><option value="8">8名</option><option value="10">10名</option>
-      </select>
-    </div>
-  </details>
-  <div class="brow">
-    <button class="btn bq" id="gnBtn">自動生成</button>
-    <button class="btn bp" id="enBtn">入室する</button>
-    <button class="btn bo" id="ofBtn">公式部屋</button>
-  </div>
-  <button class="glink" id="gdBtn">📖 セキュリティガイド・利用規約（必読）</button>
-</div></div>
+</div>
 
 <!-- ══ App ══ -->
 <div id="app">
@@ -366,6 +429,7 @@ a{color:#818cf8}a:hover{text-decoration:underline}
         <span class="rn" id="rdsp"></span>
         <span class="pc" id="pcnt"></span>
         <div class="hbs">
+          <button class="bclr" id="clrBtn" style="display:none">🎨色</button>
           <button class="bi" id="ivBtn" style="display:none">招待</button>
           <button class="bx" id="exBtn">退出</button>
         </div>
@@ -396,48 +460,50 @@ a{color:#818cf8}a:hover{text-decoration:underline}
       </button>
     </div>
 
+    <!-- Float nav: ib の上に動的配置 -->
     <div id="fn" style="display:none">
       <button id="tTBtn">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>最新
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>最新
       </button>
       <button id="tBBtn">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>最古
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>最古
       </button>
     </div>
   </div>
 </div>
 
-<!-- ══ YT Dock (画面下部固定プレイヤー) ══ -->
-<div id="ytdock">
-  <!-- ゲスト同期承認オーバーレイ -->
-  <div id="ytdock-overlay">
-    <div class="dovl">
-      <div class="dovl-ttl">🎬 同期リクエスト</div>
-      <div class="dovl-h" id="dovl-host"></div>
-      <div class="dovl-d">ホストの動画に同期しますか？<br>後からいつでも切り替えられます。</div>
-      <div class="dovl-btns">
-        <button class="dovl-dec" id="dovl-dec">自由視聴</button>
-        <button class="dovl-acc" id="dovl-acc">▶ 同期する</button>
+<!-- ══ 浮動動画プレイヤー ══ -->
+<div id="ytfloat">
+  <!-- ゲスト承認オーバーレイ -->
+  <div id="ytfloat-ov" style="position:relative">
+    <div class="fovl">
+      <div class="fovl-ttl">🎬 同期リクエスト</div>
+      <div class="fovl-h" id="fovl-host"></div>
+      <div class="fovl-d">ホストの動画に同期しますか？</div>
+      <div class="fovl-btns">
+        <button class="fovl-dec" id="fovl-dec">自由視聴</button>
+        <button class="fovl-acc" id="fovl-acc">▶ 同期</button>
       </div>
     </div>
   </div>
-
-  <!-- コントロールバー -->
-  <div id="ytdock-ctrl">
-    <div id="ytdock-sp" class="dsp-free">
-      <span class="dld dld-off" id="ytdock-ld"></span>
-      <span id="ytdock-tx">---</span>
-    </div>
-    <span id="ytdock-time">00:00 / 00:00</span>
-    <button id="ytdock-pp">▶</button>
-    <button id="ytdock-stb" class="dsync-go">同期を開始</button>
-    <button id="ytdock-fmb">自由視聴</button>
-    <button id="ytdock-close">✕ 閉じる</button>
+  <!-- コントロールバー (ドラッグハンドル) -->
+  <div id="ytfloat-bar">
+    <span id="ytfloat-sp" class="fsp-free">
+      <span class="fld fld-off" id="ytfloat-ld"></span>
+      <span id="ytfloat-tx">---</span>
+    </span>
+    <span id="ytfloat-time">00:00/00:00</span>
+    <button id="ytfloat-pp">▶</button>
+    <button id="ytfloat-stb" class="ystb-go">同期</button>
+    <button id="ytfloat-fmb">自由</button>
+    <button id="ytfloat-rst">戻す</button>
+    <button id="ytfloat-cls">✕</button>
   </div>
-
   <!-- 動画エリア -->
-  <div id="ytdock-video">
-    <div id="ytdock-player"></div>
+  <div id="ytfloat-video" style="position:relative">
+    <div id="ytfloat-player"></div>
+    <!-- ゲスト同期中はタップブロックオーバーレイ -->
+    <div id="ytfloat-seek-block" style="display:none;position:absolute;inset:0;z-index:5;background:transparent;touch-action:none"></div>
   </div>
 </div>
 
@@ -446,14 +512,34 @@ a{color:#818cf8}a:hover{text-decoration:underline}
   <h3 style="font-size:13px;font-weight:900;color:#a5b4fc;border-bottom:1px solid var(--bd);padding-bottom:8px">📖 セキュリティガイド ＆ 利用規約</h3>
   <div class="gs"><h4 style="color:#a5b4fc">🛡️ E2E 暗号化</h4>AES-256採用。ブラウザ内で暗号化してから送信。部屋パスワードはサーバーに届かず、第三者の解読は数学的に不可能。</div>
   <div class="gs"><h4 style="color:#fbbf24">⏱️ ログ自動消滅</h4>30分の無発言または全員退室でログが即座に完全抹消されます。</div>
-  <div class="gs"><h4 style="color:#34d399">🎵 メディア対応</h4>YouTube・ニコニコ・TikTokのURLでプレビューカード。音声ファイル（mp3/wav等）でインラインプレイヤー。URLはテキストの前後で自動改行して表示されます。</div>
-  <div class="gs"><h4 style="color:#818cf8">🔗 動画同期</h4>YouTubeのURLを貼ると同期ボタンが表示されます。ホストが同期を開始すると参加者全員が画面下部のプレイヤーで同時視聴できます。</div>
+  <div class="gs"><h4 style="color:#34d399">🎵 メディア対応</h4>YouTube・ニコニコ・TikTokのURLでプレビューカード。音声ファイル（mp3/wav等）でインラインプレイヤー。</div>
+  <div class="gs"><h4 style="color:#818cf8">🔗 動画同期</h4>YouTubeのURLを貼ると同期ボタンが表示されます。ホストが同期を開始すると参加者全員が浮動プレイヤーで同時視聴できます。ニコニコ・TikTokも同期対応。</div>
   <div class="gs"><h4 style="color:#fda4af">❌ 禁止事項</h4>違法な取引・犯罪の謀議・スパム行為は禁止します。</div>
   <button class="btn bp" id="gcBtn" style="font-size:12px;padding:10px">理解しました</button>
 </div></div>
 
-<!-- Image Modal -->
-<div id="imod"><img id="imEl" src="" alt=""><button class="cx" id="icBtn">×</button></div>
+<!-- Image Modal (ピンチズーム) -->
+<div id="imod">
+  <div id="imod-wrap">
+    <img id="imEl" src="" alt="">
+  </div>
+  <button class="cx" id="icBtn">×</button>
+</div>
+
+<!-- 色変更モーダル -->
+<div id="clrmod">
+  <div class="clrmc">
+    <h3>🎨 文字色を選択</h3>
+    <div class="clrpick2" id="clrPick2"></div>
+    <div class="clr-prev" id="clrPrev">
+      <span style="color:var(--usr-color)">■ このテキストの色でメッセージが表示されます</span>
+    </div>
+    <div class="clr-btns">
+      <button class="clr-cancel" id="clrCancel">キャンセル</button>
+      <button class="clr-ok" id="clrOk">適用</button>
+    </div>
+  </div>
+</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
@@ -474,22 +560,26 @@ const db = getDatabase(initializeApp({
 const $=id=>document.getElementById(id);
 const D={
   splash:$("splash"),lobby:$("lobby"),lberr:$("lberr"),app:$("app"),
-  ni:$("ni"),tk:$("tk"),ri:$("ri"),pi:$("pi"),mu:$("mu"),
+  ni:$("ni"),tk:$("tk"),ri:$("ri"),pi:$("pi"),
   tpv:$("tpv"),enBtn:$("enBtn"),ofBtn:$("ofBtn"),gnBtn:$("gnBtn"),
   gdBtn:$("gdBtn"),gmod:$("gmod"),gcBtn:$("gcBtn"),
-  imod:$("imod"),imEl:$("imEl"),icBtn:$("icBtn"),
+  imod:$("imod"),imEl:$("imEl"),icBtn:$("icBtn"),imodWrap:$("imod-wrap"),
+  clrmod:$("clrmod"),clrPick2:$("clrPick2"),clrPrev:$("clrPrev"),
+  clrOk:$("clrOk"),clrCancel:$("clrCancel"),clrBtn:$("clrBtn"),
   hdr:$("hdr"),rdsp:$("rdsp"),pcnt:$("pcnt"),
   pl:$("pl"),ivBtn:$("ivBtn"),exBtn:$("exBtn"),
   wb:$("wb"),wni:$("wni"),wtk:$("wtk"),wtpv:$("wtpv"),wuBtn:$("wuBtn"),
   tl:$("tl"),ib:$("ib"),mi:$("mi"),sdBtn:$("sdBtn"),
   fn:$("fn"),tTBtn:$("tTBtn"),tBBtn:$("tBBtn"),
-  /* YT Dock */
-  dock:$("ytdock"),
-  dOverlay:$("ytdock-overlay"),dHost:$("dovl-host"),dAcc:$("dovl-acc"),dDec:$("dovl-dec"),
-  dCtrl:$("ytdock-ctrl"),dSp:$("ytdock-sp"),dLd:$("ytdock-ld"),dTx:$("ytdock-tx"),
-  dTime:$("ytdock-time"),dPP:$("ytdock-pp"),dStb:$("ytdock-stb"),
-  dFmb:$("ytdock-fmb"),dClose:$("ytdock-close"),
-  dVideo:$("ytdock-video"),dPlayer:$("ytdock-player"),
+  lbClrPick:$("lbClrPick"),muSeg:$("muSeg"),
+  /* Float player */
+  float:$("ytfloat"),fOv:$("ytfloat-ov"),fOvHost:$("fovl-host"),
+  fOvAcc:$("fovl-acc"),fOvDec:$("fovl-dec"),
+  fBar:$("ytfloat-bar"),fSp:$("ytfloat-sp"),fLd:$("ytfloat-ld"),fTx:$("ytfloat-tx"),
+  fTime:$("ytfloat-time"),fPP:$("ytfloat-pp"),fStb:$("ytfloat-stb"),
+  fFmb:$("ytfloat-fmb"),fRst:$("ytfloat-rst"),fCls:$("ytfloat-cls"),
+  fVideo:$("ytfloat-video"),fPlayer:$("ytfloat-player"),
+  fSeekBlock:$("ytfloat-seek-block"),
 };
 
 /* ════ サーバー時刻 ════ */
@@ -505,9 +595,9 @@ const uid=(()=>{
 })();
 
 /* ════ 暗号化 ════ */
-const enc=(t,k,r=false)=>{if(!t)return"";if(r)return t;return CryptoJS.AES.encrypt(t,k).toString();};
+const enc=(t,k,r=false)=>{if(!t&&t!=="")return"";if(r)return t;return CryptoJS.AES.encrypt(t,k).toString();};
 const dec=(c,k,r=false)=>{
-  if(!c)return null;if(r)return c;
+  if(!c&&c!=="")return null;if(r)return c;
   try{const b=CryptoJS.AES.decrypt(c,k);const s=b.toString(CryptoJS.enc.Utf8);return s||null;}catch{return null;}
 };
 const esc=t=>(t||"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -519,6 +609,106 @@ const updTP=()=>{const n=D.ni.value.replace(/[\s\u3000]+/g,"").trim(),k=D.tk.val
 const updWTP=()=>{const n=D.wni.value.replace(/[\s\u3000]+/g,"").trim(),k=D.wtk.value.trim();if(n&&k){D.wtpv.textContent=gTrip(n,k);D.wtpv.style.display="inline-block";}else D.wtpv.style.display="none";};
 D.ni.addEventListener("input",updTP);D.tk.addEventListener("input",updTP);
 D.wni.addEventListener("input",updWTP);D.wtk.addEventListener("input",updWTP);
+
+/* ロビーの入力変更を公式部屋フォームに反映 */
+D.ni.addEventListener("input",()=>{if(!D.wni.value||D.wni.value===D.ni.dataset.prev)D.wni.value=D.ni.value;D.ni.dataset.prev=D.ni.value;});
+D.tk.addEventListener("input",()=>{if(!D.wtk.value||D.wtk.value===D.tk.dataset.prev)D.wtk.value=D.tk.value;D.tk.dataset.prev=D.tk.value;updWTP();});
+
+/* ════ 16色パレット ════ */
+const COLORS=[
+  {v:"#94a3b8",n:"グレー"},
+  {v:"#f1f5f9",n:"ホワイト"},
+  {v:"#818cf8",n:"インディゴ"},
+  {v:"#60a5fa",n:"ブルー"},
+  {v:"#34d399",n:"エメラルド"},
+  {v:"#a3e635",n:"ライム"},
+  {v:"#fbbf24",n:"アンバー"},
+  {v:"#fb923c",n:"オレンジ"},
+  {v:"#f87171",n:"レッド"},
+  {v:"#f472b6",n:"ピンク"},
+  {v:"#c084fc",n:"パープル"},
+  {v:"#67e8f9",n:"シアン"},
+  {v:"#4ade80",n:"グリーン"},
+  {v:"#fde68a",n:"イエロー"},
+  {v:"#fca5a5",n:"ライトレッド"},
+  {v:"#a5b4fc",n:"ライトインディゴ"},
+];
+let curColor=localStorage.getItem("nz_color")||"#94a3b8";
+let tmpColor=curColor;
+
+function setGlobalColor(c){
+  document.documentElement.style.setProperty("--usr-color",c);
+}
+setGlobalColor(curColor);
+
+function buildColorPicker(container,selVar,onChange){
+  container.innerHTML="";
+  COLORS.forEach(({v,n})=>{
+    const b=document.createElement("button");
+    b.className="clrc"+(v===selVar?" sel":"");
+    b.style.background=v;b.title=n;
+    b.addEventListener("click",()=>{
+      container.querySelectorAll(".clrc").forEach(x=>x.classList.remove("sel"));
+      b.classList.add("sel");onChange(v);
+    });
+    container.appendChild(b);
+  });
+}
+
+function buildColorPicker2(container,selVar,onChange){
+  container.innerHTML="";
+  COLORS.forEach(({v,n})=>{
+    const b=document.createElement("button");
+    b.className="clrc2"+(v===selVar?" sel":"");
+    b.style.background=v;b.title=n;
+    b.addEventListener("click",()=>{
+      container.querySelectorAll(".clrc2").forEach(x=>x.classList.remove("sel"));
+      b.classList.add("sel");onChange(v);
+    });
+    container.appendChild(b);
+  });
+}
+
+/* ロビー色ピッカー */
+buildColorPicker(D.lbClrPick,curColor,v=>{
+  curColor=v;setGlobalColor(v);localStorage.setItem("nz_color",v);
+});
+
+/* 入室後色変更モーダル */
+D.clrBtn.addEventListener("click",()=>{
+  tmpColor=curColor;
+  buildColorPicker2(D.clrPick2,curColor,v=>{
+    tmpColor=v;
+    D.clrPrev.innerHTML=`<span style="color:${v}">■ このテキストの色でメッセージが表示されます</span>`;
+  });
+  D.clrmod.classList.add("show");
+});
+D.clrOk.addEventListener("click",async()=>{
+  curColor=tmpColor;setGlobalColor(curColor);localStorage.setItem("nz_color",curColor);
+  /* presence更新 */
+  if(curR&&!isW){
+    try{await update(ref(db,`presence/${curR}/${uid}`),{color:curColor});}catch{}
+  }
+  D.clrmod.classList.remove("show");
+});
+D.clrCancel.addEventListener("click",()=>D.clrmod.classList.remove("show"));
+D.clrmod.addEventListener("click",e=>{if(e.target===D.clrmod)D.clrmod.classList.remove("show");});
+
+/* ════ 人数制限セグメント ════ */
+let selMax=4;
+function buildMuSeg(){
+  D.muSeg.innerHTML="";
+  for(let i=2;i<=10;i++){
+    const b=document.createElement("button");
+    b.textContent=i+"名";if(i===selMax)b.classList.add("sel");
+    b.addEventListener("click",()=>{
+      selMax=i;D.muSeg.querySelectorAll("button").forEach(x=>x.classList.remove("sel"));
+      b.classList.add("sel");
+    });
+    D.muSeg.appendChild(b);
+  }
+}
+buildMuSeg();
 
 /* ════ 時刻 ════ */
 const fDT=ts=>{if(!ts)return"";const d=new Date(ts);return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}`;};
@@ -539,25 +729,18 @@ let isEx=false,lastA=Date.now();
 let _cOff=null,_pOff=null,_rOff=null,_yOff=null;
 let hbT=null,ofT=null,toT=null,slT=null;
 let rIds=new Set();
+/* presence snapshot: uid→{name,trip,color} */
+let presenceSnap={};
 
-/* ════ YT 同期状態 ════
-   amOwn   : 自分がホスト
-   hSync   : ホストが同期ON
-   gFree   : ゲストが自由視聴
-   sOk     : ゲストが同期承認済み
-   vC      : 最新 videoState
-   lVid    : ロード済み videoId
-   ytp     : YT.Player インスタンス
-   dockOpen: プレイヤードックが表示中
-════ */
+/* ════ YT 同期状態 ════ */
 let ytp=null,ytRdy=false;
 let amOwn=false,hSync=false,gFree=false,sOk=false;
-let vC=null,lVid=null,dockOpen=false;
+let vC=null,lVid=null,floatOpen=false;
 let isDrag=false,isCmp=false;
 let shUntil=0;
 const shield=(ms=800)=>{shUntil=Date.now()+ms;};
 const shd=()=>amOwn&&Date.now()<shUntil;
-const DRIFT=1.5;
+const DRIFT=1.2;
 
 /* ════ YT API ════ */
 (()=>{
@@ -574,25 +757,70 @@ const hideSplash=()=>{
   setTimeout(()=>s.remove(),260);
 };
 
-/* ════ Image modal ════ */
-window.openImg=src=>{D.imEl.src=src;D.imod.classList.add("show");};
-D.icBtn.onclick=()=>{D.imod.classList.remove("show");setTimeout(()=>{D.imEl.src="";},200);};
-D.imod.addEventListener("click",e=>{if(e.target===D.imod)D.icBtn.click();});
+/* ════ Image Modal (ピンチズーム) ════ */
+let imgScale=1,imgX=0,imgY=0,imgLastDist=0;
+
+function resetImgTransform(){imgScale=1;imgX=0;imgY=0;applyImgTransform();}
+function applyImgTransform(){
+  D.imEl.style.transform=`translate(${imgX}px,${imgY}px) scale(${imgScale})`;
+}
+
+window.openImg=src=>{
+  D.imEl.src=src;resetImgTransform();D.imod.classList.add("show");
+};
+D.icBtn.onclick=()=>{D.imod.classList.remove("show");setTimeout(()=>{D.imEl.src="";resetImgTransform();},200);};
+D.imod.addEventListener("click",e=>{if(e.target===D.imod||e.target===D.imodWrap)D.icBtn.click();});
+
+/* ピンチズーム */
+let imodPt=[];
+D.imodWrap.addEventListener("touchstart",e=>{
+  imodPt=[...e.touches];
+  if(imodPt.length===2)imgLastDist=Math.hypot(imodPt[0].clientX-imodPt[1].clientX,imodPt[0].clientY-imodPt[1].clientY);
+},{passive:true});
+D.imodWrap.addEventListener("touchmove",e=>{
+  e.preventDefault();
+  if(e.touches.length===2){
+    const dist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+    imgScale=Math.min(5,Math.max(.5,imgScale*(dist/imgLastDist)));
+    imgLastDist=dist;applyImgTransform();
+  }
+},{passive:false});
+/* ダブルタップリセット */
+let lastTap=0;
+D.imodWrap.addEventListener("touchend",e=>{
+  const t=Date.now();if(t-lastTap<280)resetImgTransform();lastTap=t;
+},{passive:true});
+/* マウスホイールズーム */
+D.imodWrap.addEventListener("wheel",e=>{
+  e.preventDefault();imgScale=Math.min(5,Math.max(.5,imgScale-(e.deltaY>0?.1:-.1)));applyImgTransform();
+},{passive:false});
 
 /* ════ メディアカード ════ */
 const PIco=`<svg viewBox="0 0 80 80" fill="none"><circle cx="40" cy="40" r="40" fill="rgba(0,0,0,.55)"/><polygon points="30,22 62,40 30,58" fill="white"/></svg>`;
 
+/* 唯一の再生管理 */
+let activeMedia=null; // {type:'audio'|'yt',stop:fn}
+function stopActiveMedia(){
+  if(activeMedia){try{activeMedia.stop();}catch{}activeMedia=null;}
+}
+
 window.__pYT=vid=>{
+  stopActiveMedia();
   const c=document.getElementById("ytc-"+vid);if(!c)return;
   c.innerHTML=`<div class="mce"><iframe src="https://www.youtube.com/embed/${esc(vid)}?autoplay=1" allow="autoplay;encrypted-media" allowfullscreen></iframe></div>`;
+  activeMedia={type:"yt",stop:()=>{if(c)c.innerHTML="<div class='mct' onclick=\"window.__pYT('"+vid+"')\"></div>";} };
 };
 window.__pNi=nid=>{
+  stopActiveMedia();
   const c=document.getElementById("nic-"+nid);if(!c)return;
   c.innerHTML=`<div class="mce"><iframe src="https://embed.nicovideo.jp/watch/${nid}?autoplay=1" allow="autoplay" allowfullscreen></iframe></div>`;
+  activeMedia={type:"nico",stop:()=>{c.innerHTML="";}};
 };
 window.__pTT=tid=>{
+  stopActiveMedia();
   const c=document.getElementById("ttk-"+tid);if(!c)return;
   c.innerHTML=`<div class="mce tk"><iframe src="https://www.tiktok.com/embed/v2/${tid}" allow="autoplay" allowfullscreen></iframe></div>`;
+  activeMedia={type:"tiktok",stop:()=>{c.innerHTML="";}};
 };
 
 /* YouTube: カード + 同期ボタン */
@@ -610,11 +838,8 @@ function bYT(vid){
       `</div>` +
     `</div>` +
     `<div class="sbar">` +
-      `<div class="sbar-info">` +
-        `<div class="sbar-ttl">🎬 YouTube 同期再生</div>` +
-        `<div class="sbar-vid">${sv}</div>` +
-      `</div>` +
-      `<button class="sbar-btn" onclick="window.__ytSync('${sv}')">▶ 同期して再生</button>` +
+      `<div class="sbar-info"><div class="sbar-ttl">🎬 YouTube 同期</div><div class="sbar-vid">${sv}</div></div>` +
+      `<button class="sbar-btn" onclick="window.__ytSync('yt','${sv}')">▶ 同期</button>` +
     `</div>`
   );
 }
@@ -622,12 +847,22 @@ function bYT(vid){
 function bNico(url,nid){
   const sn=esc(nid),su=esc(url),numId=nid.replace(/\D/g,"");
   const th=numId?`https://nicovideo.cdn.nimg.jp/thumbnails/${numId}/original`:"";
-  return `<div class="mc" id="nic-${sn}"><div class="mct" onclick="window.__pNi('${sn}')"><img src="${th}" alt="" loading="lazy" onerror="this.style.background='#1e293b'"><div class="mpi">${PIco}</div></div><div class="mcb"><button class="mcbtn" onclick="window.__pNi('${sn}')">▶ その場で再生</button><a class="mcbtn s" href="${su}" target="_blank" rel="noopener">ニコニコで観る</a></div></div>`;
+  return(
+    `<div class="mc" id="nic-${sn}"><div class="mct" onclick="window.__pNi('${sn}')"><img src="${th}" alt="" loading="lazy" onerror="this.style.background='#1e293b'"><div class="mpi">${PIco}</div></div>` +
+    `<div class="mcb"><button class="mcbtn" onclick="window.__pNi('${sn}')">▶ その場で再生</button><a class="mcbtn s" href="${su}" target="_blank" rel="noopener">ニコニコで観る</a></div></div>` +
+    `<div class="sbar"><div class="sbar-info"><div class="sbar-ttl">📺 ニコニコ 同期</div><div class="sbar-vid">${sn}</div></div>` +
+    `<button class="sbar-btn" onclick="window.__ytSync('nico','${sn}')">▶ 同期</button></div>`
+  );
 }
 
 function bTT(url,tid){
   const st=esc(tid),su=esc(url);
-  return `<div class="mc" id="ttk-${st}"><div class="mct" style="aspect-ratio:9/16;max-width:140px" onclick="window.__pTT('${st}')"><div style="width:100%;height:100%;background:linear-gradient(135deg,#010101,#fe2c55);display:flex;align-items:center;justify-content:center">${PIco}</div></div><div class="mcb"><button class="mcbtn" onclick="window.__pTT('${st}')">▶ その場で再生</button><a class="mcbtn s" href="${su}" target="_blank" rel="noopener">TikTokで観る</a></div></div>`;
+  return(
+    `<div class="mc" id="ttk-${st}"><div class="mct" style="aspect-ratio:9/16;max-width:140px" onclick="window.__pTT('${st}')"><div style="width:100%;height:100%;background:linear-gradient(135deg,#010101,#fe2c55);display:flex;align-items:center;justify-content:center">${PIco}</div></div>` +
+    `<div class="mcb"><button class="mcbtn" onclick="window.__pTT('${st}')">▶ その場で再生</button><a class="mcbtn s" href="${su}" target="_blank" rel="noopener">TikTokで観る</a></div></div>` +
+    `<div class="sbar"><div class="sbar-info"><div class="sbar-ttl">🎵 TikTok 同期</div><div class="sbar-vid">${st}</div></div>` +
+    `<button class="sbar-btn" onclick="window.__ytSync('tiktok','${st}')">▶ 同期</button></div>`
+  );
 }
 
 /* 音楽プレイヤー */
@@ -640,18 +875,23 @@ function bAudio(url){
     const aw=document.getElementById(wid),au=document.getElementById(id);if(!aw||!au)return;
     const pb=aw.querySelector(".apb"),sk=aw.querySelector(".ask"),tm=aw.querySelector(".atm");
     const fA=s=>isNaN(s)?"00:00":`${String(Math.floor(s/60)).padStart(2,"0")}:${String(Math.floor(s%60)).padStart(2,"0")}`;
-    au.onplay=()=>{document.querySelectorAll("audio").forEach(a=>{if(a!==au)a.pause();});document.querySelectorAll(".aw").forEach(w=>w.classList.remove("pl"));aw.classList.add("pl");pb.innerHTML=paIco();};
+    au.onplay=()=>{
+      stopActiveMedia();
+      activeMedia={type:"audio",stop:()=>{au.pause();}};
+      document.querySelectorAll(".aw").forEach(w=>w.classList.remove("pl"));
+      aw.classList.add("pl");pb.innerHTML=paIco();
+    };
     au.onpause=au.onended=()=>{aw.classList.remove("pl");pb.innerHTML=pIco();};
     au.ontimeupdate=()=>{if(!au.duration)return;sk.value=(au.currentTime/au.duration)*100;tm.textContent=`${fA(au.currentTime)}/${fA(au.duration)}`;};
     au.onloadedmetadata=()=>{tm.textContent=`00:00/${fA(au.duration)}`;};
     pb.onclick=()=>{if(au.paused)au.play().catch(()=>{});else au.pause();};
     sk.oninput=()=>{if(au.duration)au.currentTime=(sk.value/100)*au.duration;};
   });
-  return `<div class="aw" id="${wid}"><audio id="${id}" src="${su}" preload="metadata" style="display:none"></audio><div class="ar"><button class="apb">${pIco()}</button><span class="alb">AUDIO</span><input type="range" class="ask" value="0" min="0" max="100"><span class="atm">00:00/00:00</span></div><div class="adl"><a href="${su}" target="_blank" rel="noopener" download><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>ダウンロード</a></div></div>`;
+  return `<div class="aw" id="${wid}"><audio id="${id}" src="${su}" preload="metadata" style="display:none"></audio><div class="ar"><button class="apb">${pIco()}</button><span class="alb">AUDIO</span><input type="range" class="ask" value="0" min="0" max="100"><span class="atm">00:00/00:00</span></div><div class="adl"><a href="${su}" target="_blank" rel="noopener" download><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>DL</a></div></div>`;
 }
 
 /* ════ コンテンツパーサー ════
-   URLを検出して分割。URLの前後に<br><br>を挿入して段落区切りを作る。
+   URLの前後はダブル改行で段落区切り。全角・半角スペースも除去して整形。
 ════ */
 const AR=/\.(mp3|wav|aac|m4a|ogg|flac)(\?.*)?$/i;
 const IR=/\.(jpe?g|gif|png|webp|bmp|svg)(\?.*)?$/i;
@@ -660,30 +900,38 @@ const NR=/nicovideo\.jp\/watch\/((?:sm|nm|so|lv|co|ch)[0-9]+[A-Za-z0-9_-]*|[0-9]
 const TR=/tiktok\.com\/@[^/]+\/video\/(\d+)/i;
 const UR=/(https?:\/\/[^\s\n<>"]+)/gi;
 
+/* 全角スペースを含む空白を除去してURLを分割 */
 function parseTxt(txt){
+  /* 全角スペースも改行扱い */
+  const normalized=txt.replace(/[\u3000]/g," ");
   const parts=[];let last=0,m;
   UR.lastIndex=0;
-  while((m=UR.exec(txt))!==null){
-    if(m.index>last)parts.push({t:"t",v:txt.slice(last,m.index)});
+  while((m=UR.exec(normalized))!==null){
+    if(m.index>last)parts.push({t:"t",v:normalized.slice(last,m.index)});
     parts.push({t:"u",v:m[0]});
     last=m.index+m[0].length;
   }
-  if(last<txt.length)parts.push({t:"t",v:txt.slice(last)});
+  if(last<normalized.length)parts.push({t:"t",v:normalized.slice(last)});
 
   const html=[];
   for(let i=0;i<parts.length;i++){
     const p=parts[i];
     if(p.t==="t"){
-      const h=esc(p.v).replace(/\n/g,"<br>").replace(/^(<br>)+|(<br>)+$/g,"");
+      /* 前後の空白・改行を除去してから変換 */
+      let v=p.v;
+      /* URL前後の半角・全角スペースをトリム */
+      if(i>0&&parts[i-1].t==="u")v=v.replace(/^[\s\u3000]+/,"");
+      if(i<parts.length-1&&parts[i+1].t==="u")v=v.replace(/[\s\u3000]+$/,"");
+      const h=esc(v).replace(/\n/g,"<br>").replace(/^(<br>)+|(<br>)+$/g,"");
       if(h)html.push(h);
     }else{
-      /* URL前後に段落区切り */
-      if(html.length>0)html.push("<br><br>");
+      /* URL前 段落区切り */
+      if(html.length>0&&html[html.length-1]!=="<br><br>")html.push("<br><br>");
       const url=p.v,su=esc(url),cl=url.replace(/[?#].*$/,"");
-      const ym=url.match(YR);if(ym){html.push(bYT(ym[1]));if(i<parts.length-1)html.push("<br>");continue;}
-      const nm=url.match(NR);if(nm){html.push(bNico(url,nm[1]));if(i<parts.length-1)html.push("<br>");continue;}
-      const tm2=url.match(TR);if(tm2){html.push(bTT(url,tm2[1]));if(i<parts.length-1)html.push("<br>");continue;}
-      if(AR.test(cl)){html.push(bAudio(url));if(i<parts.length-1)html.push("<br>");continue;}
+      const ym=url.match(YR);if(ym){html.push(bYT(ym[1]));if(i<parts.length-1)html.push("<br><br>");continue;}
+      const nm=url.match(NR);if(nm){html.push(bNico(url,nm[1]));if(i<parts.length-1)html.push("<br><br>");continue;}
+      const tm2=url.match(TR);if(tm2){html.push(bTT(url,tm2[1]));if(i<parts.length-1)html.push("<br><br>");continue;}
+      if(AR.test(cl)){html.push(bAudio(url));if(i<parts.length-1)html.push("<br><br>");continue;}
       if(IR.test(cl)||/^data:image\//i.test(url)){
         html.push(`<img src="${su}" alt="" loading="lazy" style="max-width:200px;max-height:150px;border-radius:8px;cursor:pointer;display:block;margin-top:4px" onclick="window.openImg('${su}')">`);
         if(i<parts.length-1)html.push("<br><br>");continue;
@@ -704,30 +952,38 @@ function cMsg(m){
     d.innerHTML=`<div class="sm">${esc(txt)} <span style="color:var(--m2);font-size:9px">${fDT(m.time)}</span></div>`;
   }else{
     const sN=dec(m.nEnc,curP,isOff)||"???",sT=dec(m.tEnc,curP,isOff)||"";
-    d.innerHTML=`<div class="mm"><span>${esc(sN)}</span><span class="trp">${esc(sT)}</span><span class="ts">${fDT(m.time)}</span></div><div class="mb">${parseTxt(txt)}</div>`;
+    const sC=dec(m.cEnc,curP,isOff)||"#94a3b8";
+    d.innerHTML=`<div class="mm"><span class="un" style="color:${esc(sC)}">${esc(sN)}</span><span class="trp">${esc(sT)}</span><span class="ts">${fDT(m.time)}</span></div><div class="mb" style="border-left-color:${esc(sC)}">${parseTxt(txt)}</div>`;
   }
   return d;
 }
 
-function insMsg(d,ts){
-  const ch=D.tl.children;let ins=false;
-  for(let i=0;i<ch.length;i++){
-    if(ts>parseInt(ch[i].dataset.ts||0,10)){D.tl.insertBefore(d,ch[i]);ins=true;break;}
-  }
-  if(!ins)D.tl.appendChild(d);
+/* 下が最新: appendで追加、scrollBottomで最新へ */
+function addMsg(d){
+  D.tl.appendChild(d);
+  if(!isSc)scBottom();
 }
 
-/* スクロール (上=最新) */
+/* スクロール: 下=最新 */
 let isSc=false;
-D.tl.addEventListener("scroll",()=>{isSc=D.tl.scrollTop>30;},{passive:true});
-const scTop=()=>{D.tl.scrollTop=0;isSc=false;};
-D.tTBtn.onclick=scTop;
-D.tBBtn.onclick=()=>{D.tl.scrollTop=D.tl.scrollHeight;isSc=true;};
-D.mi.addEventListener("focus",()=>{setTimeout(scTop,200);});
+D.tl.addEventListener("scroll",()=>{
+  const atBottom=D.tl.scrollHeight-D.tl.scrollTop-D.tl.clientHeight<40;
+  isSc=!atBottom;
+},{passive:true});
+const scBottom=()=>{D.tl.scrollTop=D.tl.scrollHeight;isSc=false;};
+const scTop2=()=>{D.tl.scrollTop=0;isSc=true;};
+D.tTBtn.onclick=scBottom;  /* 最新=下 */
+D.tBBtn.onclick=scTop2;    /* 最古=上 */
+
+/* fnボタンの位置をibの上に合わせる */
+function updFnPos(){
+  const ibH=D.ib.classList.contains("show")?D.ib.offsetHeight:0;
+  D.fn.style.bottom=(ibH+8)+"px";
+}
 
 /* ════ 部屋削除 ════ */
 async function wipe(r){
-  const w={};w[`rooms/${r}`]=null;w[`chat/${r}`]=null;w[`presence/${r}`]=null;
+  const w={};w[`rooms/${r}`]=null;w[`chat/${r}`]=null;w[`presence/${r}`]=null;w[`yt_state/${r}`]=null;
   try{await update(ref(db),w);}catch{}
 }
 
@@ -744,7 +1000,7 @@ function clearAll(){
   rIds.clear();
   destroyYtp();
   amOwn=false;hSync=false;gFree=false;sOk=false;vC=null;lVid=null;
-  closeDock();
+  closeFloat();
 }
 
 /* ════ showLobby ════ */
@@ -763,10 +1019,11 @@ function showLobby(msg=""){
   if(sk&&!D.tk.value)D.tk.value=sk;
   if(sr&&!D.ri.value)D.ri.value=sr;
   if(sp&&!D.pi.value)D.pi.value=sp;
-  /* 公式部屋フォームにも同期 */
   if(sn&&!D.wni.value)D.wni.value=sn;
   if(sk&&!D.wtk.value)D.wtk.value=sk;
   updTP();updWTP();
+  /* 色ピッカー再描画 */
+  buildColorPicker(D.lbClrPick,curColor,v=>{curColor=v;setGlobalColor(v);localStorage.setItem("nz_color",v);});
 }
 const setBtns=ok=>{
   D.enBtn.disabled=!ok;D.enBtn.textContent=ok?"入室する":"処理中...";
@@ -774,17 +1031,62 @@ const setBtns=ok=>{
 };
 
 /* ════════════════════════════════════════
-   YT同期プレイヤー (Dock)
-
-   設計:
-   - ytdock は常にDOMに存在。show/hideで表示切替。
-   - YT.Player は #ytdock-player div に生成し、一度だけ作る。
-   - 動画切替は loadVideoById を使う。
-   - ホスト: 再生/停止/同期ON/OFF を操作 → DBへ書く
-   - ゲスト(同期): DBに追従 → スライダー操作不可
-   - ゲスト(自由): YT標準UIのみ → DBには書かない
-   - 閉じる: ホストはDBをクリア、ゲストは自分だけ閉じる
+   浮動動画プレイヤー
+   - ドラッグで自由移動
+   - 「元の位置に戻す」ボタン
+   - ゲスト同期中はシークUI隠す
+   - 動画は1つだけ
 ════════════════════════════════════════ */
+const DEFAULT_POS=()=>({right:11,bottom:70});
+let floatPos={...DEFAULT_POS()};
+let dragSt=null;
+
+/* 初期位置セット */
+function setFloatPos(pos){
+  const el=D.float;
+  const vw=window.innerWidth,vh=window.innerHeight;
+  const w=el.offsetWidth||280;
+  /* rightを使うためにleftに変換 */
+  let left=vw-pos.right-w;
+  let top=vh-pos.bottom-el.offsetHeight;
+  left=Math.max(0,Math.min(vw-w,left));
+  top=Math.max(0,Math.min(vh-60,top));
+  el.style.left=left+"px";el.style.top=top+"px";
+  el.style.right="auto";el.style.bottom="auto";
+}
+
+function resetFloatPos(){
+  const p=DEFAULT_POS();
+  D.float.style.right=p.right+"px";D.float.style.bottom=p.bottom+"px";
+  D.float.style.left="auto";D.float.style.top="auto";
+}
+
+D.fRst.addEventListener("click",resetFloatPos);
+
+/* ドラッグ (タッチ & マウス) */
+let dragOx=0,dragOy=0,dragEx=0,dragEy=0;
+function onDragStart(ex,ey){
+  const r=D.float.getBoundingClientRect();
+  dragOx=ex-r.left;dragOy=ey-r.top;
+  isDrag=true;D.float.style.transition="none";
+}
+function onDragMove(ex,ey){
+  if(!isDrag)return;
+  const vw=window.innerWidth,vh=window.innerHeight,w=D.float.offsetWidth,h=D.float.offsetHeight;
+  let left=ex-dragOx,top=ey-dragOy;
+  left=Math.max(0,Math.min(vw-w,left));
+  top=Math.max(0,Math.min(vh-h,top));
+  D.float.style.left=left+"px";D.float.style.top=top+"px";
+  D.float.style.right="auto";D.float.style.bottom="auto";
+}
+function onDragEnd(){isDrag=false;}
+
+D.fBar.addEventListener("mousedown",e=>{onDragStart(e.clientX,e.clientY);e.preventDefault();});
+document.addEventListener("mousemove",e=>{if(isDrag)onDragMove(e.clientX,e.clientY);});
+document.addEventListener("mouseup",onDragEnd);
+D.fBar.addEventListener("touchstart",e=>{if(e.touches.length===1){onDragStart(e.touches[0].clientX,e.touches[0].clientY);e.preventDefault();}},{passive:false});
+document.addEventListener("touchmove",e=>{if(isDrag&&e.touches.length===1){onDragMove(e.touches[0].clientX,e.touches[0].clientY);e.preventDefault();}},{passive:false});
+document.addEventListener("touchend",onDragEnd,{passive:true});
 
 const yRef=()=>ref(db,`yt_state/${curR}`);
 
@@ -792,66 +1094,59 @@ function destroyYtp(){
   if(slT){clearInterval(slT);slT=null;}
   if(ytp){try{ytp.destroy();}catch{};ytp=null;}
   lVid=null;
+  stopActiveMedia();
 }
 
-function closeDock(){
-  dockOpen=false;
-  D.dock.classList.remove("show");
-  D.dOverlay.classList.remove("show");
+function closeFloat(){
+  floatOpen=false;D.float.classList.remove("show");D.fOv.classList.remove("show");
+}
+function openFloat(){
+  floatOpen=true;D.float.classList.add("show");
+  resetFloatPos();
 }
 
-/* ドックを開く */
-function openDock(){
-  dockOpen=true;
-  D.dock.classList.add("show");
-}
-
-/* YT.Player を構築または動画を切替 */
-function loadYtp(vid,sec){
+function loadYtp(vid,sec,mediaType="yt"){
   if(!vid)return;
   sec=Math.max(0,Math.floor(sec||0));
+  stopActiveMedia();
 
-  /* プレイヤーが既にあって同じ動画 → シーク&再生状態だけ合わせる */
-  if(ytp&&lVid===vid){
-    applyCtrl(vC?.status||"paused",sec);
+  if(mediaType!=="yt"){
+    /* ニコニコ・TikTok: iframe埋め込み */
+    lVid=vid;
+    D.fPlayer.innerHTML="";
+    const wrap=document.createElement("div");wrap.style.cssText="position:absolute;inset:0";
+    let src="";
+    if(mediaType==="nico")src=`https://embed.nicovideo.jp/watch/${vid}?autoplay=1`;
+    else if(mediaType==="tiktok")src=`https://www.tiktok.com/embed/v2/${vid}`;
+    wrap.innerHTML=`<iframe src="${esc(src)}" allow="autoplay" allowfullscreen style="width:100%;height:100%;border:none"></iframe>`;
+    D.fPlayer.appendChild(wrap);
+    /* ニコニコ・TikTokはYTPコントロール不可 */
+    activeMedia={type:mediaType,stop:()=>{D.fPlayer.innerHTML="";}};
     return;
   }
 
-  /* 別動画 or 初回 */
-  lVid=vid;
-
-  if(ytp?.loadVideoById){
-    /* 既存プレイヤーに別動画をロード */
-    try{
-      ytp.mute();ytp.setVolume(0);
-      ytp.loadVideoById({videoId:vid,startSeconds:sec});
-      return;
-    }catch{
-      try{ytp.destroy();}catch{};ytp=null;
-    }
+  if(ytp&&lVid===vid){
+    applyCtrl(vC?.status||"paused",sec);return;
   }
-
-  /* 新規プレイヤー作成 */
-  /* #ytdock-player を一旦空にする */
-  D.dPlayer.innerHTML="";
-  const el=document.createElement("div");el.id="ytdock-player-inner";
-  D.dPlayer.appendChild(el);
-
+  lVid=vid;
+  if(ytp?.loadVideoById){
+    try{ytp.mute();ytp.setVolume(0);ytp.loadVideoById({videoId:vid,startSeconds:sec});return;}
+    catch{try{ytp.destroy();}catch{};ytp=null;}
+  }
+  D.fPlayer.innerHTML="";
+  const el=document.createElement("div");el.id="ytfloat-player-inner";D.fPlayer.appendChild(el);
   const build=()=>{
     if(!ytRdy||!window.YT?.Player){setTimeout(build,120);return;}
-    ytp=new YT.Player("ytdock-player-inner",{
+    ytp=new YT.Player("ytfloat-player-inner",{
       videoId:vid,
       playerVars:{autoplay:1,playsinline:1,controls:1,rel:0,mute:1,start:sec},
-      events:{
-        onReady:e=>{e.target.mute();e.target.setVolume(0);},
-        onStateChange:onPSC,
-      }
+      events:{onReady:e=>{e.target.mute();e.target.setVolume(0);},onStateChange:onPSC}
     });
+    activeMedia={type:"yt",stop:()=>{try{if(ytp)ytp.stopVideo();}catch{}}};
   };
   build();
 }
 
-/* 再生状態を適用 */
 function applyCtrl(status,sec){
   if(!ytp?.getPlayerState)return;
   try{
@@ -862,28 +1157,23 @@ function applyCtrl(status,sec){
   }catch{}
 }
 
-/* 目標時刻を計算 */
 const calcT=st=>{let t=st.currentTime||0;if(st.status==="playing"&&st.isSyncing)t+=(now()-(st.timestamp||now()))/1000;return Math.max(0,t);};
 
-/* onPlayerStateChange */
 function onPSC(e){
   if(!vC)return;
   const ps=e.data,ct=ytp?.getCurrentTime?.()||0,dur=ytp?.getDuration?.()||0;
-  /* 動画終了 */
   if(ps===0){
     const ep=Math.max(0,dur-.5);
     if(amOwn){shield(1200);ytp.seekTo(ep,true);ytp.pauseVideo();if(hSync)wY({status:"paused",currentTime:ep,timestamp:now()});}
     else if(gFree||!hSync){ytp.seekTo(ep,true);ytp.pauseVideo();}
     return;
   }
-  /* ホスト */
   if(amOwn){
     if(!hSync||shd())return;
     if(ps===1&&vC.status!=="playing")wY({status:"playing",currentTime:ct,timestamp:now()});
     else if(ps===2&&vC.status!=="paused")wY({status:"paused",currentTime:ct,timestamp:now()});
     return;
   }
-  /* ゲスト(同期中): ホスト状態に戻す */
   if(sOk&&hSync&&!gFree){
     if(vC.status==="playing"&&ps!==1&&ps!==3)
       setTimeout(()=>{if(!ytp||!sOk||gFree)return;if(ytp.getPlayerState?.()!==1){ytp.mute();ytp.setVolume(0);ytp.playVideo();}},300);
@@ -892,199 +1182,137 @@ function onPSC(e){
   }
 }
 
-/* DB書き込み (ホストのみ) */
 const wY=patch=>{if(!amOwn)return;update(yRef(),patch).catch(()=>{});};
 const sY=data=>set(yRef(),data);
 
-/* Dock UI更新 */
-function updDockUI(){
-  /* pp/stb/fmb の表示制御 */
-  const pp=D.dPP,stb=D.dStb,fmb=D.dFmb,sp=D.dSp,ld=D.dLd,tx=D.dTx;
-  if(amOwn){
-    pp.classList.add("show");
-    stb.classList.add("show");
-    fmb.classList.remove("show");
-    if(hSync){
-      sp.className="dsp-host";ld.className="dld dld-am";tx.textContent="🔴 ホスト・同期中";
-      stb.textContent="同期を停止";stb.className="dsync-st show";
-    }else{
-      sp.className="dsp-host";ld.className="dld dld-off";tx.textContent="👑 ホスト";
-      stb.textContent="同期を開始";stb.className="dsync-go show";
-    }
-  }else if(sOk&&hSync&&!gFree){
-    /* ゲスト同期中 */
-    pp.classList.remove("show"); /* pp操作不可 */
-    stb.classList.remove("show");
-    fmb.classList.add("show");fmb.className="show";fmb.textContent="自由視聴";
-    sp.className="dsp-sync";ld.className="dld dld-gr";tx.textContent="🟢 同期中";
-  }else if(gFree){
-    /* ゲスト自由視聴 */
-    pp.classList.remove("show");
-    stb.classList.remove("show");
-    fmb.classList.add("show");fmb.className="fmb-rt show";fmb.textContent="← 同期に戻る";
-    sp.className="dsp-free";ld.className="dld dld-off";tx.textContent="🎧 自由視聴中";
-  }else{
-    /* 待機/未承認 */
-    pp.classList.remove("show");stb.classList.remove("show");fmb.classList.remove("show");
-    sp.className="dsp-free";ld.className="dld dld-off";tx.textContent="⏳ 待機中";
-  }
+/* seekブロック: ゲスト同期中はタップでシーク不可 */
+function updSeekBlock(){
+  D.fSeekBlock.style.display=(sOk&&hSync&&!gFree&&!amOwn)?"block":"none";
 }
 
-/* videoState リスナー */
+function updFloatUI(){
+  const pp=D.fPP,stb=D.fStb,fmb=D.fFmb,sp=D.fSp,ld=D.fLd,tx=D.fTx;
+  if(amOwn){
+    pp.classList.add("show");stb.classList.add("show");fmb.classList.remove("show");
+    if(hSync){
+      sp.className="fsp-host";ld.className="fld fld-am";tx.textContent="🔴 同期中";
+      stb.textContent="停止";stb.className="ystb-st show";
+    }else{
+      sp.className="fsp-host";ld.className="fld fld-off";tx.textContent="👑 ホスト";
+      stb.textContent="同期";stb.className="ystb-go show";
+    }
+  }else if(sOk&&hSync&&!gFree){
+    pp.classList.remove("show");stb.classList.remove("show");
+    fmb.classList.add("show");fmb.className="show";fmb.textContent="自由視聴";
+    sp.className="fsp-sync";ld.className="fld fld-gr";tx.textContent="🟢 同期中";
+  }else if(gFree){
+    pp.classList.remove("show");stb.classList.remove("show");
+    fmb.classList.add("show");fmb.className="yfmb-rt show";fmb.textContent="← 同期";
+    sp.className="fsp-free";ld.className="fld fld-off";tx.textContent="🎧 自由視聴";
+  }else{
+    pp.classList.remove("show");stb.classList.remove("show");fmb.classList.remove("show");
+    sp.className="fsp-free";ld.className="fld fld-off";tx.textContent="⏳ 待機中";
+  }
+  updSeekBlock();
+}
+
 function bindYtState(){
   if(_yOff){_yOff();_yOff=null;}
-  const r=yRef();
-  _yOff=onValue(r,snap=>{
+  _yOff=onValue(yRef(),snap=>{
     if(!snap.exists()){
-      /* DBが消えた = ホストが閉じた */
       vC=null;
-      if(!amOwn){
-        /* ゲストはドックを閉じる */
-        destroyYtp();closeDock();
-        amOwn=false;hSync=false;gFree=false;sOk=false;
-      }
-      updDockUI();return;
+      if(!amOwn){destroyYtp();closeFloat();amOwn=false;hSync=false;gFree=false;sOk=false;}
+      updFloatUI();return;
     }
-
-    const st=snap.val(),prev=vC?.videoId,wasOwn=amOwn;
+    const st=snap.val(),wasOwn=amOwn;
     vC=st;amOwn=(st.owner===uid);hSync=!!st.isSyncing;
     if(!wasOwn&&amOwn){sOk=true;gFree=false;}
-
     const tSec=calcT(st);
+    const mt=st.mediaType||"yt";
 
-    /* ── ホスト ── */
     if(amOwn){
-      updDockUI();
-      if(!dockOpen)openDock();
-      /* 動画ロード (自分がDBに書いた直後は shield でスキップ) */
-      if(lVid!==st.videoId||!ytp)loadYtp(st.videoId,tSec);
-      /* ホストは自分で操作するので追従しない */
+      updFloatUI();
+      if(!floatOpen)openFloat();
+      if(lVid!==st.videoId||!ytp)loadYtp(st.videoId,tSec,mt);
       return;
     }
-
-    /* ── ゲスト ── */
-
-    /* ドックが閉じていて同期ONなら: 承認ダイアログを出す */
-    if(!dockOpen&&hSync){
+    /* ゲスト */
+    if(!floatOpen&&hSync){
       if(!sOk){
-        /* 承認待ち: ドックを開いてオーバーレイ表示 */
-        openDock();
-        D.dHost.textContent=`${esc(st.ownerName||"ホスト")} の動画に同期しますか？`;
-        D.dOverlay.classList.add("show");
-        /* プレイヤーは裏でロードしておく */
-        loadYtp(st.videoId,st.currentTime||0);
-        updDockUI();return;
+        openFloat();
+        D.fOvHost.textContent=`${st.ownerName||"ホスト"} の動画に同期しますか？`;
+        D.fOv.classList.add("show");
+        loadYtp(st.videoId,st.currentTime||0,mt);
+        updFloatUI();return;
       }
-      /* 承認済み & ドック閉じ → 開く */
-      if(sOk&&!gFree)openDock();
+      if(sOk&&!gFree)openFloat();
     }
-
-    if(!dockOpen){updDockUI();return;}
-
-    updDockUI();
-
-    if(gFree){
-      /* 自由視聴: 動画が変わったときだけロード */
-      if(lVid!==st.videoId||!ytp)loadYtp(st.videoId,st.currentTime||0);
-      return;
-    }
-    if(!sOk){
-      /* 未承認: ロードはするが再生しない */
-      if(lVid!==st.videoId||!ytp)loadYtp(st.videoId,st.currentTime||0);
-      return;
-    }
-    /* 同期追従 */
-    if(lVid!==st.videoId||!ytp)loadYtp(st.videoId,tSec);
+    if(!floatOpen){updFloatUI();return;}
+    updFloatUI();
+    if(gFree){if(lVid!==st.videoId||!ytp)loadYtp(st.videoId,st.currentTime||0,mt);return;}
+    if(!sOk){if(lVid!==st.videoId||!ytp)loadYtp(st.videoId,st.currentTime||0,mt);return;}
+    if(lVid!==st.videoId||!ytp)loadYtp(st.videoId,tSec,mt);
     else applyCtrl(st.status,tSec);
   });
 }
 
-/* スライダー更新ループ */
 function startSlider(){
   if(slT)clearInterval(slT);
   slT=setInterval(()=>{
     if(!ytp?.getCurrentTime||isDrag)return;
     try{
       const cur=ytp.getCurrentTime(),dur=ytp.getDuration();
-      if(dur>0)D.dTime.textContent=`${fT(cur)} / ${fT(dur)}`;
-      if(amOwn)D.dPP.textContent=ytp.getPlayerState()===1?"⏸":"▶";
+      if(dur>0)D.fTime.textContent=`${fT(cur)}/${fT(dur)}`;
+      if(amOwn)D.fPP.textContent=ytp.getPlayerState()===1?"⏸":"▶";
     }catch{}
-  },333);
+  },500);
 }
 
-/* 「同期して再生」ボタン (チャット内から呼ぶ) */
-window.__ytSync=async vid=>{
+/* 同期開始 (チャットカードから) */
+window.__ytSync=async(mediaType,vid)=>{
   if(!curR)return;
   amOwn=true;sOk=true;gFree=false;hSync=false;
   shield(2000);
-  await sY({videoId:vid,status:"paused",currentTime:0,
+  await sY({videoId:vid,mediaType,status:"paused",currentTime:0,
     timestamp:now(),owner:uid,ownerName:curN,isSyncing:false});
-  openDock();
-  loadYtp(vid,0);
-  startSlider();
-  updDockUI();
+  openFloat();loadYtp(vid,0,mediaType);startSlider();updFloatUI();
 };
 
-/* ── Dock コントロールイベント ── */
-
-/* 再生/停止 (ホストのみ) */
-D.dPP.addEventListener("click",()=>{
+/* ── Float コントロール ── */
+D.fPP.addEventListener("click",()=>{
   if(!amOwn||!ytp?.getPlayerState)return;
   shield(600);const ps=ytp.getPlayerState();
   if(ps===1){ytp.pauseVideo();if(hSync)wY({status:"paused",currentTime:ytp.getCurrentTime(),timestamp:now()});}
   else{ytp.mute();ytp.setVolume(0);ytp.playVideo();if(hSync)wY({status:"playing",currentTime:ytp.getCurrentTime(),timestamp:now()});}
 });
 
-/* 同期ON/OFF (ホストのみ) */
-D.dStb.addEventListener("click",async()=>{
-  if(!amOwn||!ytp||!vC)return;
-  const cur=ytp.getCurrentTime?.()||0,play=ytp.getPlayerState()===1;
+D.fStb.addEventListener("click",async()=>{
+  if(!amOwn||!vC)return;
+  const cur=ytp?.getCurrentTime?.()||0,play=ytp?.getPlayerState?.()===1;
   hSync=!hSync;shield(1500);
   await update(yRef(),{status:play?"playing":"paused",currentTime:cur,timestamp:now(),isSyncing:hSync}).catch(()=>{});
-  updDockUI();
+  updFloatUI();
 });
 
-/* 自由視聴 / 同期に戻る (ゲスト) */
-D.dFmb.addEventListener("click",()=>{
+D.fFmb.addEventListener("click",()=>{
   gFree=!gFree;
-  if(!gFree){
-    /* 同期に戻る */
-    sOk=true;
-    D.dOverlay.classList.remove("show");
-    if(vC)applyCtrl(vC.status,calcT(vC));
-  }
-  updDockUI();
+  if(!gFree){sOk=true;D.fOv.classList.remove("show");if(vC)applyCtrl(vC.status,calcT(vC));}
+  updFloatUI();
 });
 
-/* 閉じる */
-D.dClose.addEventListener("click",async()=>{
-  if(amOwn){
-    /* ホストが閉じる → DBをクリア → ゲストも自動で閉じる */
-    destroyYtp();closeDock();
-    amOwn=false;hSync=false;gFree=false;sOk=false;vC=null;
-    await set(yRef(),null).catch(()=>{});
-  }else{
-    /* ゲストが閉じる → 自分だけ */
-    destroyYtp();closeDock();
-    gFree=false;sOk=false;
-  }
-  updDockUI();
+D.fCls.addEventListener("click",async()=>{
+  if(amOwn){destroyYtp();closeFloat();amOwn=false;hSync=false;gFree=false;sOk=false;vC=null;await set(yRef(),null).catch(()=>{});}
+  else{destroyYtp();closeFloat();gFree=false;sOk=false;}
+  updFloatUI();
 });
 
-/* ゲスト承認/拒否 */
-D.dAcc.addEventListener("click",()=>{
-  sOk=true;gFree=false;
-  D.dOverlay.classList.remove("show");
-  updDockUI();
-  if(vC){loadYtp(vC.videoId,calcT(vC));startSlider();}
+D.fOvAcc.addEventListener("click",()=>{
+  sOk=true;gFree=false;D.fOv.classList.remove("show");updFloatUI();
+  if(vC){loadYtp(vC.videoId,calcT(vC),vC.mediaType||"yt");startSlider();}
 });
-D.dDec.addEventListener("click",()=>{
-  gFree=true;sOk=true;
-  D.dOverlay.classList.remove("show");
-  updDockUI();
-  /* 自由視聴: プレイヤーはロードするが追従しない */
-  if(vC)loadYtp(vC.videoId,vC.currentTime||0);
-  startSlider();
+D.fOvDec.addEventListener("click",()=>{
+  gFree=true;sOk=true;D.fOv.classList.remove("show");updFloatUI();
+  if(vC){loadYtp(vC.videoId,vC.currentTime||0,vC.mediaType||"yt");startSlider();}
 });
 
 /* ════ 入室処理 ════ */
@@ -1106,9 +1334,7 @@ async function doJoin({target,pass,name,trip,max,asW,isR=false}){
 
   if(!isOff){
     const rs=await get(roomRef);
-    if(rs.exists()){
-      if(N-(rs.val().lastActivity||N)>ROOM_TO)await wipe(curR);
-    }
+    if(rs.exists()){if(N-(rs.val().lastActivity||N)>ROOM_TO)await wipe(curR);}
     if(!(await get(roomRef)).exists())await set(roomRef,{max,timeoutMin:30,lastActivity:N});
     if(!isR&&!asW){
       const ps=await get(pRef);
@@ -1121,10 +1347,11 @@ async function doJoin({target,pass,name,trip,max,asW,isR=false}){
 
   if(!asW){
     await onDisconnect(myRef).remove();
-    await set(myRef,{nEnc:enc(name,pass,isOff),tEnc:enc(trip||"",pass,isOff),enteredAt:N,lastSeen:N});
+    await set(myRef,{nEnc:enc(name,pass,isOff),tEnc:enc(trip||"",pass,isOff),
+      cEnc:enc(curColor,pass,isOff),enteredAt:N,lastSeen:N});
     if(!isR)await push(chatRef,{type:"sys",text:enc(`${name}${trip||""} が入室しました`,pass,isOff),time:N});
     if(!isOff){localStorage.setItem("nz_ni",name);localStorage.setItem("nz_tk",D.tk.value.trim());}
-    hbT=setInterval(async()=>{if(!curR||isEx)return;try{await update(myRef,{lastSeen:now()});}catch{}},HB);
+    hbT=setInterval(async()=>{if(!curR||isEx)return;try{await update(myRef,{lastSeen:now(),cEnc:enc(curColor,pass,isOff)});}catch{}},HB);
   }
 
   if(!isOff){localStorage.setItem("nz_ri",target);localStorage.setItem("nz_pi",pass);}
@@ -1136,11 +1363,13 @@ async function doJoin({target,pass,name,trip,max,asW,isR=false}){
   if(asW){
     D.ib.classList.remove("show");D.wb.classList.add("show");
     D.exBtn.textContent="ロビーへ戻る";D.ivBtn.style.display="none";
+    D.clrBtn.style.display="none";
   }else{
     D.ib.classList.add("show");D.wb.classList.remove("show");
     D.exBtn.textContent="退出";D.ivBtn.style.display=isOff?"none":"block";
+    D.clrBtn.style.display="block";
   }
-  hideSplash();
+  updFnPos();hideSplash();
 
   /* リスナー: 部屋消滅 */
   if(!isOff){
@@ -1153,14 +1382,22 @@ async function doJoin({target,pass,name,trip,max,asW,isR=false}){
     });
   }
 
-  /* リスナー: presence */
+  /* リスナー: presence (入室してから落ちるまで乗ったまま) */
   _pOff=onValue(pRef,s=>{
     if(!curR)return;
-    const users=s.val()||{};const fg=document.createDocumentFragment();let cnt=0;
-    Object.values(users).forEach(u=>{
+    const users=s.val()||{};
+    presenceSnap={};
+    const fg=document.createDocumentFragment();let cnt=0;
+    Object.entries(users).forEach(([k,u])=>{
       const n=dec(u.nEnc,curP,isOff);if(!n)return;
-      const t=dec(u.tEnc,curP,isOff)||"";cnt++;
-      const sp=document.createElement("span");sp.className="chip";sp.textContent=n+t;fg.appendChild(sp);
+      const t=dec(u.tEnc,curP,isOff)||"";
+      const c=dec(u.cEnc,curP,isOff)||"#94a3b8";
+      presenceSnap[k]={name:n,trip:t,color:c};
+      cnt++;
+      const sp=document.createElement("span");
+      sp.className="chip";
+      sp.style.color=c;sp.style.borderColor=c+"44";
+      sp.textContent=n+t;fg.appendChild(sp);
     });
     D.pl.innerHTML="";D.pl.appendChild(fg);D.pcnt.textContent=`[${cnt}/${isOff?10:maxL}]`;
   });
@@ -1172,9 +1409,8 @@ async function doJoin({target,pass,name,trip,max,asW,isR=false}){
     snap.forEach(cs=>{
       const m=cs.val();if(!m||rIds.has(cs.key))return;
       rIds.add(cs.key);const el=cMsg(m);
-      if(el){insMsg(el,m.time||0);hasN=true;}
+      if(el){addMsg(el);hasN=true;}
     });
-    if(hasN&&!isSc)scTop();
   });
 
   /* タイムアウト監視 */
@@ -1193,9 +1429,7 @@ async function doJoin({target,pass,name,trip,max,asW,isR=false}){
     },30000);
   }
 
-  /* YT同期リスナー開始 */
-  bindYtState();
-  startSlider();
+  bindYtState();startSlider();
 }
 
 /* 退室 */
@@ -1220,7 +1454,9 @@ async function sendMsg(){
   if(!curR||isW||isCmp)return;
   const txt=D.mi.value.trim();if(!txt)return;
   D.mi.value="";D.mi.style.height="auto";
-  D.mi.blur();scTop();
+  /* 同期プレイヤーが表示されていない場合はキーボードを閉じない */
+  if(floatOpen)D.mi.blur();
+  scBottom();
   lastA=Date.now();const N=now();
   try{
     const upd={};
@@ -1229,6 +1465,7 @@ async function sendMsg(){
     update(ref(db),upd).catch(()=>{});
     await push(ref(db,`chat/${curR}`),{
       type:"msg",nEnc:enc(curN,curP,isOff),tEnc:enc(curT||"",curP,isOff),
+      cEnc:enc(curColor,curP,isOff),
       text:enc(txt,curP,isOff),time:N
     });
   }catch(e){alert("送信失敗: "+e.message);}
@@ -1239,15 +1476,17 @@ async function upgrade(name,trip){
   if(!curR)return;isW=false;curN=name;curT=trip||"";
   const N=now();const myRef=ref(db,`presence/${curR}/${uid}`);
   await onDisconnect(myRef).remove();
-  await set(myRef,{nEnc:enc(name,curP,isOff),tEnc:enc(trip||"",curP,isOff),enteredAt:N,lastSeen:N});
+  await set(myRef,{nEnc:enc(name,curP,isOff),tEnc:enc(trip||"",curP,isOff),
+    cEnc:enc(curColor,curP,isOff),enteredAt:N,lastSeen:N});
   await push(ref(db,`chat/${curR}`),{type:"sys",text:enc(`${name}${trip||""} が入室しました`,curP,isOff),time:N});
-  /* 公式部屋の名前・トリップも記憶 */
   localStorage.setItem("nz_ni",name);localStorage.setItem("nz_tk",D.wtk.value.trim());
   localStorage.setItem("nz_sess",JSON.stringify({target:rawR,pass:curP,name,trip:trip||"",max:maxL,asW:false}));
   D.wb.classList.remove("show");D.ib.classList.add("show");
   D.exBtn.textContent="退出";D.ivBtn.style.display=isOff?"none":"block";
+  D.clrBtn.style.display="block";
+  updFnPos();
   if(hbT)clearInterval(hbT);
-  hbT=setInterval(async()=>{if(!curR||isEx)return;try{await update(myRef,{lastSeen:now()});}catch{}},HB);
+  hbT=setInterval(async()=>{if(!curR||isEx)return;try{await update(myRef,{lastSeen:now(),cEnc:enc(curColor,curP,isOff)});}catch{}},HB);
 }
 
 /* ════ イベント ════ */
@@ -1264,7 +1503,7 @@ D.enBtn.addEventListener("click",async()=>{
   const p=D.pi.value.trim();
   if(!n||!r||!p){alert("必須項目（名前・部屋ID・パスワード）を入力してください");return;}
   setBtns(false);
-  try{await doJoin({target:r,pass:p,name:n,trip:gTrip(n,D.tk.value.trim()),max:Number(D.mu.value),asW:false});}
+  try{await doJoin({target:r,pass:p,name:n,trip:gTrip(n,D.tk.value.trim()),max:selMax,asW:false});}
   catch(e){showLobby(e.message);}
   setBtns(true);
 });
@@ -1306,20 +1545,17 @@ D.gdBtn.addEventListener("click",()=>D.gmod.classList.add("show"));
 D.gcBtn.addEventListener("click",()=>D.gmod.classList.remove("show"));
 D.gmod.addEventListener("click",e=>{if(e.target===D.gmod)D.gmod.classList.remove("show");});
 
-/* iOS viewport fix: キーボード上に入力バーを固定 */
+/* iOS viewport fix */
 if(window.visualViewport){
   let raf;
   const fix=()=>{
     cancelAnimationFrame(raf);
     raf=requestAnimationFrame(()=>{
       const h=window.visualViewport.height;
-      /* appの高さをビューポートに合わせる */
       D.app.style.height=h+"px";
-      D.app.style.position="fixed";
-      D.app.style.top="0";
-      D.app.style.left="0";
-      D.app.style.right="0";
+      D.app.style.position="fixed";D.app.style.top="0";D.app.style.left="0";D.app.style.right="0";
       window.scrollTo(0,0);
+      updFnPos();
     });
   };
   window.visualViewport.addEventListener("resize",fix,{passive:true});
@@ -1343,14 +1579,17 @@ window.addEventListener("DOMContentLoaded",async()=>{
   if(sk&&!D.tk.value)D.tk.value=sk;
   if(sr&&!D.ri.value)D.ri.value=sr;
   if(sp&&!D.pi.value)D.pi.value=sp;
-  /* 公式部屋フォームにも記憶を反映 */
   if(sn&&!D.wni.value)D.wni.value=sn;
   if(sk&&!D.wtk.value)D.wtk.value=sk;
 
-  updTP();updWTP();setBtns(true);
-  sessionStorage.setItem("nz_a","1");
+  /* 保存色をロード */
+  const savedColor=localStorage.getItem("nz_color");
+  if(savedColor){curColor=savedColor;setGlobalColor(savedColor);}
+  buildColorPicker(D.lbClrPick,curColor,v=>{curColor=v;setGlobalColor(v);localStorage.setItem("nz_color",v);});
 
-  /* セッション復元 (入室メッセージなし=isR:true) */
+  updTP();updWTP();setBtns(true);
+
+  /* セッション復元: お知らせなしで自動復帰 */
   const sess=localStorage.getItem("nz_sess");
   if(sess){
     try{

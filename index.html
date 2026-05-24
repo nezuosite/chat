@@ -1,1339 +1,1368 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>NEZU ONETIME CHAT (AtomicClean-v2.6.8-StrictActivity)</title>
-    <script src="https://cdn.tailwindcss.com/"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-    <style>
-        :root {
-            --primary: #4f46e5;
-            --primary-hover: #4338ca;
-            --bg: #111111;
-            --panel-bg: rgba(22, 28, 45, 0.95);
-            --text-color: #f8fafc;
-            --accent-color: #00ff66;
-            --border: rgba(255, 255, 255, 0.08);
-        }
-        
-        html, body {
-            height: 100vh;
-            height: 100dvh;
-            width: 100vw;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            background-color: var(--bg);
-            color: var(--text-color);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            -webkit-user-select: none;
-            user-select: none;
-            -webkit-text-size-adjust: 100%;
-            touch-action: manipulation;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0f172a">
+<title>NEZU ONETIME CHAT</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0f172a;--sf:#1e293b;--s2:#0a1628;--bd:#334155;--b2:#475569;
+  --tx:#f1f5f9;--mu:#94a3b8;--m2:#64748b;
+  --in:#4f46e5;--i2:#4338ca;
+  --am:#f59e0b;--ad:rgba(245,158,11,.12);
+  --em:#00ff66;--e2:#10b981;--eg:rgba(16,185,129,.12);
+  --ro:#f43f5e;--rg:rgba(244,63,94,.12);
+  --safe:env(safe-area-inset-bottom,0px);
+}
+html,body{
+  height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(--tx);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,
+    "Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+  -webkit-user-select:none;user-select:none;touch-action:manipulation;
+  overscroll-behavior:none;-webkit-text-size-adjust:100%;
+}
+input,textarea,select{font-family:inherit;-webkit-user-select:text;user-select:text;font-size:16px!important}
+button{cursor:pointer;font-family:inherit;border:none;background:none}
+button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
+a{color:#818cf8}a:hover{text-decoration:underline}
 
-        .select-text {
-            -webkit-user-select: text;
-            user-select: text;
-        }
+/* ── Splash ── */
+#splash{position:fixed;inset:0;background:var(--bg);z-index:9999;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+.spin{width:28px;height:28px;border:3px solid var(--in);border-top-color:transparent;
+  border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spt{font-size:10px;font-weight:800;color:var(--m2);letter-spacing:.2em}
 
-        .user-chip {
-            display: inline-flex;
-            align-items: center;
-            background: #1e293b;
-            color: #cbd5e1;
-            padding: 2px 8px;
-            border-radius: 9999px;
-            font-size: 11px;
-            font-weight: 600;
-            margin-right: 4px;
-            margin-bottom: 4px;
-            border: 1px solid #334155;
-            contain: content;
-        }
+/* ── Lobby ── */
+#lobby{display:none;position:fixed;inset:0;overflow-y:auto;overflow-x:hidden;background:var(--bg);padding:14px}
+.lbi{max-width:420px;margin:0 auto;padding-bottom:32px;display:flex;flex-direction:column;gap:12px}
+.lbt{font-size:15px;font-weight:900;color:#818cf8;text-align:center;letter-spacing:.05em}
+.ibox{background:rgba(79,70,229,.07);border:1px solid rgba(99,102,241,.22);
+  border-radius:12px;padding:12px;font-size:10.5px;color:var(--mu);line-height:1.65}
+.ibox b{color:#a5b4fc}
+.abox{background:var(--ad);border:1px solid rgba(245,158,11,.25);
+  border-radius:8px;padding:8px 10px;font-size:10px;color:#fbbf24;margin-top:7px}
+.gbox{background:var(--eg);border:1px solid rgba(16,185,129,.25);
+  border-radius:8px;padding:8px 10px;font-size:10px;color:#34d399;font-weight:700;margin-top:6px}
+#lberr{background:var(--rg);border:1px solid rgba(244,63,94,.3);
+  border-radius:10px;padding:10px;font-size:11px;color:#fda4af;display:none;white-space:pre-wrap}
+.fg{display:flex;flex-direction:column;gap:3px}
+.fl{font-size:10.5px;font-weight:700;color:var(--m2)}
+.inp{width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:8px;
+  color:var(--tx);padding:7px 10px;transition:border-color .15s}
+.inp:focus{outline:none;border-color:var(--in)}
+.rw{display:flex;gap:7px;align-items:center}
+.tp{font-size:9px;font-family:monospace;color:var(--e2);background:var(--s2);
+  border:1px solid var(--bd);padding:2px 6px;border-radius:4px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;max-width:110px;display:none;flex-shrink:0}
+.brow{display:flex;gap:8px}
+.btn{border-radius:10px;font-weight:800;font-size:12px;padding:10px 16px;
+  transition:all .15s;cursor:pointer;border:none;font-family:inherit}
+.bp{background:var(--in);color:#fff;flex:1}.bp:hover{background:var(--i2)}
+.bo{background:#059669;color:#fff;flex:1}.bo:hover{background:#047857}
+.bq{background:var(--sf);color:var(--mu);border:1px solid var(--bd)}.bq:hover{background:var(--bd)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.glink{background:none;color:#818cf8;font-size:11px;font-weight:800;
+  text-align:center;width:100%;padding:4px;cursor:pointer}
 
-        @keyframes fadeIn { 
-            from { opacity: 0; transform: translateY(-4px); } 
-            to { opacity: 1; transform: translateY(0); } 
-        }
-        .animate-fade-in { 
-            animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; 
-        }
+/* ── App ── */
+#app{display:none;position:fixed;inset:0;flex-direction:column;overflow:hidden}
+#app.show{display:flex}
 
-        @keyframes audioPlayingPulse {
-            0% { border-color: rgba(79, 70, 229, 0.4); box-shadow: 0 0 4px rgba(79, 70, 229, 0.2); }
-            50% { border-color: rgba(0, 255, 102, 0.8); box-shadow: 0 0 10px rgba(0, 255, 102, 0.3); }
-            100% { border-color: rgba(79, 70, 229, 0.4); box-shadow: 0 0 4px rgba(79, 70, 229, 0.2); }
-        }
-        .audio-playing-wrapper {
-            animation: audioPlayingPulse 2s infinite ease-in-out;
-            background: rgba(15, 23, 42, 0.95) !important;
-        }
+/* ── Header ── */
+#hdr{background:rgba(15,23,42,.97);border-bottom:1px solid var(--bd);
+  padding:7px 11px;flex-shrink:0;display:flex;flex-direction:column;gap:5px;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:10}
+.hr{display:flex;align-items:center;gap:6px;min-width:0}
+.ld2{width:7px;height:7px;border-radius:50%;background:var(--in);
+  animation:bk .9s ease-in-out infinite;flex-shrink:0}
+@keyframes bk{0%,100%{opacity:1}50%{opacity:.2}}
+.rn{font-weight:900;font-size:13px;color:#e2e8f0;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;-webkit-user-select:text;user-select:text}
+.pc{font-size:11px;color:var(--m2);font-weight:700;flex-shrink:0}
+.hbs{display:flex;gap:5px;margin-left:auto;flex-shrink:0}
+.bi{background:var(--sf);color:#cbd5e1;border:1px solid var(--bd);border-radius:8px;
+  font-size:10px;font-weight:700;padding:3px 9px;cursor:pointer;font-family:inherit;transition:background .15s}
+.bi:hover{background:var(--bd)}
+.bx{background:var(--rg);color:var(--ro);border:1px solid rgba(244,63,94,.25);
+  border-radius:8px;font-size:10px;font-weight:700;padding:3px 9px;
+  cursor:pointer;font-family:inherit;transition:background .15s}
+.bx:hover{background:rgba(244,63,94,.18)}
+#pl{display:flex;flex-wrap:wrap;gap:4px}
+.chip{display:inline-flex;align-items:center;background:var(--sf);color:var(--mu);
+  padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;border:1px solid var(--bd)}
 
-        #chatTimeline {
-            flex: 1 1 0%;
-            overflow-y: auto;
-            padding: 16px;
-            display: flex;
-            flex-direction: column; 
-            justify-content: flex-start; 
-            gap: 12px;
-            background-color: #141414;
-            -webkit-overflow-scrolling: touch;
-            contain: content;
-        }
+/* ── Watcher banner ── */
+#wb{display:none;background:rgba(16,185,129,.06);border-bottom:1px solid rgba(16,185,129,.2);padding:10px 11px}
+#wb.show{display:block}
+.wbt{font-size:10px;font-weight:800;color:var(--e2);text-align:center;margin-bottom:8px}
+.wbf{background:var(--s2);border:1px solid rgba(16,185,129,.18);border-radius:10px;
+  padding:10px;display:flex;flex-direction:column;gap:7px}
+.wbr{display:flex;gap:6px;align-items:center}
+.wbi{flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:7px;
+  color:var(--tx);font-size:12px;padding:4px 9px;transition:border-color .15s}
+.wbi:focus{outline:none;border-color:var(--e2)}
+.bwb{background:#059669;color:#fff;font-size:11px;font-weight:800;padding:7px;
+  border-radius:8px;width:100%;cursor:pointer;font-family:inherit;transition:background .15s}
+.bwb:hover{background:#047857}
 
-        #chatTimeline::-webkit-scrollbar { width: 5px; }
-        #chatTimeline::-webkit-scrollbar-track { background: transparent; }
-        #chatTimeline::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
+/* ── Timeline ── */
+#tl{flex:1;min-height:0;overflow-y:auto;padding:10px 11px;
+  display:flex;flex-direction:column;gap:9px;
+  -webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+#tl::-webkit-scrollbar{width:3px}
+#tl::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+.mw{width:100%;display:flex;flex-direction:column;align-items:flex-start}
+.sm{align-self:center;font-size:10px;font-weight:700;color:var(--m2);
+  background:rgba(30,41,59,.6);border:1px solid var(--bd);border-radius:20px;
+  padding:2px 10px;-webkit-user-select:text;user-select:text;text-align:center}
+.mm{font-size:10px;font-weight:700;color:var(--mu);margin-bottom:2px;-webkit-user-select:text;user-select:text}
+.mm .trp{color:var(--e2);font-family:monospace}
+.mm .ts{font-size:9px;font-weight:400;color:var(--m2);margin-left:4px}
+.mb{background:rgba(30,41,59,.85);color:#e2e8f0;border:1px solid var(--bd);
+  border-left:3px solid var(--in);border-radius:0 12px 12px 12px;
+  padding:7px 11px;font-size:12px;line-height:1.6;max-width:90%;
+  word-break:break-word;-webkit-user-select:text;user-select:text}
 
-        .msg-wrap { 
-            width: 100%; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: flex-start;
-            contain: layout style;
-        }
-        .msg-card {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border: 1px solid var(--border);
-            border-left: 4px solid var(--primary);
-            will-change: transform, opacity;
-        }
+/* ── Media cards ── */
+.mc{margin-top:6px;margin-bottom:2px;background:var(--s2);border:1px solid var(--bd);
+  border-radius:10px;overflow:hidden;max-width:240px}
+.mct{position:relative;width:100%;aspect-ratio:16/9;background:#000;overflow:hidden;cursor:pointer}
+.mct img{width:100%;height:100%;object-fit:cover;display:block;transition:opacity .2s}
+.mct:hover img{opacity:.82}
+.mpi{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.mpi svg{width:44px;height:44px}
+.mcb{display:flex}
+.mcbtn{flex:1;padding:6px 4px;font-size:10px;font-weight:700;background:var(--in);color:#fff;
+  text-align:center;display:block;cursor:pointer;border:none;font-family:inherit;
+  transition:background .15s;text-decoration:none;border-top:1px solid rgba(255,255,255,.08)}
+.mcbtn:hover{background:var(--i2)}
+.mcbtn.s{background:var(--sf);color:var(--mu);border-left:1px solid var(--bd)}
+.mcbtn.s:hover{background:var(--bd);color:var(--tx)}
+.mce{position:relative;width:100%;aspect-ratio:16/9;background:#000}
+.mce iframe{position:absolute;inset:0;width:100%;height:100%;border:none}
+.mce.tk{aspect-ratio:9/16;max-width:150px}
 
-        .audio-seekbar::-webkit-slider-runnable-track { background: #334155; height: 4px; border-radius: 2px; }
-        .audio-seekbar::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; background: #00ff66; height: 10px; width: 10px; border-radius: 50%; margin-top: -3px; cursor: pointer; }
-        .audio-seekbar::-moz-range-track { background: #334155; height: 4px; border-radius: 2px; }
-        .audio-seekbar::-moz-range-thumb { background: #00ff66; height: 10px; width: 10px; border-radius: 50%; cursor: pointer; border: none; }
+/* ── YT同期バー (チャット内) ── */
+.sbar{display:flex;align-items:center;gap:8px;margin-top:6px;margin-bottom:2px;
+  background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);
+  border-radius:10px;padding:8px 10px;max-width:90%;cursor:default}
+.sbar-info{flex:1;min-width:0}
+.sbar-ttl{font-size:10px;font-weight:700;color:#a5b4fc;margin-bottom:2px}
+.sbar-vid{font-size:9px;font-family:monospace;color:var(--m2);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sbar-btn{flex-shrink:0;background:var(--in);color:#fff;font-size:10px;font-weight:800;
+  padding:5px 10px;border-radius:8px;cursor:pointer;font-family:inherit;transition:background .15s;border:none}
+.sbar-btn:hover{background:var(--i2)}
 
-        #floating-nav {
-            position: absolute;
-            right: 16px;
-            bottom: 24px;
-            z-index: 45;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            pointer-events: none;
-        }
-        #floating-nav button { 
-            pointer-events: auto; 
-            touch-action: manipulation;
-            opacity: 0.6;
-            background-color: rgba(15, 23, 42, 0.6);
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
-            transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, transform 0.15s ease;
-        }
-        #floating-nav button:hover,
-        #floating-nav button:active {
-            opacity: 1;
-            background-color: rgba(30, 41, 59, 0.8);
-        }
-        
-        input, textarea, select {
-            font-size: 16px !important;
-        }
+/* ── Audio player ── */
+.aw{margin-top:6px;margin-bottom:2px;background:rgba(15,23,42,.9);border:1px solid var(--bd);
+  border-radius:12px;padding:10px;max-width:280px;width:100%;transition:border-color .3s,box-shadow .3s}
+.aw.pl{border-color:rgba(0,255,102,.5);box-shadow:0 0 10px rgba(0,255,102,.15)}
+.ar{display:flex;align-items:center;gap:8px;height:28px}
+.apb{width:28px;height:28px;border-radius:50%;background:var(--sf);border:1px solid var(--bd);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;transition:background .15s}
+.apb:hover{background:var(--bd)}.apb svg{width:13px;height:13px}
+.alb{font-size:9px;font-weight:800;color:#818cf8;flex-shrink:0;letter-spacing:.05em}
+.ask{flex:1;height:3px;border-radius:2px;cursor:pointer;
+  accent-color:var(--em);background:var(--bd);-webkit-appearance:none;appearance:none}
+.ask::-webkit-slider-thumb{width:10px;height:10px;border-radius:50%;
+  background:var(--em);-webkit-appearance:none;cursor:pointer}
+.atm{font-size:8px;font-family:monospace;color:var(--m2);flex-shrink:0;white-space:nowrap}
+.adl{display:flex;margin-top:7px;padding-top:7px;border-top:1px solid var(--bd)}
+.adl a{flex:1;display:flex;align-items:center;justify-content:center;gap:4px;
+  background:var(--sf);border:1px solid var(--bd);border-radius:7px;padding:4px 8px;
+  font-size:9px;font-weight:700;color:var(--mu);text-decoration:none;transition:background .15s}
+.adl a:hover{background:var(--bd);color:var(--tx)}.adl a svg{width:11px;height:11px;flex-shrink:0}
 
-        #mi {
-            overflow-y: hidden;
-            scrollbar-width: none;
-        }
-        #mi::-webkit-scrollbar {
-            display: none;
-        }
-        #mi::placeholder {
-            font-size: 13px;
-            color: #64748b;
-        }
-        @media (max-width: 380px) {
-            #mi::placeholder {
-                font-size: 11px;
-            }
-        }
+@keyframes fi{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
+.fi{animation:fi .18s ease forwards}
 
-        #imageModal {
-            touch-action: none;
-        }
-        #modalTargetImg {
-            will-change: transform;
-            cursor: grab;
-            transition: none;
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-        }
-        #modalTargetImg:active {
-            cursor: grabbing;
-        }
-    </style>
+/* ── Input bar ── */
+#ib{background:rgba(15,23,42,.97);border-top:1px solid var(--bd);
+  padding:8px 10px;flex-shrink:0;gap:7px;display:none;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+#ib.show{display:flex;align-items:flex-end}
+#mi{flex:1;background:var(--s2);border:1px solid var(--bd);border-radius:11px;
+  color:var(--tx);padding:8px 11px;resize:none;line-height:1.4;max-height:80px;
+  overflow-y:auto;transition:border-color .15s;-webkit-user-select:text;user-select:text;scrollbar-width:none}
+#mi::-webkit-scrollbar{display:none}
+#mi:focus{outline:none;border-color:var(--in)}
+#mi::placeholder{color:var(--m2);font-size:12px}
+.bsd{background:var(--in);color:#fff;border-radius:10px;padding:9px 10px;
+  transition:background .15s;flex-shrink:0;align-self:flex-end;cursor:pointer}
+.bsd:hover{background:var(--i2)}.bsd svg{width:18px;height:18px;display:block}
+
+/* ── Float nav ── */
+#fn{position:absolute;right:11px;bottom:76px;z-index:50;
+  display:flex;flex-direction:column;gap:7px;pointer-events:none}
+#fn button{pointer-events:auto;width:38px;height:38px;border-radius:9px;
+  background:rgba(15,23,42,.85);border:1px solid var(--bd);color:var(--mu);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-size:7px;font-weight:800;gap:1px;transition:all .15s;
+  backdrop-filter:blur(4px);cursor:pointer}
+#fn button:hover{background:rgba(30,41,59,.95);color:var(--tx)}
+#fn button svg{width:13px;height:13px}
+
+/* ── YT同期プレイヤー (画面下部に固定) ── */
+#ytdock{
+  position:fixed;bottom:0;left:0;right:0;z-index:200;
+  display:none;flex-direction:column;
+  background:#000;border-top:2px solid var(--bd);
+  /* 高さ: 動画16/9 + コントロール約48px */
+  max-height:60vh;
+  box-shadow:0 -4px 20px rgba(0,0,0,.6);
+}
+#ytdock.show{display:flex}
+/* コントロールバー */
+#ytdock-ctrl{
+  display:flex;align-items:center;gap:7px;padding:7px 10px;
+  background:rgba(15,23,42,.97);border-bottom:1px solid var(--bd);
+  flex-shrink:0;flex-wrap:nowrap;overflow:hidden;
+}
+#ytdock-sp{
+  display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;
+  font-size:10px;font-weight:800;white-space:nowrap;border:1px solid transparent;
+  flex-shrink:0;transition:all .2s;
+}
+.dsp-host{background:var(--ad);color:var(--am);border-color:rgba(245,158,11,.35)}
+.dsp-sync{background:var(--eg);color:var(--em);border-color:rgba(0,255,102,.35)}
+.dsp-free{background:var(--s2);color:var(--mu);border-color:var(--bd)}
+.dld{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.dld-am{background:var(--am);animation:bk .9s ease-in-out infinite}
+.dld-gr{background:var(--em);animation:bk .9s ease-in-out infinite}
+.dld-off{background:var(--m2)}
+
+#ytdock-time{font-size:10px;font-family:monospace;color:var(--m2);white-space:nowrap;flex-shrink:0}
+#ytdock-stb{padding:2px 9px;border-radius:20px;font-size:10px;font-weight:800;
+  transition:all .15s;white-space:nowrap;border:1px solid transparent;
+  cursor:pointer;font-family:inherit;flex-shrink:0;display:none}
+#ytdock-stb.show{display:block}
+.dsync-go{background:var(--ad);color:var(--am);border-color:rgba(245,158,11,.35)}
+.dsync-go:hover{background:rgba(245,158,11,.2)}
+.dsync-st{background:var(--rg);color:var(--ro);border-color:rgba(244,63,94,.35)}
+.dsync-st:hover{background:rgba(244,63,94,.2)}
+#ytdock-fmb{padding:2px 9px;border-radius:20px;font-size:10px;font-weight:800;
+  transition:all .15s;white-space:nowrap;border:1px solid var(--bd);
+  background:var(--s2);color:var(--mu);cursor:pointer;font-family:inherit;
+  flex-shrink:0;display:none}
+#ytdock-fmb.show{display:block}
+#ytdock-fmb:hover{background:var(--bd)}
+.fmb-rt{background:rgba(79,70,229,.1)!important;color:#a5b4fc!important;border-color:rgba(99,102,241,.3)!important}
+#ytdock-pp{background:var(--s2);border:1px solid var(--bd);color:var(--tx);
+  border-radius:6px;padding:2px 8px;font-size:14px;flex-shrink:0;
+  cursor:pointer;transition:background .15s;display:none}
+#ytdock-pp.show{display:block}
+#ytdock-pp:hover{background:var(--b2)}
+#ytdock-close{background:var(--rg);color:var(--ro);border:1px solid rgba(244,63,94,.25);
+  border-radius:7px;font-size:10px;font-weight:700;padding:3px 9px;
+  margin-left:auto;flex-shrink:0;cursor:pointer;font-family:inherit;transition:background .15s}
+#ytdock-close:hover{background:rgba(244,63,94,.18)}
+
+/* 動画エリア */
+#ytdock-video{flex:1;min-height:0;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#ytdock-video>div{width:100%;aspect-ratio:16/9;max-height:100%}
+
+/* ゲスト同期承認オーバーレイ */
+#ytdock-overlay{
+  display:none;position:absolute;inset:0;background:rgba(0,0,0,.92);z-index:10;
+  align-items:center;justify-content:center;padding:16px;
+}
+#ytdock-overlay.show{display:flex}
+.dovl{background:var(--sf);border:1px solid var(--bd);border-radius:14px;
+  padding:20px;max-width:300px;width:100%;text-align:center}
+.dovl-ttl{font-size:9px;font-weight:800;letter-spacing:.15em;color:#818cf8;
+  text-transform:uppercase;margin-bottom:8px}
+.dovl-h{font-size:12px;font-weight:700;color:var(--tx);margin-bottom:6px}
+.dovl-d{font-size:10px;color:var(--mu);line-height:1.6;margin-bottom:14px}
+.dovl-btns{display:flex;gap:8px}
+.dovl-dec{flex:1;padding:8px;border-radius:8px;font-size:11px;font-weight:700;
+  background:var(--sf);color:var(--mu);border:1px solid var(--bd);
+  cursor:pointer;font-family:inherit;transition:background .15s}
+.dovl-dec:hover{background:var(--bd)}
+.dovl-acc{flex:1;padding:8px;border-radius:8px;font-size:11px;font-weight:700;
+  background:var(--in);color:#fff;cursor:pointer;font-family:inherit;transition:background .15s}
+.dovl-acc:hover{background:var(--i2)}
+
+/* ── Modals ── */
+#gmod,#imod{display:none;position:fixed;inset:0;background:rgba(0,0,0,.87);z-index:900;
+  align-items:center;justify-content:center;padding:14px;
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+#gmod.show,#imod.show{display:flex}
+.gc{background:var(--sf);border:1px solid var(--bd);border-radius:16px;padding:18px;
+  max-width:420px;width:100%;max-height:85vh;overflow-y:auto;
+  display:flex;flex-direction:column;gap:12px;-webkit-user-select:text;user-select:text}
+.gs{background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:11px;
+  font-size:10.5px;color:var(--mu);line-height:1.7}
+.gs h4{font-size:11px;font-weight:800;margin-bottom:6px}
+#imod img{max-width:100%;max-height:85vh;object-fit:contain;border-radius:8px}
+.cx{position:absolute;top:12px;right:12px;background:rgba(15,23,42,.85);
+  border:1px solid var(--bd);border-radius:50%;width:34px;height:34px;
+  display:flex;align-items:center;justify-content:center;color:var(--tx);
+  font-size:16px;cursor:pointer;font-family:inherit;line-height:1}
+</style>
 </head>
-<body class="flex items-start justify-center p-2 pt-4 text-slate-100 h-full w-screen overflow-hidden">
+<body>
 
-    <div id="appSplash" class="fixed inset-0 bg-[#111111] z-50 flex flex-col items-center justify-center gap-3">
-        <div class="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-        <p class="text-xs font-bold text-slate-500 tracking-wider">CONNECTING...</p>
+<div id="splash"><div class="spin"></div><p class="spt">CONNECTING...</p></div>
+
+<!-- ══ Lobby ══ -->
+<div id="lobby"><div class="lbi">
+  <h1 class="lbt">⚡ NEZU ONETIME CHAT</h1>
+  <div class="ibox">
+    <b>🔒 ブラウザ完結型 E2E 暗号化チャット</b><br>
+    メッセージはAES-256でブラウザ内暗号化してから送信。部屋パスワードはサーバーに届きません。
+    <div class="abox">⚠️ 30分無発言 または 全員退室 でログは即座に完全抹消されます。</div>
+    <div class="gbox">🚀 Strict Activity Mode — メッセージ送信の有無で生存判定</div>
+  </div>
+  <div id="lberr"></div>
+  <div class="fg"><label class="fl">表示名 <span style="color:var(--ro)">*</span></label>
+    <input type="text" id="ni" class="inp" placeholder="ニックネーム（最大10文字）" maxlength="10" autocomplete="username">
+  </div>
+  <div class="fg"><label class="fl">トリップキー（なりすまし防止・任意）</label>
+    <div class="rw">
+      <input type="text" id="tk" class="inp" placeholder="任意の秘密キー" autocomplete="off" spellcheck="false" style="flex:1">
+      <span id="tpv" class="tp"></span>
+    </div>
+  </div>
+  <div class="fg"><label class="fl">部屋ID <span style="color:var(--ro)">*</span></label>
+    <input type="text" id="ri" class="inp" placeholder="部屋名" autocomplete="off" autocapitalize="off" spellcheck="false">
+  </div>
+  <div class="fg"><label class="fl">部屋パスワード <span style="color:var(--ro)">*</span></label>
+    <input type="text" id="pi" class="inp" placeholder="メンバー共通パスワード" autocomplete="off" autocapitalize="off" spellcheck="false">
+  </div>
+  <details style="background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:10px">
+    <summary style="cursor:pointer;font-size:10.5px;font-weight:700;color:var(--mu);user-select:none">⚙️ 部屋の詳細設定</summary>
+    <div style="margin-top:10px">
+      <div style="font-size:10px;font-weight:600;color:var(--m2);margin-bottom:3px">人数制限</div>
+      <select id="mu" class="inp" style="width:auto">
+        <option value="2">2名</option><option value="3">3名</option>
+        <option value="4" selected>4名</option><option value="5">5名</option>
+        <option value="6">6名</option><option value="8">8名</option><option value="10">10名</option>
+      </select>
+    </div>
+  </details>
+  <div class="brow">
+    <button class="btn bq" id="gnBtn">自動生成</button>
+    <button class="btn bp" id="enBtn">入室する</button>
+    <button class="btn bo" id="ofBtn">公式部屋</button>
+  </div>
+  <button class="glink" id="gdBtn">📖 セキュリティガイド・利用規約（必読）</button>
+</div></div>
+
+<!-- ══ App ══ -->
+<div id="app">
+  <div id="cp" style="display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;background:#0d1117">
+
+    <div id="hdr">
+      <div class="hr">
+        <span class="ld2"></span>
+        <span class="rn" id="rdsp"></span>
+        <span class="pc" id="pcnt"></span>
+        <div class="hbs">
+          <button class="bi" id="ivBtn" style="display:none">招待</button>
+          <button class="bx" id="exBtn">退出</button>
+        </div>
+      </div>
+      <div id="pl"></div>
     </div>
 
-    <!-- ロビー画面 -->
-    <div id="lobby" class="w-full max-w-md p-3.5 bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 flex flex-col gap-2.5 select-text max-h-[96dvh] overflow-y-auto overflow-x-hidden hidden">
-        <h1 class="text-base font-black text-center text-indigo-400 tracking-tight shrink-0">NEZU ONETIME CHAT</h1>
-        
-        <div class="bg-indigo-950/40 border border-indigo-900/60 rounded-xl p-3 text-[11px] space-y-2 text-slate-300 shrink-0 leading-normal">
-            <div class="flex items-center gap-1 font-bold text-indigo-300 border-b border-indigo-900/40 pb-1">
-                <span>🔒</span>
-                <span>端末間での強力な暗号化（E2E）空間</span>
-            </div>
-            <p class="text-slate-400">
-                入力した「部屋パスワード」をもとに、あなたのブラウザ内でメッセージを完全に暗号化してから送信します。パスワードや元のテキストは、サーバー側には一切伝わりません。
-            </p>
-            <div class="bg-slate-950/50 p-1.5 rounded border border-slate-800 text-[10.5px]">
-                <p class="text-amber-400 font-bold">⚠️ データ自動消滅のルール</p>
-                <p class="text-slate-400 mt-0.5">
-                    一時的な通信切断やタブ閉じでは部屋は消えませんが、<span class="text-slate-200 underline">「誰も発言しない状態」が設定時間を過ぎる</span>、または<span class="text-slate-200 underline">全員が退室する</span>と、サーバーから全ログが即座に完全抹消されます。
-                </p>
-            </div>
-            <p id="localModeIndicator" class="text-emerald-400 font-bold bg-emerald-950/30 border border-emerald-900/40 p-1 rounded text-[10px]">
-                🚀 Strict Activity Mode: 部屋の生存確認は「メッセージ送信」の有無のみで判定されます。一般部屋のログ保存件数は無制限です。
-            </p>
+    <div id="wb">
+      <div class="wbt">👀 覗き見（閲覧のみ）モードで接続中</div>
+      <div class="wbf">
+        <div class="wbr"><input type="text" id="wni" class="wbi" placeholder="表示名（最大10文字）" maxlength="10"></div>
+        <div class="wbr">
+          <input type="text" id="wtk" class="wbi" placeholder="トリップキー（本人証明用）" spellcheck="false">
+          <span id="wtpv" class="tp"></span>
         </div>
-        
-        <div id="errMsg" class="bg-red-950/80 text-red-300 text-xs p-3 rounded-xl font-medium border border-red-800/60 hidden shrink-0 break-all whitespace-pre-wrap leading-relaxed"></div>
-        
-        <div class="flex flex-col gap-2 shrink-0 text-[11px]">
-            <div>
-                <label class="block font-bold text-slate-400 mb-0.5">あなたの表示名 <span class="text-red-500">*</span></label>
-                <input type="text" id="ni" placeholder="ニックネームを入力（最大10文字）" maxlength="10" class="w-full px-2.5 py-1.5 border border-slate-700 bg-slate-800 rounded-lg text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            </div>
-            
-            <div>
-                <label class="block font-bold text-slate-400 mb-0.5">トリップ暗号（なりすまし防止用の秘密キー）</label>
-                <div class="flex gap-1 items-center relative">
-                    <input type="text" id="tk" placeholder="任意の秘密パス（本人証明用キー）" autocomplete="on" spellcheck="false" class="w-full px-2.5 py-1.5 border border-slate-700 bg-slate-800 rounded-lg text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    <span id="tp" class="absolute right-1 text-[9px] font-mono text-green-400 bg-slate-950/90 px-1 py-0.5 rounded border border-slate-800 hidden shrink-0 max-w-[80px] truncate"></span>
-                </div>
-            </div>
-            
-            <div>
-                <label class="block font-bold text-slate-400 mb-0.5">部屋ID <span class="text-red-500">*</span></label>
-                <input type="text" id="ri" placeholder="作成または参加する部屋名" autocomplete="off" autocapitalize="off" spellcheck="false" class="w-full px-2.5 py-1.5 border border-slate-700 bg-slate-800 rounded-lg text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            </div>
-            
-            <div>
-                <label class="block font-bold text-slate-400 mb-0.5">部屋パスワード（会話を解読するための共通鍵） <span class="text-red-500">*</span></label>
-                <input type="text" id="pi" placeholder="メンバー共通 of 暗号化パスワード" autocomplete="off" autocapitalize="off" spellcheck="false" class="w-full px-2.5 py-1.5 border border-slate-700 bg-slate-800 rounded-lg text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            </div>
-        </div>
-
-        <details class="text-[10.5px] text-slate-400 bg-slate-950 p-2 rounded-xl border border-slate-800 shrink-0">
-            <summary class="cursor-pointer font-bold select-none text-slate-300">⚙️ 部屋の最適化構成</summary>
-            <div class="grid grid-cols-2 gap-1.5 mt-1.5">
-                <div>
-                    <label class="block font-semibold mb-0.5 text-slate-400">人数制限</label>
-                    <select id="maxUsers" class="w-full p-1 border border-slate-700 rounded-md bg-slate-800 text-white font-bold text-[11px] focus:outline-none">
-                        <option value="2">2名</option><option value="3">3名</option><option value="4" selected>4名</option><option value="5">5名</option><option value="6">6名</option><option value="7">7名</option><option value="8">8名</option><option value="9">9名</option><option value="10">10名</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block font-semibold mb-0.5 text-slate-400">無発言自動消滅タイマー</label>
-                    <select id="userTimeoutTime" class="w-full p-1 border border-slate-700 rounded-md bg-slate-800 text-white font-bold text-[11px] focus:outline-none">
-                        <option value="5">5分発言なしで消滅</option>
-                        <option value="10">10分発言なしで消滅</option>
-                        <option value="20">20分発言なしで消滅</option>
-                        <option value="30" selected>30分発言なしで消滅</option>
-                        <option value="60">1時間発言なしで消滅</option>
-                    </select>
-                </div>
-            </div>
-        </details>
-
-        <div class="flex gap-2 mt-0.5 shrink-0">
-            <button id="masterGenBtn" class="w-1/4 text-xs bg-slate-800 text-slate-200 rounded-xl hover:bg-slate-700 transition font-bold py-2">自動生成</button>
-            <button id="enterBtn" class="flex-1 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition py-2">入室する</button>
-            <button id="officialRoomBtn" class="flex-1 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition py-2" title="常設公式部屋を覗き見する">公式部屋</button>
-        </div>
-
-        <div class="flex justify-center text-[11px] text-slate-400 mt-0.5 px-1 shrink-0">
-            <button id="openGuideBtn" class="text-indigo-400 hover:text-indigo-300 font-black flex items-center gap-1 transition">📖 詳細なセキュリティガイド・利用規約（必読）</button>
-        </div>
+        <button class="bwb" id="wuBtn">名前を登録してチャットに参加</button>
+      </div>
     </div>
 
-    <!-- チャットメイン画面 -->
-    <div id="mainApp" class="w-full h-full max-w-lg bg-transparent flex flex-col relative hidden">
-        
-        <div id="header-panel" class="border-b border-slate-800 bg-slate-900/95 backdrop-filter backdrop-blur-md z-30 shrink-0 flex flex-col shadow-lg sticky top-0">
-            <div class="px-4 py-2 border-b border-slate-800/50 flex items-center justify-between gap-2">
-                <div class="min-w-0 flex-1">
-                    <div class="flex items-center gap-1.5">
-                        <span id="topLiveIndicator" class="w-2 h-2 bg-indigo-500 rounded-full animate-pulse shrink-0"></span>
-                        <h2 id="roomDisplay" class="font-black text-sm text-slate-200 tracking-tight truncate select-text"></h2>
-                        <span id="presenceCount" class="text-xs text-slate-500 font-bold shrink-0">[-]</span>
-                    </div>
-                </div>
-                <div class="flex gap-1.5 shrink-0 items-center">
-                    <button id="copyBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs px-2.5 py-1.5 rounded-xl transition">招待</button>
-                    <button id="exitBtn" class="bg-red-950 hover:bg-red-900 text-red-400 font-bold text-xs px-2.5 py-1.5 rounded-xl transition">退室</button>
-                </div>
-            </div>
-            <div id="presenceList" class="flex flex-wrap px-4 py-1.5 max-h-12 overflow-y-auto bg-slate-950/40 border-b border-slate-800/30"></div>
-            
-            <div id="watcher-banner" class="bg-emerald-950/90 border-b border-emerald-900 text-emerald-400 text-[11px] font-bold p-3 hidden">
-                <p class="text-center mb-2">👀 現在「覗き見（閲覧のみ）モード」で接続中です。</p>
-                <div class="flex flex-col gap-2 max-w-sm mx-auto bg-slate-950/60 p-2.5 rounded-xl border border-emerald-900/40">
-                    <div class="w-full">
-                        <input type="text" id="watcher_ni" placeholder="あなたの表示名" maxlength="10" class="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500">
-                    </div>
-                    <div class="flex gap-1.5 items-center w-full">
-                        <input type="text" id="watcher_tk" placeholder="トリップキー（本人証明用）" spellcheck="false" class="flex-1 px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500">
-                        <span id="watcher_tp" class="text-[10px] font-mono text-green-400 bg-slate-950 px-2 py-1 rounded-lg border border-slate-800 hidden shrink-0"></span>
-                    </div>
-                    <button id="watcherUpgradeBtn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 rounded-lg text-xs transition mt-0.5 shadow-md">名前を登録してチャットに参加</button>
-                </div>
-            </div>
+    <div id="tl" role="log" aria-live="polite"></div>
 
-            <div id="input-container" class="p-3 flex items-center gap-1.5 w-full relative bg-slate-900 border-b border-slate-800">
-                <button id="clearBtn" class="absolute left-5 text-slate-500 hover:text-slate-300 p-1 opacity-0 transition-opacity pointer-events-none z-10">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
-                </button>
-                <textarea id="mi" placeholder="メッセージを入力... (Enterで送信)" rows="1" class="flex-1 pl-8 pr-3 py-2 border border-slate-800 bg-slate-950 rounded-xl text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none max-h-24 leading-relaxed select-text"></textarea>
-                <button id="sendBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-xl transition shadow-md shrink-0">
-                    <svg class="w-5 h-5 transform rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
-                </button>
-            </div>
-        </div>
-
-        <div id="chatTimeline" class="select-text"></div>
-
-        <div id="floating-nav">
-            <button id="toTopBtn" class="p-2.5 rounded-xl border border-slate-800/40 flex flex-col items-center justify-center transition text-indigo-400 w-12 h-12 shadow-lg" title="最上部（最新ログ）へ">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 15l7-7 7 7"></path></svg>
-                <span class="text-[9px] font-bold mt-0.5">最新へ</span>
-            </button>
-            <button id="toBottomBtn" class="p-2.5 rounded-xl border border-slate-800/40 flex flex-col items-center justify-center transition text-slate-400 w-12 h-12 shadow-lg" title="最下部（過去ログ）へ">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
-                <span class="text-[9px] font-bold mt-0.5">最古へ</span>
-            </button>
-            <button id="focusBtn" class="p-2.5 rounded-xl border border-slate-800/40 flex flex-col items-center justify-center transition text-slate-300 w-12 h-12 shadow-lg" title="入力欄へフォーカス">
-                <span class="text-base leading-none">⌨️</span>
-                <span class="text-[9px] font-bold mt-0.5">入力</span>
-            </button>
-        </div>
+    <div id="ib">
+      <textarea id="mi" rows="1" placeholder="メッセージを入力... (Enterで送信)"></textarea>
+      <button class="bsd" id="sdBtn" aria-label="送信">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+        </svg>
+      </button>
     </div>
 
-    <!-- 利用規約・詳細説明モーダル -->
-    <div id="guideCard" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-slate-900 p-5 rounded-2xl max-w-md w-full max-h-[85vh] overflow-y-auto shadow-2xl flex flex-col gap-4 border border-slate-800 select-text">
-            <h3 class="font-black text-sm text-indigo-400 border-b border-slate-800 pb-2 flex items-center gap-1 shrink-0">📖 セキュリティガイド ＆ 利用規約</h3>
-            
-            <div class="text-[11px] text-slate-300 leading-relaxed space-y-4 overflow-y-auto pr-1">
-                <div class="bg-indigo-950/40 p-3 rounded-xl border border-indigo-900/60 space-y-1.5">
-                    <p class="font-bold text-indigo-300 text-[11.5px]">🛡️ 1. ブラウザ完結型の秘密通信 (E2E)</p>
-                    <p class="text-slate-400 text-[10.5px]">
-                        本システムは暗号規格**AES-256**を採用しています。入力された文章は、通信網に乗る前にあなたのブラウザ上で完全に暗号コード化されます。
-                    </p>
-                    <p class="text-emerald-400 font-bold text-[10.5px]">🔑 パスワードはサーバーに届きません：</p>
-                    <p class="text-slate-400 text-[10.5px]">
-                        解読に必要な「部屋パスワード」は一切サーバーへ送信・記録されません。そのため、万が一サーバーデータが流出しても、パスワードを知らない第三者が会話を解読することは数学的に不可能です。
-                    </p>
-                </div>
-
-                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1.5">
-                    <p class="font-bold text-slate-200 text-[11.5px]">⏱️ 2. ログ自動消滅の「厳格ルール」</p>
-                    <p class="text-slate-400 text-[10.5px]">
-                        データの痕跡を残さないため、当チャットには強力な自動削除装置（Strict Activity Mode）が備わっています。
-                    </p>
-                    <ul class="list-disc list-inside space-y-1 text-slate-400 pl-1 text-[10.5px]">
-                        <li><span class="text-amber-400 font-bold">発言の途減による消滅</span>：選択したタイマー時間（5分〜1時間）、室内の誰もメッセージを発言しなかった場合、安全のためサーバー上のログは痕跡なく即座に消去されます。</li>
-                        <li><span class="text-amber-400 font-bold">全員退室による消滅</span>：参加者全員が「退室」を押して部屋が空になった瞬間にログは完全抹消されます。</li>
-                        <li><span class="text-slate-200 font-semibold">回線切断時の保護</span>：一時的なWi-Fiの切断や、スマホのタブを閉じただけでデータが即座に消えることはありません。時間内であれば同じ設定で再合流可能です。</li>
-                    </ul>
-                </div>
-
-                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1.5">
-                    <p class="font-bold text-slate-200 text-[11.5px]">🔗 3. 部屋の共有と招待</p>
-                    <p class="text-slate-400 text-[10.5px]">
-                        「招待」ボタンをクリックすると、現在の「部屋ID」と「部屋パスワード」が埋め込まれた専用URLがクリップボードにコピーされます。このURLを共有するだけで、仲間を簡単に同じ暗号空間へ呼び出すことができます。
-                    </p>
-                </div>
-
-                <div class="bg-red-950/40 p-3 rounded-xl border border-red-900/60 space-y-1.5">
-                    <p class="font-bold text-red-400 text-[11.5px]">❌ 4. 禁止事項</p>
-                    <p class="text-slate-400 text-[10.5px]">
-                        ・違法な取引、犯罪の謀議、人道に反するコンテンツの共有・送信。<br>
-                        ・ボットや自動スクリプトを用いたサーバーへの過度なアクセス、スパム行為。
-                    </p>
-                </div>
-            </div>
-            
-            <button id="closeGuideBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-md mt-1 shrink-0">規約と安全上のルールを理解しました</button>
-        </div>
+    <div id="fn" style="display:none">
+      <button id="tTBtn">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>最新
+      </button>
+      <button id="tBBtn">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>最古
+      </button>
     </div>
+  </div>
+</div>
 
-    <!-- 画像拡大モーダル -->
-    <div id="imageModal" class="fixed inset-0 bg-black/90 backdrop-filter backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-200 pointer-events-none">
-        <div id="modalImgWrapper" class="w-full h-full flex items-center justify-center overflow-hidden relative">
-            <img id="modalTargetImg" src="" alt="拡大画像" class="select-text">
-        </div>
-        <div id="modalCloseBtn" class="absolute top-4 right-4 text-white bg-slate-900/80 rounded-full p-2 cursor-pointer border border-slate-700 z-50">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
-        </div>
+<!-- ══ YT Dock (画面下部固定プレイヤー) ══ -->
+<div id="ytdock">
+  <!-- ゲスト同期承認オーバーレイ -->
+  <div id="ytdock-overlay">
+    <div class="dovl">
+      <div class="dovl-ttl">🎬 同期リクエスト</div>
+      <div class="dovl-h" id="dovl-host"></div>
+      <div class="dovl-d">ホストの動画に同期しますか？<br>後からいつでも切り替えられます。</div>
+      <div class="dovl-btns">
+        <button class="dovl-dec" id="dovl-dec">自由視聴</button>
+        <button class="dovl-acc" id="dovl-acc">▶ 同期する</button>
+      </div>
     </div>
-
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-        import {
-            getDatabase, ref, push, onValue, set, remove, child,
-            query, orderByChild, limitToLast, get, update, onDisconnect
-        } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
-
-        const $ = id => document.getElementById(id);
-        
-        // Firebase設定
-        const firebaseConfig = {
-            apiKey: "AIzaSyCsRidc0smUQDaBwq-oki5NzxSHx6-ljiw",
-            authDomain: "nezuochat.firebaseapp.com",
-            databaseURL: "https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "nezuochat",
-            storageBucket: "nebasestorage.app",
-            messagingSenderId: "154725381397",
-            appId: "1:154725381397:web:8742ccd957e20cee8ce51c"
-        };
-        
-        const firebaseApp = initializeApp(firebaseConfig);
-        const db = getDatabase(firebaseApp);
-
-        const modalImg = $("modalTargetImg");
-        const imgWrapper = $("modalImgWrapper");
-
-        let isTimelineScrolledDown = false; 
-        let isComposing = false; 
-        let curR = null, curP = null, curN = null, curT = null, rawR = null;
-        let serverTimeOffset = 0;
-        let unsubscribeChat = null, unsubscribePres = null, unsubscribeRoomConfig = null;
-        let isProcessingExit = false;
-        let isWatcherMode = false; 
-        let myUid = null;
-        let isSelfSending = false; 
-        let officialUserTimeoutTimer = null; 
-        let lastUserInteractionTime = Date.now(); 
-        
-        const LOG_PAGE_SIZE = 100; 
-        const OFFICIAL_TIMEOUT_MS = 30 * 60 * 1000; 
-
-        const OFFICIAL_ROOM_HASH = CryptoJS.SHA256("公式部屋").toString();
-        const chatTimeline = $('chatTimeline');
-
-        let renderedMsgIds = new Set();
-
-        const initializeUserIdentity = () => {
-            let localUid = localStorage.getItem("nez_pure_session_uid");
-            if (!localUid) {
-                localUid = "u-" + Math.random().toString(36).substr(2, 9) + "-" + Date.now().toString(36);
-                localStorage.setItem("nez_pure_session_uid", localUid);
-            }
-            myUid = localUid;
-            return myUid;
-        };
-
-        const hideSplash = () => {
-            const splash = $("appSplash");
-            if (splash) {
-                splash.style.opacity = "0";
-                splash.style.transition = "opacity 0.2s ease-out";
-                setTimeout(() => splash.remove(), 200);
-            }
-        };
-
-        window.playYoutubeInline = function(buttonElement, vid) {
-            const container = buttonElement.closest('.msg-card').querySelector('.yt-placeholder');
-            if (container) {
-                const cleanVid = encodeURIComponent(vid);
-                container.innerHTML = `<iframe class="w-full h-full aspect-video" src="https://www.youtube.com/embed/${cleanVid}?autoplay=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
-            }
-        };
-
-        window.openImageModal = function(src) {
-            const modal = $("imageModal");
-            if (!modalImg) return;
-            scale = 1; translateX = 0; translateY = 0; baseTranslateX = 0; baseTranslateY = 0;
-            modalImg.style.transform = `translate(0px, 0px) scale(1)`;
-            modalImg.src = src;
-            modal.classList.remove("hidden");
-            setTimeout(() => { modal.classList.remove("opacity-0", "pointer-events-none"); }, 10);
-        };
-
-        window.closeImageModal = function() {
-            const modal = $("imageModal");
-            if (!modal || !modalImg) return;
-            modal.classList.add("opacity-0", "pointer-events-none");
-            setTimeout(() => { modal.classList.add("hidden"); modalImg.src = ""; }, 200);
-        };
-        
-        chatTimeline.addEventListener('scroll', () => {
-            isTimelineScrolledDown = chatTimeline.scrollTop > 15; 
-        }, { passive: true });
-
-        window.scrollToLatest = function() { chatTimeline.scrollTop = 0; isTimelineScrolledDown = false; };
-        window.scrollToOldest = function() { chatTimeline.scrollTop = chatTimeline.scrollHeight; isTimelineScrolledDown = true; };
-
-        $("toTopBtn").onclick = () => { scrollToLatest(); };
-        $("toBottomBtn").onclick = () => { scrollToOldest(); };
-
-        const toggleClearBtn = (val) => {
-            const btn = $("clearBtn");
-            if (val && val.length > 0) {
-                btn.style.opacity = "1";
-                btn.style.pointerEvents = "auto";
-            } else {
-                btn.style.opacity = "0";
-                btn.style.pointerEvents = "none";
-            }
-        };
-
-        const setLobbyButtonsState = (enabled) => {
-            $("enterBtn").disabled = !enabled;
-            $("enterBtn").innerText = enabled ? "入室する" : "処理中...";
-            $("officialRoomBtn").disabled = !enabled;
-            $("officialRoomBtn").innerText = enabled ? "公式部屋" : "処理中...";
-        };
-
-        const startBackgroundTimeSync = () => {
-            onValue(ref(db, ".info/serverTimeOffset"), (snap) => {
-                serverTimeOffset = snap.val() || 0;
-            });
-        };
-
-        const getServerNow = () => Date.now() + serverTimeOffset;
-
-        const refreshUserActivity = () => {
-            lastUserInteractionTime = Date.now();
-        };
-        window.addEventListener("click", refreshUserActivity, { passive: true });
-        window.addEventListener("keydown", refreshUserActivity, { passive: true });
-        window.addEventListener("touchstart", refreshUserActivity, { passive: true });
-
-        const startOfficialUserTimeoutTimer = () => {
-            stopOfficialUserTimeoutTimer();
-            officialUserTimeoutTimer = setInterval(() => {
-                if (curR === OFFICIAL_ROOM_HASH && !isProcessingExit) {
-                    if (Date.now() - lastUserInteractionTime > OFFICIAL_TIMEOUT_MS) {
-                        isProcessingExit = true;
-                        localStorage.removeItem("active_room_session");
-                        stopOfficialUserTimeoutTimer();
-                        alert("公式部屋で30分以上操作（発言・画面操作）がなかったため、自動退室しました。");
-                        isProcessingExit = false;
-                        exitRoomActionPure();
-                    }
-                }
-            }, 30000); 
-        };
-
-        const stopOfficialUserTimeoutTimer = () => {
-            if (officialUserTimeoutTimer) {
-                clearInterval(officialUserTimeoutTimer);
-                officialUserTimeoutTimer = null;
-            }
-        };
-
-        const clearSubscriptions = () => {
-            if (unsubscribeChat) { unsubscribeChat(); unsubscribeChat = null; }
-            if (unsubscribePres) { unsubscribePres(); unsubscribePres = null; }
-            if (unsubscribeRoomConfig) { unsubscribeRoomConfig(); unsubscribeRoomConfig = null; }
-            stopOfficialUserTimeoutTimer();
-            renderedMsgIds.clear();
-        };
-
-        const showLobby = (msg = "") => {
-            curR = null; 
-            clearSubscriptions();
-            localStorage.removeItem("active_room_session");
-            if (msg) { 
-                $("errMsg").innerText = msg; 
-                $("errMsg").style.display = "block"; 
-            } else {
-                $("errMsg").style.display = "none";
-            }
-            $("mainApp").style.display = "none"; $("lobby").style.display = "flex";
-            setLobbyButtonsState(true);
-            hideSplash();
-
-            const savedName = localStorage.getItem("nez_ni"), savedTripKey = localStorage.getItem("nez_tk");
-            if (savedName) { $("ni").value = savedName; $("watcher_ni").value = savedName; } 
-            if (savedTripKey) { $("tk").value = savedTripKey; $("watcher_tk").value = savedTripKey; }
-            updateTripPreview(); updateWatcherTripPreview();
-        };
-
-        const enc = (t, k, isOfficial = false) => {
-            if (isOfficial) return t || "";
-            return t ? CryptoJS.AES.encrypt(t, k).toString() : "";
-        };
-
-        const textDec = (c, k, isOfficial = false) => { 
-            if (isOfficial) return c || null;
-            try { 
-                if (!c) return null;
-                const bytes = CryptoJS.AES.decrypt(c, k);
-                const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
-                return decryptedText || null;
-            } catch(e) { return null; } 
-        };
-
-        const esc = t => (t || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-
-        function formatFullDateTime(timestamp) {
-            if (!timestamp) return "";
-            const d = new Date(timestamp);
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const date = String(d.getDate()).padStart(2, '0');
-            const hours = String(d.getHours()).padStart(2, '0');
-            const minutes = String(d.getMinutes()).padStart(2, '0');
-            const seconds = String(d.getSeconds()).padStart(2, '0');
-            return `${year}/${month}/${date} ${hours}:${minutes}:${seconds}`;
-        }
-
-        window.initAudioBridge = function(audioEl, wrapperId) {
-            const container = document.getElementById(wrapperId);
-            if (!container) return;
-
-            const playBtn = container.querySelector('.audio-play-btn');
-            const seekbar = container.querySelector('.audio-seekbar');
-            const timeTxt = container.querySelector('.audio-time');
-
-            audioEl.onplay = () => {
-                document.querySelectorAll('audio').forEach(a => { if (a !== audioEl) a.pause(); });
-                document.querySelectorAll('.audio-element-wrapper').forEach(w => w.classList.remove('audio-playing-wrapper'));
-                container.classList.add('audio-playing-wrapper');
-                playBtn.innerHTML = `<svg class="w-3 h-3 text-emerald-400" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
-            };
-
-            audioEl.onpause = audioEl.onended = () => {
-                container.classList.remove('audio-playing-wrapper');
-                playBtn.innerHTML = `<svg class="w-3 h-3 text-slate-300" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
-            };
-
-            audioEl.ontimeupdate = () => {
-                if (!audioEl.duration) return;
-                const pct = (audioEl.currentTime / audioEl.duration) * 100;
-                seekbar.value = pct;
-                timeTxt.innerText = `${fmtTime(audioEl.currentTime)}/${fmtTime(audioEl.duration)}`;
-            };
-
-            audioEl.onloadedmetadata = () => {
-                timeTxt.innerText = `00:00/${fmtTime(audioEl.duration)}`;
-            };
-
-            playBtn.onclick = () => { if (audioEl.paused) { audioEl.play().catch(()=>{}); } else { audioEl.pause(); } };
-            seekbar.oninput = () => { if (!audioEl.duration) return; audioEl.currentTime = (seekbar.value / 100) * audioEl.duration; };
-
-            function fmtTime(s) {
-                if (isNaN(s)) return "00:00";
-                const m = Math.floor(s / 60); const sec = Math.floor(s % 60);
-                return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
-            }
-        };
-
-        function createMessageElement(m, pass, isOfficial = false) {
-            const txt = textDec(m.text, pass, isOfficial); if (!txt) return null;
-            const div = document.createElement("div"); div.className = "msg-wrap animate-fade-in";
-            div.setAttribute("data-timestamp", m.time);
-            const fullTimeStr = formatFullDateTime(m.time);
-            
-            if (m.type === "sys") {
-                div.innerHTML = `<div class="sys-msg text-center text-[10px] font-bold text-slate-400 my-1 bg-slate-800/60 border border-slate-700/50 py-1 px-3 rounded-lg inline-block mx-auto">${esc(txt)} <span class="text-slate-500 font-normal ml-1">${fullTimeStr}</span></div>`;
-                div.className = "msg-wrap text-center w-full justify-center items-center";
-            } else {
-                const sN = textDec(m.nEnc, pass, isOfficial) || "???";
-                const sT = textDec(m.tEnc, pass, isOfficial) || "";
-                const cardClass = "msg-card msg bg-slate-900/90 text-slate-200 px-3 py-2 rounded-xl border border-slate-800 shadow-md max-w-sm inline-block break-all w-full sm:w-auto";
-                
-                const parsedHtml = parseMessageContentToHtml(txt);
-                
-                div.innerHTML = `<div class="text-[11px] font-bold text-slate-400 mb-0.5 pl-1">${esc(sN)}<span class="text-green-400 font-mono">${esc(sT)}</span> <span class="text-slate-500 font-normal">${fullTimeStr}</span></div>
-                    <div class="${cardClass}">${parsedHtml}</div>`;
-            }
-            return div;
-        }
-
-        function insertMessageInChronologicalOrder(el) {
-            const ts = parseInt(el.getAttribute("data-timestamp"), 10);
-            const children = Array.from(chatTimeline.children);
-
-            for (let i = 0; i < children.length; i++) {
-                const child = children[i];
-                const childTs = parseInt(child.getAttribute("data-timestamp"), 10);
-                if (!isNaN(childTs) && ts > childTs) {
-                    chatTimeline.insertBefore(el, child);
-                    return;
-                }
-            }
-            chatTimeline.appendChild(el);
-        }
-
-        function parseMessageContentToHtml(text) {
-            const ytRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/i;
-            const audioRegex = /\.(mp3|wav|aac|m4a|ogg|flac)(?:\?.*)?$/i;
-            const urlRegex = /(https?:\/\/[^\s\n]+)/gi;
-
-            let urlMap = [];
-            let placeholderText = text.replace(urlRegex, (url) => {
-                const id = `__URL_PLACEHOLDER_${urlMap.length}__`;
-                urlMap.push({ id, original: url });
-                return id;
-            });
-
-            let escapedText = esc(placeholderText);
-            escapedText = escapedText.replace(/\n/g, "<br>").replace(/ /g, "&nbsp;");
-
-            urlMap.forEach(item => {
-                const url = item.original;
-                const safeUrl = esc(url);
-                const cleanUrl = url.replace(/[?#].*$/, '');
-                let replacement = "";
-
-                const ytMatch = url.match(ytRegex);
-                if (ytMatch && ytMatch[1]) {
-                    const vid = esc(ytMatch[1]);
-                    replacement = `<div class="inline-block my-1.5 rounded-lg overflow-hidden border border-slate-700 bg-black max-w-sm w-full">
-                        <div class="yt-placeholder relative aspect-video bg-cover bg-center" style="background-image: url('https://img.youtube.com/vi/${vid}/mqdefault.jpg');"></div>
-                        <div class="bg-slate-900/90 p-2 flex justify-between gap-2 text-xs border-t border-slate-800">
-                            <button onclick="playYoutubeInline(this, '${vid}')" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-2 rounded transition text-center">その場で再生</button>
-                            <a href="https://www.youtube.com/watch?v=${vid}" target="_blank" rel="noopener noreferrer" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-1 px-2 rounded transition text-center flex items-center justify-center">公式へ</a>
-                        </div>
-                    </div>`;
-                }
-                else if (/\.(jpeg|jpg|gif|png|webp|bmp)(?:\?.*)?$/i.test(cleanUrl) || /^data:image\//i.test(url)) {
-                    replacement = `<div class="inline-block my-1 max-w-[240px] overflow-hidden rounded-lg border border-slate-800 bg-slate-950 shadow-inner">
-                        <img src="${safeUrl}" alt="送信画像" class="max-h-48 w-full object-cover cursor-pointer hover:opacity-90 active:scale-95 transition" onclick="openImageModal('${safeUrl}')">
-                    </div>`;
-                }
-                else if (audioRegex.test(cleanUrl)) {
-                    const audioId = `aud-${Math.random().toString(36).substr(2, 9)}`;
-                    const wrapId = `wrap-${audioId}`;
-                    
-                    setTimeout(() => {
-                        const aEl = document.getElementById(audioId);
-                        if (aEl) window.initAudioBridge(aEl, wrapId);
-                    }, 60);
-
-                    replacement = `<div id="${wrapId}" class="audio-element-wrapper my-2 block w-full min-w-[220px] sm:min-w-[250px] p-2 rounded-xl border border-slate-700 bg-slate-800/90 shadow-md transition-all duration-300">
-                        <audio id="${audioId}" src="${safeUrl}" preload="metadata" class="hidden"></audio>
-                        <div class="flex items-center gap-2 h-7">
-                            <button class="audio-play-btn w-7 h-7 flex items-center justify-center bg-slate-700 hover:bg-slate-600 active:scale-90 rounded-full shrink-0 transition focus:outline-none">
-                                <svg class="w-3.5 h-3.5 text-slate-200" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                            </button>
-                            <span class="text-[9px] font-bold text-indigo-400 select-none shrink-0">AUDIO</span>
-                            <input type="range" class="audio-seekbar flex-1 h-1 bg-slate-600 rounded-lg appearance-none cursor-pointer focus:outline-none" value="0" min="0" max="100">
-                            <span class="audio-time text-[8px] font-mono text-slate-400 select-none tracking-tighter shrink-0">00:00/00:00</span>
-                        </div>
-                        <div class="mt-2 pt-1.5 border-t border-slate-700/50">
-                            <a href="${safeUrl}" target="_blank" download rel="noopener noreferrer" class="w-full h-7 px-2 flex items-center justify-center gap-1 bg-slate-700 hover:bg-indigo-600 text-slate-200 hover:text-white rounded-lg text-[10px] font-bold tracking-wide transition shadow-sm" title="ファイルをローカルに保存">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24 stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
-                                <span>オーディオファイルをダウンロード</span>
-                            </a>
-                        </div>
-                    </div>`;
-                }
-                else {
-                    replacement = `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:underline break-all font-medium">${safeUrl}</a>`;
-                }
-
-                escapedText = escapedText.replace(item.id, `<br>${replacement}<br>`);
-            });
-
-            escapedText = escapedText.replace(/^(<br>)+|(<br>)+$/g, '').replace(/(<br>){3,}/g, '<br><br>');
-            return escapedText;
-        }
-
-        let scale = 1;
-        let translateX = 0, translateY = 0;
-        let startX = 0, startY = 0;
-        let startDistance = 0;
-        let isDragging = false;
-        let baseTranslateX = 0, baseTranslateY = 0;
-
-        function clampTransforms() {
-            if (!modalImg || scale <= 1) { translateX = 0; translateY = 0; return; }
-            const wrapRect = imgWrapper.getBoundingClientRect();
-            const currentWidth = modalImg.offsetWidth * scale;
-            const currentHeight = modalImg.offsetHeight * scale;
-            let maxTx = (currentWidth - wrapRect.width) / 2;
-            let maxTy = (currentHeight - wrapRect.height) / 2;
-            if (maxTx < 0) maxTx = 0; if (maxTy < 0) maxTy = 0;
-            translateX = Math.min(Math.max(translateX, -maxTx), maxTx);
-            translateY = Math.min(Math.max(translateY, -maxTy), maxTy);
-        }
-
-        $("imageModal").addEventListener("click", (e) => {
-            if (e.target.id === "imageModal" || e.target.id === "modalImgWrapper") closeImageModal();
-        });
-        $("modalCloseBtn").onclick = (e) => { e.stopPropagation(); closeImageModal(); };
-
-        function getDistance(t1, t2) { return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY); }
-
-        $("imageModal").addEventListener("touchstart", (e) => {
-            if (e.touches.length === 1) {
-                isDragging = true; startX = e.touches[0].clientX; startY = e.touches[0].clientY;
-                baseTranslateX = translateX; baseTranslateY = translateY;
-            } else if (e.touches.length === 2) {
-                isDragging = false; startDistance = getDistance(e.touches[0], e.touches[1]);
-            }
-        }, { passive: true });
-
-        $("imageModal").addEventListener("touchmove", (e) => {
-            if (!modalImg) return;
-            if (scale > 1 || e.touches.length > 1) { if (e.cancelable) e.preventDefault(); }
-            if (isDragging && e.touches.length === 1 && scale > 1) {
-                const dx = e.touches[0].clientX - startX; const dy = e.touches[0].clientY - startY;
-                translateX = baseTranslateX + dx; translateY = baseTranslateY + dy;
-                clampTransforms();
-                modalImg.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
-            } else if (e.touches.length === 2) {
-                const distance = getDistance(e.touches[0], e.touches[1]);
-                const factor = distance / startDistance;
-                scale = Math.min(Math.max(1, scale * factor), 5);
-                startDistance = distance;
-                clampTransforms();
-                modalImg.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
-            }
-        }, { passive: false });
-
-        $("imageModal").addEventListener("touchend", (e) => {
-            if (!modalImg) return;
-            if (e.touches.length === 0) {
-                isDragging = false;
-                if (scale <= 1) {
-                    scale = 1; translateX = 0; translateY = 0;
-                    modalImg.style.transition = "transform 0.15s ease-out";
-                    modalImg.style.transform = `translate(0px, 0px) scale(1)`;
-                    setTimeout(() => { modalImg.style.transition = "none"; }, 150);
-                } else {
-                    clampTransforms();
-                    modalImg.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
-                }
-            } else if (e.touches.length === 1) {
-                isDragging = true; startX = e.touches[0].clientX; startY = e.touches[0].clientY;
-                baseTranslateX = translateX; baseTranslateY = translateY;
-            }
-        }, { passive: true });
-
-        function generateTripString(name, key) {
-            if (!name || !key) return "";
-            try { 
-                const salt = "NEZU_ONETIME_SALT_2026_🔥";
-                return "◆" + CryptoJS.SHA256(`${name}:${salt}:${key}`).toString().slice(0, 6); 
-            } catch(e) { return ""; }
-        }
-
-        function updateTripPreview() { 
-            const n = $("ni").value.replace(/[\s\u3000]+/g, "").trim(); 
-            const tk = $("tk").value.trim(); 
-            if (n && tk) {
-                $("tp").innerText = generateTripString(n, tk); $("tp").style.display = "inline-block";
-            } else {
-                $("tp").innerText = ""; $("tp").style.display = "none";
-            }
-        }
-
-        function updateWatcherTripPreview() { 
-            const n = $("watcher_ni").value.replace(/[\s\u3000]+/g, "").trim(); 
-            const tk = $("watcher_tk").value.trim(); 
-            if (n && tk) {
-                $("watcher_tp").innerText = generateTripString(n, tk); $("watcher_tp").style.display = "inline-block";
-            } else {
-                $("watcher_tp").innerText = ""; $("watcher_tp").style.display = "none";
-            }
-        }
-
-        function handleIncomingBatch(snapshot, isOfficial) {
-            const incomingMsgs = [];
-            snapshot.forEach(s => {
-                const m = s.val();
-                if (m && m.time) {
-                    m._key = s.key;
-                    incomingMsgs.push(m);
-                }
-            });
-
-            if (incomingMsgs.length === 0) return;
-            incomingMsgs.sort((a, b) => b.time - a.time);
-
-            incomingMsgs.forEach(m => {
-                if (!renderedMsgIds.has(m._key)) {
-                    const el = createMessageElement(m, curP, isOfficial);
-                    if (el) {
-                        renderedMsgIds.add(m._key);
-                        insertMessageInChronologicalOrder(el);
-                    }
-                }
-            });
-        }
-
-        async function cleanRoomDataImmediate() {
-            if (!curR || curR === OFFICIAL_ROOM_HASH) return;
-            try {
-                const targetR = curR;
-                clearSubscriptions();
-                const wipes = {};
-                wipes[`rooms/${targetR}`] = null;
-                wipes[`chat/${targetR}`] = null;
-                wipes[`presence/${targetR}`] = null;
-                await update(ref(db), wipes);
-                console.log("🧹 Strict Active/Clean Mode: 全データを破棄しました。");
-            } catch(e) {
-                console.error("破棄不整合フォールバック:", e);
-                try {
-                    await remove(ref(db, `rooms/${curR}`));
-                    await remove(ref(db, `chat/${curR}`));
-                    await remove(ref(db, `presence/${curR}`));
-                } catch(inner) { console.error("完全破棄失敗:", inner); }
-            }
-        }
-
-        async function join(rID, pass, name, trip, maxLimit, selectRoomMin, isDirectOfficialClick = false, isSessionRestore = false) {
-            try {
-                $("errMsg").style.display = "none";
-                setLobbyButtonsState(false);
-                initializeUserIdentity();
-
-                const targetRoomID = (rID === "official-room" || rID === "公式部屋") ? "公式部屋" : rID;
-                const hashId = (targetRoomID === "公式部屋") ? OFFICIAL_ROOM_HASH : CryptoJS.SHA256(targetRoomID).toString();
-                const isOfficial = (hashId === OFFICIAL_ROOM_HASH);
-                
-                if (isSessionRestore) {
-                    const sessionData = localStorage.getItem("active_room_session");
-                    if (sessionData) {
-                        const s = JSON.parse(sessionData);
-                        isWatcherMode = !!s.isWatcherMode;
-                    } else { isWatcherMode = false; }
-                } else if (isOfficial && isDirectOfficialClick) {
-                    isWatcherMode = true;
-                } else { 
-                    isWatcherMode = false; 
-                }
-
-                // 入室前に確実に以前のリスナーを全て解除
-                clearSubscriptions();
-
-                curR = hashId; rawR = targetRoomID; curP = pass;
-                if (isWatcherMode) { curN = ""; curT = ""; } else { curN = name; curT = trip || ""; }
-
-                if (isOfficial) {
-                    maxLimit = 10; selectRoomMin = 999999999;
-                    $("copyBtn").style.display = "none";
-                    lastUserInteractionTime = Date.now();
-                    startOfficialUserTimeoutTimer(); 
-                } else {
-                    $("copyBtn").style.display = "block";
-                    stopOfficialUserTimeoutTimer();
-                }
-
-                let ROOM_LIFETIME = (selectRoomMin * 60) * 1000;
-                const NOW = getServerNow();
-
-                const chatRef = ref(db, `chat/${curR}`);
-                const pRef = ref(db, `presence/${curR}`);
-                const roomRef = ref(db, `rooms/${curR}`);
-                const myRef = ref(db, `presence/${curR}/${myUid}`);
-
-                let finalMax = maxLimit;
-
-                const roomSnap = await get(roomRef);
-                let roomExistsInDb = roomSnap.exists();
-                let lastKnownActivity = NOW;
-
-                if (roomExistsInDb) {
-                    const rData = roomSnap.val() || {};
-                    lastKnownActivity = rData.lastActivity || NOW;
-                    ROOM_LIFETIME = (isOfficial ? 999999999 : (rData.roomMin || selectRoomMin)) * 60 * 1000;
-                    if (rData.max !== undefined) finalMax = isOfficial ? 10 : Number(rData.max);
-
-                    if (!isOfficial && (NOW - lastKnownActivity > ROOM_LIFETIME)) {
-                        await cleanRoomDataImmediate();
-                        roomExistsInDb = false;
-                        lastKnownActivity = NOW;
-                    }
-                }
-
-                let isReentry = isSessionRestore;
-                if (!roomExistsInDb && !isOfficial) {
-                    isReentry = false; 
-                    await set(roomRef, { max: finalMax, roomMin: selectRoomMin, lastActivity: NOW });
-                }
-
-                const pSnap = await get(pRef);
-
-                if (!isWatcherMode) {
-                    if (pSnap.exists() && roomExistsInDb) {
-                        const users = pSnap.val() || {}; 
-                        let currentActiveCount = 0;
-
-                        for (const k of Object.keys(users)) {
-                            // 30秒以上生存確認が取れない古いセッションは削除
-                            if (users[k].lastSeen && (NOW - users[k].lastSeen > 30000) && k !== myUid) {
-                                await remove(ref(db, `presence/${curR}/${k}`)).catch(()=>{});
-                                continue;
-                            }
-
-                            currentActiveCount++;
-                            if (k === myUid) {
-                                isReentry = true;
-                                continue;
-                            }
-                        }
-                        if (!isReentry && currentActiveCount >= finalMax) { showLobby(`部屋が満員です（上限 ${finalMax} 名）`); return; }
-                    }
-
-                    if (!isOfficial) {
-                        await update(roomRef, { lastActivity: NOW }).catch(()=>{});
-                    }
-
-                    const myIdentityPayload = { 
-                        nEnc: enc(name, pass, isOfficial), 
-                        tEnc: enc(trip || "", pass, isOfficial), 
-                        enteredAt: NOW,
-                        lastSeen: NOW 
-                    };
-                    
-                    await onDisconnect(myRef).remove();
-                    await set(myRef, myIdentityPayload);
-
-                    if (!isReentry) {
-                        await push(chatRef, { type: "sys", text: enc(`${name}${trip || ""} が入室しました`, pass, isOfficial), time: NOW }); 
-                    }
-                    
-                    localStorage.setItem("nez_ni", name);
-                    if (!isOfficial) localStorage.setItem("nez_tk", $("tk").value.trim());
-                }
-
-                localStorage.setItem("active_room_session", JSON.stringify({
-                    rawR, curP, curN: isWatcherMode ? "" : name, curT: isWatcherMode ? "" : (trip || ""), maxLimit, selectRoomMin, isWatcherMode
-                }));
-                localStorage.setItem("nez_ri", targetRoomID);
-                localStorage.setItem("nez_pi", pass);
-
-                $("roomDisplay").innerText = targetRoomID; 
-                $("lobby").style.display = "none"; $("mainApp").style.display = "flex";
-                $("errMsg").style.display = "none";
-
-                if (isWatcherMode) {
-                    $("input-container").style.display = "none"; $("watcher-banner").style.display = "block"; updateWatcherTripPreview();
-                    $("exitBtn").innerText = "ロビーへ戻る"; 
-                } else {
-                    $("input-container").style.display = "flex"; $("watcher-banner").style.display = "none";
-                    $("exitBtn").innerText = "退室"; 
-                }
-
-                hideSplash();
-
-                renderedMsgIds.clear();
-                chatTimeline.innerHTML = "";
-
-                if (!isOfficial) {
-                    unsubscribeRoomConfig = onValue(roomRef, async (snap) => {
-                        const activeR = curR;
-                        if (!snap.exists() && activeR && !isProcessingExit) {
-                            isProcessingExit = true;
-                            clearSubscriptions();
-                            localStorage.removeItem("active_room_session");
-                            alert("この部屋は活動タイマー上限または全メンバー退出によりサーバーから完全抹消されました。");
-                            isProcessingExit = false;
-                            showLobby("部屋データがサーバーから完全抹消されました。");
-                        }
-                    });
-                }
-
-                unsubscribePres = onValue(pRef, async (s) => {
-                    if (!curR) return; 
-                    const users = s.val() || {}, frag = document.createDocumentFragment();
-                    let count = 0;
-
-                    Object.keys(users).forEach(k => {
-                        const n = textDec(users[k].nEnc, curP, isOfficial); if (!n) return;
-                        const trip = textDec(users[k].tEnc, curP, isOfficial) || "";
-                        count++;
-                        const span = document.createElement("span"); span.className = "user-chip"; span.innerText = n + trip; frag.appendChild(span);
-                    });
-
-                    $("presenceList").innerHTML = ""; $("presenceList").appendChild(frag); $("presenceCount").innerText = `[${count}/${finalMax}]`;
-                });
-
-                let chatQuery = isOfficial 
-                    ? query(chatRef, orderByChild("time"), limitToLast(LOG_PAGE_SIZE))
-                    : chatRef; 
-                
-                unsubscribeChat = onValue(chatQuery, async (snapshot) => {
-                    if (!curR) return;
-                    
-                    const currentNow = getServerNow();
-
-                    if (!isWatcherMode && !isOfficial) {
-                        await set(ref(db, `presence/${curR}/${myUid}/lastSeen`), currentNow).catch(()=>{});
-                    }
-
-                    if (!isOfficial && !isProcessingExit) {
-                        try {
-                            const roomSnap = await get(roomRef);
-                            if (roomSnap.exists()) {
-                                const rData = roomSnap.val();
-                                const lastAct = rData.lastActivity || currentNow;
-                                if (currentNow - lastAct > ROOM_LIFETIME) {
-                                    isProcessingExit = true;
-                                    await cleanRoomDataImmediate(); 
-                                    isProcessingExit = false;
-                                    alert("最後の発言から一定時間が経過したため、ログをサーバーから完全消去しました。");
-                                    showLobby("発言タイムアウトにより自動消滅しました。");
-                                    return;
-                                }
-                            }
-                        } catch(err) { console.error(err); }
-                    }
-
-                    handleIncomingBatch(snapshot, isOfficial);
-
-                    if (isSelfSending || !isTimelineScrolledDown) { 
-                        scrollToLatest(); 
-                        isSelfSending = false;
-                    }
-                });
-
-            } catch (e) {
-                console.error(e);
-                showLobby(`❌ 入室エラー\n原因: ${e.message}`);
-            } finally {
-                setLobbyButtonsState(true); 
-            }
-        }
-
-        async function sendMessage() {
-            if (!curR || isWatcherMode) return; 
-            const input = $("mi"); const txt = input.value.trim(); 
-            if (!txt) return;
-            
-            const isOfficial = (curR === OFFICIAL_ROOM_HASH);
-            toggleClearBtn(""); input.value = ""; input.rows = 1; input.style.height = "auto";
-            
-            isSelfSending = true;
-            scrollToLatest(); 
-            if (isOfficial) refreshUserActivity(); 
-
-            try {
-                const NOW = getServerNow();
-                const chatRef = ref(db, `chat/${curR}`);
-                
-                const sessionUpdates = {};
-                if (!isOfficial) {
-                    sessionUpdates[`rooms/${curR}/lastActivity`] = NOW;
-                }
-                sessionUpdates[`presence/${curR}/${myUid}/lastSeen`] = NOW;
-                await update(ref(db), sessionUpdates).catch(()=>{});
-
-                await push(chatRef, { 
-                    type: "msg", 
-                    nEnc: enc(curN, curP, isOfficial), 
-                    tEnc: enc(curT || "", curP, isOfficial), 
-                    text: enc(txt, curP, isOfficial), 
-                    time: NOW 
-                });
-
-                // フロントエンド側での古いメッセージ個別削除処理は、Firebaseセキュリティルールの権限エラーの原因となるため、
-                // 公式部屋での発言失敗を防ぐためにオミット（定期削除はCloud Functions側で処理するのが安全です）
-            } catch (e) { alert("送信失敗: " + e.message); isSelfSending = false; }
-        }
-
-        $("mi").addEventListener("compositionstart", () => { isComposing = true; });
-        $("mi").addEventListener("compositionend", (e) => { 
-            isComposing = false; 
-            toggleClearBtn(e.target.value); 
-        });
-        $("mi").addEventListener("input", (e) => { 
-            toggleClearBtn(e.target.value); 
-            e.target.style.height = "auto";
-            const scrollHeight = e.target.scrollHeight;
-            e.target.style.height = (scrollHeight > 96 ? 96 : scrollHeight) + "px";
-            if (scrollHeight > 96) { e.target.style.overflowY = "auto"; } else { e.target.style.overflowY = "hidden"; }
-        });
-
-        $("mi").addEventListener("focus", () => { setTimeout(() => { scrollToLatest(); }, 150); });
-        $("mi").addEventListener("keydown", (e) => { 
-            if (e.key === "Enter" && !e.shiftKey) { 
-                if (isComposing) return; 
-                e.preventDefault(); 
-                sendMessage(); 
-            } else { if (!isTimelineScrolledDown) { scrollToLatest(); } }
-        });
-        
-        $("sendBtn").onclick = (e) => { e.preventDefault(); sendMessage(); };
-        $("clearBtn").onclick = (e) => { e.preventDefault(); $("mi").value = ""; $("mi").rows = 1; $("mi").style.height = "auto"; $("mi").style.overflowY = "hidden"; toggleClearBtn(""); $("mi").focus(); };
-
-        const executeJoinFromLobbyInputs = async () => {
-            const rawName = $("ni").value, tk = $("tk").value.trim(), r = $("ri").value.trim(), p = $("pi").value.trim();
-            const cleanName = rawName.replace(/[\s\u3000]+/g, "").trim();
-            const cleanRoom = r.replace(/[\s\u3000]+/g, "").trim();
-            if (!cleanName || !cleanRoom || !p) { setLobbyButtonsState(true); return false; }
-            setLobbyButtonsState(false);
-            
-            await join(
-                cleanRoom, p, cleanName, generateTripString(cleanName, tk), 
-                Number($("maxUsers").value), Number($("userTimeoutTime").value)
-            );
-            return true;
-        };
-
-        $("enterBtn").onclick = async () => {
-            const rawName = $("ni").value, r = $("ri").value.trim(), p = $("pi").value.trim();
-            const cleanName = rawName.replace(/[\s\u3000]+/g, "").trim();
-            const cleanRoom = r.replace(/[\s\u3000]+/g, "").trim();
-            if (!cleanName || !cleanRoom || !p) { alert("必須項目が入力されていません。"); return; }
-            await executeJoinFromLobbyInputs();
-        };
-
-        $("officialRoomBtn").onclick = async () => {
-            setLobbyButtonsState(false);
-            const rawName = $("ni").value;
-            const cleanName = rawName.replace(/[\s\u3000]+/g, "").trim();
-            const tk = $("tk").value.trim();
-            await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, tk), 10, 999999999, true);
-        };
-
-        $("watcherUpgradeBtn").onclick = async () => {
-            const rawName = $("watcher_ni").value, tk = $("watcher_tk").value.trim();
-            const cleanName = rawName.replace(/[\s\u3000]+/g, "").trim();
-            if (!cleanName || !tk) { alert("名前とトリップキーを入力してください。"); return; }
-            localStorage.setItem("nez_ni", cleanName); localStorage.setItem("nez_tk", tk);
-            $("ni").value = cleanName; $("tk").value = tk; updateTripPreview();
-            
-            // 重要：一度セッション情報を破棄してから入室することでisWatcherModeがtrueのまま残るバグを確実に防ぐ
-            localStorage.removeItem("active_room_session");
-            isWatcherMode = false;
-            
-            await join("公式部屋", "official_public_pass", cleanName, generateTripString(cleanName, tk), 10, 999999999, false, false);
-        };
-
-        async function exitRoomActionPure() {
-            try {
-                if (!isWatcherMode && curR) {
-                    const isOfficial = (curR === OFFICIAL_ROOM_HASH);
-                    const chatRef = ref(db, `chat/${curR}`);
-                    const pRef = ref(db, `presence/${curR}`);
-                    const myRef = ref(db, `presence/${curR}/${myUid}`);
-
-                    await remove(myRef).catch(()=>{});
-
-                    const presSnap = await get(pRef);
-                    const currentNow = getServerNow();
-                    let activeOthersCount = 0;
-
-                    if (presSnap.exists()) {
-                        const users = presSnap.val() || {};
-                        Object.keys(users).forEach(k => {
-                            if (users[k].lastSeen && (currentNow - users[k].lastSeen < 30000) && k !== myUid) {
-                                activeOthersCount++;
-                            }
-                        });
-                    }
-
-                    if (!isOfficial && activeOthersCount === 0) {
-                        await cleanRoomDataImmediate();
-                    } else {
-                        await push(chatRef, { type: "sys", text: enc(`${curN}${curT} が退室しました`, curP, isOfficial), time: currentNow }).catch(()=>{});
-                    }
-                }
-            } catch(e) { console.error("退室エラー:", e); }
-            finally {
-                showLobby();
-            }
-        }
-
-        async function exitRoom() {
-            if (isProcessingExit || !curR) return; 
-            isProcessingExit = true;
-            localStorage.removeItem("active_room_session");
-            stopOfficialUserTimeoutTimer();
-            await exitRoomActionPure();
-            isProcessingExit = false; 
-        }
-
-        $("exitBtn").onclick = () => { if (isWatcherMode || confirm("本当に退室しますか？\n一般部屋の場合、全員が退室するか、発言タイムアウトに達すると、サーバーからデータは必ず即座に完全破棄されます。")) exitRoom(); };
-
-        $("copyBtn").onclick = () => {
-            if (!rawR || !curP) return;
-            const shareUrl = `${window.location.protocol}//${window.location.host}${window.location.pathname}?r=${encodeURIComponent(rawR)}&p=${encodeURIComponent(curP)}`;
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(shareUrl).then(() => alert("招待リンクをコピーしました！")).catch(() => fallbackCopy(shareUrl));
-            } else { fallbackCopy(shareUrl); }
-        };
-
-        function fallbackCopy(text) {
-            const textArea = document.createElement("textarea"); textArea.value = text;
-            Object.assign(textArea.style, { position: "fixed", top: "0", left: "0", width: "2em", height: "2em", background: "transparent", border: "none" });
-            document.body.appendChild(textArea); textArea.focus(); textArea.select();
-            try { document.execCommand('copy'); alert("招待リンクをコピーしました！"); } catch (err) { alert("URLコピー失敗。"); }
-            document.body.removeChild(textArea);
-        }
-
-        $("ni").addEventListener("input", (e) => { $("watcher_ni").value = e.target.value; updateTripPreview(); updateWatcherTripPreview(); });
-        $("tk").addEventListener("input", (e) => { $("watcher_tk").value = e.target.value; updateTripPreview(); updateWatcherTripPreview(); });
-        $("watcher_ni").addEventListener("input", (e) => { $("ni").value = e.target.value; updateTripPreview(); updateWatcherTripPreview(); });
-        $("watcher_tk").addEventListener("input", (e) => { $("tk").value = e.target.value; updateTripPreview(); updateWatcherTripPreview(); });
-
-        $("masterGenBtn").onclick = () => {
-            const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-            let rGen = "", pGen = "";
-            for (let i = 0; i < 10; i++) rGen += chars.charAt(Math.floor(Math.random() * chars.length));
-            for (let i = 0; i < 12; i++) pGen += chars.charAt(Math.floor(Math.random() * chars.length));
-            $("ri").value = rGen; $("pi").value = pGen; updateTripPreview();
-        };
-
-        $("openGuideBtn").onclick = () => $("guideCard").style.display = "flex";
-        $("closeGuideBtn").onclick = () => $("guideCard").style.display = "none";
-        $("focusBtn").onclick = () => { $("mi").focus(); setTimeout(() => { scrollToLatest(); }, 150); };
-
-        async function triggerSessionRestore() {
-            const sessionData = localStorage.getItem("active_room_session");
-            if (sessionData) {
-                try { 
-                    const s = JSON.parse(sessionData); 
-                    const savedName = localStorage.getItem("nez_ni") || "";
-                    const savedTripKey = localStorage.getItem("nez_tk") || "";
-                    const fullTripString = generateTripString(savedName, savedTripKey);
-                    
-                    await join(s.rawR, s.curP, savedName, fullTripString, s.maxLimit || 4, s.selectRoomMin || 30, !!s.isWatcherMode, true); 
-                    return true;
-                } catch(e) { localStorage.removeItem("active_room_session"); }
-            }
-            return false;
-        }
-
-        window.addEventListener("DOMContentLoaded", async () => {
-            startBackgroundTimeSync();
-            initializeUserIdentity();
-
-            const savedName = localStorage.getItem("nez_ni"), savedTripKey = localStorage.getItem("nez_tk");
-            const savedRoomId = localStorage.getItem("nez_ri"), savedRoomPass = localStorage.getItem("nez_pi");
-
-            if (savedName) { $("ni").value = savedName; $("watcher_ni").value = savedName; } 
-            if (savedTripKey) { $("tk").value = savedTripKey; $("watcher_tk").value = savedTripKey; }
-            if (savedRoomId) { $("ri").value = savedRoomId; }
-            if (savedRoomPass) { $("pi").value = savedRoomPass; }
-
-            const params = new URLSearchParams(window.location.search);
-            const r = params.get("r"), p = params.get("p"), n = params.get("n");
-            
-            if (r) $("ri").value = r; if (p) $("pi").value = p; if (n) $("ni").value = n;
-            updateTripPreview(); updateWatcherTripPreview();
-            setLobbyButtonsState(true);
-
-            const restored = await triggerSessionRestore(); 
-            if (restored) return;
-
-            if (r && p && !$("ni").value) { $("ni").focus(); }
-            $("lobby").style.display = "flex"; 
-            hideSplash();
-        });
-    </script>
+  </div>
+
+  <!-- コントロールバー -->
+  <div id="ytdock-ctrl">
+    <div id="ytdock-sp" class="dsp-free">
+      <span class="dld dld-off" id="ytdock-ld"></span>
+      <span id="ytdock-tx">---</span>
+    </div>
+    <span id="ytdock-time">00:00 / 00:00</span>
+    <button id="ytdock-pp">▶</button>
+    <button id="ytdock-stb" class="dsync-go">同期を開始</button>
+    <button id="ytdock-fmb">自由視聴</button>
+    <button id="ytdock-close">✕ 閉じる</button>
+  </div>
+
+  <!-- 動画エリア -->
+  <div id="ytdock-video">
+    <div id="ytdock-player"></div>
+  </div>
+</div>
+
+<!-- Guide Modal -->
+<div id="gmod"><div class="gc">
+  <h3 style="font-size:13px;font-weight:900;color:#a5b4fc;border-bottom:1px solid var(--bd);padding-bottom:8px">📖 セキュリティガイド ＆ 利用規約</h3>
+  <div class="gs"><h4 style="color:#a5b4fc">🛡️ E2E 暗号化</h4>AES-256採用。ブラウザ内で暗号化してから送信。部屋パスワードはサーバーに届かず、第三者の解読は数学的に不可能。</div>
+  <div class="gs"><h4 style="color:#fbbf24">⏱️ ログ自動消滅</h4>30分の無発言または全員退室でログが即座に完全抹消されます。</div>
+  <div class="gs"><h4 style="color:#34d399">🎵 メディア対応</h4>YouTube・ニコニコ・TikTokのURLでプレビューカード。音声ファイル（mp3/wav等）でインラインプレイヤー。URLはテキストの前後で自動改行して表示されます。</div>
+  <div class="gs"><h4 style="color:#818cf8">🔗 動画同期</h4>YouTubeのURLを貼ると同期ボタンが表示されます。ホストが同期を開始すると参加者全員が画面下部のプレイヤーで同時視聴できます。</div>
+  <div class="gs"><h4 style="color:#fda4af">❌ 禁止事項</h4>違法な取引・犯罪の謀議・スパム行為は禁止します。</div>
+  <button class="btn bp" id="gcBtn" style="font-size:12px;padding:10px">理解しました</button>
+</div></div>
+
+<!-- Image Modal -->
+<div id="imod"><img id="imEl" src="" alt=""><button class="cx" id="icBtn">×</button></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getDatabase, ref, push, onValue, set, update, remove,
+         query, orderByChild, limitToLast, get, onDisconnect }
+  from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+
+/* ════ Firebase ════ */
+const db = getDatabase(initializeApp({
+  apiKey:"AIzaSyCsRidc0smUQDaBwq-oki5NzxSHx6-ljiw",
+  authDomain:"nezuochat.firebaseapp.com",
+  databaseURL:"https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"nezuochat",storageBucket:"nebasestorage.app",
+  messagingSenderId:"154725381397",appId:"1:154725381397:web:8742ccd957e20cee8ce51c"
+}));
+
+/* ════ DOM ════ */
+const $=id=>document.getElementById(id);
+const D={
+  splash:$("splash"),lobby:$("lobby"),lberr:$("lberr"),app:$("app"),
+  ni:$("ni"),tk:$("tk"),ri:$("ri"),pi:$("pi"),mu:$("mu"),
+  tpv:$("tpv"),enBtn:$("enBtn"),ofBtn:$("ofBtn"),gnBtn:$("gnBtn"),
+  gdBtn:$("gdBtn"),gmod:$("gmod"),gcBtn:$("gcBtn"),
+  imod:$("imod"),imEl:$("imEl"),icBtn:$("icBtn"),
+  hdr:$("hdr"),rdsp:$("rdsp"),pcnt:$("pcnt"),
+  pl:$("pl"),ivBtn:$("ivBtn"),exBtn:$("exBtn"),
+  wb:$("wb"),wni:$("wni"),wtk:$("wtk"),wtpv:$("wtpv"),wuBtn:$("wuBtn"),
+  tl:$("tl"),ib:$("ib"),mi:$("mi"),sdBtn:$("sdBtn"),
+  fn:$("fn"),tTBtn:$("tTBtn"),tBBtn:$("tBBtn"),
+  /* YT Dock */
+  dock:$("ytdock"),
+  dOverlay:$("ytdock-overlay"),dHost:$("dovl-host"),dAcc:$("dovl-acc"),dDec:$("dovl-dec"),
+  dCtrl:$("ytdock-ctrl"),dSp:$("ytdock-sp"),dLd:$("ytdock-ld"),dTx:$("ytdock-tx"),
+  dTime:$("ytdock-time"),dPP:$("ytdock-pp"),dStb:$("ytdock-stb"),
+  dFmb:$("ytdock-fmb"),dClose:$("ytdock-close"),
+  dVideo:$("ytdock-video"),dPlayer:$("ytdock-player"),
+};
+
+/* ════ サーバー時刻 ════ */
+let _off=0;
+onValue(ref(db,".info/serverTimeOffset"),s=>{_off=s.val()||0;});
+const now=()=>Date.now()+_off;
+
+/* ════ UID ════ */
+const uid=(()=>{
+  let id=localStorage.getItem("nz_uid");
+  if(!id){id="u-"+Math.random().toString(36).slice(2,9)+"-"+Date.now().toString(36);localStorage.setItem("nz_uid",id);}
+  return id;
+})();
+
+/* ════ 暗号化 ════ */
+const enc=(t,k,r=false)=>{if(!t)return"";if(r)return t;return CryptoJS.AES.encrypt(t,k).toString();};
+const dec=(c,k,r=false)=>{
+  if(!c)return null;if(r)return c;
+  try{const b=CryptoJS.AES.decrypt(c,k);const s=b.toString(CryptoJS.enc.Utf8);return s||null;}catch{return null;}
+};
+const esc=t=>(t||"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ════ Trip ════ */
+const SALT="NEZU_ONETIME_SALT_2026_🔥";
+const gTrip=(n,k)=>{if(!n||!k)return"";try{return"◆"+CryptoJS.SHA256(`${n}:${SALT}:${k}`).toString().slice(0,6);}catch{return"";}};
+const updTP=()=>{const n=D.ni.value.replace(/[\s\u3000]+/g,"").trim(),k=D.tk.value.trim();if(n&&k){D.tpv.textContent=gTrip(n,k);D.tpv.style.display="inline-block";}else D.tpv.style.display="none";};
+const updWTP=()=>{const n=D.wni.value.replace(/[\s\u3000]+/g,"").trim(),k=D.wtk.value.trim();if(n&&k){D.wtpv.textContent=gTrip(n,k);D.wtpv.style.display="inline-block";}else D.wtpv.style.display="none";};
+D.ni.addEventListener("input",updTP);D.tk.addEventListener("input",updTP);
+D.wni.addEventListener("input",updWTP);D.wtk.addEventListener("input",updWTP);
+
+/* ════ 時刻 ════ */
+const fDT=ts=>{if(!ts)return"";const d=new Date(ts);return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}`;};
+const fT=s=>{if(!isFinite(s)||s<0)return"00:00";return`${String(Math.floor(s/60)).padStart(2,"0")}:${String(Math.floor(s%60)).padStart(2,"0")}`;};
+
+/* ════ 定数 ════ */
+const OFF_H=CryptoJS.SHA256("公式部屋").toString();
+const OFF_P="official_public_pass";
+const OFF_TO=30*60*1000;
+const ROOM_TO=30*60*1000;
+const HB=15000;
+
+/* ════ セッション状態 ════ */
+let curR=null,curP=null,curN=null,curT=null,rawR=null;
+let isOff=false,isW=false;
+let maxL=4;
+let isEx=false,lastA=Date.now();
+let _cOff=null,_pOff=null,_rOff=null,_yOff=null;
+let hbT=null,ofT=null,toT=null,slT=null;
+let rIds=new Set();
+
+/* ════ YT 同期状態 ════
+   amOwn   : 自分がホスト
+   hSync   : ホストが同期ON
+   gFree   : ゲストが自由視聴
+   sOk     : ゲストが同期承認済み
+   vC      : 最新 videoState
+   lVid    : ロード済み videoId
+   ytp     : YT.Player インスタンス
+   dockOpen: プレイヤードックが表示中
+════ */
+let ytp=null,ytRdy=false;
+let amOwn=false,hSync=false,gFree=false,sOk=false;
+let vC=null,lVid=null,dockOpen=false;
+let isDrag=false,isCmp=false;
+let shUntil=0;
+const shield=(ms=800)=>{shUntil=Date.now()+ms;};
+const shd=()=>amOwn&&Date.now()<shUntil;
+const DRIFT=1.5;
+
+/* ════ YT API ════ */
+(()=>{
+  if(window.YT?.Player){ytRdy=true;return;}
+  window.onYouTubeIframeAPIReady=()=>{ytRdy=true;};
+  const s=document.createElement("script");s.src="https://www.youtube.com/iframe_api";s.async=true;
+  document.head.appendChild(s);
+})();
+
+/* ════ Splash ════ */
+const hideSplash=()=>{
+  const s=D.splash;if(!s)return;
+  s.style.opacity="0";s.style.transition="opacity .25s";
+  setTimeout(()=>s.remove(),260);
+};
+
+/* ════ Image modal ════ */
+window.openImg=src=>{D.imEl.src=src;D.imod.classList.add("show");};
+D.icBtn.onclick=()=>{D.imod.classList.remove("show");setTimeout(()=>{D.imEl.src="";},200);};
+D.imod.addEventListener("click",e=>{if(e.target===D.imod)D.icBtn.click();});
+
+/* ════ メディアカード ════ */
+const PIco=`<svg viewBox="0 0 80 80" fill="none"><circle cx="40" cy="40" r="40" fill="rgba(0,0,0,.55)"/><polygon points="30,22 62,40 30,58" fill="white"/></svg>`;
+
+window.__pYT=vid=>{
+  const c=document.getElementById("ytc-"+vid);if(!c)return;
+  c.innerHTML=`<div class="mce"><iframe src="https://www.youtube.com/embed/${esc(vid)}?autoplay=1" allow="autoplay;encrypted-media" allowfullscreen></iframe></div>`;
+};
+window.__pNi=nid=>{
+  const c=document.getElementById("nic-"+nid);if(!c)return;
+  c.innerHTML=`<div class="mce"><iframe src="https://embed.nicovideo.jp/watch/${nid}?autoplay=1" allow="autoplay" allowfullscreen></iframe></div>`;
+};
+window.__pTT=tid=>{
+  const c=document.getElementById("ttk-"+tid);if(!c)return;
+  c.innerHTML=`<div class="mce tk"><iframe src="https://www.tiktok.com/embed/v2/${tid}" allow="autoplay" allowfullscreen></iframe></div>`;
+};
+
+/* YouTube: カード + 同期ボタン */
+function bYT(vid){
+  const sv=esc(vid);
+  return(
+    `<div class="mc" id="ytc-${sv}">` +
+      `<div class="mct" onclick="window.__pYT('${sv}')">` +
+        `<img src="https://img.youtube.com/vi/${sv}/mqdefault.jpg" alt="" loading="lazy">` +
+        `<div class="mpi">${PIco}</div>` +
+      `</div>` +
+      `<div class="mcb">` +
+        `<button class="mcbtn" onclick="window.__pYT('${sv}')">▶ その場で再生</button>` +
+        `<a class="mcbtn s" href="https://youtu.be/${sv}" target="_blank" rel="noopener">公式で観る</a>` +
+      `</div>` +
+    `</div>` +
+    `<div class="sbar">` +
+      `<div class="sbar-info">` +
+        `<div class="sbar-ttl">🎬 YouTube 同期再生</div>` +
+        `<div class="sbar-vid">${sv}</div>` +
+      `</div>` +
+      `<button class="sbar-btn" onclick="window.__ytSync('${sv}')">▶ 同期して再生</button>` +
+    `</div>`
+  );
+}
+
+function bNico(url,nid){
+  const sn=esc(nid),su=esc(url),numId=nid.replace(/\D/g,"");
+  const th=numId?`https://nicovideo.cdn.nimg.jp/thumbnails/${numId}/original`:"";
+  return `<div class="mc" id="nic-${sn}"><div class="mct" onclick="window.__pNi('${sn}')"><img src="${th}" alt="" loading="lazy" onerror="this.style.background='#1e293b'"><div class="mpi">${PIco}</div></div><div class="mcb"><button class="mcbtn" onclick="window.__pNi('${sn}')">▶ その場で再生</button><a class="mcbtn s" href="${su}" target="_blank" rel="noopener">ニコニコで観る</a></div></div>`;
+}
+
+function bTT(url,tid){
+  const st=esc(tid),su=esc(url);
+  return `<div class="mc" id="ttk-${st}"><div class="mct" style="aspect-ratio:9/16;max-width:140px" onclick="window.__pTT('${st}')"><div style="width:100%;height:100%;background:linear-gradient(135deg,#010101,#fe2c55);display:flex;align-items:center;justify-content:center">${PIco}</div></div><div class="mcb"><button class="mcbtn" onclick="window.__pTT('${st}')">▶ その場で再生</button><a class="mcbtn s" href="${su}" target="_blank" rel="noopener">TikTokで観る</a></div></div>`;
+}
+
+/* 音楽プレイヤー */
+let aCnt=0;
+const pIco=()=>`<svg fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+const paIco=()=>`<svg fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+function bAudio(url){
+  const id="au"+(++aCnt),wid="aw"+id,su=esc(url);
+  requestAnimationFrame(()=>{
+    const aw=document.getElementById(wid),au=document.getElementById(id);if(!aw||!au)return;
+    const pb=aw.querySelector(".apb"),sk=aw.querySelector(".ask"),tm=aw.querySelector(".atm");
+    const fA=s=>isNaN(s)?"00:00":`${String(Math.floor(s/60)).padStart(2,"0")}:${String(Math.floor(s%60)).padStart(2,"0")}`;
+    au.onplay=()=>{document.querySelectorAll("audio").forEach(a=>{if(a!==au)a.pause();});document.querySelectorAll(".aw").forEach(w=>w.classList.remove("pl"));aw.classList.add("pl");pb.innerHTML=paIco();};
+    au.onpause=au.onended=()=>{aw.classList.remove("pl");pb.innerHTML=pIco();};
+    au.ontimeupdate=()=>{if(!au.duration)return;sk.value=(au.currentTime/au.duration)*100;tm.textContent=`${fA(au.currentTime)}/${fA(au.duration)}`;};
+    au.onloadedmetadata=()=>{tm.textContent=`00:00/${fA(au.duration)}`;};
+    pb.onclick=()=>{if(au.paused)au.play().catch(()=>{});else au.pause();};
+    sk.oninput=()=>{if(au.duration)au.currentTime=(sk.value/100)*au.duration;};
+  });
+  return `<div class="aw" id="${wid}"><audio id="${id}" src="${su}" preload="metadata" style="display:none"></audio><div class="ar"><button class="apb">${pIco()}</button><span class="alb">AUDIO</span><input type="range" class="ask" value="0" min="0" max="100"><span class="atm">00:00/00:00</span></div><div class="adl"><a href="${su}" target="_blank" rel="noopener" download><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>ダウンロード</a></div></div>`;
+}
+
+/* ════ コンテンツパーサー ════
+   URLを検出して分割。URLの前後に<br><br>を挿入して段落区切りを作る。
+════ */
+const AR=/\.(mp3|wav|aac|m4a|ogg|flac)(\?.*)?$/i;
+const IR=/\.(jpe?g|gif|png|webp|bmp|svg)(\?.*)?$/i;
+const YR=/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/i;
+const NR=/nicovideo\.jp\/watch\/((?:sm|nm|so|lv|co|ch)[0-9]+[A-Za-z0-9_-]*|[0-9]+)/i;
+const TR=/tiktok\.com\/@[^/]+\/video\/(\d+)/i;
+const UR=/(https?:\/\/[^\s\n<>"]+)/gi;
+
+function parseTxt(txt){
+  const parts=[];let last=0,m;
+  UR.lastIndex=0;
+  while((m=UR.exec(txt))!==null){
+    if(m.index>last)parts.push({t:"t",v:txt.slice(last,m.index)});
+    parts.push({t:"u",v:m[0]});
+    last=m.index+m[0].length;
+  }
+  if(last<txt.length)parts.push({t:"t",v:txt.slice(last)});
+
+  const html=[];
+  for(let i=0;i<parts.length;i++){
+    const p=parts[i];
+    if(p.t==="t"){
+      const h=esc(p.v).replace(/\n/g,"<br>").replace(/^(<br>)+|(<br>)+$/g,"");
+      if(h)html.push(h);
+    }else{
+      /* URL前後に段落区切り */
+      if(html.length>0)html.push("<br><br>");
+      const url=p.v,su=esc(url),cl=url.replace(/[?#].*$/,"");
+      const ym=url.match(YR);if(ym){html.push(bYT(ym[1]));if(i<parts.length-1)html.push("<br>");continue;}
+      const nm=url.match(NR);if(nm){html.push(bNico(url,nm[1]));if(i<parts.length-1)html.push("<br>");continue;}
+      const tm2=url.match(TR);if(tm2){html.push(bTT(url,tm2[1]));if(i<parts.length-1)html.push("<br>");continue;}
+      if(AR.test(cl)){html.push(bAudio(url));if(i<parts.length-1)html.push("<br>");continue;}
+      if(IR.test(cl)||/^data:image\//i.test(url)){
+        html.push(`<img src="${su}" alt="" loading="lazy" style="max-width:200px;max-height:150px;border-radius:8px;cursor:pointer;display:block;margin-top:4px" onclick="window.openImg('${su}')">`);
+        if(i<parts.length-1)html.push("<br><br>");continue;
+      }
+      html.push(`<a href="${su}" target="_blank" rel="noopener noreferrer">${su}</a>`);
+      if(i<parts.length-1)html.push("<br><br>");
+    }
+  }
+  return html.join("").replace(/(<br>){3,}/g,"<br><br>").replace(/^(<br>)+|(<br>)+$/g,"");
+}
+
+/* ════ メッセージ要素 ════ */
+function cMsg(m){
+  const txt=dec(m.text,curP,isOff);if(!txt)return null;
+  const d=document.createElement("div");d.className="mw fi";d.dataset.ts=m.time||0;
+  if(m.type==="sys"){
+    d.style.alignItems="center";
+    d.innerHTML=`<div class="sm">${esc(txt)} <span style="color:var(--m2);font-size:9px">${fDT(m.time)}</span></div>`;
+  }else{
+    const sN=dec(m.nEnc,curP,isOff)||"???",sT=dec(m.tEnc,curP,isOff)||"";
+    d.innerHTML=`<div class="mm"><span>${esc(sN)}</span><span class="trp">${esc(sT)}</span><span class="ts">${fDT(m.time)}</span></div><div class="mb">${parseTxt(txt)}</div>`;
+  }
+  return d;
+}
+
+function insMsg(d,ts){
+  const ch=D.tl.children;let ins=false;
+  for(let i=0;i<ch.length;i++){
+    if(ts>parseInt(ch[i].dataset.ts||0,10)){D.tl.insertBefore(d,ch[i]);ins=true;break;}
+  }
+  if(!ins)D.tl.appendChild(d);
+}
+
+/* スクロール (上=最新) */
+let isSc=false;
+D.tl.addEventListener("scroll",()=>{isSc=D.tl.scrollTop>30;},{passive:true});
+const scTop=()=>{D.tl.scrollTop=0;isSc=false;};
+D.tTBtn.onclick=scTop;
+D.tBBtn.onclick=()=>{D.tl.scrollTop=D.tl.scrollHeight;isSc=true;};
+D.mi.addEventListener("focus",()=>{setTimeout(scTop,200);});
+
+/* ════ 部屋削除 ════ */
+async function wipe(r){
+  const w={};w[`rooms/${r}`]=null;w[`chat/${r}`]=null;w[`presence/${r}`]=null;
+  try{await update(ref(db),w);}catch{}
+}
+
+/* ════ clearAll ════ */
+function clearAll(){
+  if(_cOff){_cOff();_cOff=null;}
+  if(_pOff){_pOff();_pOff=null;}
+  if(_rOff){_rOff();_rOff=null;}
+  if(_yOff){_yOff();_yOff=null;}
+  if(hbT){clearInterval(hbT);hbT=null;}
+  if(ofT){clearInterval(ofT);ofT=null;}
+  if(toT){clearInterval(toT);toT=null;}
+  if(slT){clearInterval(slT);slT=null;}
+  rIds.clear();
+  destroyYtp();
+  amOwn=false;hSync=false;gFree=false;sOk=false;vC=null;lVid=null;
+  closeDock();
+}
+
+/* ════ showLobby ════ */
+function showLobby(msg=""){
+  curR=null;clearAll();
+  localStorage.removeItem("nz_sess");
+  D.lberr.textContent=msg;D.lberr.style.display=msg?"block":"none";
+  D.app.className="";D.app.style.display="none";
+  D.lobby.style.display="block";
+  setBtns(true);hideSplash();
+  const sn=localStorage.getItem("nz_ni")||"";
+  const sk=localStorage.getItem("nz_tk")||"";
+  const sr=localStorage.getItem("nz_ri")||"";
+  const sp=localStorage.getItem("nz_pi")||"";
+  if(sn&&!D.ni.value)D.ni.value=sn;
+  if(sk&&!D.tk.value)D.tk.value=sk;
+  if(sr&&!D.ri.value)D.ri.value=sr;
+  if(sp&&!D.pi.value)D.pi.value=sp;
+  /* 公式部屋フォームにも同期 */
+  if(sn&&!D.wni.value)D.wni.value=sn;
+  if(sk&&!D.wtk.value)D.wtk.value=sk;
+  updTP();updWTP();
+}
+const setBtns=ok=>{
+  D.enBtn.disabled=!ok;D.enBtn.textContent=ok?"入室する":"処理中...";
+  D.ofBtn.disabled=!ok;D.ofBtn.textContent=ok?"公式部屋":"処理中...";
+};
+
+/* ════════════════════════════════════════
+   YT同期プレイヤー (Dock)
+
+   設計:
+   - ytdock は常にDOMに存在。show/hideで表示切替。
+   - YT.Player は #ytdock-player div に生成し、一度だけ作る。
+   - 動画切替は loadVideoById を使う。
+   - ホスト: 再生/停止/同期ON/OFF を操作 → DBへ書く
+   - ゲスト(同期): DBに追従 → スライダー操作不可
+   - ゲスト(自由): YT標準UIのみ → DBには書かない
+   - 閉じる: ホストはDBをクリア、ゲストは自分だけ閉じる
+════════════════════════════════════════ */
+
+const yRef=()=>ref(db,`yt_state/${curR}`);
+
+function destroyYtp(){
+  if(slT){clearInterval(slT);slT=null;}
+  if(ytp){try{ytp.destroy();}catch{};ytp=null;}
+  lVid=null;
+}
+
+function closeDock(){
+  dockOpen=false;
+  D.dock.classList.remove("show");
+  D.dOverlay.classList.remove("show");
+}
+
+/* ドックを開く */
+function openDock(){
+  dockOpen=true;
+  D.dock.classList.add("show");
+}
+
+/* YT.Player を構築または動画を切替 */
+function loadYtp(vid,sec){
+  if(!vid)return;
+  sec=Math.max(0,Math.floor(sec||0));
+
+  /* プレイヤーが既にあって同じ動画 → シーク&再生状態だけ合わせる */
+  if(ytp&&lVid===vid){
+    applyCtrl(vC?.status||"paused",sec);
+    return;
+  }
+
+  /* 別動画 or 初回 */
+  lVid=vid;
+
+  if(ytp?.loadVideoById){
+    /* 既存プレイヤーに別動画をロード */
+    try{
+      ytp.mute();ytp.setVolume(0);
+      ytp.loadVideoById({videoId:vid,startSeconds:sec});
+      return;
+    }catch{
+      try{ytp.destroy();}catch{};ytp=null;
+    }
+  }
+
+  /* 新規プレイヤー作成 */
+  /* #ytdock-player を一旦空にする */
+  D.dPlayer.innerHTML="";
+  const el=document.createElement("div");el.id="ytdock-player-inner";
+  D.dPlayer.appendChild(el);
+
+  const build=()=>{
+    if(!ytRdy||!window.YT?.Player){setTimeout(build,120);return;}
+    ytp=new YT.Player("ytdock-player-inner",{
+      videoId:vid,
+      playerVars:{autoplay:1,playsinline:1,controls:1,rel:0,mute:1,start:sec},
+      events:{
+        onReady:e=>{e.target.mute();e.target.setVolume(0);},
+        onStateChange:onPSC,
+      }
+    });
+  };
+  build();
+}
+
+/* 再生状態を適用 */
+function applyCtrl(status,sec){
+  if(!ytp?.getPlayerState)return;
+  try{
+    const cur=ytp.getCurrentTime(),ps=ytp.getPlayerState();
+    if(Math.abs(cur-sec)>DRIFT)ytp.seekTo(sec,true);
+    if(status==="playing"&&ps!==1){ytp.mute();ytp.setVolume(0);ytp.playVideo();}
+    else if(status==="paused"&&ps!==2)ytp.pauseVideo();
+  }catch{}
+}
+
+/* 目標時刻を計算 */
+const calcT=st=>{let t=st.currentTime||0;if(st.status==="playing"&&st.isSyncing)t+=(now()-(st.timestamp||now()))/1000;return Math.max(0,t);};
+
+/* onPlayerStateChange */
+function onPSC(e){
+  if(!vC)return;
+  const ps=e.data,ct=ytp?.getCurrentTime?.()||0,dur=ytp?.getDuration?.()||0;
+  /* 動画終了 */
+  if(ps===0){
+    const ep=Math.max(0,dur-.5);
+    if(amOwn){shield(1200);ytp.seekTo(ep,true);ytp.pauseVideo();if(hSync)wY({status:"paused",currentTime:ep,timestamp:now()});}
+    else if(gFree||!hSync){ytp.seekTo(ep,true);ytp.pauseVideo();}
+    return;
+  }
+  /* ホスト */
+  if(amOwn){
+    if(!hSync||shd())return;
+    if(ps===1&&vC.status!=="playing")wY({status:"playing",currentTime:ct,timestamp:now()});
+    else if(ps===2&&vC.status!=="paused")wY({status:"paused",currentTime:ct,timestamp:now()});
+    return;
+  }
+  /* ゲスト(同期中): ホスト状態に戻す */
+  if(sOk&&hSync&&!gFree){
+    if(vC.status==="playing"&&ps!==1&&ps!==3)
+      setTimeout(()=>{if(!ytp||!sOk||gFree)return;if(ytp.getPlayerState?.()!==1){ytp.mute();ytp.setVolume(0);ytp.playVideo();}},300);
+    if(vC.status==="paused"&&ps===1)
+      setTimeout(()=>{if(!ytp||!sOk||gFree)return;if(ytp.getPlayerState?.()===1)ytp.pauseVideo();},300);
+  }
+}
+
+/* DB書き込み (ホストのみ) */
+const wY=patch=>{if(!amOwn)return;update(yRef(),patch).catch(()=>{});};
+const sY=data=>set(yRef(),data);
+
+/* Dock UI更新 */
+function updDockUI(){
+  /* pp/stb/fmb の表示制御 */
+  const pp=D.dPP,stb=D.dStb,fmb=D.dFmb,sp=D.dSp,ld=D.dLd,tx=D.dTx;
+  if(amOwn){
+    pp.classList.add("show");
+    stb.classList.add("show");
+    fmb.classList.remove("show");
+    if(hSync){
+      sp.className="dsp-host";ld.className="dld dld-am";tx.textContent="🔴 ホスト・同期中";
+      stb.textContent="同期を停止";stb.className="dsync-st show";
+    }else{
+      sp.className="dsp-host";ld.className="dld dld-off";tx.textContent="👑 ホスト";
+      stb.textContent="同期を開始";stb.className="dsync-go show";
+    }
+  }else if(sOk&&hSync&&!gFree){
+    /* ゲスト同期中 */
+    pp.classList.remove("show"); /* pp操作不可 */
+    stb.classList.remove("show");
+    fmb.classList.add("show");fmb.className="show";fmb.textContent="自由視聴";
+    sp.className="dsp-sync";ld.className="dld dld-gr";tx.textContent="🟢 同期中";
+  }else if(gFree){
+    /* ゲスト自由視聴 */
+    pp.classList.remove("show");
+    stb.classList.remove("show");
+    fmb.classList.add("show");fmb.className="fmb-rt show";fmb.textContent="← 同期に戻る";
+    sp.className="dsp-free";ld.className="dld dld-off";tx.textContent="🎧 自由視聴中";
+  }else{
+    /* 待機/未承認 */
+    pp.classList.remove("show");stb.classList.remove("show");fmb.classList.remove("show");
+    sp.className="dsp-free";ld.className="dld dld-off";tx.textContent="⏳ 待機中";
+  }
+}
+
+/* videoState リスナー */
+function bindYtState(){
+  if(_yOff){_yOff();_yOff=null;}
+  const r=yRef();
+  _yOff=onValue(r,snap=>{
+    if(!snap.exists()){
+      /* DBが消えた = ホストが閉じた */
+      vC=null;
+      if(!amOwn){
+        /* ゲストはドックを閉じる */
+        destroyYtp();closeDock();
+        amOwn=false;hSync=false;gFree=false;sOk=false;
+      }
+      updDockUI();return;
+    }
+
+    const st=snap.val(),prev=vC?.videoId,wasOwn=amOwn;
+    vC=st;amOwn=(st.owner===uid);hSync=!!st.isSyncing;
+    if(!wasOwn&&amOwn){sOk=true;gFree=false;}
+
+    const tSec=calcT(st);
+
+    /* ── ホスト ── */
+    if(amOwn){
+      updDockUI();
+      if(!dockOpen)openDock();
+      /* 動画ロード (自分がDBに書いた直後は shield でスキップ) */
+      if(lVid!==st.videoId||!ytp)loadYtp(st.videoId,tSec);
+      /* ホストは自分で操作するので追従しない */
+      return;
+    }
+
+    /* ── ゲスト ── */
+
+    /* ドックが閉じていて同期ONなら: 承認ダイアログを出す */
+    if(!dockOpen&&hSync){
+      if(!sOk){
+        /* 承認待ち: ドックを開いてオーバーレイ表示 */
+        openDock();
+        D.dHost.textContent=`${esc(st.ownerName||"ホスト")} の動画に同期しますか？`;
+        D.dOverlay.classList.add("show");
+        /* プレイヤーは裏でロードしておく */
+        loadYtp(st.videoId,st.currentTime||0);
+        updDockUI();return;
+      }
+      /* 承認済み & ドック閉じ → 開く */
+      if(sOk&&!gFree)openDock();
+    }
+
+    if(!dockOpen){updDockUI();return;}
+
+    updDockUI();
+
+    if(gFree){
+      /* 自由視聴: 動画が変わったときだけロード */
+      if(lVid!==st.videoId||!ytp)loadYtp(st.videoId,st.currentTime||0);
+      return;
+    }
+    if(!sOk){
+      /* 未承認: ロードはするが再生しない */
+      if(lVid!==st.videoId||!ytp)loadYtp(st.videoId,st.currentTime||0);
+      return;
+    }
+    /* 同期追従 */
+    if(lVid!==st.videoId||!ytp)loadYtp(st.videoId,tSec);
+    else applyCtrl(st.status,tSec);
+  });
+}
+
+/* スライダー更新ループ */
+function startSlider(){
+  if(slT)clearInterval(slT);
+  slT=setInterval(()=>{
+    if(!ytp?.getCurrentTime||isDrag)return;
+    try{
+      const cur=ytp.getCurrentTime(),dur=ytp.getDuration();
+      if(dur>0)D.dTime.textContent=`${fT(cur)} / ${fT(dur)}`;
+      if(amOwn)D.dPP.textContent=ytp.getPlayerState()===1?"⏸":"▶";
+    }catch{}
+  },333);
+}
+
+/* 「同期して再生」ボタン (チャット内から呼ぶ) */
+window.__ytSync=async vid=>{
+  if(!curR)return;
+  amOwn=true;sOk=true;gFree=false;hSync=false;
+  shield(2000);
+  await sY({videoId:vid,status:"paused",currentTime:0,
+    timestamp:now(),owner:uid,ownerName:curN,isSyncing:false});
+  openDock();
+  loadYtp(vid,0);
+  startSlider();
+  updDockUI();
+};
+
+/* ── Dock コントロールイベント ── */
+
+/* 再生/停止 (ホストのみ) */
+D.dPP.addEventListener("click",()=>{
+  if(!amOwn||!ytp?.getPlayerState)return;
+  shield(600);const ps=ytp.getPlayerState();
+  if(ps===1){ytp.pauseVideo();if(hSync)wY({status:"paused",currentTime:ytp.getCurrentTime(),timestamp:now()});}
+  else{ytp.mute();ytp.setVolume(0);ytp.playVideo();if(hSync)wY({status:"playing",currentTime:ytp.getCurrentTime(),timestamp:now()});}
+});
+
+/* 同期ON/OFF (ホストのみ) */
+D.dStb.addEventListener("click",async()=>{
+  if(!amOwn||!ytp||!vC)return;
+  const cur=ytp.getCurrentTime?.()||0,play=ytp.getPlayerState()===1;
+  hSync=!hSync;shield(1500);
+  await update(yRef(),{status:play?"playing":"paused",currentTime:cur,timestamp:now(),isSyncing:hSync}).catch(()=>{});
+  updDockUI();
+});
+
+/* 自由視聴 / 同期に戻る (ゲスト) */
+D.dFmb.addEventListener("click",()=>{
+  gFree=!gFree;
+  if(!gFree){
+    /* 同期に戻る */
+    sOk=true;
+    D.dOverlay.classList.remove("show");
+    if(vC)applyCtrl(vC.status,calcT(vC));
+  }
+  updDockUI();
+});
+
+/* 閉じる */
+D.dClose.addEventListener("click",async()=>{
+  if(amOwn){
+    /* ホストが閉じる → DBをクリア → ゲストも自動で閉じる */
+    destroyYtp();closeDock();
+    amOwn=false;hSync=false;gFree=false;sOk=false;vC=null;
+    await set(yRef(),null).catch(()=>{});
+  }else{
+    /* ゲストが閉じる → 自分だけ */
+    destroyYtp();closeDock();
+    gFree=false;sOk=false;
+  }
+  updDockUI();
+});
+
+/* ゲスト承認/拒否 */
+D.dAcc.addEventListener("click",()=>{
+  sOk=true;gFree=false;
+  D.dOverlay.classList.remove("show");
+  updDockUI();
+  if(vC){loadYtp(vC.videoId,calcT(vC));startSlider();}
+});
+D.dDec.addEventListener("click",()=>{
+  gFree=true;sOk=true;
+  D.dOverlay.classList.remove("show");
+  updDockUI();
+  /* 自由視聴: プレイヤーはロードするが追従しない */
+  if(vC)loadYtp(vC.videoId,vC.currentTime||0);
+  startSlider();
+});
+
+/* ════ 入室処理 ════ */
+async function doJoin({target,pass,name,trip,max,asW,isR=false}){
+  clearAll();rIds.clear();D.tl.innerHTML="";
+
+  const hashId=(target==="公式部屋")?OFF_H:CryptoJS.SHA256(target).toString();
+  isOff=(hashId===OFF_H);isW=asW;
+  curR=hashId;rawR=target;curP=pass;
+  curN=asW?"":name;curT=asW?"":trip||"";
+  maxL=isOff?10:max;
+  lastA=Date.now();
+
+  const N=now();
+  const pRef=ref(db,`presence/${curR}`);
+  const roomRef=ref(db,`rooms/${curR}`);
+  const chatRef=ref(db,`chat/${curR}`);
+  const myRef=ref(db,`presence/${curR}/${uid}`);
+
+  if(!isOff){
+    const rs=await get(roomRef);
+    if(rs.exists()){
+      if(N-(rs.val().lastActivity||N)>ROOM_TO)await wipe(curR);
+    }
+    if(!(await get(roomRef)).exists())await set(roomRef,{max,timeoutMin:30,lastActivity:N});
+    if(!isR&&!asW){
+      const ps=await get(pRef);
+      if(ps.exists()){
+        const oth=Object.keys(ps.val()||{}).filter(k=>k!==uid);
+        if(oth.length>=max)throw new Error(`部屋が満員です（上限${max}名）`);
+      }
+    }
+  }
+
+  if(!asW){
+    await onDisconnect(myRef).remove();
+    await set(myRef,{nEnc:enc(name,pass,isOff),tEnc:enc(trip||"",pass,isOff),enteredAt:N,lastSeen:N});
+    if(!isR)await push(chatRef,{type:"sys",text:enc(`${name}${trip||""} が入室しました`,pass,isOff),time:N});
+    if(!isOff){localStorage.setItem("nz_ni",name);localStorage.setItem("nz_tk",D.tk.value.trim());}
+    hbT=setInterval(async()=>{if(!curR||isEx)return;try{await update(myRef,{lastSeen:now()});}catch{}},HB);
+  }
+
+  if(!isOff){localStorage.setItem("nz_ri",target);localStorage.setItem("nz_pi",pass);}
+  localStorage.setItem("nz_sess",JSON.stringify({target,pass,name:asW?"":name,trip:asW?"":trip||"",max,asW}));
+
+  D.lobby.style.display="none";D.app.style.display="flex";D.app.className="show";
+  D.rdsp.textContent=target;D.fn.style.display="flex";
+
+  if(asW){
+    D.ib.classList.remove("show");D.wb.classList.add("show");
+    D.exBtn.textContent="ロビーへ戻る";D.ivBtn.style.display="none";
+  }else{
+    D.ib.classList.add("show");D.wb.classList.remove("show");
+    D.exBtn.textContent="退出";D.ivBtn.style.display=isOff?"none":"block";
+  }
+  hideSplash();
+
+  /* リスナー: 部屋消滅 */
+  if(!isOff){
+    _rOff=onValue(roomRef,s=>{
+      if(!s.exists()&&curR&&!isEx){
+        isEx=true;clearAll();localStorage.removeItem("nz_sess");
+        alert("この部屋はタイムアウトまたは全員退室により消滅しました。");
+        isEx=false;showLobby("部屋が消滅しました。");
+      }
+    });
+  }
+
+  /* リスナー: presence */
+  _pOff=onValue(pRef,s=>{
+    if(!curR)return;
+    const users=s.val()||{};const fg=document.createDocumentFragment();let cnt=0;
+    Object.values(users).forEach(u=>{
+      const n=dec(u.nEnc,curP,isOff);if(!n)return;
+      const t=dec(u.tEnc,curP,isOff)||"";cnt++;
+      const sp=document.createElement("span");sp.className="chip";sp.textContent=n+t;fg.appendChild(sp);
+    });
+    D.pl.innerHTML="";D.pl.appendChild(fg);D.pcnt.textContent=`[${cnt}/${isOff?10:maxL}]`;
+  });
+
+  /* リスナー: chat */
+  const chatQ=isOff?query(chatRef,orderByChild("time"),limitToLast(100)):chatRef;
+  _cOff=onValue(chatQ,snap=>{
+    if(!curR)return;let hasN=false;
+    snap.forEach(cs=>{
+      const m=cs.val();if(!m||rIds.has(cs.key))return;
+      rIds.add(cs.key);const el=cMsg(m);
+      if(el){insMsg(el,m.time||0);hasN=true;}
+    });
+    if(hasN&&!isSc)scTop();
+  });
+
+  /* タイムアウト監視 */
+  if(isOff){
+    ofT=setInterval(()=>{
+      if(Date.now()-lastA>OFF_TO&&!isEx){alert("30分以上操作がなかったため自動退出しました。");exitRoom();}
+    },30000);
+  }else{
+    toT=setInterval(async()=>{
+      if(!curR||isEx)return;
+      try{
+        const rs=await get(roomRef);if(!rs.exists())return;
+        const la=rs.val().lastActivity||now();
+        if(now()-la>ROOM_TO){isEx=true;await wipe(curR);isEx=false;alert("30分無発言のため消滅しました。");showLobby("タイムアウトで消滅しました。");}
+      }catch{}
+    },30000);
+  }
+
+  /* YT同期リスナー開始 */
+  bindYtState();
+  startSlider();
+}
+
+/* 退室 */
+async function exitRoom(){
+  if(isEx)return;isEx=true;
+  const sR=curR,sP=curP,sN=curN,sT=curT,sO=isOff,sW=isW;
+  localStorage.removeItem("nz_sess");clearAll();
+  try{
+    if(!sW&&sR){
+      const myRef=ref(db,`presence/${sR}/${uid}`);await remove(myRef).catch(()=>{});
+      const ps=await get(ref(db,`presence/${sR}`));
+      const oth=ps.exists()?Object.keys(ps.val()||{}).filter(k=>k!==uid).length:0;
+      if(!sO&&oth===0)await wipe(sR);
+      else await push(ref(db,`chat/${sR}`),{type:"sys",text:enc(`${sN}${sT} が退室しました`,sP,sO),time:now()}).catch(()=>{});
+    }
+  }catch(e){console.error(e);}
+  isEx=false;showLobby();
+}
+
+/* 送信 */
+async function sendMsg(){
+  if(!curR||isW||isCmp)return;
+  const txt=D.mi.value.trim();if(!txt)return;
+  D.mi.value="";D.mi.style.height="auto";
+  D.mi.blur();scTop();
+  lastA=Date.now();const N=now();
+  try{
+    const upd={};
+    if(!isOff)upd[`rooms/${curR}/lastActivity`]=N;
+    upd[`presence/${curR}/${uid}/lastSeen`]=N;
+    update(ref(db),upd).catch(()=>{});
+    await push(ref(db,`chat/${curR}`),{
+      type:"msg",nEnc:enc(curN,curP,isOff),tEnc:enc(curT||"",curP,isOff),
+      text:enc(txt,curP,isOff),time:N
+    });
+  }catch(e){alert("送信失敗: "+e.message);}
+}
+
+/* 覗き見→参加 */
+async function upgrade(name,trip){
+  if(!curR)return;isW=false;curN=name;curT=trip||"";
+  const N=now();const myRef=ref(db,`presence/${curR}/${uid}`);
+  await onDisconnect(myRef).remove();
+  await set(myRef,{nEnc:enc(name,curP,isOff),tEnc:enc(trip||"",curP,isOff),enteredAt:N,lastSeen:N});
+  await push(ref(db,`chat/${curR}`),{type:"sys",text:enc(`${name}${trip||""} が入室しました`,curP,isOff),time:N});
+  /* 公式部屋の名前・トリップも記憶 */
+  localStorage.setItem("nz_ni",name);localStorage.setItem("nz_tk",D.wtk.value.trim());
+  localStorage.setItem("nz_sess",JSON.stringify({target:rawR,pass:curP,name,trip:trip||"",max:maxL,asW:false}));
+  D.wb.classList.remove("show");D.ib.classList.add("show");
+  D.exBtn.textContent="退出";D.ivBtn.style.display=isOff?"none":"block";
+  if(hbT)clearInterval(hbT);
+  hbT=setInterval(async()=>{if(!curR||isEx)return;try{await update(myRef,{lastSeen:now()});}catch{}},HB);
+}
+
+/* ════ イベント ════ */
+D.mi.addEventListener("compositionstart",()=>{isCmp=true;});
+D.mi.addEventListener("compositionend",()=>{isCmp=false;});
+D.mi.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey&&!isCmp){e.preventDefault();sendMsg();}});
+D.mi.addEventListener("input",()=>{lastA=Date.now();D.mi.style.height="auto";D.mi.style.height=Math.min(D.mi.scrollHeight,80)+"px";});
+D.sdBtn.addEventListener("click",()=>sendMsg());
+["click","keydown","touchstart"].forEach(ev=>{window.addEventListener(ev,()=>{lastA=Date.now();},{passive:true});});
+
+D.enBtn.addEventListener("click",async()=>{
+  const n=D.ni.value.replace(/[\s\u3000]+/g,"").trim();
+  const r=D.ri.value.replace(/[\s\u3000]+/g,"").trim();
+  const p=D.pi.value.trim();
+  if(!n||!r||!p){alert("必須項目（名前・部屋ID・パスワード）を入力してください");return;}
+  setBtns(false);
+  try{await doJoin({target:r,pass:p,name:n,trip:gTrip(n,D.tk.value.trim()),max:Number(D.mu.value),asW:false});}
+  catch(e){showLobby(e.message);}
+  setBtns(true);
+});
+
+D.ofBtn.addEventListener("click",async()=>{
+  setBtns(false);
+  try{await doJoin({target:"公式部屋",pass:OFF_P,name:"",trip:"",max:10,asW:true});}
+  catch(e){showLobby(e.message);}
+  setBtns(true);
+});
+
+D.gnBtn.addEventListener("click",()=>{
+  const c="abcdefghijklmnopqrstuvwxyz0123456789";
+  let r="",p="";
+  for(let i=0;i<10;i++)r+=c[Math.floor(Math.random()*c.length)];
+  for(let i=0;i<12;i++)p+=c[Math.floor(Math.random()*c.length)];
+  D.ri.value=r;D.pi.value=p;updTP();
+});
+
+D.wuBtn.addEventListener("click",async()=>{
+  const n=D.wni.value.replace(/[\s\u3000]+/g,"").trim(),k=D.wtk.value.trim();
+  if(!n){alert("名前を入力してください");return;}
+  await upgrade(n,gTrip(n,k));
+});
+
+D.exBtn.addEventListener("click",()=>{if(isW||confirm("退出しますか？"))exitRoom();});
+
+D.ivBtn.addEventListener("click",()=>{
+  if(!rawR||!curP)return;
+  const u=`${location.protocol}//${location.host}${location.pathname}?r=${encodeURIComponent(rawR)}&p=${encodeURIComponent(curP)}`;
+  navigator.clipboard?.writeText(u).then(()=>alert("招待リンクをコピーしました！")).catch(()=>{
+    const ta=document.createElement("textarea");ta.value=u;document.body.appendChild(ta);
+    ta.select();document.execCommand("copy");document.body.removeChild(ta);
+    alert("招待リンクをコピーしました！");
+  });
+});
+
+D.gdBtn.addEventListener("click",()=>D.gmod.classList.add("show"));
+D.gcBtn.addEventListener("click",()=>D.gmod.classList.remove("show"));
+D.gmod.addEventListener("click",e=>{if(e.target===D.gmod)D.gmod.classList.remove("show");});
+
+/* iOS viewport fix: キーボード上に入力バーを固定 */
+if(window.visualViewport){
+  let raf;
+  const fix=()=>{
+    cancelAnimationFrame(raf);
+    raf=requestAnimationFrame(()=>{
+      const h=window.visualViewport.height;
+      /* appの高さをビューポートに合わせる */
+      D.app.style.height=h+"px";
+      D.app.style.position="fixed";
+      D.app.style.top="0";
+      D.app.style.left="0";
+      D.app.style.right="0";
+      window.scrollTo(0,0);
+    });
+  };
+  window.visualViewport.addEventListener("resize",fix,{passive:true});
+  window.visualViewport.addEventListener("scroll",fix,{passive:true});
+}
+
+window.addEventListener("pagehide",()=>{if(curR&&!isEx)exitRoom();});
+window.addEventListener("beforeunload",()=>{if(curR&&!isEx)exitRoom();});
+
+/* ════ 初期化 ════ */
+window.addEventListener("DOMContentLoaded",async()=>{
+  const p=new URLSearchParams(location.search);
+  const pr=p.get("r"),pp=p.get("p"),pn=p.get("n");
+  if(pr)D.ri.value=pr;if(pp)D.pi.value=pp;if(pn)D.ni.value=pn;
+
+  const sn=localStorage.getItem("nz_ni")||"";
+  const sk=localStorage.getItem("nz_tk")||"";
+  const sr=localStorage.getItem("nz_ri")||"";
+  const sp=localStorage.getItem("nz_pi")||"";
+  if(sn&&!D.ni.value)D.ni.value=sn;
+  if(sk&&!D.tk.value)D.tk.value=sk;
+  if(sr&&!D.ri.value)D.ri.value=sr;
+  if(sp&&!D.pi.value)D.pi.value=sp;
+  /* 公式部屋フォームにも記憶を反映 */
+  if(sn&&!D.wni.value)D.wni.value=sn;
+  if(sk&&!D.wtk.value)D.wtk.value=sk;
+
+  updTP();updWTP();setBtns(true);
+  sessionStorage.setItem("nz_a","1");
+
+  /* セッション復元 (入室メッセージなし=isR:true) */
+  const sess=localStorage.getItem("nz_sess");
+  if(sess){
+    try{
+      const s=JSON.parse(sess);
+      const rn=s.name||localStorage.getItem("nz_ni")||"";
+      const rk=s.trip||(rn?gTrip(rn,localStorage.getItem("nz_tk")||""):"");
+      await doJoin({target:s.target,pass:s.pass,name:rn,trip:rk,max:s.max||4,asW:!!s.asW,isR:true});
+      return;
+    }catch(e){console.warn("復元失敗:",e);localStorage.removeItem("nz_sess");}
+  }
+  D.lobby.style.display="block";hideSplash();
+});
+</script>
 </body>
 </html>

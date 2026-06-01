@@ -59,8 +59,6 @@ a{color:#818cf8}a:hover{text-decoration:underline}
   border-radius:5px;padding:4px 7px;font-size:8.5px;color:#fda4af;margin-top:4px;line-height:1.45}
 .abox b{color:#fb7185}
 
-
-
 #lberr{background:var(--rg);border:1px solid rgba(244,63,94,.3);border-radius:7px;padding:7px;
   font-size:10.5px;color:#fda4af;display:none;white-space:pre-wrap;flex-shrink:0}
 .fg{display:flex;flex-direction:column;gap:1px;flex-shrink:0}
@@ -159,8 +157,7 @@ a{color:#818cf8}a:hover{text-decoration:underline}
   word-break:break-word;-webkit-user-select:text;user-select:text}
 .mb br{display:block;content:"";margin-top:2px}
 .media-wrap{display:block;margin:5px 0;width:100%;max-width:320px}
-.media-wrap .vc-wrap{width:100%}
-.media-wrap .vc-wrap.tk-wrap{max-width:220px}
+.media-wrap .vc-wrap.tk-wrap{max-width:260px} /* TikTok用のコンテナ最大幅を調整 */
 
 /* 画像 */
 .img-block{display:block;width:100%;max-width:260px;aspect-ratio:16/9;object-fit:cover;
@@ -170,11 +167,10 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 .vc-wrap{display:flex;flex-direction:column;overflow:hidden;
   border:1px solid rgba(255,255,255,.08);box-shadow:0 3px 16px rgba(0,0,0,.5);
   max-width:320px;width:100%}
-.vc-wrap.tk-wrap{max-width:220px}
 .vc{display:block;width:100%;position:relative;background:#111;
   border:none;border-radius:0;overflow:hidden;cursor:pointer;}
 .vc.yt,.vc.nc{padding-top:56.25%}
-.vc.tk{padding-top:125%}  /* 4:5比率 モバイル最適 */
+.vc.tk{padding-top:177.77%}  /* 9:16比率に変更（動画全体が収まるアスペクト比） */
 .vc-thumb{position:absolute;top:0;left:0;width:100%;height:100%;
   object-fit:cover;display:block;transition:transform .3s,filter .25s}
 .vc:hover .vc-thumb{transform:scale(1.04);filter:brightness(.8)}
@@ -361,7 +357,6 @@ a{color:#818cf8}a:hover{text-decoration:underline}
         </div>
         <div class="abox"><b>⚠</b> パスワードを忘れると復元不能。部屋IDとパスワードは参加者全員で共有を。</div>
       </div>
-
 
       <div id="lberr"></div>
 
@@ -607,12 +602,8 @@ let activeVc=null,activeAudio=null;
 function stopActiveVc(){if(activeVc){const fr=activeVc.querySelector(".vc-frame");if(fr)fr.src="";activeVc.classList.remove("playing");activeVc=null;}}
 function stopActiveAudio(){if(activeAudio){try{activeAudio.pause();}catch{}activeAudio=null;}}
 
-// ── URL正規表現 ──
-// YouTube: watch, shorts, live, youtu.be, music.youtube, m.youtube
 const YR=/(?:https?:\/\/)?(?:(?:www\.|m\.|music\.)?youtube\.com\/(?:watch\?(?:[^#\s]*?&)*?v=|embed\/|v\/|shorts\/|live\/)([A-Za-z0-9_-]{11})|youtu\.be\/([A-Za-z0-9_-]{11}))/i;
-// ニコニコ: nicovideo.jp, sp.nicovideo.jp, nico.ms
 const NR=/(?:https?:\/\/)?(?:(?:sp\.|www\.)?nicovideo\.jp\/watch\/|nico\.ms\/)((?:sm|nm|so|lv|co|ch)\d+|\d+)/i;
-// TikTok: 通常URL + 短縮URL(vm/vt/m)
 const TR=/(?:https?:\/\/)?(?:(?:www\.)?tiktok\.com\/@[^\/\s]+\/video\/(\d+)|(?:vm|vt|m)\.tiktok\.com\/([A-Za-z0-9]+)\/?)/i;
 const AR=/\.(mp3|wav|aac|m4a|ogg|flac)(\?.*)?$/i;
 const IR=/\.(jpe?g|gif|png|webp|bmp|svg)(\?.*)?$/i;
@@ -626,7 +617,6 @@ const _playBtn={
 };
 const _badge={yt:"YouTube",nc:"ニコニコ動画",tk:"TikTok"};
 
-// 外部リンクの設定
 const _extInfo={
   yt:{label:"YouTubeで観る",cls:"vc-ext-yt",icon:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.75 15.5V8.5l6.25 3.5-6.25 3.5z"/></svg>`},
   nc:{label:"ニコニコで観る",cls:"vc-ext-nc",icon:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>`},
@@ -663,7 +653,6 @@ function bVideoCard(type,embedSrc,thumbSrc,origUrl){
   );
 }
 
-// TikTok短縮URL解決キャッシュ
 const tkCache={};
 
 window.__vcPlay=async function(id,embedSrc,origUrl){
@@ -671,7 +660,6 @@ window.__vcPlay=async function(id,embedSrc,origUrl){
   if(el===activeVc){stopActiveVc();return;}
   stopActiveVc();stopActiveAudio();
 
-  // TikTok短縮URLの場合: oEmbed経由でビデオIDを解決してから埋め込む
   if(el.classList.contains("tk")&&origUrl&&!origUrl.includes("/video/")){
     const loading=el.querySelector(".vc-loading");
     if(loading)loading.style.display="flex";
@@ -679,13 +667,10 @@ window.__vcPlay=async function(id,embedSrc,origUrl){
     let realEmbed=tkCache[origUrl];
     if(!realEmbed){
       try{
-        // TikTok oEmbed API (CORS対応)
         const oEmbedUrl=`https://www.tiktok.com/oembed?url=${encodeURIComponent(origUrl)}`;
         const res=await fetch(oEmbedUrl);
         if(res.ok){
           const data=await res.json();
-          // author_url から @user を、embed_product_id からIDを取得
-          const m=data.embed_product_id||data.author_url||"";
           const vidId=data.embed_product_id||(data.author_url||"").match(/video\/(\d+)/)?.[1]||"";
           if(vidId){
             realEmbed=`https://www.tiktok.com/embed/v2/${vidId}`;
@@ -701,7 +686,6 @@ window.__vcPlay=async function(id,embedSrc,origUrl){
       const fr=el.querySelector(".vc-frame");
       if(fr){fr.src=realEmbed;el.classList.add("playing");activeVc=el;}
     }else{
-      // 解決失敗 → 元URLを新タブで開く
       window.open(origUrl,"_blank","noopener,noreferrer");
     }
     return;
@@ -725,7 +709,6 @@ function bAudio(url){
     const fA=s=>isNaN(s)||!isFinite(s)?"--:--":`${String(Math.floor(s/60)).padStart(2,"0")}:${String(Math.floor(s%60)).padStart(2,"0")}`;
     let fileSize=0;
     try{const h=await fetch(url,{method:"HEAD"});const cl=h.headers.get("content-length");if(cl)fileSize=parseInt(cl);}catch{}
-    // ファイルサイズをDLボタンに表示
     if(szEl)szEl.textContent=fileSize?` ${fmtSz(fileSize)}`:"";
     const setPlay=p=>{pb.innerHTML=p?paIco():pIco();};
     au.onplay=()=>{stopActiveAudio();stopActiveVc();activeAudio=au;document.querySelectorAll(".aw").forEach(w=>w.classList.remove("pl"));aw.classList.add("pl");setPlay(true);};
@@ -752,8 +735,6 @@ function bAudio(url){
   );
 }
 
-// ── テキスト解析 ──
-// URLの前後にテキストがある場合、前後に改行を挿入して見やすくする
 function _parseSegs(txt){
   const normalized=txt.replace(/[\u3000]/g," ");
   const parts=[];let last=0,m;
@@ -769,23 +750,19 @@ function _parseSegs(txt){
     const p=parts[i];
     if(p.t==="t"){
       let v=p.v;
-      // URLの直前テキスト: 末尾の空白を改行に変換（URLを目立たせる）
       if(i<parts.length-1&&parts[i+1].t==="u"){v=v.replace(/[ \t]+$/,"");}
-      // URLの直後テキスト: 先頭の空白を改行に変換
       if(i>0&&parts[i-1].t==="u"){v=v.replace(/^[ \t]+/,"");}
       const h=esc(v).replace(/\n/g,"<br>").replace(/^(<br>)+|(<br>)+$/g,"");
       if(h)segs.push({type:"text",html:h});
     }else{
       const url=p.v,su=esc(url),cl=url.replace(/[?#].*$/,"");
 
-      // YouTube
       const ym=url.match(YR);
       if(ym){
         const vid=ym[1]||ym[2];
         segs.push({type:"media",html:bVideoCard("yt",`https://www.youtube.com/embed/${vid}?autoplay=1&playsinline=1`,`https://i.ytimg.com/vi/${vid}/hqdefault.jpg`,url)});
         continue;
       }
-      // ニコニコ
       const nm=url.match(NR);
       if(nm){
         const nid=nm[1],numId=nid.replace(/\D/g,"");
@@ -793,23 +770,18 @@ function _parseSegs(txt){
         segs.push({type:"media",html:bVideoCard("nc",`https://embed.nicovideo.jp/watch/${nid}?autoplay=1&oldScript=1`,thumb,url)});
         continue;
       }
-      // TikTok
       const tm2=url.match(TR);
       if(tm2){
-        const tid=tm2[1]; // 通常URLのvideo ID
-        const shortCode=tm2[2]; // 短縮URLのコード
+        const tid=tm2[1];
+        const shortCode=tm2[2];
         if(tid){
-          // 通常URL: 直接埋め込み
           segs.push({type:"media",html:bVideoCard("tk",`https://www.tiktok.com/embed/v2/${tid}`,"",url)});
         }else if(shortCode){
-          // 短縮URL: カードとして表示し、クリック時にoEmbedで解決
           segs.push({type:"media",html:bVideoCard("tk",url,"",url)});
         }
         continue;
       }
-      // 音声
       if(AR.test(cl)){segs.push({type:"media",html:bAudio(url)});continue;}
-      // 画像
       if(IR.test(cl)||/^data:image\//i.test(url)){
         segs.push({type:"media",html:`<img class="img-block" src="${su}" alt="" loading="lazy" onclick="window.openImg('${su}')">`});
         continue;
@@ -851,7 +823,7 @@ function cMsg(m){
   return d;
 }
 
-// ── スクロール ──
+/* ── スクロール ── */
 let isSc=false;
 D.tl.addEventListener("scroll",()=>{isSc=D.tl.scrollHeight-D.tl.scrollTop-D.tl.clientHeight>60;},{passive:true});
 const scBottom=(instant=false)=>{requestAnimationFrame(()=>{D.tl.scrollTo({top:D.tl.scrollHeight,behavior:instant?"auto":"smooth"});isSc=false;});};
@@ -872,7 +844,10 @@ async function wipe(r){const w={};w[`rooms/${r}`]=null;w[`chat/${r}`]=null;w[`pr
 function clearAll(){[_cOff,_pOff,_rOff].forEach(f=>{if(f)f();});_cOff=_pOff=_rOff=null;if(hbT)clearInterval(hbT);if(toT)clearInterval(toT);hbT=toT=null;rIds.clear();stopActiveVc();stopActiveAudio();}
 
 function showLobby(msg=""){
-  curR=null;clearAll();localStorage.removeItem("nz_sess");
+  curR=null;clearAll();
+  // 強制退出や自動消去時以外（＝普通にロビーボタン等で戻る時）はnz_sessを消去しない
+  if(msg) localStorage.removeItem("nz_sess"); 
+  
   D.lberr.textContent=msg;D.lberr.style.display=msg?"block":"none";
   D.app.className="";D.app.style.display="none";D.lobby.style.display="block";
   setBtns(true);hideSplash();
@@ -888,7 +863,7 @@ function showLobby(msg=""){
 }
 const setBtns=ok=>{D.enBtn.disabled=!ok;D.enBtn.textContent=ok?"入室する":"処理中...";D.ofBtn.disabled=!ok;D.ofBtn.textContent=ok?"常設公式部屋":"処理中...";};
 
-async function doJoin({target,pass,name,trip,asW,isR=false}){
+async function doJoin({target,pass,name,trip,asW,isR=false, isAutoRejoin=false}){
   clearAll();rIds.clear();D.tli.innerHTML="";presenceSnap={};isSc=false;
   const hashId=(target==="公式部屋")?OFF_H:CryptoJS.SHA256(target).toString();
   isOff=(hashId===OFF_H);isW=asW;curR=hashId;rawR=target;curP=pass;
@@ -898,16 +873,23 @@ async function doJoin({target,pass,name,trip,asW,isR=false}){
 
   if(!isOff){
     const rs=await get(roomRef);
-    if(rs.exists()&&N-(rs.val().lastActivity||N)>ROOM_TO)await wipe(curR);
-    if(!(await get(roomRef)).exists())await set(roomRef,{timeoutMin:30,lastActivity:N});
+    if(rs.exists()&&N-(rs.val().lastActivity||N)>ROOM_TO) {
+      await wipe(curR);
+      if(isAutoRejoin) { showLobby("部屋が自動消去されたため復帰できませんでした。"); return; }
+    }
+    if(!(await get(roomRef)).exists()) {
+      if(isAutoRejoin) { showLobby("部屋が自動消去されたため復帰できませんでした。"); return; }
+      await set(roomRef,{timeoutMin:30,lastActivity:N});
+    }
   }
   if(!asW){
     await set(myRef,{nEnc:enc(name,pass,isOff),tEnc:enc(trip||"",pass,isOff),cEnc:enc(curColor,pass,isOff),enteredAt:N,lastSeen:N,lastMessageAt:N});
-    if(!isR)await push(chatRef,{type:"sys",text:enc(`${name}${trip||""} が入室しました`,pass,isOff),time:N});
+    // 自動復帰（リロードやロビーからの復帰）の時はシステムメッセージ「入室しました」を出さない
+    if(!isR && !isAutoRejoin) await push(chatRef,{type:"sys",text:enc(`${name}${trip||""} が入室しました`,pass,isOff),time:N});
     if(!isOff){localStorage.setItem("nz_ni",name);localStorage.setItem("nz_tk",D.tk.value.trim());}
     hbT=setInterval(async()=>{if(!curR||isEx)return;try{await update(myRef,{lastSeen:srvNow(),cEnc:enc(curColor,pass,isOff)});}catch{}},HB);
   }
-  if(!isOff){localStorage.setItem("nz_ri",target);localStorage.setItem("nz_pi",pass);}
+  if(!isOff){localStorage.setItem("nz_pi",pass);localStorage.setItem("nz_ri",target);}
   localStorage.setItem("nz_sess",JSON.stringify({target,pass,name:asW?"":name,trip:asW?"":trip||"",asW}));
 
   D.lobby.style.display="none";D.app.style.display="flex";D.app.className="show";
@@ -965,20 +947,27 @@ async function doJoin({target,pass,name,trip,asW,isR=false}){
   },60000);
 }
 
-async function exitRoom(){
+async function exitRoom(realWipeSession=false){
   if(isEx)return;isEx=true;
   const sR=curR,sP=curP,sN=curN,sT=curT,sO=isOff,sW=isW;
-  localStorage.removeItem("nz_sess");clearAll();
+  
+  // ユーザーが明示的に「退出」を押した場合のみセッション情報を完全消去
+  if(realWipeSession) {
+    localStorage.removeItem("nz_sess");
+  }
+  
+  clearAll();
   try{
     if(!sW&&sR){
       await remove(ref(db,`presence/${sR}/${uid}`)).catch(()=>{});
       const ps=await get(ref(db,`presence/${sR}`));
       const oth=ps.exists()?Object.keys(ps.val()||{}).filter(k=>k!==uid).length:0;
-      if(!sO&&oth===0)await wipe(sR);
-      else await push(ref(db,`chat/${sR}`),{type:"sys",text:enc(`${sN}${sT} が退室しました`,sP,sO),time:srvNow()}).catch(()=>{});
+      if(!sO&&oth===0 && realWipeSession) await wipe(sR);
+      else if(realWipeSession) await push(ref(db,`chat/${sR}`),{type:"sys",text:enc(`${sN}${sT} が退室しました`,sP,sO),time:srvNow()}).catch(()=>{});
     }
   }catch(e){console.error(e);}
-  isEx=false;showLobby();
+  isEx=false;
+  showLobby();
 }
 
 async function sendMsg(){
@@ -1035,7 +1024,16 @@ D.wuBtn.addEventListener("click",async()=>{
   if(!n){alert("名前を入力してください");return;}
   await upgrade(n,gTrip(n,k));
 });
-D.exBtn.addEventListener("click",()=>{if(isW||confirm("退出しますか？"))exitRoom();});
+D.exBtn.addEventListener("click",()=>{
+  // 閲覧モード("公式部屋")なら確認なしでロビーへ。通常部屋なら確認のうえセッションを「完全消去」して退出。
+  if(isW) {
+    exitRoom(false);
+  } else {
+    if(confirm("退出しますか？部屋の履歴やセッション情報は破棄されます。")) {
+      exitRoom(true); 
+    }
+  }
+});
 D.ivBtn.addEventListener("click",()=>{
   if(!rawR||!curP)return;
   const u=`${location.protocol}//${location.host}${location.pathname}?r=${encodeURIComponent(rawR)}&p=${encodeURIComponent(curP)}`;
@@ -1056,7 +1054,24 @@ D.gmod.addEventListener("click",e=>{if(e.target===D.gmod)D.gmod.classList.remove
     else{D.ri.value=sr;D.pi.value=spp;showLobby();}
     return;
   }
-  // セッション復元なし → 常にロビー表示
+  
+  // ── セッション自動復帰処理 ──
+  const sessStr = localStorage.getItem("nz_sess");
+  if(sessStr) {
+    try {
+      const s = JSON.deserialize ? JSON.deserialize(sessStr) : JSON.parse(sessStr);
+      if(s && s.target && s.pass) {
+        setBtns(false);
+        // isAutoRejoinをtrueにして通知なしで部屋に戻る
+        await doJoin({target:s.target, pass:s.pass, name:s.name, trip:s.trip, asW:s.asW, isR:false, isAutoRejoin:true});
+        setBtns(true);
+        return;
+      }
+    } catch(e) {
+      localStorage.removeItem("nz_sess");
+    }
+  }
+  
   showLobby();
 })();
 </script>

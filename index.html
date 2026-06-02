@@ -84,10 +84,9 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 #pl{display:flex;gap:4px;overflow-x:auto;padding-top:4px;white-space:nowrap}
 .chip{font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,.03);border:1px solid}
 
-/* 覗き見モードバー（折り畳み式） */
+/* 覗き見モードバー */
 #wb{display:none;background:rgba(79,70,229,.1);border-bottom:1px solid var(--in);flex-shrink:0}
 #wb.show{display:block}
-/* 折り畳みヘッダー */
 #wb-toggle{
   display:flex;align-items:center;justify-content:space-between;
   padding:8px 14px;cursor:pointer;user-select:none;
@@ -100,7 +99,6 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 .wb-toggle-hint{font-size:9.5px;color:var(--mu);}
 #wb-arrow{font-size:14px;color:#818cf8;transition:transform .2s;}
 #wb-arrow.open{transform:rotate(180deg);}
-/* フォームエリア */
 #wb-body{display:none;padding:10px 14px 12px;}
 #wb-body.open{display:block;}
 .wbf{display:flex;flex-direction:column;gap:8px;max-width:400px;margin:0 auto}
@@ -115,7 +113,6 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 .mw{display:flex;flex-direction:column;width:100%;animation:fadeIn .15s ease-out}
 @keyframes fadeIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
 
-/* システムメッセージ：入退室＝グレー、自動退室＝オレンジ赤 */
 .sm{align-self:center;font-size:10px;padding:4px 10px;border-radius:6px;text-align:center;margin:2px 0;}
 .sm-join{background:rgba(79,70,229,.1);color:#a5b4fc;border:1px solid rgba(79,70,229,.25);}
 .sm-leave{background:rgba(148,163,184,.07);color:#94a3b8;border:1px solid rgba(148,163,184,.15);}
@@ -125,7 +122,7 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 .ts{color:var(--m2);font-size:9.5px;margin-left:auto}
 .mb{align-self:start;background:var(--sf);border:1px solid transparent;border-left:3px solid;border-radius:4px 12px 12px 12px;padding:8px 12px;font-size:14px;line-height:1.5;max-width:100%;word-break:break-all;white-space:pre-wrap}
 
-/* ページナビ：タイムライン直下・入力欄直上に固定 */
+/* ページナビ */
 #pnav{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--s2);border-top:1px solid var(--bd);padding:5px 8px;flex-shrink:0;}
 .pbtn{padding:4px 10px;background:var(--sf);border:1px solid var(--bd);border-radius:4px;color:var(--tx);font-size:10px;font-weight:700}
 .pbtn:disabled{opacity:0.25;cursor:not-allowed}
@@ -156,12 +153,16 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 .gs h4{font-size:11.5px;color:var(--tx);margin-bottom:2px}
 .cx{position:absolute;top:16px;right:16px;width:36px;height:36px;border-radius:50%;background:rgba(15,23,42,.6);color:#fff;font-size:22px;display:flex;align-items:center;justify-content:center}
 
-/* メディア */
+/* メディア（最適化調整済） */
 .media-wrap{margin-top:6px;width:100%;max-width:440px}
 .img-block{width:100%;max-height:260px;object-fit:cover;border-radius:8px;border:1px solid var(--bd);cursor:pointer}
 .vc-wrap{width:100%;position:relative;margin-bottom:4px}
-.vc{width:100%;aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden;position:relative;border:1px solid var(--bd)}
-.vc.tk{aspect-ratio:9/16;max-width:260px;margin:0 auto}
+.vc{
+  width:100%;aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden;
+  position:relative;border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;
+}
+/* TikTok用縦長サイズ・アスペクト比固定 */
+.vc.tk{aspect-ratio:9/16;width:100%;max-width:280px;margin:0 auto;background:#010101}
 .vc-frame{width:100%;height:100%;border:none;display:block}
 .vc-badge{position:absolute;top:6px;left:6px;background:rgba(0,0,0,.75);color:#fff;font-size:8.5px;font-weight:800;padding:2px 5px;border-radius:4px;letter-spacing:.5px;z-index:2;pointer-events:none}
 
@@ -415,7 +416,7 @@ const gTrip=(n,k)=>{if(!n||!k)return"";try{return"◆"+CryptoJS.SHA256(`${n}:${S
 const updTP=()=>{const n=D.ni.value.replace(/[\s\u3000]+/g,"").trim(),k=D.tk.value.trim();if(n&&k){D.tpv.textContent=gTrip(n,k);D.tpv.style.display="inline-block";}else D.tpv.style.display="none";};
 const updWTP=()=>{const n=D.wni.value.replace(/[\s\u3000]+/g,"").trim(),k=D.wtk.value.trim();if(n&&k){D.wtpv.textContent=gTrip(n,k);D.wtpv.style.display="inline-block";}else D.wtpv.style.display="none";};
 
-/* ロビーと覗き見モードの入力を双方向＆完全に連動させ記憶 */
+/* ロビーと覗き見モードの連動 */
 D.ni.addEventListener("input",()=>{
   D.wni.value=D.ni.value;
   localStorage.setItem("nz_ni",D.ni.value);
@@ -509,8 +510,8 @@ const fmtSz=b=>{if(!b||b<=0)return"";if(b<1024)return b+"B";if(b<1048576)return(
 /* ── 定数 ── */
 const OFF_H=CryptoJS.SHA256("公式部屋").toString();
 const OFF_P="official_public_pass";
-const ROOM_TO=30*60*1000;  /* 30分 */
-const HB=20000;            /* 20秒ハートビート */
+const ROOM_TO=30*60*1000;
+const HB=20000;
 const PAGE_SIZE=50;
 
 let curR=null,curP=null,curN=null,curT=null,rawR=null;
@@ -537,14 +538,14 @@ D.imod.addEventListener("touchstart",e=>{if(e.target===D.icBtn)return;imodTouche
 D.imod.addEventListener("touchmove",e=>{if(e.touches.length===2){e.preventDefault();imgDragging=false;const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);imgScale=Math.min(8,Math.max(1,imgScale*(d/imgPinchDist)));imgPinchDist=d;clampImg();applyImgTransform();}else if(e.touches.length===1&&imgDragging&&imgScale>1){e.preventDefault();imgX=imgDragIx+(e.touches[0].clientX-imgDragSx);imgY=imgDragIy+(e.touches[0].clientY-imgDragSy);clampImg();applyImgTransform();}},{passive:false});
 D.imod.addEventListener("touchend",()=>{imgDragging=false;imodTouches=[];},{passive:true});
 
-/* ── メディア ── */
+/* ── メディア解析・判定用ロジック（最適化アップデート版） ── */
 let activeAudio=null;
 const stopActiveAudio=()=>{if(activeAudio){try{activeAudio.pause();}catch{}activeAudio=null;}};
 
 const YR=/(?:https?:\/\/)?(?:(?:www\.|m\.|music\.)?youtube\.com\/(?:watch\?(?:[^#\s]*?&)*?v=|embed\/|v\/|shorts\/|live\/)([A-Za-z0-9_-]{11})|youtu\.be\/([A-Za-z0-9_-]{11}))/i;
 const NR=/(?:https?:\/\/)?(?:(?:sp\.|www\.)?nicovideo\.jp\/watch\/|nico\.ms\/)((?:sm|nm|so|lv|co|ch)?\d+)/i;
 const TR=/(?:https?:\/\/)?(?:www\.)?tiktok\.com\/@[^\/\s]+\/video\/(\d+)/i;
-const TR_SHORT=/(?:https?:\/\/)?(?:vm|vt|m)\.tiktok\.com\/([A-Za-z0-9]+)/i;
+const TR_SHORT=/(?:https?:\/\/)?(?:[a-z0-9]+\.)?tiktok\.com\/([A-Za-z0-9]+)/i;
 const AR=/\.(mp3|wav|aac|m4a|ogg|flac)(\?.*)?$/i;
 const IR=/\.(jpe?g|gif|png|webp|bmp|svg)(\?.*)?$/i;
 const UR=/(https?:\/\/[^\s\n<>"]+)/gi;
@@ -553,6 +554,34 @@ let vcCnt=0;
 function bVideoCard(type,embedSrc,label){
   const id="vc"+(++vcCnt);
   return `<div class="vc-wrap"><div class="vc ${type}" id="${id}"><span class="vc-badge">${esc(label)}</span><iframe class="vc-frame" src="${esc(embedSrc)}" allow="autoplay;encrypted-media;fullscreen" allowfullscreen></iframe></div></div>`;
+}
+
+/* TikTok用のoEmbed非同期読み込み解決カード */
+function bTikTokOembedCard(url) {
+  const id = "tk-oembed-" + (++vcCnt);
+  
+  setTimeout(async () => {
+    const container = document.getElementById(id);
+    if (!container) return;
+    try {
+      const res = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.html) {
+          const srcM = json.html.match(/src="([^"]+)"/);
+          if (srcM && srcM[1]) {
+            container.innerHTML = `<iframe class="vc-frame" src="${esc(srcM[1])}" allow="autoplay;encrypted-media;fullscreen" allowfullscreen></iframe>`;
+            return;
+          }
+        }
+      }
+      container.innerHTML = `<div style="padding:12px;font-size:11px;color:var(--mu);text-align:center;">動画を読み込めません。<br><a href="${esc(url)}" target="_blank">TikTokで直接開く</a></div>`;
+    } catch (e) {
+      container.innerHTML = `<div style="padding:12px;font-size:11px;color:var(--ro);text-align:center;">通信エラー</div>`;
+    }
+  }, 50);
+
+  return `<div class="vc-wrap"><div class="vc tk" id="${id}"><span class="vc-badge">TikTok</span><div class="spin" style="margin:auto;position:absolute;inset:0;"></div></div></div>`;
 }
 
 let aCnt=0;
@@ -614,6 +643,7 @@ function _parseSegs(txt){
     parts.push({t:"u",v:m[0]});last=m.index+m[0].length;
   }
   if(last<normalized.length)parts.push({t:"t",v:normalized.slice(last)});
+  
   const segs=[];
   for(let i=0;i<parts.length;i++){
     const p=parts[i];
@@ -625,14 +655,21 @@ function _parseSegs(txt){
       if(h)segs.push({type:"text",html:h});
     }else{
       const url=p.v,su=esc(url),cl=url.replace(/[?#].*$/,"");
-      const ym=url.match(YR);if(ym){segs.push({type:"media",html:bVideoCard("yt",`https://www.youtube.com/embed/${ym[1]||ym[2]}?playsinline=1`,"YouTube")});continue;}
-      const nm=url.match(NR);if(nm){segs.push({type:"media",html:bVideoCard("nc",`https://embed.nicovideo.jp/watch/${nm[1]}?noscript=1`,"ニコニコ動画")});continue;}
+      
+      const ym=url.match(YR);
+      if(ym){segs.push({type:"media",html:bVideoCard("yt",`https://www.youtube.com/embed/${ym[1]||ym[2]}?playsinline=1`,"YouTube")});continue;}
+      
+      const nm=url.match(NR);
+      if(nm){segs.push({type:"media",html:bVideoCard("nc",`https://embed.nicovideo.jp/watch/${nm[1]}?noscript=1`,"ニコニコ動画")});continue;}
       
       const tm2=url.match(TR);
       if(tm2){segs.push({type:"media",html:bVideoCard("tk",`https://www.tiktok.com/embed/v2/${tm2[1]}`,"TikTok")});continue;}
       
       const tmShort=url.match(TR_SHORT);
-      if(tmShort){segs.push({type:"media",html:bVideoCard("tk",`https://www.tiktok.com/embed/v2/async?url=${encodeURIComponent(url)}`,"TikTok (短縮)")});continue;}
+      if(tmShort && (url.includes("tiktok.com") || (!url.includes("nico.ms") && !url.includes("youtu.be")))){
+        segs.push({type:"media",html:bTikTokOembedCard(url)});
+        continue;
+      }
       
       if(AR.test(cl)){segs.push({type:"media",html:bAudio(url)});continue;}
       if(IR.test(cl)||/^data:image\//i.test(url)){segs.push({type:"media",html:`<img class="img-block" src="${su}" alt="" loading="lazy" onclick="window.openImg('${su}')">`});continue;}
@@ -802,7 +839,7 @@ async function doJoin({target,pass,name,trip,asW,isAutoRejoin=false}){
     });
   }
 
-  /* ─── プレゼンス監視 ＋ 30分無発言自動退室 ─── */
+  /* ── プレゼンス監視 ＋ 自動退室 ── */
   _pOff=onValue(pRef,s=>{
     if(!curR)return;
     const users=s.val()||{},fg=document.createDocumentFragment();

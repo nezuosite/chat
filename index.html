@@ -190,8 +190,8 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 .aw-badge{background:var(--m2);color:#fff;font-size:8.5px;font-weight:800;padding:1px 4px;border-radius:3px;flex-shrink:0}
 .aw-name{color:var(--tx);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
 .aw-seek-row{display:flex;align-items:center;gap:8px}
-.ask{flex:1;height:4px;background:var(--bd);outline:none;border-radius:2px;-webkit-appearance:none}
-.ask::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;border-radius:50%;background:var(--tx)}
+.asktype{flex:1;height:4px;background:var(--bd);outline:none;border-radius:2px;-webkit-appearance:none}
+.asktype::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;border-radius:50%;background:var(--tx)}
 .atm{font-size:10px;color:var(--mu);font-family:monospace;white-space:nowrap}
 .aw-actions{display:flex;align-items:center;gap:8px;margin-top:2px}
 .aw-dl{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--mu);cursor:pointer}
@@ -374,7 +374,7 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getDatabase, ref, push, onValue, set, update, remove, query, orderByChild, get, serverTimestamp }
+import { getDatabase, ref, push, onValue, set, update, remove, query, orderByChild, get, serverTimestamp, onDisconnect, runTransaction }
   from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
 const db = getDatabase(initializeApp({
@@ -519,7 +519,7 @@ const fmtSz=b=>{if(!b||b<=0)return"";if(b<1024)return b+"B";if(b<1048576)return(
 const OFF_H=CryptoJS.SHA256("公式部屋").toString();
 const OFF_P="official_public_pass";
 const ROOM_TO=30*60*1000;   // 30分
-const HB=20000;             // ハートビート 20秒
+const HB=10000;             // ハートビートを10秒に縮小して精度向上
 const PAGE_SIZE=50;
 
 let curR=null,curP=null,curN=null,curT=null,rawR=null;
@@ -552,7 +552,6 @@ const stopActiveAudio=()=>{if(activeAudio){try{activeAudio.pause();}catch{}activ
 
 const YR=/(?:https?:\/\/)?(?:(?:www\.|m\.|music\.)?youtube\.com\/(?:watch\?(?:[^#\s]*?&)*?v=|embed\/|v\/|shorts\/|live\/)([A-Za-z0-9_-]{11})|youtu\.be\/([A-Za-z0-9_-]{11}))/i;
 const NR=/(?:https?:\/\/)?(?:(?:sp\.|www\.)?nicovideo\.jp\/watch\/|nico\.ms\/)((?:sm|nm|so|lv|co|ch)?\d+)/i;
-/* TikTok（埋め込みなし）: tiktok.com を含むURLを判定 */
 const TKR=/(?:https?:\/\/)?(?:[a-z0-9-]+\.)?tiktok\.com\/[^\s]*/i;
 const AR=/\.(mp3|wav|aac|m4a|ogg|flac)(\?.*)?$/i;
 const IR=/\.(jpe?g|gif|png|webp|bmp|svg)(\?.*)?$/i;
@@ -564,7 +563,6 @@ function bVideoCard(type,embedSrc,label){
   return `<div class="vc-wrap"><div class="vc ${type}" id="${id}"><span class="vc-badge">${esc(label)}</span><iframe class="vc-frame" src="${esc(embedSrc)}" allow="autoplay;encrypted-media;fullscreen" allowfullscreen loading="lazy"></iframe></div></div>`;
 }
 
-/* TikTokリンクカード（埋め込みなし） */
 function bTikTokLinkCard(url){
   const su=esc(url);
   const disp=url.length>50?url.slice(0,50)+"…":url;
@@ -582,7 +580,7 @@ function bAudio(url){
   requestAnimationFrame(()=>{
     setTimeout(async()=>{
       const aw=$(wid),au=$(id);if(!aw||!au)return;
-      const pb=aw.querySelector(".apb"),sk=aw.querySelector(".ask"),tm=aw.querySelector(".atm");
+      const pb=aw.querySelector(".apb"),sk=aw.querySelector(".asktype"),tm=aw.querySelector(".atm");
       const dlBtn=aw.querySelector(".aw-dl"),actionsArea=aw.querySelector(".aw-actions");
       const fA=s=>isNaN(s)||!isFinite(s)?"--:--":`${String(Math.floor(s/60)).padStart(2,"0")}:${String(Math.floor(s%60)).padStart(2,"0")}`;
       try{const h=await fetch(url,{method:"HEAD"});const cl=h.headers.get("content-length");if(cl&&parseInt(cl)>0){const sz=document.createElement("span");sz.className="aw-size-badge";sz.textContent=fmtSz(parseInt(cl));actionsArea.appendChild(sz);}}catch{}
@@ -601,7 +599,7 @@ function bAudio(url){
     `<div class="aw-left"><div class="apb">${pIco()}</div></div>`+
     `<div class="aw-right">`+
     `<div class="aw-info"><span class="aw-badge">AUDIO</span><span class="aw-name" title="${su}">${esc(fname)}</span></div>`+
-    `<div class="aw-seek-row"><input type="range" class="ask" value="0" min="0" max="100"><span class="atm">--:-- / --:--</span></div>`+
+    `<div class="aw-seek-row"><input type="range" class="asktype" value="0" min="0" max="100"><span class="atm">--:-- / --:--</span></div>`+
     `<div class="aw-actions"><button class="aw-dl">${dlSvg}ダウンロード</button></div>`+
     `</div></div>`
   );
@@ -627,25 +625,13 @@ function _parseSegs(txt){
       if(h)segs.push({type:"text",html:h});
     }else{
       const url=p.v,su=esc(url),cl=url.replace(/[?#].*$/,"");
-
-      /* YouTube */
       const ym=url.match(YR);
       if(ym){segs.push({type:"media",html:bVideoCard("yt",`https://www.youtube.com/embed/${ym[1]||ym[2]}?playsinline=1`,"YouTube")});continue;}
-
-      /* ニコニコ */
       const nm=url.match(NR);
       if(nm){segs.push({type:"media",html:bVideoCard("nc",`https://embed.nicovideo.jp/watch/${nm[1]}?noscript=1`,"ニコニコ動画")});continue;}
-
-      /* TikTok → リンクカードのみ（埋め込みなし） */
       if(TKR.test(url)){segs.push({type:"media",html:bTikTokLinkCard(url)});continue;}
-
-      /* 音声 */
       if(AR.test(cl)){segs.push({type:"media",html:bAudio(url)});continue;}
-
-      /* 画像 */
       if(IR.test(cl)||/^data:image\//i.test(url)){segs.push({type:"media",html:`<img class="img-block" src="${su}" alt="" loading="lazy" onclick="window.openImg('${su}')">`});continue;}
-
-      /* 通常リンク */
       segs.push({type:"text",html:`<a href="${su}" target="_blank" rel="noopener noreferrer">${su}</a>`});
     }
   }
@@ -736,7 +722,6 @@ function clearAll(){
 }
 
 function showLobby(msg=""){
-  const prevR=curR;
   curR=null;clearAll();
   D.lberr.textContent=msg;D.lberr.style.display=msg?"block":"none";
   D.app.classList.remove("visible");D.app.style.display="none";
@@ -756,35 +741,18 @@ const setBtns=ok=>{
   D.ofBtn.disabled=!ok;D.ofBtn.textContent=ok?"常設公式部屋":"処理中...";
 };
 
-/* ── 自動退室 guard（二重実行防止） ── */
+/* ── 自動退室ローカル処理（競合回避・クリーンアップ） ── */
 let _autoExitLock=false;
-async function doAutoExit(name, trip, reason){
-  if(_autoExitLock||isEx)return;
-  _autoExitLock=true;isEx=true;
-  const sR=curR,sP=curP,sO=isOff;
-  try{
-    await remove(ref(db,`presence/${sR}/${uid}`)).catch(()=>{});
-    await push(ref(db,`chat/${sR}`),{
-      type:"sys",
-      text:enc(`${name}${trip} が${reason}のため自動退室しました`,sP,sO),
-      time:srvNow()
-    }).catch(()=>{});
-    const ps=await get(ref(db,`presence/${sR}`)).catch(()=>null);
-    const remaining=ps&&ps.exists()?Object.keys(ps.val()||{}):[];
-    if(!sO&&remaining.length===0)await wipe(sR);
-  }catch(e){console.error("autoExit error",e);}
-  clearAll();isEx=false;_autoExitLock=false;
-  showLobby(reason==="30分間発言がなかった"
-    ?"30分間発言がなかったため、自動退出しました。"
-    :"一定時間動きがなかったため、部屋が自動消去されました。");
-  showToast(reason==="30分間発言がなかった"
-    ?"⏰ 非アクティブのため自動退出しました"
-    :"🗑 部屋が自動消去されました","warn",6000);
+function triggerLocalExit(reason){
+  if(isEx)return;
+  clearAll();
+  showLobby(reason === "timeout" ? "30分間発言がなかったため、自動退出しました。" : "一定時間動きがなかったため、部屋が自動消去されました。");
+  showToast(reason === "timeout" ? "⏰ 非アクティブのため自動退出しました" : "🗑 部屋が自動消去されました", "warn", 6000);
 }
 
 /* ── doJoin ── */
 async function doJoin({target,pass,name,trip,asW,isAutoRejoin=false}){
-  clearAll();_autoExitLock=false;
+  clearAll();_autoExitLock=false;isEx=false;
   const hashId=(target==="公式部屋")?OFF_H:CryptoJS.SHA256(target).toString();
   isOff=(hashId===OFF_H);isW=asW;curR=hashId;rawR=target;curP=pass;
   curN=asW?"":name;curT=asW?"":trip||"";
@@ -792,7 +760,7 @@ async function doJoin({target,pass,name,trip,asW,isAutoRejoin=false}){
   const pRef=ref(db,`presence/${curR}`),roomRef=ref(db,`rooms/${curR}`);
   const chatRef=ref(db,`chat/${curR}`),myRef=ref(db,`presence/${curR}/${uid}`);
 
-  /* 非公式部屋: タイムアウトチェック */
+  /* 部屋の初期化・生存チェック */
   if(!isOff){
     const rs=await get(roomRef);
     if(rs.exists()){
@@ -809,11 +777,22 @@ async function doJoin({target,pass,name,trip,asW,isAutoRejoin=false}){
     }
   }
 
-  /* プレゼンス登録（覗き見以外）・入室メッセージ */
+  /* プレゼンス登録 & onDisconnect仕込み（ゴースト防止の核心） */
   if(!asW){
     const N=srvNow();
-    await set(myRef,{nEnc:enc(name,pass,isOff),tEnc:enc(trip||"",pass,isOff),cEnc:enc(curColor,pass,isOff),enteredAt:N,lastSeen:N,lastMessageAt:N});
-    /* リロード・自動復帰時は入室お知らせを出さない */
+    const myPresenceData = {
+      nEnc:enc(name,pass,isOff),
+      tEnc:enc(trip||"",pass,isOff),
+      cEnc:enc(curColor,pass,isOff),
+      enteredAt:N,
+      lastSeen:N,
+      lastMessageAt:N
+    };
+    
+    // タブが閉じられた、または回線切断時に自動消去するタスクをFirebaseサーバーに予約
+    await onDisconnect(myRef).remove();
+    await set(myRef, myPresenceData);
+
     if(!isAutoRejoin){
       await push(chatRef,{type:"sys",text:enc(`${name}${trip||""} が入室しました`,pass,isOff),time:N});
     }
@@ -840,52 +819,69 @@ async function doJoin({target,pass,name,trip,asW,isAutoRejoin=false}){
   }
   D.updateInputBarState(!asW);updFnPos();hideSplash();
 
-  /* 部屋削除監視 */
+  /* 部屋自体の消去監視 */
   if(!isOff){
     _rOff=onValue(roomRef,s=>{
       if(!s.exists()&&curR&&!isEx){
-        isEx=true;clearAll();isEx=false;
-        showLobby("部屋データが削除または自動消去されました。");
-        showToast("🗑 部屋が削除されました","warn",5000);
+        triggerLocalExit("wipe");
       }
     });
   }
 
-  /* ── プレゼンス監視・自動退室チェック ── */
-  _pOff=onValue(pRef,s=>{
+  /* ── プレゼンス相互監視 & 自分のタイムアウト判定 ── */
+  _pOff=onValue(pRef,async(s)=>{
     if(!curR)return;
     const users=s.val()||{};
     const fg=document.createDocumentFragment();
     let cnt=0;
     const now=srvNow();
 
-    Object.entries(users).forEach(([k,u])=>{
-      if(!u)return;
-      const n=dec(u.nEnc,curP,isOff);if(!n)return;
+    const entries = Object.entries(users);
+    for(const [k, u] of entries){
+      if(!u)continue;
+      const n=dec(u.nEnc,curP,isOff);if(!n)continue;
       const t=dec(u.tEnc,curP,isOff)||"",c=dec(u.cEnc,curP,isOff)||"#94a3b8";
-      const lastMsg=u.lastMessageAt||u.enteredAt||now;
+      const lastMsg = u.lastMessageAt || u.enteredAt || now;
 
-      /* 自分の非アクティブ退室チェック */
-      if(!isOff&&k===uid&&!isW&&!_autoExitLock&&!isEx){
-        if(now-lastMsg>ROOM_TO){
-          doAutoExit(n,t,"30分間発言がなかった");
+      /* 1. 自分自身のタイムアウト（30分無発言）の判定 */
+      if(!isOff && k===uid && !isW && !_autoExitLock){
+        if(now - lastMsg > ROOM_TO){
+          _autoExitLock = true;
+          isEx = true;
+          // 自身でシステムメッセージを書き込んで、ローカルをクリーンアップ
+          await push(chatRef,{type:"sys",text:enc(`${n}${t} が30分間発言がなかったため自動退室しました`,curP,isOff),time:srvNow()}).catch(()=>{});
+          await remove(myRef).catch(()=>{});
+          triggerLocalExit("timeout");
           return;
         }
       }
 
-      /* 他ユーザーの古いpresenceを掃除（自分だけ）- サーバー側に任せるため軽微にのみ */
-      if(!isOff&&k!==uid&&now-lastMsg>ROOM_TO+60000){
-        remove(ref(db,`presence/${curR}/${k}`)).catch(()=>{});
-        return;
+      /* 2. ゴースト（他人の30分放置）をアクティブな誰か1人が代行して掃除するロジック */
+      if(!isOff && k!==uid && (now - lastMsg > ROOM_TO)){
+        // 競合を防ぐため、オンラインの一番若いUIDを持つ生存者が代表してトランザクションを実行
+        const aliveKeys = entries.filter(([_, us]) => now - (us.lastMessageAt||us.enteredAt||now) <= ROOM_TO).map(([key]) => key).sort();
+        if(aliveKeys[0] === uid){
+          await runTransaction(ref(db, `presence/${curR}/${k}`), (currentData) => {
+            if(currentData) return null; // サーバー上で削除をコミット
+            return currentData;
+          });
+          await push(chatRef,{type:"sys",text:enc(`${n}${t} が30分間発言がなかったため自動退室しました`,curP,isOff),time:srvNow()}).catch(()=>{});
+        }
+        continue;
       }
 
       cnt++;
       const sp=document.createElement("span");sp.className="chip";
       sp.style.color=c;sp.style.borderColor=c+"44";sp.textContent=n+t;
       fg.appendChild(sp);
-    });
+    }
     D.pl.innerHTML="";D.pl.appendChild(fg);
     D.pcnt.textContent=`[${cnt}人]`;
+
+    // 全員が正常退室またはonDisconnectで誰もいなくなった場合、非公式部屋を完全消去
+    if(!isOff && cnt === 0 && entries.length === 0){
+      await wipe(curR);
+    }
   });
 
   /* ── チャットログ監視 ── */
@@ -898,13 +894,13 @@ async function doJoin({target,pass,name,trip,asW,isAutoRejoin=false}){
     else renderPage(currentPage);
   });
 
-  /* ── ハートビート（lastSeen更新）── */
+  /* ── ハートビート（生存同期を10秒毎に強化）── */
   if(!asW)hbT=setInterval(async()=>{
     if(!curR||isEx||_autoExitLock)return;
-    try{await update(myRef,{lastSeen:srvNow(),cEnc:enc(curColor,curP,isOff)});}catch{}
+    try{await update(myRef,{lastSeen:srvNow()});}catch{}
   },HB);
 
-  /* ── 部屋タイムアウト監視（1分毎・lastActivity基準）── */
+  /* ── 部屋全体の無操作（30分）タイムアウト監視（1分毎） ── */
   if(!isOff){
     toT=setInterval(async()=>{
       if(!curR||isEx||_autoExitLock)return;
@@ -912,10 +908,9 @@ async function doJoin({target,pass,name,trip,asW,isAutoRejoin=false}){
         const rs=await get(roomRef);if(!rs.exists())return;
         const la=rs.val()?.lastActivity||srvNow();
         if(srvNow()-la>ROOM_TO){
-          isEx=true;await wipe(curR);
-          clearAll();isEx=false;
-          showLobby("一定時間動きがなかったため部屋が自動消去されました。");
-          showToast("🗑 部屋が自動消去されました","warn",6000);
+          isEx=true;
+          await wipe(curR);
+          triggerLocalExit("wipe");
         }
       }catch{}
     },60000);
@@ -927,6 +922,11 @@ async function exitRoom(realWipe=false){
   if(isEx)return;isEx=true;
   const sR=curR,sP=curP,sN=curN,sT=curT,sO=isOff,sW=isW;
   if(realWipe||sW)localStorage.removeItem("nz_sess");
+  
+  // 退出時は速やかにオンコネクトの予約を解除
+  if(!sW && sR){
+    try{await onDisconnect(ref(db,`presence/${sR}/${uid}`)).cancel();}catch{}
+  }
   clearAll();
   try{
     if(!sW&&sR){
@@ -950,11 +950,14 @@ async function sendMsg(){
   D.mi.value="";D.mi.style.height="auto";
   const N=srvNow();
   try{
+    const roomRef=ref(db,`rooms/${curR}`);
+    const myRef=ref(db,`presence/${curR}/${uid}`);
     const upd={};
     if(!isOff)upd[`rooms/${curR}/lastActivity`]=N;
     upd[`presence/${curR}/${uid}/lastSeen`]=N;
     upd[`presence/${curR}/${uid}/lastMessageAt`]=N;
     update(ref(db),upd).catch(()=>{});
+    
     await push(ref(db,`chat/${curR}`),{
       type:"msg",
       nEnc:enc(curN,curP,isOff),tEnc:enc(curT||"",curP,isOff),
@@ -968,6 +971,8 @@ async function upgrade(name,trip){
   if(!curR)return;isW=false;curN=name;curT=trip||"";
   const N=srvNow();
   const myRef=ref(db,`presence/${curR}/${uid}`);
+  
+  await onDisconnect(myRef).remove();
   await set(myRef,{nEnc:enc(name,curP,isOff),tEnc:enc(trip||"",curP,isOff),cEnc:enc(curColor,curP,isOff),enteredAt:N,lastSeen:N,lastMessageAt:N});
   await push(ref(db,`chat/${curR}`),{type:"sys",text:enc(`${name}${trip||""} が入室しました`,curP,isOff),time:N});
   localStorage.setItem("nz_ni",name);localStorage.setItem("nz_tk",D.wtk.value.trim());
@@ -976,7 +981,7 @@ async function upgrade(name,trip){
   D.exBtn.textContent="退出";D.ivBtn.style.display=isOff?"none":"block";D.clrBtn.style.display="block";
   D.updateInputBarState(true);updFnPos();
   if(hbT)clearInterval(hbT);
-  hbT=setInterval(async()=>{if(!curR||isEx)return;try{await update(myRef,{lastSeen:srvNow(),cEnc:enc(curColor,curP,isOff)});}catch{}},HB);
+  hbT=setInterval(async()=>{if(!curR||isEx)return;try{await update(myRef,{lastSeen:srvNow()});}catch{}},HB);
 }
 
 /* ── イベント ── */
@@ -1041,7 +1046,6 @@ D.gmod.onclick=e=>{if(e.target===D.gmod)D.gmod.classList.remove("show");};
     }else{D.ri.value=sr;D.pi.value=spp;showLobby();}
     return;
   }
-  /* セッション復元（リロード・接続切れ後）*/
   const sessStr=localStorage.getItem("nz_sess");
   if(sessStr){
     try{

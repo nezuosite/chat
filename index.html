@@ -32,7 +32,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 a{color:#818cf8}a:hover{text-decoration:underline}
 
 /* スプラッシュ */
-#splash{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;opacity:1;transition:opacity .25s}
+#splash{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
 .spin{width:26px;height:26px;border:3px solid var(--in);border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .spt{font-size:10px;font-weight:800;color:var(--m2);letter-spacing:.2em}
@@ -63,8 +63,7 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 .clrc.sel,.wclrc.sel,.clrc2.sel{border-color:var(--tx);transform:scale(1.1)}
 .brow{display:grid;grid-template-columns:1fr 1.8fr 1.3fr;gap:4px;margin-top:2px}
 .btn{padding:6px;border-radius:5px;font-size:11.5px;font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center}
-.btn:disabled{opacity:0.5;cursor:not-allowed}
-.btn:active:not(:disabled){opacity:0.8}
+.btn:active{opacity:0.8}
 .bq{background:var(--sf);color:var(--tx);border:1px solid var(--bd)}
 .bp{background:var(--in);color:#fff}
 .bo{background:var(--e2);color:#fff}
@@ -77,6 +76,7 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 #hdr{background:var(--sf);border-bottom:1px solid var(--bd);padding:6px 12px;flex-shrink:0}
 .hr{display:flex;align-items:center;gap:8px;height:32px}
 .rn{font-weight:800;font-size:14px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.pc覆い{font-size:11px;font-weight:700;color:var(--mu);font-family:monospace}
 .pc{font-size:11px;font-weight:700;color:var(--mu);font-family:monospace}
 .hbs {display:flex;gap:4px;z-index:10;}
 .hbs button{padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700;background:var(--bg);border:1px solid var(--bd);color:var(--tx);display:flex;align-items:center;gap:4px}
@@ -136,7 +136,6 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 #mi{width:100%;background:none;border:none;color:var(--tx);outline:none;resize:none;font-size:14px;max-height:80px;line-height:1.4;padding:4px 0}
 .bclrm{position:absolute;right:10px;color:var(--m2);font-size:18px;font-weight:700}
 .bsd{width:34px;height:34px;border-radius:50%;background:var(--in);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.bsd:disabled{opacity:0.5}
 .bsd svg{width:16px;height:16px;transform:rotate(45deg);margin-top:-1px;margin-right:2px}
 #midisable{position:absolute;inset:0;background:rgba(15,23,42,.92);border-radius:20px;display:none;align-items:center;justify-content:center;font-size:11px;color:var(--ro);font-weight:700;z-index:5}
 
@@ -155,7 +154,7 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 .gs h4{font-size:11.5px;color:var(--tx);margin-bottom:2px}
 .cx{position:absolute;top:16px;right:16px;width:36px;height:36px;border-radius:50%;background:rgba(15,23,42,.6);color:#fff;font-size:22px;display:flex;align-items:center;justify-content:center}
 
-/* メディア */
+/* メディア（最適化調整済） */
 .media-wrap{margin-top:6px;width:100%;max-width:440px}
 .img-block{width:100%;max-height:260px;object-fit:cover;border-radius:8px;border:1px solid var(--bd);cursor:pointer}
 .vc-wrap{width:100%;position:relative;margin-bottom:4px}
@@ -163,6 +162,7 @@ a{color:#818cf8}a:hover{text-decoration:underline}
   width:100%;aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden;
   position:relative;border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;
 }
+/* TikTok用縦長サイズ・アスペクト比固定 */
 .vc.tk{aspect-ratio:9/16;width:100%;max-width:280px;margin:0 auto;background:#010101}
 .vc-frame{width:100%;height:100%;border:none;display:block}
 .vc-badge{position:absolute;top:6px;left:6px;background:rgba(0,0,0,.75);color:#fff;font-size:8.5px;font-weight:800;padding:2px 5px;border-radius:4px;letter-spacing:.5px;z-index:2;pointer-events:none}
@@ -353,18 +353,16 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getDatabase, ref, push, onValue, set, update, remove, query, orderByChild, get, onChildAdded }
+import { getDatabase, ref, push, onValue, set, update, remove, query, orderByChild, get }
   from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
-// Firebaseの初期化
-const app = initializeApp({
+const db = getDatabase(initializeApp({
   apiKey:"AIzaSyCsRidc0smUQDaBwq-oki5NzxSHx6-ljiw",
   authDomain:"nezuochat.firebaseapp.com",
   databaseURL:"https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId:"nezuochat",storageBucket:"nezuochat.appspot.com",
   messagingSenderId:"154725381397",appId:"1:154725381397:web:8742ccd957e20cee8ce51c"
-});
-const db = getDatabase(app);
+}));
 
 const $ = id => document.getElementById(id);
 const D = {
@@ -390,18 +388,21 @@ D.updateInputBarState = function(enabled){
   else{D.midisable.style.display="flex";D.mi.disabled=true;D.sdBtn.disabled=true;}
 };
 
+/* ── サーバー時刻オフセット ── */
 let _srvOff = 0;
 try{
   onValue(ref(db,".info/serverTimeOffset"),s=>{_srvOff=s.val()||0;},()=>{_srvOff=0;});
 }catch{_srvOff=0;}
 const srvNow = () => Date.now() + _srvOff;
 
+/* ── UID ── */
 const uid = (()=>{
   let id=localStorage.getItem("nz_uid");
   if(!id){id="u-"+Math.random().toString(36).slice(2,9)+"-"+Date.now().toString(36);localStorage.setItem("nz_uid",id);}
   return id;
 })();
 
+/* ── 暗号化 ── */
 const enc=(t,k,r=false)=>{if(!t&&t!=="")return"";if(r)return t;return CryptoJS.AES.encrypt(t,k).toString();};
 const dec=(c,k,r=false)=>{
   if(!c&&c!=="")return null;if(r)return c;
@@ -409,25 +410,36 @@ const dec=(c,k,r=false)=>{
 };
 const esc=t=>(t||"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
+/* ── トリップ ── */
 const SALT="NEZU_ONETIME_SALT_2026_🔥";
-const gTrip=(n,k)=>{
-  if(!n||!k)return"";
-  try{
-    const sn = String(n).replace(/[\s\u3000]+/g,"").trim();
-    const sk = String(k).trim();
-    if(!sn || !sk) return "";
-    return"局"+CryptoJS.SHA256(`${sn}:${SALT}:${sk}`).toString().slice(0,6);
-  }catch{return"";}
-};
+const gTrip=(n,k)=>{if(!n||!k)return"";try{return"◆"+CryptoJS.SHA256(`${n}:${SALT}:${k}`).toString().slice(0,6);}catch{return"";}};
 
 const updTP=()=>{const n=D.ni.value.replace(/[\s\u3000]+/g,"").trim(),k=D.tk.value.trim();if(n&&k){D.tpv.textContent=gTrip(n,k);D.tpv.style.display="inline-block";}else D.tpv.style.display="none";};
 const updWTP=()=>{const n=D.wni.value.replace(/[\s\u3000]+/g,"").trim(),k=D.wtk.value.trim();if(n&&k){D.wtpv.textContent=gTrip(n,k);D.wtpv.style.display="inline-block";}else D.wtpv.style.display="none";};
 
-D.ni.addEventListener("input",()=>{D.wni.value=D.ni.value;localStorage.setItem("nz_ni",D.ni.value);updTP();updWTP();});
-D.tk.addEventListener("input",()=>{D.wtk.value=D.tk.value;localStorage.setItem("nz_tk",D.tk.value);updTP();updWTP();});
-D.wni.addEventListener("input",()=>{D.ni.value=D.wni.value;localStorage.setItem("nz_ni",D.wni.value);updTP();updWTP();});
-D.wtk.addEventListener("input",()=>{D.tk.value=D.wtk.value;localStorage.setItem("nz_tk",D.wtk.value);updTP();updWTP();});
+/* ロビーと覗き見モードの連動 */
+D.ni.addEventListener("input",()=>{
+  D.wni.value=D.ni.value;
+  localStorage.setItem("nz_ni",D.ni.value);
+  updTP();updWTP();
+});
+D.tk.addEventListener("input",()=>{
+  D.wtk.value=D.tk.value;
+  localStorage.setItem("nz_tk",D.tk.value);
+  updTP();updWTP();
+});
+D.wni.addEventListener("input",()=>{
+  D.ni.value=D.wni.value;
+  localStorage.setItem("nz_ni",D.wni.value);
+  updTP();updWTP();
+});
+D.wtk.addEventListener("input",()=>{
+  D.tk.value=D.wtk.value;
+  localStorage.setItem("nz_tk",D.wtk.value);
+  updTP();updWTP();
+});
 
+/* 覗き見パネル折り畳み */
 let wbOpen = false;
 D.wbToggle.addEventListener("click",()=>{
   wbOpen=!wbOpen;
@@ -436,6 +448,7 @@ D.wbToggle.addEventListener("click",()=>{
   D.wbHint.textContent=wbOpen?"▲ 閉じる":"▼ タップして設定";
 });
 
+/* ── カラー ── */
 const COLORS=[
   {v:"#94a3b8",n:"グレー"},{v:"#f1f5f9",n:"ホワイト"},{v:"#818cf8",n:"インディゴ"},{v:"#60a5fa",n:"ブルー"},
   {v:"#34d399",n:"エメラルド"},{v:"#a3e635",n:"ライム"},{v:"#fbbf24",n:"アンバー"},{v:"#fb923c",n:"オレンジ"},
@@ -458,17 +471,23 @@ function syncPickers(activeValue) {
 
 function buildPicker(container,selVar,cls,onChange){
   if(!container)return;container.innerHTML="";
-  const frag=document.createDocumentFragment();
   COLORS.forEach(({v,n})=>{
     const b=document.createElement("button");
     b.className=cls+(v===selVar?" sel":"");b.style.background=v;b.title=n;b.dataset.color=v;
-    b.addEventListener("click",()=>onChange(v));
-    frag.appendChild(b);
+    b.addEventListener("click",()=>{
+      onChange(v);
+    });
+    container.appendChild(b);
   });
-  container.appendChild(frag);
 }
 
-const onColorSelect = v => { curColor=v; setGlobalColor(v); localStorage.setItem("nz_color",v); syncPickers(v); };
+const onColorSelect = v => {
+  curColor=v;
+  setGlobalColor(v);
+  localStorage.setItem("nz_color",v);
+  syncPickers(v);
+};
+
 buildPicker(D.lbClrPick,curColor,"clrc",onColorSelect);
 buildPicker(D.wClrPick,curColor,"wclrc",onColorSelect);
 
@@ -485,9 +504,11 @@ D.clrOk.addEventListener("click",async()=>{
 });
 D.clrCancel.addEventListener("click",()=>D.clrmod.classList.remove("show"));
 
-const fDT=ts=>{if(!ts)return"";const d=new Date(ts);return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}`;};
+/* ── フォーマット ── */
+const fDT=ts=>{if(!ts)return"";const d=new Date(ts);return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")} : ${String(d.getMinutes()).padStart(2,"0")} : ${String(d.getSeconds()).padStart(2,"0")}`;};
 const fmtSz=b=>{if(!b||b<=0)return"";if(b<1024)return b+"B";if(b<1048576)return(b/1024).toFixed(1)+"KB";return(b/1048576).toFixed(1)+"MB";};
 
+/* ── 定数 ── */
 const OFF_H=CryptoJS.SHA256("公式部屋").toString();
 const OFF_P="official_public_pass";
 const ROOM_TO=30*60*1000;
@@ -500,13 +521,9 @@ let _cOff=null,_pOff=null,_rOff=null;
 let hbT=null,toT=null;
 let logArray=[],currentPage=1,isLiveMode=true;
 
-const hideSplash=()=>{
-  const s=D.splash;
-  if(!s)return;
-  s.style.opacity="0";
-  setTimeout(()=>s.style.display="none",260);
-};
+const hideSplash=()=>{const s=D.splash;if(!s)return;s.style.opacity="0";s.style.transition="opacity .25s";setTimeout(()=>s.remove(),260);};
 
+/* ── 画像モーダル ── */
 let imgScale=1,imgX=0,imgY=0,imgDragging=false,imgDragSx=0,imgDragSy=0,imgDragIx=0,imgDragIy=0;
 let imgPinchDist=0,imgLastTap=0,imodTouches=[];
 function resetImgTransform(){imgScale=1;imgX=0;imgY=0;applyImgTransform();}
@@ -522,13 +539,14 @@ D.imod.addEventListener("touchstart",e=>{if(e.target===D.icBtn)return;imodTouche
 D.imod.addEventListener("touchmove",e=>{if(e.touches.length===2){e.preventDefault();imgDragging=false;const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);imgScale=Math.min(8,Math.max(1,imgScale*(d/imgPinchDist)));imgPinchDist=d;clampImg();applyImgTransform();}else if(e.touches.length===1&&imgDragging&&imgScale>1){e.preventDefault();imgX=imgDragIx+(e.touches[0].clientX-imgDragSx);imgY=imgDragIy+(e.touches[0].clientY-imgDragSy);clampImg();applyImgTransform();}},{passive:false});
 D.imod.addEventListener("touchend",()=>{imgDragging=false;imodTouches=[];},{passive:true});
 
+/* ── メディア解析・判定用ロジック（TikTok完全対応版） ── */
 let activeAudio=null;
-const stopActiveAudio=()=>{if(activeAudio){try{activeAudio.pause();activeAudio.onplay=null;activeAudio.onpause=null;activeAudio.ontimeupdate=null;}catch{}activeAudio=null;}};
+const stopActiveAudio=()=>{if(activeAudio){try{activeAudio.pause();}catch{}activeAudio=null;}};
 
 const YR=/(?:https?:\/\/)?(?:(?:www\.|m\.|music\.)?youtube\.com\/(?:watch\?(?:[^#\s]*?&)*?v=|embed\/|v\/|shorts\/|live\/)([A-Za-z0-9_-]{11})|youtu\.be\/([A-Za-z0-9_-]{11}))/i;
 const NR=/(?:https?:\/\/)?(?:(?:sp\.|www\.)?nicovideo\.jp\/watch\/|nico\.ms\/)((?:sm|nm|so|lv|co|ch)?\d+)/i;
-const TR=/(?:https?:\/\/)?(?:www\.|vt\.|vm\.)?tiktok\.com\/@?[^\/\s]+\/video\/(\d+)/i;
-const TR_SHORT=/(?:https?:\/\/)?(?:www\.|vt\.|vm\.)?tiktok\.com\/([A-Za-z0-9_]+)/i;
+const TR=/(?:https?:\/\/)?(?:www\.)?tiktok\.com\/@[^\/\s]+\/video\/(\d+)/i;
+const TR_SHORT=/(?:https?:\/\/)?(?:[a-z0-9]+\.)?tiktok\.com\/([A-Za-z0-9]+)/i;
 const AR=/\.(mp3|wav|aac|m4a|ogg|flac)(\?.*)?$/i;
 const IR=/\.(jpe?g|gif|png|webp|bmp|svg)(\?.*)?$/i;
 const UR=/(https?:\/\/[^\s\n<>"]+)/gi;
@@ -536,46 +554,42 @@ const UR=/(https?:\/\/[^\s\n<>"]+)/gi;
 let vcCnt=0;
 function bVideoCard(type,embedSrc,label){
   const id="vc"+(++vcCnt);
-  return `<div class="vc-wrap"><div class="vc ${type}" id="${id}"><span class="vc-badge">${esc(label)}</span><iframe class="vc-frame" src="${esc(embedSrc)}" allow="autoplay;encrypted-media;fullscreen" allowfullscreen loading="lazy"></iframe></div></div>`;
+  return `<div class="vc-wrap"><div class="vc ${type}" id="${id}"><span class="vc-badge">${esc(label)}</span><iframe class="vc-frame" src="${esc(embedSrc)}" allow="autoplay;encrypted-media;fullscreen" allowfullscreen></iframe></div></div>`;
 }
 
+/* TikTok用のoEmbed非同期読み込み解決カード（ブラウザ仕様変更対策済） */
 function bTikTokOembedCard(url) {
   const id = "tk-oembed-" + (++vcCnt);
-  const su = esc(url);
   
   setTimeout(async () => {
     const container = document.getElementById(id);
     if (!container) return;
     try {
-      let videoId = "";
-      const idMatch = url.match(/\/video\/(\d+)/);
-      if (idMatch) {
-        videoId = idMatch[1];
-      } else {
-        const res = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`);
-        if (res.ok) {
-          const json = await res.json();
-          if (json.html) {
-            const srcM = json.html.match(/src="([^"]+)"/);
-            if (srcM && srcM[1]) {
-              container.innerHTML = `<iframe class="vc-frame" src="${esc(srcM[1])}" allow="autoplay;encrypted-media;fullscreen" allowfullscreen loading="lazy"></iframe>`;
-              return;
-            }
-            const htmlIdM = json.html.match(/data-video-id="(\d+)"/);
-            if (htmlIdM) videoId = htmlIdM[1];
+      const res = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.html) {
+          const srcM = json.html.match(/src="([^"]+)"/);
+          if (srcM && srcM[1]) {
+            container.innerHTML = `<iframe class="vc-frame" src="${esc(srcM[1])}" allow="autoplay;encrypted-media;fullscreen" allowfullscreen></iframe>`;
+            return;
           }
         }
       }
+      // oEmbedで取得できない・または制限されている場合は標準の埋め込みプレイヤーURLを試行
+      let videoId = "";
+      const vm = url.match(/\/video\/(\d+)/);
+      if (vm) videoId = vm[1];
       
       if (videoId) {
-        container.innerHTML = `<iframe class="vc-frame" src="https://www.tiktok.com/embed/v2/${videoId}" allow="autoplay;encrypted-media;fullscreen" allowfullscreen loading="lazy"></iframe>`;
+        container.innerHTML = `<iframe class="vc-frame" src="https://www.tiktok.com/embed/v2/${videoId}" allow="autoplay;encrypted-media;fullscreen" allowfullscreen></iframe>`;
       } else {
-        container.innerHTML = `<div style="padding:12px;font-size:11px;color:var(--mu);text-align:center;">動画を読み込めません。<br><a href="${su}" target="_blank" style="color:#818cf8;text-decoration:underline;">TikTokで直接開く</a></div>`;
+        container.innerHTML = `<div style="padding:12px;font-size:11px;color:var(--mu);text-align:center;">動画を読み込めません。<br><a href="${esc(url)}" target="_blank" style="color:#818cf8;text-decoration:underline;">TikTokで直接開く</a></div>`;
       }
     } catch (e) {
-      container.innerHTML = `<div style="padding:12px;font-size:11px;color:var(--mu);text-align:center;">読み込みフォールバック<br><a href="${su}" target="_blank" style="color:#818cf8;text-decoration:underline;">外部アプリで開く</a></div>`;
+      container.innerHTML = `<div style="padding:12px;font-size:11px;color:var(--ro);text-align:center;">通信エラー</div>`;
     }
-  }, 60);
+  }, 50);
 
   return `<div class="vc-wrap"><div class="vc tk" id="${id}"><span class="vc-badge">TikTok</span><div class="spin" style="margin:auto;position:absolute;inset:0;"></div></div></div>`;
 }
@@ -614,7 +628,7 @@ function bAudio(url){
       pb.onclick=()=>{if(au.paused)au.play().catch(()=>{});else au.pause();};
       sk.oninput=()=>{if(au.duration)au.currentTime=(sk.value/100)*au.duration;};
       dlBtn.onclick=()=>{if(confirm(`ダウンロードしますか？\n${fname}`)){const a=document.createElement("a");a.href=url;a.download=fname;a.target="_blank";a.click();}};
-    },60);
+    },50);
   });
 
   return(
@@ -661,6 +675,7 @@ function _parseSegs(txt){
       const tm2=url.match(TR);
       if(tm2){segs.push({type:"media",html:bVideoCard("tk",`https://www.tiktok.com/embed/v2/${tm2[1]}`,"TikTok")});continue;}
       
+      // 短縮URL (vt.tiktok.com等) や、通常の動画URLを含めて包括的にTikTokとして判定・oEmbedカードを展開
       const tmShort=url.match(TR_SHORT);
       if(tmShort && (url.includes("tiktok.com") || (!url.includes("nico.ms") && !url.includes("youtu.be")))){
         segs.push({type:"media",html:bTikTokOembedCard(url)});
@@ -681,8 +696,9 @@ function parseTxtSplit(txt){
   return{textHtml:textParts.join("<br>").replace(/^(<br>)+|(<br>)+$/g,""),mediaHtml:mediaParts.join("")};
 }
 
+/* ── メッセージ要素生成 ── */
 function cMsg(m){
-  const txt=dec(m.text,curP,isOff);if(!txt&&txt!=="")return null;
+  const txt=dec(m.text,curP,isOff);if(!txt)return null;
   const d=document.createElement("div");d.className="mw";d.dataset.ts=m.time||0;
   if(m.type==="sys"){
     d.style.alignItems="center";
@@ -701,42 +717,26 @@ function cMsg(m){
   return d;
 }
 
+/* ── ページネーション ── */
 function renderPage(pageNumber){
-  stopActiveAudio();
-  const iframes = D.tli.querySelectorAll("iframe");
-  iframes.forEach(f => { try { f.src = "about:blank"; f.remove(); } catch(e){} });
-  D.tli.innerHTML="";
-  
+  stopActiveAudio();D.tli.innerHTML="";
   const totalItems=logArray.length,totalPages=Math.ceil(totalItems/PAGE_SIZE)||1;
   if(pageNumber<1)pageNumber=1;if(pageNumber>totalPages)pageNumber=totalPages;
   currentPage=pageNumber;isLiveMode=(currentPage===totalPages);
   D.updateInputBarState(isLiveMode);
-  
   const startIdx=(currentPage-1)*PAGE_SIZE,endIdx=Math.min(startIdx+PAGE_SIZE,totalItems);
-  const frag=document.createDocumentFragment();
-  
-  logArray.slice(startIdx,endIdx).forEach(m=>{
-    const el=cMsg(m);
-    if(el)frag.appendChild(el);
-  });
-  D.tli.appendChild(frag);
-  
+  logArray.slice(startIdx,endIdx).forEach(m=>{const el=cMsg(m);if(el)D.tli.appendChild(el);});
   D.pinfo.textContent=`${currentPage} / ${totalPages}`;
   D.pFirst.disabled=(currentPage===1);D.pPrev.disabled=(currentPage===1);
   D.pNext.disabled=(currentPage===totalPages);D.pLast.disabled=isLiveMode;
-  
-  requestAnimationFrame(()=>setTimeout(()=>{
-    if(isLiveMode)D.tl.scrollTop=D.tl.scrollHeight;
-    else D.tl.scrollTop=0;
-    updFnPos();
-  },50));
+  requestAnimationFrame(()=>setTimeout(()=>{if(isLiveMode)D.tl.scrollTop=D.tl.scrollHeight;else D.tl.scrollTop=0;updFnPos();},50));
 }
-
 D.pFirst.onclick=()=>renderPage(1);
 D.pPrev.onclick=()=>{if(currentPage>1)renderPage(currentPage-1);};
 D.pNext.onclick=()=>renderPage(currentPage+1);
 D.pLast.onclick=()=>{isLiveMode=true;renderPage(Math.ceil(logArray.length/PAGE_SIZE)||1);};
 
+/* ── スクロール ── */
 const scBottom=(instant=false)=>{requestAnimationFrame(()=>setTimeout(()=>D.tl.scrollTo({top:D.tl.scrollHeight,behavior:instant?"auto":"smooth"}),30));};
 const scTop=()=>D.tl.scrollTo({top:0,behavior:"smooth"});
 D.tBBtn.onclick=()=>scTop();
@@ -751,22 +751,18 @@ function updFnPos(){
 D.tl.addEventListener("scroll",updFnPos,{passive:true});
 window.addEventListener("resize",updFnPos,{passive:true});
 
+/* ── Wipe ── */
 async function wipe(r){
   if(!r)return;
   try{await update(ref(db),{[`rooms/${r}`]:null,[`chat/${r}`]:null,[`presence/${r}`]:null});console.log(`Room[${r}]wiped`);}
   catch(e){console.error("Wipe failed:",e);}
 }
 
+/* ── clearAll ── */
 function clearAll(){
-  if(hbT) { clearInterval(hbT); hbT=null; }
-  if(toT) { clearInterval(toT); toT=null; }
-  if(typeof _cOff === "function"){_cOff(); _cOff=null;}
-  if(typeof _pOff === "function"){_pOff(); _pOff=null;}
-  if(typeof _rOff === "function"){_rOff(); _rOff=null;}
-  stopActiveAudio();
-  const iframes = D.tli.querySelectorAll("iframe");
-  iframes.forEach(f => { try { f.src = "about:blank"; f.remove(); } catch(e){} });
-  logArray=[];currentPage=1;isLiveMode=true;D.tli.innerHTML="";
+  if(hbT){clearInterval(hbT);hbT=null;}if(toT){clearInterval(toT);toT=null;}
+  if(_cOff){_cOff();_cOff=null;}if(_pOff){_pOff();_pOff=null;}if(_rOff){_rOff();_rOff=null;}
+  logArray=[];currentPage=1;isLiveMode=true;stopActiveAudio();D.tli.innerHTML="";
   localStorage.removeItem("nz_sess");sessionStorage.clear();
 }
 
@@ -791,6 +787,7 @@ const setBtns=ok=>{
   D.ofBtn.disabled=!ok;D.ofBtn.textContent=ok?"常設公式部屋":"処理中...";
 };
 
+/* ── doJoin ── */
 async function doJoin({target,pass,name,trip,asW,isAutoRejoin=false}){
   clearAll();
   const hashId=(target==="公式部屋")?OFF_H:CryptoJS.SHA256(target).toString();
@@ -831,11 +828,16 @@ async function doJoin({target,pass,name,trip,asW,isAutoRejoin=false}){
   if(asW){
     D.ib.classList.remove("show");D.wb.classList.add("show");
     D.exBtn.textContent="ロビーへ戻る";D.ivBtn.style.display="none";D.clrBtn.style.display="none";
+    
     D.wni.value=localStorage.getItem("nz_ni")||"";
     D.wtk.value=localStorage.getItem("nz_tk")||"";
     updWTP();
     syncPickers(curColor);
-    wbOpen=false;D.wbBody.classList.remove("open");D.wbArrow.classList.remove("open");D.wbHint.textContent="▼ タップして設定";
+    
+    wbOpen=false;
+    D.wbBody.classList.remove("open");
+    D.wbArrow.classList.remove("open");
+    D.wbHint.textContent="▼ タップして設定";
   }else{
     D.ib.classList.add("show");D.wb.classList.remove("show");
     D.exBtn.textContent="退出";D.ivBtn.style.display=isOff?"none":"block";D.clrBtn.style.display="block";
@@ -848,10 +850,12 @@ async function doJoin({target,pass,name,trip,asW,isAutoRejoin=false}){
     });
   }
 
+  /* ── プレゼンス監視 ＋ 自動退室 ── */
   _pOff=onValue(pRef,s=>{
     if(!curR)return;
     const users=s.val()||{},fg=document.createDocumentFragment();
-    let cnt=0;const now=srvNow();
+    let cnt=0;
+    const now=srvNow();
 
     Object.entries(users).forEach(([k,u])=>{
       if(!u)return;
@@ -863,8 +867,14 @@ async function doJoin({target,pass,name,trip,asW,isAutoRejoin=false}){
         remove(ref(db,`presence/${curR}/${k}`)).catch(()=>{});
         if(k===uid&&!isEx){
           isEx=true;
-          push(ref(db,`chat/${curR}`),{type:"sys",text:enc(`${n}${t} が30分間発言がないため自動退室しました`,curP,isOff),time:srvNow()})
-          .catch(()=>{}).finally(()=>{clearAll();isEx=false;showLobby("30分間発言がなかったため、自動退出しました。");});
+          push(ref(db,`chat/${curR}`),{
+            type:"sys",
+            text:enc(`${n}${t} が30分間発言がないため自動退室しました`,curP,isOff),
+            time:srvNow()
+          }).catch(()=>{}).finally(()=>{
+            clearAll();isEx=false;
+            showLobby("30分間発言がなかったため、自動退出しました。");
+          });
         }
         return;
       }
@@ -876,34 +886,22 @@ async function doJoin({target,pass,name,trip,asW,isAutoRejoin=false}){
     D.pcnt.textContent=`[${cnt}人]`;
   });
 
-  try {
-    const initSnap = await get(query(chatRef, orderByChild("time")));
-    if (initSnap.exists()) {
-      initSnap.forEach(cs => { const m = cs.val(); if (m) { m.id = cs.key; logArray.push(m); } });
-    }
-    renderPage(Math.ceil(logArray.length / PAGE_SIZE) || 1);
-  } catch (e) { console.error("Initial logs fetch failed:", e); }
-
-  _cOff = onChildAdded(query(chatRef, orderByChild("time")), snap => {
-    if (!curR) return;
-    const m = snap.val();
-    if (!m) return;
-    m.id = snap.key;
-    if (logArray.some(x => x.id === m.id)) return;
-    logArray.push(m);
-    if (isLiveMode) {
-      renderPage(Math.ceil(logArray.length / PAGE_SIZE) || 1);
-    } else {
-      D.pinfo.textContent = `${currentPage} / ${Math.ceil(logArray.length / PAGE_SIZE) || 1}`;
-      D.pLast.disabled = false;
-    }
+  /* チャットログ監視 */
+  _cOff=onValue(query(chatRef,orderByChild("time")),snap=>{
+    if(!curR)return;
+    const newLogs=[];
+    if(snap.exists())snap.forEach(cs=>{const m=cs.val();if(m){m.id=cs.key;newLogs.push(m);}});
+    logArray=newLogs;
+    if(isLiveMode)renderPage(Math.ceil(logArray.length/PAGE_SIZE)||1);else renderPage(currentPage);
   });
 
+  /* ハートビート */
   if(!asW)hbT=setInterval(async()=>{
     if(!curR||isEx)return;
     try{await update(myRef,{lastSeen:srvNow(),cEnc:enc(curColor,curP,isOff)});}catch{}
   },HB);
 
+  /* 部屋タイムアウト監視（1分毎） */
   if(!isOff){
     toT=setInterval(async()=>{
       if(!curR||isEx)return;
@@ -918,6 +916,7 @@ async function doJoin({target,pass,name,trip,asW,isAutoRejoin=false}){
   }
 }
 
+/* ── exitRoom ── */
 async function exitRoom(realWipe=false){
   if(isEx)return;isEx=true;
   const sR=curR,sP=curP,sN=curN,sT=curT,sO=isOff,sW=isW;
@@ -938,6 +937,7 @@ async function exitRoom(realWipe=false){
   isEx=false;showLobby();
 }
 
+/* ── sendMsg ── */
 async function sendMsg(){
   if(!curR||isW||isCmp||!isLiveMode)return;
   const txt=D.mi.value.trim();if(!txt)return;
@@ -952,6 +952,7 @@ async function sendMsg(){
   }catch(e){alert("送信失敗: "+e.message);}
 }
 
+/* ── upgrade（覗き見→参加） ── */
 async function upgrade(name,trip){
   if(!curR)return;isW=false;curN=name;curT=trip||"";const N=srvNow();
   const myRef=ref(db,`presence/${curR}/${uid}`);
@@ -969,6 +970,7 @@ async function upgrade(name,trip){
   hbT=setInterval(async()=>{if(!curR||isEx)return;try{await update(myRef2,{lastSeen:srvNow(),cEnc:enc(curColor,curP,isOff)});}catch{}},HB);
 }
 
+/* ── イベント ── */
 let isCmp=false;
 D.mi.addEventListener("compositionstart",()=>{isCmp=true;});
 D.mi.addEventListener("compositionend",()=>{isCmp=false;});
@@ -996,42 +998,42 @@ D.wuBtn.onclick=async()=>{
   if(!n){alert("名前を入力してください");return;}await upgrade(n,gTrip(n,k));
 };
 D.exBtn.onclick=()=>{
-  if(isOff || isW) { exitRoom(false); } 
-  else { if(confirm("退出しますか？あなたが最後の1人の場合、部屋の履歴（ログ）は即座に完全消去されます。")) exitRoom(true); }
+  if(isOff || isW) {
+    exitRoom(false);
+  } else {
+    if(confirm("退出しますか？あなたが最後の1人の場合、部屋の履歴（ログ）は即座に完全消去されます。")) exitRoom(true);
+  }
 };
 D.ivBtn.onclick=()=>{
   if(!rawR||!curP)return;
   const u=`${location.protocol}//${location.host}${location.pathname}?r=${encodeURIComponent(rawR)}&p=${encodeURIComponent(curP)}`;
-  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(u).then(()=>alert("招待リンクをコピーしました！")).catch(()=>{});}
-  else{const ta=document.createElement("textarea");ta.value=u;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);alert("招待リンクをコピーしました！");}
+  navigator.clipboard?.writeText(u).then(()=>alert("招待リンクをコピーしました！")).catch(()=>{
+    const ta=document.createElement("textarea");ta.value=u;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);alert("招待リンクをコピーしました！");
+  });
 };
 D.gdBtn.onclick=()=>D.gmod.classList.add("show");
-D.gcBtn.onclick=()=>D.gmod.classList.remove("show");
+D.gcBtn.onclick=()=>D.gmod.remove("show");
 D.gmod.onclick=e=>{if(e.target===D.gmod)D.gmod.classList.remove("show");};
 
-// 初期処理の呼び出し
+/* ── 起動 ── */
 (async()=>{
-  try {
-    const sp=new URLSearchParams(location.search),sr=sp.get("r"),spp=sp.get("p");
-    if(sr&&spp){
-      const n=localStorage.getItem("nz_ni")||"";
-      if(n){setBtns(false);try{await doJoin({target:sr,pass:spp,name:n,trip:gTrip(n,localStorage.getItem("nz_tk")||""),asW:false});}catch(e){showLobby(e.message);}setBtns(true);}
-      else{D.ri.value=sr;D.pi.value=spp;showLobby();}
-      return;
-    }
-    const sessStr=localStorage.getItem("nz_sess");
-    if(sessStr){
-      try{
-        const s=JSON.parse(sessStr);
-        if(s&&s.target&&s.pass&&!s.asW){
-          setBtns(false);await doJoin({target:s.target,pass:s.pass,name:s.name,trip:s.trip,asW:false,isAutoRejoin:true});setBtns(true);return;
-        }
-      }catch{localStorage.removeItem("nz_sess");}
-    }
-    showLobby();
-  } catch(e) {
-    showLobby("初期化エラーが発生しました。ルールを確認してください。");
+  const sp=new URLSearchParams(location.search),sr=sp.get("r"),spp=sp.get("p");
+  if(sr&&spp){
+    const n=localStorage.getItem("nz_ni")||"";
+    if(n){setBtns(false);try{await doJoin({target:sr,pass:spp,name:n,trip:gTrip(n,localStorage.getItem("nz_tk")||""),asW:false});}catch(e){showLobby(e.message);}setBtns(true);}
+    else{D.ri.value=sr;D.pi.value=spp;showLobby();}
+    return;
   }
+  const sessStr=localStorage.getItem("nz_sess");
+  if(sessStr){
+    try{
+      const s=JSON.parse(sessStr);
+      if(s&&s.target&&s.pass&&!s.asW){
+        setBtns(false);await doJoin({target:s.target,pass:s.pass,name:s.name,trip:s.trip,asW:false,isAutoRejoin:true});setBtns(true);return;
+      }
+    }catch{localStorage.removeItem("nz_sess");}
+  }
+  showLobby();
 })();
 </script>
 </body>

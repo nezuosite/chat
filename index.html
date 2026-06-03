@@ -45,9 +45,9 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 .lbi{display:flex;flex-direction:column;gap:6px;max-width:380px;width:100%;margin:0 auto}
 .ibox{background:rgba(79,70,229,.04);border:1px solid rgba(99,102,241,.15);border-radius:8px;padding:6px 10px;font-size:9.5px;color:var(--mu);line-height:1.4;flex-shrink:0}
 .ibox-title{font-size:10px;font-weight:900;color:#a5b4fc;margin-bottom:3px;display:flex;align-items:center;gap:4px}
-.ibox-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px}
-.ibox-item{background:rgba(15,23,42,.4);border:1px solid rgba(99,102,241,.1);border-radius:4px;padding:4px 6px;font-size:8.5px;line-height:1.3}
-.ibox-item b{display:block;color:#a5b4fc;font-size:9px;margin-bottom:1px}
+.ibox-grid {display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px}
+.ibox-grid .ibox-item{background:rgba(15,23,42,.4);border:1px solid rgba(99,102,241,.1);border-radius:4px;padding:4px 6px;font-size:8.5px;line-height:1.3}
+.ibox-grid .ibox-item b{display:block;color:#a5b4fc;font-size:9px;margin-bottom:1px}
 .abox{background:rgba(244,63,94,.04);border:1px solid rgba(244,63,94,.15);border-radius:4px;padding:4px 6px;font-size:8.5px;color:#fda4af;margin-top:3px;line-height:1.3}
 #lberr{background:var(--rg);border:1px solid rgba(244,63,94,.3);border-radius:4px;padding:4px;font-size:10px;color:#fda4af;display:none;white-space:pre-wrap;flex-shrink:0}
 .fg{display:flex;flex-direction:column;gap:2px;flex-shrink:0}
@@ -76,8 +76,8 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 #hdr{background:var(--sf);border-bottom:1px solid var(--bd);padding:6px 12px;flex-shrink:0}
 .hr{display:flex;align-items:center;gap:8px;height:32px}
 .rn{font-weight:800;font-size:14px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
-.pc{font-size:11px;font-weight:700;color:var(--mu);font-family:monospace}
-.hbs{display:flex;gap:4px;z-index:10;}
+.pcnt{font-size:11px;font-weight:700;color:var(--mu);font-family:monospace}
+.hbs {display:flex;gap:4px;z-index:10;}
 .hbs button{padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700;background:var(--bg);border:1px solid var(--bd);color:var(--tx);display:flex;align-items:center;gap:4px}
 .bclr-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
 .bx{border-color:rgba(244,63,94,.4)!important;color:#fda4af!important}
@@ -175,8 +175,7 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 .vc-wrap{width:100%;position:relative;margin-bottom:4px}
 .vc{
   width:100%;aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden;
-  position:relative;border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;
-}
+  position:relative;border:1px solid var(--bd);display:flex;align-items:center;justify-content:center}
 .vc-frame{width:100%;height:100%;border:none;display:block}
 .vc-badge{position:absolute;top:6px;left:6px;background:rgba(0,0,0,.75);color:#fff;font-size:8.5px;font-weight:800;padding:2px 5px;border-radius:4px;letter-spacing:.5px;z-index:2;pointer-events:none}
 
@@ -273,7 +272,7 @@ a{color:#818cf8}a:hover{text-decoration:underline}
     <div id="hdr">
       <div class="hr">
         <span class="rn" id="rdsp"></span>
-        <span class="pc" id="pcnt"></span>
+        <span class="pcnt" id="pcnt"></span>
         <div class="hbs">
           <button class="bclr" id="clrBtn" style="display:none"><span class="bclr-dot" id="clrDot"></span>色変更</button>
           <button class="bi" id="ivBtn" style="display:none">招待</button>
@@ -374,688 +373,852 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getDatabase, ref, push, onValue, set, update, remove, query, orderByChild, get, serverTimestamp, onDisconnect, runTransaction }
+import { getDatabase, ref, push, onValue, set, update, remove, query, orderByChild, get, serverTimestamp, onDisconnect }
   from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
-const db = getDatabase(initializeApp({
-  apiKey:"AIzaSyCsRidc0smUQDaBwq-oki5NzxSHx6-ljiw",
-  authDomain:"nezuochat.firebaseapp.com",
-  databaseURL:"https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId:"nezuochat",storageBucket:"nezuochat.appspot.com",
-  messagingSenderId:"154725381397",appId:"1:154725381397:web:8742ccd957e20cee8ce51c"
-}));
+const firebaseConfig = {
+  apiKey: "AIzaSyCsRidc0smUQDaBwq-oki5NzxSHx6-ljiw",
+  authDomain: "nezuochat.firebaseapp.com",
+  databaseURL: "https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "nezuochat", 
+  storageBucket: "nezuochat.appspot.com",
+  messagingSenderId: "154725381397", 
+  appId: "1:154725381397:web:8742ccd957e20cee8ce51c"
+};
 
-/* ── $ ── */
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
 const $ = id => document.getElementById(id);
 const D = {
-  splash:$("splash"),lobby:$("lobby"),lberr:$("lberr"),app:$("app"),
-  ni:$("ni"),tk:$("tk"),ri:$("ri"),pi:$("pi"),
-  tpv:$("tpv"),enBtn:$("enBtn"),ofBtn:$("ofBtn"),gnBtn:$("gnBtn"),
-  gdBtn:$("gdBtn"),gmod:$("gmod"),gcBtn:$("gcBtn"),
-  imod:$("imod"),imEl:$("imEl"),icBtn:$("icBtn"),imodWrap:$("imod-wrap"),
-  clrmod:$("clrmod"),clrPick2:$("clrPick2"),clrPrev:$("clrPrev"),
-  clrOk:$("clrOk"),clrCancel:$("clrCancel"),clrBtn:$("clrBtn"),clrDot:$("clrDot"),
-  hdr:$("hdr"),rdsp:$("rdsp"),pcnt:$("pcnt"),
-  pl:$("pl"),ivBtn:$("ivBtn"),exBtn:$("exBtn"),
-  wb:$("wb"),wbToggle:$("wb-toggle"),wbBody:$("wb-body"),wbArrow:$("wb-arrow"),wbHint:$("wb-hint"),
-  wni:$("wni"),wtk:$("wtk"),wtpv:$("wtpv"),wuBtn:$("wuBtn"),wClrPick:$("wClrPick"),
-  tl:$("tl"),tli:$("tl-inner"),ib:$("ib"),mi:$("mi"),sdBtn:$("sdBtn"),clrMsgBtn:$("clrMsgBtn"),
-  fn:$("fn"),tTBtn:$("tTBtn"),tBBtn:$("tBBtn"),lbClrPick:$("lbClrPick"),
-  pnav:$("pnav"),pFirst:$("pFirst"),pPrev:$("pPrev"),pNext:$("pNext"),pLast:$("pLast"),
-  pinfo:$("pinfo"),midisable:$("midisable"),toastCon:$("toast-container")
+  splash: $("splash"), lobby: $("lobby"), lberr: $("lberr"), app: $("app"),
+  ni: $("ni"), tk: $("tk"), ri: $("ri"), pi: $("pi"),
+  tpv: $("tpv"), enBtn: $("enBtn"), ofBtn: $("ofBtn"), gnBtn: $("gnBtn"),
+  gdBtn: $("gdBtn"), gmod: $("gmod"), gcBtn: $("gcBtn"),
+  imod: $("imod"), imEl: $("imEl"), icBtn: $("icBtn"), imodWrap: $("imod-wrap"),
+  clrmod: $("clrmod"), clrPick2: $("clrPick2"), clrPrev: $("clrPrev"),
+  clrOk: $("clrOk"), clrCancel: $("clrCancel"), clrBtn: $("clrBtn"), clrDot: $("clrDot"),
+  hdr: $("hdr"), rdsp: $("rdsp"), pcnt: $("pcnt"),
+  pl: $("pl"), ivBtn: $("ivBtn"), exBtn: $("exBtn"),
+  wb: $("wb"), wbToggle: $("wb-toggle"), wbBody: $("wb-body"), wbArrow: $("wb-arrow"), wbHint: $("wb-hint"),
+  wni: $("wni"), wtk: $("wtk"), wtpv: $("wtpv"), wuBtn: $("wuBtn"), wClrPick: $("wClrPick"),
+  tl: $("tl"), tli: $("tl-inner"), ib: $("ib"), mi: $("mi"), sdBtn: $("sdBtn"), clrMsgBtn: $("clrMsgBtn"),
+  fn: $("fn"), tTBtn: $("tTBtn"), tBBtn: $("tBBtn"), lbClrPick: $("lbClrPick"),
+  pnav: $("pnav"), pFirst: $("pFirst"), pPrev: $("pPrev"), pNext: $("pNext"), pLast: $("pLast"),
+  pinfo: $("pinfo"), midisable: $("midisable"), toastCon: $("toast-container")
 };
 
 /* ── トースト ── */
-function showToast(msg, type="warn", ms=4000){
-  const t=document.createElement("div");
-  t.className="toast"+(type==="info"?" info":"");
-  t.textContent=msg;
+function showToast(msg, type = "warn", ms = 4000) {
+  if (!D.toastCon) return;
+  const t = document.createElement("div");
+  t.className = `toast ${type === "info" ? "info" : ""}`;
+  t.textContent = msg;
   D.toastCon.appendChild(t);
-  setTimeout(()=>{
-    t.style.animation="toastOut .2s ease-in forwards";
-    setTimeout(()=>t.remove(),200);
+  setTimeout(() => {
+    t.style.animation = "toastOut .2s ease-in forwards";
+    setTimeout(() => t.remove(), 200);
   }, ms);
 }
 
 /* ── 入力バー状態 ── */
-D.updateInputBarState = function(enabled){
-  if(enabled && !isW){
-    D.midisable.style.display="none";
-    D.mi.disabled=false;D.sdBtn.disabled=false;
+D.updateInputBarState = function(enabled) {
+  if (enabled && !isW) {
+    D.midisable.style.display = "none";
+    D.mi.disabled = false; D.sdBtn.disabled = false;
   } else {
-    D.midisable.style.display="flex";
-    D.mi.disabled=true;D.sdBtn.disabled=true;
+    D.midisable.style.display = "flex";
+    D.mi.disabled = true; D.sdBtn.disabled = true;
   }
 };
 
 /* ── サーバー時刻オフセット ── */
-let _srvOff=0;
-onValue(ref(db,".info/serverTimeOffset"), s=>{_srvOff=s.val()||0;}, ()=>{_srvOff=0;});
-const srvNow=()=>Date.now()+_srvOff;
+let _srvOff = 0;
+onValue(ref(db, ".info/serverTimeOffset"), s => { _srvOff = s.val() || 0; }, () => { _srvOff = 0; });
+const srvNow = () => Date.now() + _srvOff;
 
-/* ── UID（永続） ── */
-const uid=(()=>{
-  let id=localStorage.getItem("nz_uid");
-  if(!id){id="u-"+Math.random().toString(36).slice(2,9)+"-"+Date.now().toString(36);localStorage.setItem("nz_uid",id);}
+/* ── UID ── */
+const uid = (() => {
+  let id = sessionStorage.getItem("nz_uid");
+  if (!id) {
+    id = "u-" + Math.random().toString(36).slice(2, 9) + "-" + Date.now().toString(36);
+    sessionStorage.setItem("nz_uid", id);
+  }
   return id;
 })();
 
 /* ── 暗号化 ── */
-const enc=(t,k,raw=false)=>{if(t==null)return"";if(raw)return t;return CryptoJS.AES.encrypt(t,k).toString();};
-const dec=(c,k,raw=false)=>{
-  if(!c)return null;if(raw)return c;
-  try{const b=CryptoJS.AES.decrypt(c,k);const s=b.toString(CryptoJS.enc.Utf8);return s||null;}
-  catch{return null;}
+const enc = (t, k, raw = false) => {
+  if (t == null) return "";
+  if (raw) return t;
+  return CryptoJS.AES.encrypt(t, k).toString();
 };
-const esc=t=>(t||"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-/* ── トリップ ── */
-const SALT="NEZU_ONETIME_SALT_2026_🔥";
-const gTrip=(n,k)=>{if(!n||!k)return"";try{return"◆"+CryptoJS.SHA256(`${n}:${SALT}:${k}`).toString().slice(0,6);}catch{return"";}};
+const dec = (c, k, raw = false) => {
+  if (!c) return null;
+  if (raw) return c;
+  try {
+    const b = CryptoJS.AES.decrypt(c, k);
+    const s = b.toString(CryptoJS.enc.Utf8);
+    return s || null;
+  } catch {
+    return null;
+  }
+};
 
-const updTP=()=>{const n=D.ni.value.replace(/[\s\u3000]+/g,"").trim(),k=D.tk.value.trim();if(n&&k){D.tpv.textContent=gTrip(n,k);D.tpv.style.display="inline-block";}else D.tpv.style.display="none";};
-const updWTP=()=>{const n=D.wni.value.replace(/[\s\u3000]+/g,"").trim(),k=D.wtk.value.trim();if(n&&k){D.wtpv.textContent=gTrip(n,k);D.wtpv.style.display="inline-block";}else D.wtpv.style.display="none";};
+const esc = t => (t || "").replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-/* ロビーと覗き見モードの連動 */
-D.ni.addEventListener("input",()=>{D.wni.value=D.ni.value;localStorage.setItem("nz_ni",D.ni.value);updTP();updWTP();});
-D.tk.addEventListener("input",()=>{D.wtk.value=D.tk.value;localStorage.setItem("nz_tk",D.tk.value);updTP();updWTP();});
-D.wni.addEventListener("input",()=>{D.ni.value=D.wni.value;localStorage.setItem("nz_ni",D.wni.value);updTP();updWTP();});
-D.wtk.addEventListener("input",()=>{D.tk.value=D.wtk.value;localStorage.setItem("nz_tk",D.wtk.value);updTP();updWTP();});
+/* ── トリップ (プレフィックスは◆) ── */
+const SALT = "NEZU_ONETIME_SALT_2026_🔥";
+const gTrip = (n, k) => {
+  if (!n || !k) return "";
+  try {
+    return "◆" + CryptoJS.SHA256(`${n}:${SALT}:${k}`).toString().slice(0, 6);
+  } catch {
+    return "";
+  }
+};
 
-/* 覗き見パネル折り畳み */
-let wbOpen=false;
-D.wbToggle.addEventListener("click",()=>{
-  wbOpen=!wbOpen;
-  D.wbBody.classList.toggle("open",wbOpen);
-  D.wbArrow.classList.toggle("open",wbOpen);
-  D.wbHint.textContent=wbOpen?"▲ 閉じる":"▼ タップして設定";
+const updTP = () => {
+  const n = D.ni.value.replace(/[\s\u3000]+/g, "").trim(), k = D.tk.value.trim();
+  if (n && k) {
+    D.tpv.textContent = gTrip(n, k);
+    D.tpv.style.display = "inline-block";
+  } else {
+    D.tpv.style.display = "none";
+  }
+};
+
+const updWTP = () => {
+  const n = D.wni.value.replace(/[\s\u3000]+/g, "").trim(), k = D.wtk.value.trim();
+  if (n && k) {
+    D.wtpv.textContent = gTrip(n, k);
+    D.wtpv.style.display = "inline-block";
+  } else {
+    D.wtpv.style.display = "none";
+  }
+};
+
+D.ni.addEventListener("input", () => { D.wni.value = D.ni.value; localStorage.setItem("nz_ni", D.ni.value); updTP(); updWTP(); });
+D.tk.addEventListener("input", () => { D.wtk.value = D.tk.value; localStorage.setItem("nz_tk", D.tk.value); updTP(); updWTP(); });
+D.wni.addEventListener("input", () => { D.ni.value = D.wni.value; localStorage.setItem("nz_ni", D.wni.value); updTP(); updWTP(); });
+D.wtk.addEventListener("input", () => { D.tk.value = D.wtk.value; localStorage.setItem("nz_tk", D.wtk.value); updTP(); updWTP(); });
+
+let wbOpen = false;
+D.wbToggle.addEventListener("click", () => {
+  wbOpen = !wbOpen;
+  D.wbBody.classList.toggle("open", wbOpen);
+  D.wbArrow.classList.toggle("open", wbOpen);
+  D.wbHint.textContent = wbOpen ? "▲ 閉じる" : "▼ タップして設定";
 });
 
 /* ── カラー ── */
-const COLORS=[
-  {v:"#94a3b8",n:"グレー"},{v:"#f1f5f9",n:"ホワイト"},{v:"#818cf8",n:"インディゴ"},{v:"#60a5fa",n:"ブルー"},
-  {v:"#34d399",n:"エメラルド"},{v:"#a3e635",n:"ライム"},{v:"#fbbf24",n:"アンバー"},{v:"#fb923c",n:"オレンジ"},
-  {v:"#f87171",n:"レッド"},{v:"#f472b6",n:"ピンク"},{v:"#c084fc",n:"パープル"},{v:"#67e8f9",n:"シアン"},
-  {v:"#4ade80",n:"グリーン"},{v:"#fde68a",n:"イエロー"},{v:"#fca5a5",n:"ライトレッド"},{v:"#a5b4fc",n:"ライトインディゴ"},
+const COLORS = [
+  { v: "#94a3b8", n: "グレー" }, { v: "#f1f5f9", n: "ホワイト" }, { v: "#818cf8", n: "インディゴ" }, { v: "#60a5fa", n: "ブルー" },
+  { v: "#34d399", n: "エメラルド" }, { v: "#a3e635", n: "ライム" }, { v: "#fbbf24", n: "アンバー" }, { v: "#fb923c", n: "オレンジ" },
+  { v: "#f87171", n: "レッド" }, { v: "#f472b6", n: "ピンク" }, { v: "#c084fc", n: "パープル" }, { v: "#67e8f9", n: "シアン" },
+  { v: "#4ade80", n: "グリーン" }, { v: "#fde68a", n: "イエロー" }, { v: "#fca5a5", n: "ライトレッド" }, { v: "#a5b4fc", n: "ライトインディゴ" },
 ];
-let curColor=localStorage.getItem("nz_color")||"#94a3b8";
-let tmpColor=curColor;
-function setGlobalColor(c){document.documentElement.style.setProperty("--usr-color",c);if(D.clrDot)D.clrDot.style.background=c;}
+let curColor = localStorage.getItem("nz_color") || "#94a3b8";
+let tmpColor = curColor;
+
+function setGlobalColor(c) {
+  document.documentElement.style.setProperty("--usr-color", c);
+  if (D.clrDot) D.clrDot.style.background = c;
+}
 setGlobalColor(curColor);
 
-function syncPickers(v){
-  [D.lbClrPick,D.wClrPick].forEach(con=>{if(!con)return;con.querySelectorAll("button").forEach(b=>b.classList.toggle("sel",b.dataset.color===v));});
+function syncPickers(v) {
+  [D.lbClrPick, D.wClrPick].forEach(con => {
+    if (!con) return;
+    con.querySelectorAll("button").forEach(b => b.classList.toggle("sel", b.dataset.color === v));
+  });
 }
-function buildPicker(con,sel,cls,onChange){
-  if(!con)return;con.innerHTML="";
-  COLORS.forEach(({v,n})=>{
-    const b=document.createElement("button");
-    b.className=cls+(v===sel?" sel":"");b.style.background=v;b.title=n;b.dataset.color=v;
-    b.addEventListener("click",()=>onChange(v));
+
+function buildPicker(con, sel, cls, onChange) {
+  if (!con) return;
+  con.innerHTML = "";
+  COLORS.forEach(({ v, n }) => {
+    const b = document.createElement("button");
+    b.className = cls + (v === sel ? " sel" : "");
+    b.style.background = v; b.title = n; b.dataset.color = v;
+    b.addEventListener("click", () => onChange(v));
     con.appendChild(b);
   });
 }
-const onColorSelect=v=>{curColor=v;setGlobalColor(v);localStorage.setItem("nz_color",v);syncPickers(v);};
-buildPicker(D.lbClrPick,curColor,"clrc",onColorSelect);
-buildPicker(D.wClrPick,curColor,"wclrc",onColorSelect);
 
-D.clrBtn.addEventListener("click",()=>{
-  tmpColor=curColor;
-  buildPicker(D.clrPick2,curColor,"clrc2",v=>{tmpColor=v;D.clrPrev.innerHTML=`<span style="color:${v}">■ この色で名前と吹き出し枠が表示されます</span>`;});
+const onColorSelect = v => { curColor = v; setGlobalColor(v); localStorage.setItem("nz_color", v); syncPickers(v); };
+buildPicker(D.lbClrPick, curColor, "clrc", onColorSelect);
+buildPicker(D.wClrPick, curColor, "wclrc", onColorSelect);
+
+D.clrBtn.addEventListener("click", () => {
+  tmpColor = curColor;
+  buildPicker(D.clrPick2, curColor, "clrc2", v => {
+    tmpColor = v;
+    D.clrPrev.innerHTML = `<span style="color:${v}">■ この色で名前と吹き出し枠が表示されます</span>`;
+  });
   D.clrmod.classList.add("show");
 });
-D.clrOk.addEventListener("click",async()=>{
-  curColor=tmpColor;setGlobalColor(curColor);localStorage.setItem("nz_color",curColor);syncPickers(curColor);
-  if(curR&&!isW){try{await update(ref(db,`presence/${curR}/${uid}`),{cEnc:enc(curColor,curP,isOff)});}catch{}}
+
+D.clrOk.addEventListener("click", async () => {
+  curColor = tmpColor; setGlobalColor(curColor); localStorage.setItem("nz_color", curColor); syncPickers(curColor);
+  if (curR && !isW) {
+    try { await update(ref(db, `presence/${curR}/${uid}`), { cEnc: enc(curColor, curP, isOff) }); } catch {}
+  }
   D.clrmod.classList.remove("show");
 });
-D.clrCancel.addEventListener("click",()=>D.clrmod.classList.remove("show"));
+D.clrCancel.addEventListener("click", () => D.clrmod.classList.remove("show"));
 
 /* ── フォーマット ── */
-const fDT=ts=>{if(!ts)return"";const d=new Date(ts);return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}`;};
-const fmtSz=b=>{if(!b||b<=0)return"";if(b<1024)return b+"B";if(b<1048576)return(b/1024).toFixed(1)+"KB";return(b/1048576).toFixed(1)+"MB";};
+const fDT = ts => {
+  if (!ts) return "";
+  const d = new Date(ts);
+  return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`;
+};
+const fmtSz = b => {
+  if (!b || b <= 0) return "";
+  if (b < 1024) return b + "B";
+  if (b < 1048576) return (b / 1024).toFixed(1) + "KB";
+  return (b / 1048576).toFixed(1) + "MB";
+};
 
 /* ── 定数 ── */
-const OFF_H=CryptoJS.SHA256("公式部屋").toString();
-const OFF_P="official_public_pass";
-const ROOM_TO=30*60*1000;   // 30分
-const HB=10000;             // ハートビートを10秒に縮小して精度向上
-const PAGE_SIZE=50;
+const OFF_H = CryptoJS.SHA256("公式部屋").toString();
+const OFF_P = "official_public_pass";
+const ROOM_TO = 30 * 60 * 1000;
+const HB = 10000;
+const PAGE_SIZE = 50;
 
-let curR=null,curP=null,curN=null,curT=null,rawR=null;
-let isOff=false,isW=false,isEx=false;
-let _cOff=null,_pOff=null,_rOff=null;
-let hbT=null,toT=null;
-let logArray=[],currentPage=1,isLiveMode=true;
+let curR = null, curP = null, curN = null, curT = null, rawR = null;
+let isOff = false, isW = false, isEx = false;
+let _cOff = null, _pOff = null, _rOff = null, _conOff = null;
+let hbT = null, toT = null;
+let logArray = [], currentPage = 1, isLiveMode = true;
+let _isConnected = false;
 
-const hideSplash=()=>{const s=D.splash;if(!s)return;s.style.opacity="0";s.style.transition="opacity .25s";setTimeout(()=>s.remove(),260);};
+const hideSplash = () => {
+  const s = D.splash; if (!s) return;
+  s.style.opacity = "0"; s.style.transition = "opacity .25s";
+  setTimeout(() => s.remove(), 260);
+};
 
 /* ── 画像モーダル ── */
-let imgScale=1,imgX=0,imgY=0,imgDragging=false,imgDragSx=0,imgDragSy=0,imgDragIx=0,imgDragIy=0;
-let imgPinchDist=0,imgLastTap=0,imodTouches=[];
-function resetImgTransform(){imgScale=1;imgX=0;imgY=0;applyImgTransform();}
-function applyImgTransform(){D.imEl.style.transform=`translate(${imgX}px,${imgY}px) scale(${imgScale})`;}
-function clampImg(){if(imgScale<=1){imgX=0;imgY=0;return;}const sw=D.imEl.offsetWidth*imgScale,sh=D.imEl.offsetHeight*imgScale;const mx=Math.max(0,(sw-window.innerWidth)/2),my=Math.max(0,(sh-window.innerHeight)/2);imgX=Math.max(-mx,Math.min(mx,imgX));imgY=Math.max(-my,Math.min(my,imgY));}
-window.openImg=src=>{D.imEl.src=src;resetImgTransform();D.imod.classList.add("show");};
-D.icBtn.onclick=()=>{D.imod.classList.remove("show");setTimeout(()=>{D.imEl.src="";resetImgTransform();},200);};
-D.imod.addEventListener("wheel",e=>{e.preventDefault();imgScale=Math.min(8,Math.max(1,imgScale*(e.deltaY>0?.85:1.18)));clampImg();applyImgTransform();},{passive:false});
-D.imod.addEventListener("mousedown",e=>{if(e.target===D.icBtn)return;imgDragging=true;imgDragSx=e.clientX;imgDragSy=e.clientY;imgDragIx=imgX;imgDragIy=imgY;D.imod.style.cursor=imgScale>1?"grabbing":"default";e.preventDefault();});
-document.addEventListener("mousemove",e=>{if(!imgDragging)return;if(imgScale>1){imgX=imgDragIx+(e.clientX-imgDragSx);imgY=imgDragIy+(e.clientY-imgDragSy);clampImg();applyImgTransform();}});
-document.addEventListener("mouseup",e=>{if(!imgDragging)return;imgDragging=false;D.imod.style.cursor="default";if(Math.abs(e.clientX-imgDragSx)+Math.abs(e.clientY-imgDragSy)<5&&imgScale<=1&&(e.target===D.imod||e.target===D.imodWrap))D.icBtn.click();});
-D.imod.addEventListener("touchstart",e=>{if(e.target===D.icBtn)return;imodTouches=[...e.touches];if(imodTouches.length===2){imgPinchDist=Math.hypot(imodTouches[0].clientX-imodTouches[1].clientX,imodTouches[0].clientY-imodTouches[1].clientY);}else if(imodTouches.length===1){imgDragging=true;imgDragSx=imodTouches[0].clientX;imgDragSy=imodTouches[0].clientY;imgDragIx=imgX;imgDragIy=imgY;}const n=Date.now();if(n-imgLastTap<280&&imodTouches.length===1){if(imgScale>1)resetImgTransform();else D.icBtn.click();}imgLastTap=n;},{passive:true});
-D.imod.addEventListener("touchmove",e=>{if(e.touches.length===2){e.preventDefault();imgDragging=false;const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);imgScale=Math.min(8,Math.max(1,imgScale*(d/imgPinchDist)));imgPinchDist=d;clampImg();applyImgTransform();}else if(e.touches.length===1&&imgDragging&&imgScale>1){e.preventDefault();imgX=imgDragIx+(e.touches[0].clientX-imgDragSx);imgY=imgDragIy+(e.touches[0].clientY-imgDragSy);clampImg();applyImgTransform();}},{passive:false});
-D.imod.addEventListener("touchend",()=>{imgDragging=false;imodTouches=[];},{passive:true});
+let imgScale = 1, imgX = 0, imgY = 0, imgDragging = false, imgDragSx = 0, imgDragSy = 0, imgDragIx = 0, imgDragIy = 0;
+let imgPinchDist = 0, imgLastTap = 0, imodTouches = [];
 
-/* ── メディア ── */
-let activeAudio=null;
-const stopActiveAudio=()=>{if(activeAudio){try{activeAudio.pause();}catch{}activeAudio=null;}};
+function resetImgTransform() { imgScale = 1; imgX = 0; imgY = 0; applyImgTransform(); }
+function applyImgTransform() { D.imEl.style.transform = `translate(${imgX}px,${imgY}px) scale(${imgScale})`; }
+function clampImg() {
+  if (imgScale <= 1) { imgX = 0; imgY = 0; return; }
+  const sw = D.imEl.offsetWidth * imgScale, sh = D.imEl.offsetHeight * imgScale;
+  const mx = Math.max(0, (sw - window.innerWidth) / 2), my = Math.max(0, (sh - window.innerHeight) / 2);
+  imgX = Math.max(-mx, Math.min(mx, imgX)); imgY = Math.max(-my, Math.min(my, imgY));
+}
 
-const YR=/(?:https?:\/\/)?(?:(?:www\.|m\.|music\.)?youtube\.com\/(?:watch\?(?:[^#\s]*?&)*?v=|embed\/|v\/|shorts\/|live\/)([A-Za-z0-9_-]{11})|youtu\.be\/([A-Za-z0-9_-]{11}))/i;
-const NR=/(?:https?:\/\/)?(?:(?:sp\.|www\.)?nicovideo\.jp\/watch\/|nico\.ms\/)((?:sm|nm|so|lv|co|ch)?\d+)/i;
-const TKR=/(?:https?:\/\/)?(?:[a-z0-9-]+\.)?tiktok\.com\/[^\s]*/i;
-const AR=/\.(mp3|wav|aac|m4a|ogg|flac)(\?.*)?$/i;
-const IR=/\.(jpe?g|gif|png|webp|bmp|svg)(\?.*)?$/i;
-const UR=/(https?:\/\/[^\s\n<>"]+)/gi;
+window.openImg = src => { D.imEl.src = src; resetImgTransform(); D.imod.classList.add("show"); };
+D.icBtn.onclick = () => { D.imod.classList.remove("show"); setTimeout(() => { D.imEl.src = ""; resetImgTransform(); }, 200); };
 
-let vcCnt=0;
-function bVideoCard(type,embedSrc,label){
-  const id="vc"+(++vcCnt);
+D.imod.addEventListener("wheel", e => {
+  e.preventDefault();
+  imgScale = Math.min(8, Math.max(1, imgScale * (e.deltaY > 0 ? .85 : 1.18)));
+  clampImg(); applyImgTransform();
+}, { passive: false });
+
+D.imod.addEventListener("mousedown", e => {
+  if (e.target === D.icBtn) return;
+  imgDragging = true; imgDragSx = e.clientX; imgDragSy = e.clientY; imgDragIx = imgX; imgDragIy = imgY;
+  D.imod.style.cursor = imgScale > 1 ? "grabbing" : "default"; e.preventDefault();
+});
+
+document.addEventListener("mousemove", e => {
+  if (!imgDragging) return;
+  if (imgScale > 1) {
+    imgX = imgDragIx + (e.clientX - imgDragSx); imgY = imgDragIy + (e.clientY - imgDragSy);
+    clampImg(); applyImgTransform();
+  }
+});
+
+document.addEventListener("mouseup", e => {
+  if (!imgDragging) return;
+  imgDragging = false; D.imod.style.cursor = "default";
+  if (Math.abs(e.clientX - imgDragSx) + Math.abs(e.clientY - imgDragSy) < 5 && imgScale <= 1 && (e.target === D.imod || e.target === D.imodWrap)) {
+    D.icBtn.click();
+  }
+});
+
+D.imod.addEventListener("touchstart", e => {
+  if (e.target === D.icBtn) return;
+  imodTouches = [...e.touches];
+  if (imodTouches.length === 2) {
+    imgPinchDist = Math.hypot(imodTouches[0].clientX - imodTouches[1].clientX, imodTouches[0].clientY - imodTouches[1].clientY);
+  } else if (imodTouches.length === 1) {
+    imgDragging = true; imgDragSx = imodTouches[0].clientX; imgDragSy = imodTouches[0].clientY; imgDragIx = imgX; imgDragIy = imgY;
+  }
+  const n = Date.now();
+  if (n - imgLastTap < 280 && imodTouches.length === 1) {
+    if (imgScale > 1) resetImgTransform(); else D.icBtn.click();
+  }
+  imgLastTap = n;
+}, { passive: true });
+
+D.imod.addEventListener("touchmove", e => {
+  if (e.touches.length === 2) {
+    e.preventDefault(); imgDragging = false;
+    const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    imgScale = Math.min(8, Math.max(1, imgScale * (d / imgPinchDist))); imgPinchDist = d;
+    clampImg(); applyImgTransform();
+  } else if (e.touches.length === 1 && imgDragging && imgScale > 1) {
+    e.preventDefault();
+    imgX = imgDragIx + (e.touches[0].clientX - imgDragSx); imgY = imgDragIy + (e.touches[0].clientY - imgDragSy);
+    clampImg(); applyImgTransform();
+  }
+}, { passive: false });
+D.imod.addEventListener("touchend", () => { imgDragging = false; imodTouches = []; }, { passive: true });
+
+/* ── メディア解析 ── */
+let activeAudio = null;
+const stopActiveAudio = () => { if (activeAudio) { try { activeAudio.pause(); } catch {} activeAudio = null; } };
+
+const YR = /(?:https?:\/\/)?(?:(?:www\.|m\.|music\.)?youtube\.com\/(?:watch\?(?:[^#\s]*?&)*?v=|embed\/|v\/|shorts\/|live\/)([A-Za-z0-9_-]{11})|youtu\.be\/([A-Za-z0-9_-]{11}))/i;
+const NR = /(?:https?:\/\/)?(?:(?:sp\.|www\.)?nicovideo\.jp\/watch\/|nico\.ms\/)((?:sm|nm|so|lv|co|ch)?\d+)/i;
+const TKR = /(?:https?:\/\/)?(?:[a-z0-9-]+\.)?tiktok\.com\/[^\s]*/i;
+const AR = /\.(mp3|wav|aac|m4a|ogg|flac)(\?.*)?$/i;
+const IR = /\.(jpe?g|gif|png|webp|bmp|svg)(\?.*)?$/i;
+const UR = /(https?:\/\/[^\s\n<>"]+)/gi;
+
+let vcCnt = 0;
+function bVideoCard(type, embedSrc, label) {
+  const id = "vc" + (++vcCnt);
   return `<div class="vc-wrap"><div class="vc ${type}" id="${id}"><span class="vc-badge">${esc(label)}</span><iframe class="vc-frame" src="${esc(embedSrc)}" allow="autoplay;encrypted-media;fullscreen" allowfullscreen loading="lazy"></iframe></div></div>`;
 }
 
-function bTikTokLinkCard(url){
-  const su=esc(url);
-  const disp=url.length>50?url.slice(0,50)+"…":url;
-  return `<a class="tk-card" href="${su}" target="_blank" rel="noopener noreferrer"><div class="tk-card-icon"><svg viewBox="0 0 32 32" fill="none"><path d="M21.5 4h-3.7v16.2a3.8 3.8 0 01-3.8 3.6 3.8 3.8 0 01-3.8-3.8 3.8 3.8 0 013.8-3.8c.37 0 .73.06 1.06.16V12.5a7.7 7.7 0 00-1.06-.07 7.6 7.6 0 00-7.6 7.6 7.6 7.6 0 007.6 7.6 7.6 7.6 0 007.6-7.6V12.2a11.1 11.1 0 006.5 2.1V10.6a7.4 7.4 0 01-6.5-6.6z" fill="#fff"/></svg></div><div class="tk-card-body"><span class="tk-card-label">TikTok</span><span class="tk-card-url">${esc(disp)}</span></div><span class="tk-card-arrow">↗</span></a>`;
+function bTikTokLinkCard(url) {
+  const su = esc(url);
+  const disp = url.length > 50 ? url.slice(0, 50) + "…" : url;
+  return `<a class="tk-card" href="${su}" target="_blank" rel="noopener noreferrer"><div class="tk-card-icon"><svg viewBox="0 0 32 32" fill="none"><path d="M21.5 4h-3.7v16.2a3.8 3.8 0 01-3.8 3.6 3.8 3.8 0 01-3.8-3.8 3.8 3.8 0 013.8-3.8c.37 0 .73.06 1.06.16V12.5a7.7 7.7 0 00-1.06-.07 7.6 7.6 0 00-7.6 7.6 7.6 0 007.6 7.6 7.6 0 007.6-7.6V12.2a11.1 11.1 0 006.5 2.1V10.6a7.4 7.4 0 01-6.5-6.6z" fill="#fff"/></svg></div><div class="tk-card-body"><span class="tk-card-label">TikTok</span><span class="tk-card-url">${esc(disp)}</span></div><span class="tk-card-arrow">↗</span></a>`;
 }
 
-let aCnt=0;
-const pIco=()=>`<svg viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>`;
-const paIco=()=>`<svg viewBox="0 0 24 24" fill="#fff"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
-const dlSvg=`<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>`;
+let aCnt = 0;
+const pIco = () => `<svg viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>`;
+const paIco = () => `<svg viewBox="0 0 24 24" fill="#fff"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+const dlSvg = `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>`;
 
-function bAudio(url){
-  const id="au"+(++aCnt),wid="aw"+id,su=esc(url);
-  const fname=decodeURIComponent(url.split("/").pop().split("?")[0]||"audio");
-  requestAnimationFrame(()=>{
-    setTimeout(async()=>{
-      const aw=$(wid),au=$(id);if(!aw||!au)return;
-      const pb=aw.querySelector(".apb"),sk=aw.querySelector(".asktype"),tm=aw.querySelector(".atm");
-      const dlBtn=aw.querySelector(".aw-dl"),actionsArea=aw.querySelector(".aw-actions");
-      const fA=s=>isNaN(s)||!isFinite(s)?"--:--":`${String(Math.floor(s/60)).padStart(2,"0")}:${String(Math.floor(s%60)).padStart(2,"0")}`;
-      try{const h=await fetch(url,{method:"HEAD"});const cl=h.headers.get("content-length");if(cl&&parseInt(cl)>0){const sz=document.createElement("span");sz.className="aw-size-badge";sz.textContent=fmtSz(parseInt(cl));actionsArea.appendChild(sz);}}catch{}
-      au.onplay=()=>{stopActiveAudio();activeAudio=au;pb.innerHTML=paIco();};
-      au.onpause=au.onended=()=>{pb.innerHTML=pIco();if(activeAudio===au)activeAudio=null;};
-      au.ontimeupdate=()=>{if(!au.duration)return;sk.value=(au.currentTime/au.duration)*100;tm.textContent=`${fA(au.currentTime)} / ${fA(au.duration)}`;};
-      au.onloadedmetadata=()=>{tm.textContent=`--:-- / ${fA(au.duration)}`;};
-      pb.onclick=()=>{if(au.paused)au.play().catch(()=>{});else au.pause();};
-      sk.oninput=()=>{if(au.duration)au.currentTime=(sk.value/100)*au.duration;};
-      dlBtn.onclick=()=>{if(confirm(`ダウンロードしますか？\n${fname}`)){const a=document.createElement("a");a.href=url;a.download=fname;a.target="_blank";a.click();}};
-    },50);
+function bAudio(url) {
+  const id = "au" + (++aCnt), wid = "aw" + id, su = esc(url);
+  const fname = decodeURIComponent(url.split("/").pop().split("?")[0] || "audio");
+  requestAnimationFrame(() => {
+    setTimeout(async () => {
+      const aw = $(wid), au = $(id); if (!aw || !au) return;
+      const pb = aw.querySelector(".apb"), sk = aw.querySelector(".asktype"), tm = aw.querySelector(".atm");
+      const actionsArea = aw.querySelector(".aw-actions");
+      const fA = s => isNaN(s) || !isFinite(s) ? "--:--" : `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+      try {
+        const h = await fetch(url, { method: "HEAD" });
+        const cl = h.headers.get("content-length");
+        if (cl && parseInt(cl) > 0 && actionsArea) {
+          const sz = document.createElement("span"); sz.className = "aw-size-badge"; sz.textContent = fmtSz(parseInt(cl));
+          actionsArea.appendChild(sz);
+        }
+      } catch {}
+      au.onplay = () => { stopActiveAudio(); activeAudio = au; if (pb) pb.innerHTML = paIco(); };
+      au.onpause = au.onended = () => { if (pb) pb.innerHTML = pIco(); if (activeAudio === au) activeAudio = null; };
+      au.ontimeupdate = () => { if (!au.duration || !sk || !tm) return; sk.value = (au.currentTime / au.duration) * 100; tm.textContent = `${fA(au.currentTime)} / ${fA(au.duration)}`; };
+      au.onloadedmetadata = () => { if (tm) tm.textContent = `--:-- / ${fA(au.duration)}`; };
+      if (pb) pb.onclick = () => { if (au.paused) au.play().catch(() => {}); else au.pause(); };
+      if (sk) sk.oninput = () => { if (au.duration) au.currentTime = (sk.value / 100) * au.duration; };
+      const dlBtn = aw.querySelector(".aw-dl");
+      if (dlBtn) dlBtn.onclick = () => {
+        if (confirm(`ダウンロードしますか？\n${fname}`)) {
+          const a = document.createElement("a"); a.href = url; a.download = fname; a.target = "_blank"; a.click();
+        }
+      };
+    }, 50);
   });
-  return(
-    `<div class="aw" id="${wid}">`+
-    `<audio id="${id}" src="${su}" preload="metadata"></audio>`+
-    `<div class="aw-left"><div class="apb">${pIco()}</div></div>`+
-    `<div class="aw-right">`+
-    `<div class="aw-info"><span class="aw-badge">AUDIO</span><span class="aw-name" title="${su}">${esc(fname)}</span></div>`+
-    `<div class="aw-seek-row"><input type="range" class="asktype" value="0" min="0" max="100"><span class="atm">--:-- / --:--</span></div>`+
-    `<div class="aw-actions"><button class="aw-dl">${dlSvg}ダウンロード</button></div>`+
+  return (
+    `<div class="aw" id="${wid}">` +
+    `<audio id="${id}" src="${su}" preload="metadata"></audio>` +
+    `<div class="aw-left"><div class="apb">${pIco()}</div></div>` +
+    `<div class="aw-right">` +
+    `<div class="aw-info"><span class="aw-badge">AUDIO</span><span class="aw-name" title="${su}">${esc(fname)}</span></div>` +
+    `<div class="aw-seek-row"><input type="range" class="asktype" value="0" min="0" max="100"><span class="atm">--:-- / --:--</span></div>` +
+    `<div class="aw-actions"><button class="aw-dl">${dlSvg}ダウンロード</button></div>` +
     `</div></div>`
   );
 }
 
-function _parseSegs(txt){
-  const norm=txt.replace(/[\u3000]/g," ");
-  const parts=[];let last=0,m;UR.lastIndex=0;
-  while((m=UR.exec(norm))!==null){
-    if(m.index>last)parts.push({t:"t",v:norm.slice(last,m.index)});
-    parts.push({t:"u",v:m[0]});last=m.index+m[0].length;
+function _parseSegs(txt) {
+  const norm = txt.replace(/[\u3000]/g, " ");
+  const parts = []; let last = 0, m; UR.lastIndex = 0;
+  while ((m = UR.exec(norm)) !== null) {
+    if (m.index > last) parts.push({ t: "t", v: norm.slice(last, m.index) });
+    parts.push({ t: "u", v: m[0] }); last = m.index + m[0].length;
   }
-  if(last<norm.length)parts.push({t:"t",v:norm.slice(last)});
+  if (last < norm.length) parts.push({ t: "t", v: norm.slice(last) });
 
-  const segs=[];
-  for(let i=0;i<parts.length;i++){
-    const p=parts[i];
-    if(p.t==="t"){
-      let v=p.v;
-      if(i<parts.length-1&&parts[i+1].t==="u")v=v.replace(/[ \t]+$/,"");
-      if(i>0&&parts[i-1].t==="u")v=v.replace(/^[ \t]+/,"");
-      let h=esc(v).replace(/\n/g,"<br>").replace(/(<br>){3,}/g,"<br><br>");
-      if(h)segs.push({type:"text",html:h});
-    }else{
-      const url=p.v,su=esc(url),cl=url.replace(/[?#].*$/,"");
-      const ym=url.match(YR);
-      if(ym){segs.push({type:"media",html:bVideoCard("yt",`https://www.youtube.com/embed/${ym[1]||ym[2]}?playsinline=1`,"YouTube")});continue;}
-      const nm=url.match(NR);
-      if(nm){segs.push({type:"media",html:bVideoCard("nc",`https://embed.nicovideo.jp/watch/${nm[1]}?noscript=1`,"ニコニコ動画")});continue;}
-      if(TKR.test(url)){segs.push({type:"media",html:bTikTokLinkCard(url)});continue;}
-      if(AR.test(cl)){segs.push({type:"media",html:bAudio(url)});continue;}
-      if(IR.test(cl)||/^data:image\//i.test(url)){segs.push({type:"media",html:`<img class="img-block" src="${su}" alt="" loading="lazy" onclick="window.openImg('${su}')">`});continue;}
-      segs.push({type:"text",html:`<a href="${su}" target="_blank" rel="noopener noreferrer">${su}</a>`});
+  const segs = [];
+  for (let i = 0; i < parts.length; i++) {
+    const p = parts[i];
+    if (p.t === "t") {
+      let v = p.v;
+      if (i < parts.length - 1 && parts[i + 1].t === "u") v = v.replace(/[ \t]+$/, "");
+      if (i > 0 && parts[i - 1].t === "u") v = v.replace(/^[ \t]+/, "");
+      let h = esc(v).replace(/\n/g, "<br>").replace(/(<br>){3,}/g, "<br><br>");
+      if (h) segs.push({ type: "text", html: h });
+    } else {
+      const url = p.v, su = esc(url), cl = url.replace(/[?#].*$/, "");
+      const ym = url.match(YR);
+      if (ym) { segs.push({ type: "media", html: bVideoCard("yt", `https://www.youtube.com/embed/${ym[1] || ym[2]}?playsinline=1`, "YouTube") }); continue; }
+      const nm = url.match(NR);
+      if (nm) { segs.push({ type: "media", html: bVideoCard("nc", `https://embed.nicovideo.jp/watch/${nm[1]}?noscript=1`, "ニコニコ動画") }); continue; }
+      if (TKR.test(url)) { segs.push({ type: "media", html: bTikTokLinkCard(url) }); continue; }
+      if (AR.test(cl)) { segs.push({ type: "media", html: bAudio(url) }); continue; }
+      if (IR.test(cl) || /^data:image\//i.test(url)) { segs.push({ type: "media", html: `<img class="img-block" src="${su}" alt="" loading="lazy" onclick="window.openImg('${su}')">` }); continue; }
+      segs.push({ type: "text", html: `<a href="${su}" target="_blank" rel="noopener noreferrer">${su}</a>` });
     }
   }
   return segs;
 }
 
-function parseTxtSplit(txt){
-  const segs=_parseSegs(txt),textParts=[],mediaParts=[];
-  for(const s of segs){
-    if(s.type==="media")mediaParts.push(`<div class="media-wrap">${s.html}</div>`);
+function parseTxtSplit(txt) {
+  const segs = _parseSegs(txt), textParts = [], mediaParts = [];
+  for (const s of segs) {
+    if (s.type === "media") mediaParts.push(`<div class="media-wrap">${s.html}</div>`);
     else textParts.push(s.html);
   }
-  return{textHtml:textParts.join("<br>").replace(/^(<br>)+|(<br>)+$/g,""),mediaHtml:mediaParts.join("")};
+  return { textHtml: textParts.join("<br>").replace(/^(<br>)+|(<br>)+$/g, ""), mediaHtml: mediaParts.join("") };
 }
 
 /* ── メッセージ要素生成 ── */
-function cMsg(m){
-  const txt=dec(m.text,curP,isOff);if(!txt)return null;
-  const d=document.createElement("div");d.className="mw";d.dataset.ts=m.time||0;
-  if(m.type==="sys"){
-    d.style.alignItems="center";
-    let cls="sm sm-leave";
-    if(txt.includes("入室"))cls="sm sm-join";
-    else if(txt.includes("自動退室")||txt.includes("自動退出")||txt.includes("自動消去")||txt.includes("タイムアウト"))cls="sm sm-auto";
-    d.innerHTML=`<div class="${cls}">${esc(txt)}<span style="color:var(--m2);font-size:9px;margin-left:6px">${fDT(m.time)}</span></div>`;
-  }else{
-    const sN=dec(m.nEnc,curP,isOff)||"???",sT=dec(m.tEnc,curP,isOff)||"",sC=dec(m.cEnc,curP,isOff)||"#94a3b8";
-    const{textHtml,mediaHtml}=parseTxtSplit(txt);
-    let inner=`<div class="mm"><span style="color:${esc(sC)};font-weight:700">${esc(sN)}</span><span style="color:var(--m2);font-family:monospace">${esc(sT)}</span><span class="ts">${fDT(m.time)}</span></div>`;
-    if(textHtml)inner+=`<div class="mb" style="border-color:${esc(sC)}">${textHtml}</div>`;
-    if(mediaHtml)inner+=mediaHtml;
-    d.innerHTML=inner;
+function cMsg(m) {
+  const txt = dec(m.text, curP, isOff); if (!txt) return null;
+  const d = document.createElement("div"); d.className = "mw"; d.dataset.ts = m.time || 0;
+  if (m.type === "sys") {
+    d.style.alignItems = "center";
+    let cls = "sm sm-leave";
+    if (txt.includes("入室")) cls = "sm sm-join";
+    else if (txt.includes("自動退室") || txt.includes("自動消去")) cls = "sm sm-auto";
+    d.innerHTML = `<div class="${cls}">${esc(txt)}<span style="color:var(--m2);font-size:9px;margin-left:6px">${fDT(m.time)}</span></div>`;
+  } else {
+    const sN = dec(m.nEnc, curP, isOff) || "???", sT = dec(m.tEnc, curP, isOff) || "", sC = dec(m.cEnc, curP, isOff) || "#94a3b8";
+    const { textHtml, mediaHtml } = parseTxtSplit(txt);
+    let inner = `<div class="mm"><span style="color:${esc(sC)};font-weight:700">${esc(sN)}</span><span style="color:var(--m2);font-family:monospace">${esc(sT)}</span><span class="ts">${fDT(m.time)}</span></div>`;
+    if (textHtml) inner += `<div class="mb" style="border-color:${esc(sC)}">${textHtml}</div>`;
+    if (mediaHtml) inner += mediaHtml;
+    d.innerHTML = inner;
   }
   return d;
 }
 
 /* ── ページネーション ── */
-function renderPage(pageNumber){
-  stopActiveAudio();D.tli.innerHTML="";
-  const total=logArray.length,totalPages=Math.ceil(total/PAGE_SIZE)||1;
-  if(pageNumber<1)pageNumber=1;if(pageNumber>totalPages)pageNumber=totalPages;
-  currentPage=pageNumber;isLiveMode=(currentPage===totalPages);
+function renderPage(pageNumber) {
+  stopActiveAudio(); D.tli.innerHTML = "";
+  const total = logArray.length, totalPages = Math.ceil(total / PAGE_SIZE) || 1;
+  if (pageNumber < 1) pageNumber = 1; if (pageNumber > totalPages) pageNumber = totalPages;
+  currentPage = pageNumber; isLiveMode = (currentPage === totalPages);
   D.updateInputBarState(isLiveMode);
-  const si=(currentPage-1)*PAGE_SIZE,ei=Math.min(si+PAGE_SIZE,total);
-  logArray.slice(si,ei).forEach(m=>{const el=cMsg(m);if(el)D.tli.appendChild(el);});
-  D.pinfo.textContent=`${currentPage} / ${totalPages}`;
-  D.pFirst.disabled=(currentPage===1);D.pPrev.disabled=(currentPage===1);
-  D.pNext.disabled=(currentPage===totalPages);D.pLast.disabled=isLiveMode;
-  requestAnimationFrame(()=>setTimeout(()=>{if(isLiveMode)D.tl.scrollTop=D.tl.scrollHeight;else D.tl.scrollTop=0;updFnPos();},50));
+  const si = (currentPage - 1) * PAGE_SIZE, ei = Math.min(si + PAGE_SIZE, total);
+  logArray.slice(si, ei).forEach(m => { const el = cMsg(m); if (el) D.tli.appendChild(el); });
+  D.pinfo.textContent = `${currentPage} / ${totalPages}`;
+  D.pFirst.disabled = (currentPage === 1); D.pPrev.disabled = (currentPage === 1);
+  D.pNext.disabled = (currentPage === totalPages); D.pLast.disabled = isLiveMode;
+  requestAnimationFrame(() => setTimeout(() => { if (isLiveMode) D.tl.scrollTop = D.tl.scrollHeight; else D.tl.scrollTop = 0; updFnPos(); }, 50));
 }
-D.pFirst.onclick=()=>renderPage(1);
-D.pPrev.onclick=()=>{if(currentPage>1)renderPage(currentPage-1);};
-D.pNext.onclick=()=>renderPage(currentPage+1);
-D.pLast.onclick=()=>{isLiveMode=true;renderPage(Math.ceil(logArray.length/PAGE_SIZE)||1);};
+D.pFirst.onclick = () => renderPage(1);
+D.pPrev.onclick = () => { if (currentPage > 1) renderPage(currentPage - 1); };
+D.pNext.onclick = () => { if (currentPage < Math.ceil(logArray.length / PAGE_SIZE)) renderPage(currentPage + 1); };
+D.pLast.onclick = () => { isLiveMode = true; renderPage(Math.ceil(logArray.length / PAGE_SIZE) || 1); };
 
-/* ── スクロール ── */
-const scBottom=(instant=false)=>{requestAnimationFrame(()=>setTimeout(()=>D.tl.scrollTo({top:D.tl.scrollHeight,behavior:instant?"auto":"smooth"}),30));};
-const scTop=()=>D.tl.scrollTo({top:0,behavior:"smooth"});
-D.tBBtn.onclick=()=>scTop();
-D.tTBtn.onclick=()=>scBottom();
-D.mi.addEventListener("focus",()=>setTimeout(()=>scBottom(true),150));
+const scBottom = (instant = false) => { requestAnimationFrame(() => setTimeout(() => D.tl.scrollTo({ top: D.tl.scrollHeight, behavior: instant ? "auto" : "smooth" }), 30)); };
+const scTop = () => D.tl.scrollTo({ top: 0, behavior: "smooth" });
+D.tBBtn.onclick = () => scTop();
+D.tTBtn.onclick = () => scBottom();
+D.mi.addEventListener("focus", () => setTimeout(() => scBottom(true), 150));
 
-function updFnPos(){
-  const ibH=D.ib.classList.contains("show")?D.ib.offsetHeight:0;
-  const navH=D.pnav?D.pnav.offsetHeight:0;
-  D.fn.style.bottom=(ibH+navH+16)+"px";
+function updFnPos() {
+  const ibH = D.ib.classList.contains("show") ? D.ib.offsetHeight : 0;
+  const navH = D.pnav ? D.pnav.offsetHeight : 0;
+  D.fn.style.bottom = (ibH + navH + 16) + "px";
 }
-D.tl.addEventListener("scroll",updFnPos,{passive:true});
-window.addEventListener("resize",updFnPos,{passive:true});
+D.tl.addEventListener("scroll", updFnPos, { passive: true });
+window.addEventListener("resize", updFnPos, { passive: true });
 
-/* ── Wipe ── */
-async function wipe(r){
-  if(!r)return;
-  try{await update(ref(db),{[`rooms/${r}`]:null,[`chat/${r}`]:null,[`presence/${r}`]:null});}
-  catch(e){console.error("Wipe failed:",e);}
-}
-
-/* ── clearAll ── */
-function clearAll(){
-  if(hbT){clearInterval(hbT);hbT=null;}
-  if(toT){clearInterval(toT);toT=null;}
-  if(_cOff){_cOff();_cOff=null;}
-  if(_pOff){_pOff();_pOff=null;}
-  if(_rOff){_rOff();_rOff=null;}
-  logArray=[];currentPage=1;isLiveMode=true;
-  stopActiveAudio();D.tli.innerHTML="";
-  localStorage.removeItem("nz_sess");sessionStorage.clear();
+/* ── 部屋消去（Wipe） ── */
+async function wipe(r) {
+  if (!r) return;
+  try { 
+    await set(ref(db, `rooms/${r}`), null);
+    await set(ref(db, `chat/${r}`), null);
+    await set(ref(db, `presence/${r}`), null);
+  }
+  catch (e) { console.error("Wipe failed:", e); }
 }
 
-function showLobby(msg=""){
-  curR=null;clearAll();
-  D.lberr.textContent=msg;D.lberr.style.display=msg?"block":"none";
-  D.app.classList.remove("visible");D.app.style.display="none";
+/* ── 全初期化 ── */
+function clearAll() {
+  if (hbT) { clearInterval(hbT); hbT = null; }
+  if (toT) { clearInterval(toT); toT = null; }
+
+  if (typeof _cOff === "function") { _cOff(); _cOff = null; }
+  if (typeof _pOff === "function") { _pOff(); _pOff = null; }
+  if (typeof _rOff === "function") { _rOff(); _rOff = null; }
+  if (typeof _conOff === "function") { _conOff(); _conOff = null; }
+  logArray = []; currentPage = 1; isLiveMode = true;
+  stopActiveAudio(); D.tli.innerHTML = "";
+  localStorage.removeItem("nz_sess");
+}
+
+function showLobby(msg = "") {
+  curR = null; clearAll();
+  D.lberr.textContent = msg; D.lberr.style.display = msg ? "block" : "none";
+  D.app.classList.remove("visible"); D.app.style.display = "none";
   D.fn.classList.remove("visible");
-  D.lobby.style.display="block";setBtns(true);hideSplash();
-  const ni=localStorage.getItem("nz_ni")||"",tk=localStorage.getItem("nz_tk")||"";
-  const ri=localStorage.getItem("nz_ri")||"",pi=localStorage.getItem("nz_pi")||"";
-  if(ni){D.ni.value=ni;D.wni.value=ni;}
-  if(tk){D.tk.value=tk;D.wtk.value=tk;}
-  if(ri&&!D.ri.value)D.ri.value=ri;
-  if(pi&&!D.pi.value)D.pi.value=pi;
-  updTP();updWTP();syncPickers(curColor);
+  D.lobby.style.display = "block"; setBtns(true); hideSplash();
+  const ni = localStorage.getItem("nz_ni") || "", tk = localStorage.getItem("nz_tk") || "";
+  const ri = localStorage.getItem("nz_ri") || "", pi = localStorage.getItem("nz_pi") || "";
+  if (ni) { D.ni.value = ni; D.wni.value = ni; }
+  if (tk) { D.tk.value = tk; D.wtk.value = tk; }
+  if (ri && !D.ri.value) D.ri.value = ri;
+  if (pi && !D.pi.value) D.pi.value = pi;
+  updTP(); updWTP(); syncPickers(curColor);
 }
 
-const setBtns=ok=>{
-  D.enBtn.disabled=!ok;D.enBtn.textContent=ok?"入室する":"処理中...";
-  D.ofBtn.disabled=!ok;D.ofBtn.textContent=ok?"常設公式部屋":"処理中...";
+const setBtns = ok => {
+  D.enBtn.disabled = !ok; D.enBtn.textContent = ok ? "入室する" : "処理中...";
+  D.ofBtn.disabled = !ok; D.ofBtn.textContent = ok ? "常設公式部屋" : "処理中...";
 };
 
-/* ── 自動退室ローカル処理（競合回避・クリーンアップ） ── */
-let _autoExitLock=false;
-function triggerLocalExit(reason){
-  if(isEx)return;
+let _autoExitLock = false;
+function triggerLocalExit(reason) {
+  if (isEx) return;
   clearAll();
   showLobby(reason === "timeout" ? "30分間発言がなかったため、自動退出しました。" : "一定時間動きがなかったため、部屋が自動消去されました。");
   showToast(reason === "timeout" ? "⏰ 非アクティブのため自動退出しました" : "🗑 部屋が自動消去されました", "warn", 6000);
 }
 
-/* ── doJoin ── */
-async function doJoin({target,pass,name,trip,asW,isAutoRejoin=false}){
-  clearAll();_autoExitLock=false;isEx=false;
-  const hashId=(target==="公式部屋")?OFF_H:CryptoJS.SHA256(target).toString();
-  isOff=(hashId===OFF_H);isW=asW;curR=hashId;rawR=target;curP=pass;
-  curN=asW?"":name;curT=asW?"":trip||"";
+/* ── 入室・ロジック ── */
+async function doJoin({ target, pass, name, trip, asW, isAutoRejoin = false }) {
+  clearAll(); _autoExitLock = false; isEx = false;
+  const hashId = (target === "公式部屋") ? OFF_H : CryptoJS.SHA256(target).toString();
+  isOff = (hashId === OFF_H); isW = asW; curR = hashId; rawR = target; curP = pass;
+  curN = asW ? "" : name; curT = asW ? "" : trip || "";
+  
+  const pRef = ref(db, `presence/${curR}`), roomRef = ref(db, `rooms/${curR}`);
+  const chatRef = ref(db, `chat/${curR}`);
+  const myRef = ref(db, `presence/${curR}/${uid}`);
 
-  const pRef=ref(db,`presence/${curR}`),roomRef=ref(db,`rooms/${curR}`);
-  const chatRef=ref(db,`chat/${curR}`),myRef=ref(db,`presence/${curR}/${uid}`);
-
-  /* 部屋の初期化・生存チェック */
-  if(!isOff){
-    const rs=await get(roomRef);
-    if(rs.exists()){
-      const la=rs.val()?.lastActivity||srvNow();
-      if(srvNow()-la>ROOM_TO){
+  if (!isOff) {
+    const rs = await get(roomRef);
+    if (rs.exists()) {
+      const la = rs.val()?.lastActivity || srvNow();
+      if (srvNow() - la > ROOM_TO) {
         await wipe(curR);
-        if(isAutoRejoin){showLobby("部屋が30分経過により自動消去されたため復帰できませんでした。");return;}
+        if (isAutoRejoin) { showLobby("部屋が30分経過により自動消去されたため復帰できませんでした。"); return; }
       }
     }
-    const fresh=await get(roomRef);
-    if(!fresh.exists()){
-      if(isAutoRejoin){showLobby("部屋が自動消去されたため復帰できませんでした。");return;}
-      await set(roomRef,{timeoutMin:30,lastActivity:srvNow()});
+    const fresh = await get(roomRef);
+    if (!fresh.exists()) {
+      if (isAutoRejoin) { showLobby("部屋が自動消去されたため復帰できませんでした。"); return; }
+      await set(roomRef, { timeoutMin: 30, lastActivity: srvNow() });
     }
   }
 
-  /* プレゼンス登録 & onDisconnect仕込み（ゴースト防止の核心） */
-  if(!asW){
-    const N=srvNow();
+  if (!asW) {
+    const existingPresence = await get(myRef);
+    const N_init = srvNow();
+
     const myPresenceData = {
-      nEnc:enc(name,pass,isOff),
-      tEnc:enc(trip||"",pass,isOff),
-      cEnc:enc(curColor,pass,isOff),
-      enteredAt:N,
-      lastSeen:N,
-      lastMessageAt:N
+      nEnc: enc(name, pass, isOff),
+      tEnc: enc(trip || "", pass, isOff),
+      cEnc: enc(curColor, pass, isOff),
+      enteredAt: existingPresence.exists() ? (existingPresence.val().enteredAt || N_init) : N_init,
+      lastSeen: N_init,
+      lastMessageAt: existingPresence.exists() ? (existingPresence.val().lastMessageAt || N_init) : N_init
     };
     
-    // タブが閉じられた、または回線切断時に自動消去するタスクをFirebaseサーバーに予約
+    // クライアント切断時に自身のプリゼンスを自動削除する登録
     await onDisconnect(myRef).remove();
     await set(myRef, myPresenceData);
 
-    if(!isAutoRejoin){
-      await push(chatRef,{type:"sys",text:enc(`${name}${trip||""} が入室しました`,pass,isOff),time:N});
+    if (!isAutoRejoin && !existingPresence.exists()) {
+      await push(chatRef, { type: "sys", text: enc(`${name}${trip || ""} が入室しました`, pass, isOff), time: N_init });
     }
-    if(!isOff){localStorage.setItem("nz_ni",name);localStorage.setItem("nz_tk",D.tk.value.trim());}
-    localStorage.setItem("nz_sess",JSON.stringify({target,pass,name,trip:trip||"",asW:false}));
+    if (!isOff) { 
+      localStorage.setItem("nz_ni", name); 
+      localStorage.setItem("nz_tk", D.tk.value.trim()); 
+      localStorage.setItem("nz_ri", target);
+      localStorage.setItem("nz_pi", pass);
+    }
+    localStorage.setItem("nz_sess", JSON.stringify({ target, pass, name, trip: trip || "", asW: false }));
   }
 
-  /* UI切替 */
-  D.lobby.style.display="none";
-  D.app.style.display="flex";D.app.classList.add("visible");
+  D.lobby.style.display = "none";
+  D.app.style.display = "flex"; D.app.classList.add("visible");
   D.fn.classList.add("visible");
-  D.rdsp.textContent=target;
+  D.rdsp.textContent = target;
 
-  if(asW){
-    D.ib.classList.remove("show");D.wb.classList.add("show");
-    D.exBtn.textContent="ロビーへ戻る";D.ivBtn.style.display="none";D.clrBtn.style.display="none";
-    D.wni.value=localStorage.getItem("nz_ni")||"";
-    D.wtk.value=localStorage.getItem("nz_tk")||"";
-    updWTP();syncPickers(curColor);
-    wbOpen=false;D.wbBody.classList.remove("open");D.wbArrow.classList.remove("open");D.wbHint.textContent="▼ タップして設定";
-  }else{
-    D.ib.classList.add("show");D.wb.classList.remove("show");
-    D.exBtn.textContent="退出";D.ivBtn.style.display=isOff?"none":"block";D.clrBtn.style.display="block";
+  if (asW) {
+    D.ib.classList.remove("show"); D.wb.classList.add("show");
+    D.exBtn.textContent = "ロビーへ戻る"; D.ivBtn.style.display = "none"; D.clrBtn.style.display = "none";
+    D.wni.value = localStorage.getItem("nz_ni") || "";
+    D.wtk.value = localStorage.getItem("nz_tk") || "";
+    updWTP(); syncPickers(curColor);
+    wbOpen = false; D.wbBody.classList.remove("open"); D.wbArrow.classList.remove("open"); D.wbHint.textContent = "▼ タップして設定";
+  } else {
+    D.ib.classList.add("show"); D.wb.classList.remove("show");
+    D.exBtn.textContent = "退出"; D.ivBtn.style.display = isOff ? "none" : "block"; D.clrBtn.style.display = "block";
   }
-  D.updateInputBarState(!asW);updFnPos();hideSplash();
+  D.updateInputBarState(!asW); updFnPos(); hideSplash();
 
-  /* 部屋自体の消去監視 */
-  if(!isOff){
-    _rOff=onValue(roomRef,s=>{
-      if(!s.exists()&&curR&&!isEx){
-        triggerLocalExit("wipe");
-      }
+  if (!isOff) {
+    _rOff = onValue(roomRef, s => {
+      if (!s.exists() && curR && !isEx) { triggerLocalExit("wipe"); }
     });
   }
 
-  /* ── プレゼンス相互監視 & 自分のタイムアウト判定 ── */
-  _pOff=onValue(pRef,async(s)=>{
-    if(!curR)return;
-    const users=s.val()||{};
-    const fg=document.createDocumentFragment();
-    let cnt=0;
-    const now=srvNow();
-
+  _pOff = onValue(pRef, async (s) => {
+    if (!curR) return;
+    const users = s.val() || {};
+    const fg = document.createDocumentFragment();
+    let cnt = 0; const now = srvNow();
     const entries = Object.entries(users);
-    for(const [k, u] of entries){
-      if(!u)continue;
-      const n=dec(u.nEnc,curP,isOff);if(!n)continue;
-      const t=dec(u.tEnc,curP,isOff)||"",c=dec(u.cEnc,curP,isOff)||"#94a3b8";
-      const lastMsg = u.lastMessageAt || u.enteredAt || now;
 
-      /* 1. 自分自身のタイムアウト（30分無発言）の判定 */
-      if(!isOff && k===uid && !isW && !_autoExitLock){
-        if(now - lastMsg > ROOM_TO){
-          _autoExitLock = true;
-          isEx = true;
-          // 自身でシステムメッセージを書き込んで、ローカルをクリーンアップ
-          await push(chatRef,{type:"sys",text:enc(`${n}${t} が30分間発言がなかったため自動退室しました`,curP,isOff),time:srvNow()}).catch(()=>{});
-          await remove(myRef).catch(()=>{});
+    // 部屋が無人（誰もいない）になった場合の即時完全削除処理
+    if (!isOff && entries.length === 0) { 
+      await wipe(curR); 
+      return; 
+    }
+
+    for (const [k, u] of entries) {
+      if (!u) continue;
+      const n = dec(u.nEnc, curP, isOff); if (!n) continue;
+      const t = dec(u.tEnc, curP, isOff) || "", c = dec(u.cEnc, curP, isOff) || "#94a3b8";
+      
+      const lastMsg = u.lastMessageAt || u.enteredAt || now;
+      const lastSeenTime = u.lastSeen || u.enteredAt || now;
+
+      // 自身の30分未発言タイムアウト判定
+      if (!isOff && k === uid && !isW && !_autoExitLock) {
+        if (now - lastMsg > ROOM_TO) {
+          _autoExitLock = true; isEx = true;
+          await push(chatRef, { type: "sys", text: enc(`${n}${t} が30分間発言がなかったため自動退室しました`, curP, isOff), time: srvNow() }).catch(() => {});
+          await set(ref(db, `presence/${curR}/${uid}`), null).catch(() => {});
           triggerLocalExit("timeout");
           return;
         }
       }
 
-      /* 2. ゴースト（他人の30分放置）をアクティブな誰か1人が代行して掃除するロジック */
-      if(!isOff && k!==uid && (now - lastMsg > ROOM_TO)){
-        // 競合を防ぐため、オンラインの一番若いUIDを持つ生存者が代表してトランザクションを実行
-        const aliveKeys = entries.filter(([_, us]) => now - (us.lastMessageAt||us.enteredAt||now) <= ROOM_TO).map(([key]) => key).sort();
-        if(aliveKeys[0] === uid){
-          await runTransaction(ref(db, `presence/${curR}/${k}`), (currentData) => {
-            if(currentData) return null; // サーバー上で削除をコミット
-            return currentData;
-          });
-          await push(chatRef,{type:"sys",text:enc(`${n}${t} が30分間発言がなかったため自動退室しました`,curP,isOff),time:srvNow()}).catch(()=>{});
+      // 他のゴーストユーザーのクリーンアップ（生存判定を45秒に緩め、通信瞬断時の誤作動を防止）
+      if (!isOff && k !== uid) {
+        const isDeadOffline = (now - lastSeenTime > 45000);
+        const isDeadInactivity = (now - lastMsg > ROOM_TO);
+
+        if (isDeadOffline || isDeadInactivity) {
+          const aliveKeys = entries.filter(([key, us]) => {
+            const lSeen = us.lastSeen || us.enteredAt || now;
+            const lMsg = us.lastMessageAt || us.enteredAt || now;
+            return (now - lSeen <= 45000) && (now - lMsg <= ROOM_TO);
+          }).map(([key]) => key).sort();
+
+          if (aliveKeys[0] === uid) {
+            await set(ref(db, `presence/${curR}/${k}`), null).catch(() => {});
+            if (isDeadInactivity) {
+              await push(chatRef, { type: "sys", text: enc(`${n}${t} が30分間発言がなかったため自動退室しました`, curP, isOff), time: srvNow() }).catch(() => {});
+            }
+          }
+          continue;
         }
-        continue;
       }
 
       cnt++;
-      const sp=document.createElement("span");sp.className="chip";
-      sp.style.color=c;sp.style.borderColor=c+"44";sp.textContent=n+t;
+      const sp = document.createElement("span"); sp.className = "chip";
+      sp.style.color = c; sp.style.borderColor = c + "44"; sp.textContent = n + t;
       fg.appendChild(sp);
     }
-    D.pl.innerHTML="";D.pl.appendChild(fg);
-    D.pcnt.textContent=`[${cnt}人]`;
-
-    // 全員が正常退室またはonDisconnectで誰もいなくなった場合、非公式部屋を完全消去
-    if(!isOff && cnt === 0 && entries.length === 0){
-      await wipe(curR);
-    }
+    D.pl.innerHTML = ""; D.pl.appendChild(fg);
+    D.pcnt.textContent = `[${cnt}人]`;
   });
 
-  /* ── チャットログ監視 ── */
-  _cOff=onValue(query(chatRef,orderByChild("time")),snap=>{
-    if(!curR)return;
-    const newLogs=[];
-    if(snap.exists())snap.forEach(cs=>{const m=cs.val();if(m){m.id=cs.key;newLogs.push(m);}});
-    logArray=newLogs;
-    if(isLiveMode)renderPage(Math.ceil(logArray.length/PAGE_SIZE)||1);
+  _cOff = onValue(query(chatRef, orderByChild("time")), snap => {
+    if (!curR) return;
+    const newLogs = [];
+    if (snap.exists()) snap.forEach(cs => { const m = cs.val(); if (m) { m.id = cs.key; newLogs.push(m); } });
+    logArray = newLogs;
+    if (isLiveMode) renderPage(Math.ceil(logArray.length / PAGE_SIZE) || 1);
     else renderPage(currentPage);
   });
 
-  /* ── ハートビート（生存同期を10秒毎に強化）── */
-  if(!asW)hbT=setInterval(async()=>{
-    if(!curR||isEx||_autoExitLock)return;
-    try{await update(myRef,{lastSeen:srvNow()});}catch{}
-  },HB);
+  _conOff = onValue(ref(db, ".info/connected"), async (snap) => {
+    const connected = snap.val() === true; _isConnected = connected;
+    if (connected && curR && !isW) {
+      try { 
+        // 再接続時に切断時ハンドラを再バインド
+        await onDisconnect(myRef).remove();
+        await update(myRef, { lastSeen: srvNow() }); 
+      } catch {}
+    }
+  });
 
-  /* ── 部屋全体の無操作（30分）タイムアウト監視（1分毎） ── */
-  if(!isOff){
-    toT=setInterval(async()=>{
-      if(!curR||isEx||_autoExitLock)return;
-      try{
-        const rs=await get(roomRef);if(!rs.exists())return;
-        const la=rs.val()?.lastActivity||srvNow();
-        if(srvNow()-la>ROOM_TO){
-          isEx=true;
-          await wipe(curR);
-          triggerLocalExit("wipe");
-        }
-      }catch{}
-    },60000);
-  }
+  if (!asW) hbT = setInterval(async () => {
+    if (!curR || isEx || _autoExitLock) return;
+    if (_isConnected) { 
+      try { await update(myRef, { lastSeen: srvNow() }); } catch {} 
+    }
+  }, HB);
 }
 
-/* ── exitRoom ── */
-async function exitRoom(realWipe=false){
-  if(isEx)return;isEx=true;
-  const sR=curR,sP=curP,sN=curN,sT=curT,sO=isOff,sW=isW;
-  if(realWipe||sW)localStorage.removeItem("nz_sess");
+/* ── 退出処理 ── */
+async function exitRoom(realWipe = false) {
+  if (isEx) return; isEx = true;
+  const sR = curR, sP = curP, sN = curN, sT = curT, sO = isOff, sW = isW;
+  if (realWipe || sW) localStorage.removeItem("nz_sess");
   
-  // 退出時は速やかにオンコネクトの予約を解除
-  if(!sW && sR){
-    try{await onDisconnect(ref(db,`presence/${sR}/${uid}`)).cancel();}catch{}
-  }
   clearAll();
-  try{
-    if(!sW&&sR){
-      await remove(ref(db,`presence/${sR}/${uid}`)).catch(()=>{});
-      const ps=await get(ref(db,`presence/${sR}`));
-      const remaining=ps.exists()?Object.keys(ps.val()||{}):[];
-      if(!sO&&remaining.length===0){
-        await wipe(sR);
-      }else{
-        await push(ref(db,`chat/${sR}`),{type:"sys",text:enc(`${sN}${sT} が退室しました`,sP,sO),time:srvNow()}).catch(()=>{});
+  try {
+    if (!sW && sR) {
+      // 退出時に速やかにオンdisconnect判定を解除して削除を実行
+      await onDisconnect(ref(db, `presence/${sR}/${uid}`)).cancel().catch(() => {});
+      await set(ref(db, `presence/${sR}/${uid}`), null).catch(() => {});
+      
+      const ps = await get(ref(db, `presence/${sR}`));
+      const remaining = ps.exists() ? Object.keys(ps.val() || {}) : [];
+      if (!sO && remaining.length === 0) { 
+        await wipe(sR); 
+      } else { 
+        await push(ref(db, `chat/${sR}`), { type: "sys", text: enc(`${sN}${sT} が退室しました`, sP, sO), time: srvNow() }).catch(() => {}); 
       }
     }
-  }catch(e){console.error(e);}
-  isEx=false;showLobby();
+  } catch (e) { console.error(e); }
+  isEx = false; showLobby();
 }
 
-/* ── sendMsg ── */
-async function sendMsg(){
-  if(!curR||isW||isCmp||!isLiveMode)return;
-  const txt=D.mi.value.trim();if(!txt)return;
-  D.mi.value="";D.mi.style.height="auto";
-  const N=srvNow();
-  try{
-    const roomRef=ref(db,`rooms/${curR}`);
-    const myRef=ref(db,`presence/${curR}/${uid}`);
-    const upd={};
-    if(!isOff)upd[`rooms/${curR}/lastActivity`]=N;
-    upd[`presence/${curR}/${uid}/lastSeen`]=N;
-    upd[`presence/${curR}/${uid}/lastMessageAt`]=N;
-    update(ref(db),upd).catch(()=>{});
+/* ── Message送信 ── */
+async function sendMsg() {
+  if (!curR || isW || isCmp || !isLiveMode) return;
+  const txt = D.mi.value.trim(); if (!txt) return;
+  D.mi.value = ""; D.mi.style.height = "auto";
+  const N = srvNow();
+  try {
+    if (!isOff) {
+      await set(ref(db, `rooms/${curR}/lastActivity`), N).catch(() => {});
+    }
+    await update(ref(db, `presence/${curR}/${uid}`), { lastSeen: N, lastMessageAt: N }).catch(() => {});
     
-    await push(ref(db,`chat/${curR}`),{
-      type:"msg",
-      nEnc:enc(curN,curP,isOff),tEnc:enc(curT||"",curP,isOff),
-      cEnc:enc(curColor,curP,isOff),text:enc(txt,curP,isOff),time:N
+    await push(ref(db, `chat/${curR}`), {
+      type: "msg", nEnc: enc(curN, curP, isOff), tEnc: enc(curT || "", curP, isOff),
+      cEnc: enc(curColor, curP, isOff), text: enc(txt, curP, isOff), time: N
     });
-  }catch(e){showToast("送信失敗: "+e.message,"warn",4000);}
+  } catch (e) { showToast("送信失敗: " + e.message, "warn", 4000); }
 }
 
-/* ── upgrade（覗き見→参加） ── */
-async function upgrade(name,trip){
-  if(!curR)return;isW=false;curN=name;curT=trip||"";
-  const N=srvNow();
-  const myRef=ref(db,`presence/${curR}/${uid}`);
-  
+/* ── 覗き見から参加へ昇格 ── */
+async function upgrade(name, trip) {
+  if (!curR) return; isW = false; curN = name; curT = trip || "";
+  const N = srvNow();
+  const myRef = ref(db, `presence/${curR}/${uid}`);
+  const chatRef = ref(db, `chat/${curR}`);
+
   await onDisconnect(myRef).remove();
-  await set(myRef,{nEnc:enc(name,curP,isOff),tEnc:enc(trip||"",curP,isOff),cEnc:enc(curColor,curP,isOff),enteredAt:N,lastSeen:N,lastMessageAt:N});
-  await push(ref(db,`chat/${curR}`),{type:"sys",text:enc(`${name}${trip||""} が入室しました`,curP,isOff),time:N});
-  localStorage.setItem("nz_ni",name);localStorage.setItem("nz_tk",D.wtk.value.trim());
-  localStorage.setItem("nz_sess",JSON.stringify({target:rawR,pass:curP,name,trip:trip||"",asW:false}));
-  D.wb.classList.remove("show");D.ib.classList.add("show");
-  D.exBtn.textContent="退出";D.ivBtn.style.display=isOff?"none":"block";D.clrBtn.style.display="block";
-  D.updateInputBarState(true);updFnPos();
-  if(hbT)clearInterval(hbT);
-  hbT=setInterval(async()=>{if(!curR||isEx)return;try{await update(myRef,{lastSeen:srvNow()});}catch{}},HB);
+  await set(myRef, { nEnc: enc(name, curP, isOff), tEnc: enc(trip || "", curP, isOff), cEnc: enc(curColor, curP, isOff), enteredAt: N, lastSeen: N, lastMessageAt: N });
+  await push(chatRef, { type: "sys", text: enc(`${name}${trip || ""} が入室しました`, curP, isOff), time: N });
+  localStorage.setItem("nz_ni", name); localStorage.setItem("nz_tk", D.wtk.value.trim());
+  localStorage.setItem("nz_sess", JSON.stringify({ target: rawR, pass: curP, name, trip: trip || "", asW: false }));
+  
+  D.wb.classList.remove("show"); D.ib.classList.add("show");
+  D.exBtn.textContent = "退出"; D.ivBtn.style.display = isOff ? "none" : "block"; D.clrBtn.style.display = "block";
+  D.updateInputBarState(true); updFnPos();
+  if (hbT) clearInterval(hbT);
+  hbT = setInterval(async () => {
+    if (!curR || isEx) return;
+    if (_isConnected) { try { await update(myRef, { lastSeen: srvNow() }); } catch {} }
+  }, HB);
 }
 
 /* ── イベント ── */
-let isCmp=false;
-D.mi.addEventListener("compositionstart",()=>{isCmp=true;});
-D.mi.addEventListener("compositionend",()=>{isCmp=false;});
-D.mi.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey&&!isCmp){e.preventDefault();sendMsg();}});
-D.mi.addEventListener("input",()=>{D.mi.style.height="auto";D.mi.style.height=Math.min(D.mi.scrollHeight,80)+"px";updFnPos();});
-D.sdBtn.onclick=()=>sendMsg();
-D.clrMsgBtn.onclick=()=>{D.mi.value="";D.mi.style.height="auto";D.mi.focus();updFnPos();};
+let isCmp = false;
+D.mi.addEventListener("compositionstart", () => { isCmp = true; });
+D.mi.addEventListener("compositionend", () => { isCmp = false; });
+D.mi.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !isCmp) { e.preventDefault(); sendMsg(); } });
+D.mi.addEventListener("input", () => { D.mi.style.height = "auto"; D.mi.style.height = Math.min(D.mi.scrollHeight, 80) + "px"; updFnPos(); });
+D.sdBtn.onclick = () => sendMsg();
+D.clrMsgBtn.onclick = () => { D.mi.value = ""; D.mi.style.height = "auto"; D.mi.focus(); updFnPos(); };
 
-D.enBtn.onclick=async()=>{
-  const n=D.ni.value.replace(/[\s\u3000]+/g,"").trim(),r=D.ri.value.replace(/[\s\u3000]+/g,"").trim(),p=D.pi.value.trim();
-  if(!n||!r||!p){alert("必須項目（名前・部屋ID・パスワード）を入力してください");return;}
+D.enBtn.onclick = async () => {
+  const n = D.ni.value.replace(/[\s\u3000]+/g, "").trim(), r = D.ri.value.replace(/[\s\u3000]+/g, "").trim(), p = D.pi.value.trim();
+  if (!n || !r || !p) { alert("必須項目（名前・部屋ID・パスワード）を入力してください"); return; }
   setBtns(false);
-  try{await doJoin({target:r,pass:p,name:n,trip:gTrip(n,D.tk.value.trim()),asW:false});}
-  catch(e){showLobby(e.message);}
+  try { await doJoin({ target: r, pass: p, name: n, trip: gTrip(n, D.tk.value.trim()), asW: false }); }
+  catch (e) { showLobby(e.message); }
   setBtns(true);
 };
-D.ofBtn.onclick=async()=>{
+
+D.ofBtn.onclick = async () => {
   setBtns(false);
-  try{await doJoin({target:"公式部屋",pass:OFF_P,name:"",trip:"",asW:true});}
-  catch(e){showLobby(e.message);}
+  try { await doJoin({ target: "公式部屋", pass: OFF_P, name: "", trip: "", asW: true }); }
+  catch (e) { showLobby(e.message); }
   setBtns(true);
 };
-D.gnBtn.onclick=()=>{
-  const c="abcdefghijklmnopqrstuvwxyz0123456789";let r="",p="";
-  for(let i=0;i<10;i++)r+=c[Math.floor(Math.random()*c.length)];
-  for(let i=0;i<12;i++)p+=c[Math.floor(Math.random()*c.length)];
-  D.ri.value=r;D.pi.value=p;updTP();
-};
-D.wuBtn.onclick=async()=>{
-  const n=D.wni.value.replace(/[\s\u3000]+/g,"").trim(),k=D.wtk.value.trim();
-  if(!n){alert("名前を入力してください");return;}
-  await upgrade(n,gTrip(n,k));
-};
-D.exBtn.onclick=()=>{
-  if(isOff||isW){exitRoom(false);}
-  else{if(confirm("退出しますか？あなたが最後の1人の場合、部屋の履歴（ログ）は即座に完全消去されます。"))exitRoom(true);}
-};
-D.ivBtn.onclick=()=>{
-  if(!rawR||!curP)return;
-  const u=`${location.protocol}//${location.host}${location.pathname}?r=${encodeURIComponent(rawR)}&p=${encodeURIComponent(curP)}`;
-  navigator.clipboard?.writeText(u).then(()=>alert("招待リンクをコピーしました！")).catch(()=>{
-    const ta=document.createElement("textarea");ta.value=u;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);alert("招待リンクをコピーしました！");
-  });
-};
-D.gdBtn.onclick=()=>D.gmod.classList.add("show");
-D.gcBtn.onclick=()=>D.gmod.classList.remove("show");
-D.gmod.onclick=e=>{if(e.target===D.gmod)D.gmod.classList.remove("show");};
 
-/* ── 起動 ── */
-(async()=>{
-  const sp=new URLSearchParams(location.search),sr=sp.get("r"),spp=sp.get("p");
-  if(sr&&spp){
-    const n=localStorage.getItem("nz_ni")||"";
-    if(n){
+D.gnBtn.onclick = () => {
+  const c = "abcdefghijklmnopqrstuvwxyz0123456789"; let r = "", p = "";
+  for (let i = 0; i < 10; i++) r += c[Math.floor(Math.random() * c.length)];
+  for (let i = 0; i < 12; i++) p += c[Math.floor(Math.random() * c.length)];
+  D.ri.value = r; D.pi.value = p; updTP();
+};
+
+D.wuBtn.onclick = async () => {
+  const n = D.wni.value.replace(/[\s\u3000]+/g, "").trim(), k = D.wtk.value.trim();
+  if (!n) { alert("名前を入力してください"); return; }
+  await upgrade(n, gTrip(n, k));
+};
+
+D.exBtn.onclick = () => {
+  if (isOff || isW) { exitRoom(false); }
+  else { if (confirm("退出しますか？あなたが最後の1人の場合、部屋の履歴（ログ）は即座に完全消去されます。")) exitRoom(true); }
+};
+
+D.ivBtn.onclick = () => {
+  if (!rawR || !curP) return;
+  const u = `${location.protocol}//${location.host}${location.pathname}?r=${encodeURIComponent(rawR)}&p=${encodeURIComponent(curP)}`;
+  if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+    navigator.clipboard.writeText(u).then(() => alert("招待リンクをコピーしました！")).catch(() => copyFallback(u));
+  } else {
+    copyFallback(u);
+  }
+};
+
+function copyFallback(text) {
+  const ta = document.createElement("textarea"); ta.value = text;
+  document.body.appendChild(ta); ta.select(); document.execCommand("copy");
+  document.body.removeChild(ta); alert("招待リンクをコピーしました！");
+}
+
+D.gdBtn.onclick = () => D.gmod.classList.add("show");
+D.gcBtn.onclick = () => D.gmod.classList.remove("show");
+D.gmod.onclick = e => { if (e.target === D.gmod) D.gmod.classList.remove("show"); };
+
+/* ── 起動処理 ── */
+(async () => {
+  const sp = new URLSearchParams(location.search), sr = sp.get("r"), spp = sp.get("p");
+  if (sr && spp) {
+    const n = localStorage.getItem("nz_ni") || "";
+    if (n) {
       setBtns(false);
-      try{await doJoin({target:sr,pass:spp,name:n,trip:gTrip(n,localStorage.getItem("nz_tk")||""),asW:false,isAutoRejoin:true});}
-      catch(e){showLobby(e.message);}
+      try { await doJoin({ target: sr, pass: spp, name: n, trip: gTrip(n, localStorage.getItem("nz_tk") || ""), asW: false, isAutoRejoin: true }); }
+      catch (e) { showLobby(e.message); }
       setBtns(true);
-    }else{D.ri.value=sr;D.pi.value=spp;showLobby();}
+    } else { D.ri.value = sr; D.pi.value = spp; showLobby(); }
     return;
   }
-  const sessStr=localStorage.getItem("nz_sess");
-  if(sessStr){
-    try{
-      const s=JSON.parse(sessStr);
-      if(s&&s.target&&s.pass&&!s.asW){
+  const sessStr = localStorage.getItem("nz_sess");
+  if (sessStr) {
+    try {
+      const s = JSON.parse(sessStr);
+      if (s && s.target && s.pass && !s.asW) {
         setBtns(false);
-        await doJoin({target:s.target,pass:s.pass,name:s.name,trip:s.trip,asW:false,isAutoRejoin:true});
-        setBtns(true);return;
+        await doJoin({ target: s.target, pass: s.pass, name: s.name, trip: s.trip, asW: false, isAutoRejoin: true });
+        setBtns(true); return;
       }
-    }catch{localStorage.removeItem("nz_sess");}
+    } catch { localStorage.removeItem("nz_sess"); }
   }
   showLobby();
 })();

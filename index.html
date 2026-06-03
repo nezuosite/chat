@@ -77,7 +77,7 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 .hr{display:flex;align-items:center;gap:8px;height:32px}
 .rn{font-weight:800;font-size:14px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
 .pc{font-size:11px;font-weight:700;color:var(--mu);font-family:monospace}
-.hbs {display:flex;gap:4px;z-index:10;}
+.hbs{display:flex;gap:4px;z-index:10;}
 .hbs button{padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700;background:var(--bg);border:1px solid var(--bd);color:var(--tx);display:flex;align-items:center;gap:4px}
 .bclr-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
 .bx{border-color:rgba(244,63,94,.4)!important;color:#fda4af!important}
@@ -122,6 +122,22 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 .ts{color:var(--m2);font-size:9.5px;margin-left:auto}
 .mb{align-self:start;background:var(--sf);border:1px solid transparent;border-left:3px solid;border-radius:4px 12px 12px 12px;padding:8px 12px;font-size:14px;line-height:1.5;max-width:100%;word-break:break-all;white-space:pre-wrap}
 
+/* TikTokリンクカード */
+.tk-card{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(1,1,1,.6);border:1px solid rgba(255,255,255,.12);
+  border-radius:8px;padding:8px 12px;margin-top:6px;max-width:100%;
+  text-decoration:none;color:var(--tx);
+  transition:background .15s;
+}
+.tk-card:hover{background:rgba(1,1,1,.8);text-decoration:none;}
+.tk-card-icon{width:28px;height:28px;border-radius:6px;background:#010101;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.tk-card-icon svg{width:16px;height:16px;}
+.tk-card-body{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.tk-card-label{font-size:9px;font-weight:800;color:rgba(255,255,255,.4);letter-spacing:.08em;text-transform:uppercase;}
+.tk-card-url{font-size:11px;color:#a5b4fc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;}
+.tk-card-arrow{font-size:12px;color:rgba(255,255,255,.3);margin-left:auto;flex-shrink:0;}
+
 /* ページナビ */
 #pnav{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--s2);border-top:1px solid var(--bd);padding:5px 8px;flex-shrink:0;}
 .pbtn{padding:4px 10px;background:var(--sf);border:1px solid var(--bd);border-radius:4px;color:var(--tx);font-size:10px;font-weight:700}
@@ -153,7 +169,7 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 .gs h4{font-size:11.5px;color:var(--tx);margin-bottom:2px}
 .cx{position:absolute;top:16px;right:16px;width:36px;height:36px;border-radius:50%;background:rgba(15,23,42,.6);color:#fff;font-size:22px;display:flex;align-items:center;justify-content:center}
 
-/* メディア（最適化調整済） */
+/* メディア */
 .media-wrap{margin-top:6px;width:100%;max-width:440px}
 .img-block{width:100%;max-height:260px;object-fit:cover;border-radius:8px;border:1px solid var(--bd);cursor:pointer}
 .vc-wrap{width:100%;position:relative;margin-bottom:4px}
@@ -190,11 +206,19 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 .clr-ok{background:var(--in);color:#fff}
 #imod-wrap{width:100%;height:100%;display:flex;align-items:center;justify-content:center}
 #imEl{max-width:100%;max-height:100%;object-fit:contain;transition:transform .1s ease-out;will-change:transform}
+
+/* トースト通知 */
+#toast-container{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;pointer-events:none;width:calc(100% - 32px);max-width:360px;}
+.toast{background:rgba(244,63,94,.15);border:1px solid rgba(244,63,94,.4);border-radius:10px;padding:10px 14px;font-size:12px;font-weight:700;color:#fda4af;text-align:center;animation:toastIn .2s ease-out;pointer-events:auto;}
+.toast.info{background:rgba(79,70,229,.15);border-color:rgba(99,102,241,.4);color:#a5b4fc;}
+@keyframes toastIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes toastOut{from{opacity:1}to{opacity:0;transform:translateY(-8px)}}
 </style>
 </head>
 <body>
 
 <div id="splash"><div class="spin"></div><div class="spt">NEZU ONETIME CHAT</div></div>
+<div id="toast-container"></div>
 
 <div id="lobby">
   <div class="lbo">
@@ -206,7 +230,7 @@ a{color:#818cf8}a:hover{text-decoration:underline}
         メッセージはブラウザ内で強固に暗号化（AES-256-CBC）され、サーバーを介して受信者の手元に届くまで誰にも解読されません。暗号化キー（パスワード）がネットワークに送信されることは一切ありません。
         <div class="ibox-grid">
           <div class="ibox-item"><b>⏱ 30分自動データ消去</b>最後の発言から30分経過するか、全員が退室するとサーバー上のログは即座に完全消去されます。</div>
-          <div class="ibox-item"><b>📺 各種メディア自動再生</b>YouTube・ニコニコ・画像・音声ファイルをタイムライン上でインライン再生可能です。</div>
+          <div class="ibox-item"><b>📺 各種メディア自動展開</b>YouTube・ニコニコ動画・画像・音声ファイルをタイムライン上でインライン再生可能です。</div>
         </div>
         <div class="abox"><b>⚠️ 注意:</b> 部屋IDとパスワードが完全に一致すれば、誰でも同じ部屋へ入室して会話が可能です。</div>
       </div>
@@ -350,7 +374,7 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getDatabase, ref, push, onValue, set, update, remove, query, orderByChild, get }
+import { getDatabase, ref, push, onValue, set, update, remove, query, orderByChild, get, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
 const db = getDatabase(initializeApp({
@@ -361,6 +385,7 @@ const db = getDatabase(initializeApp({
   messagingSenderId:"154725381397",appId:"1:154725381397:web:8742ccd957e20cee8ce51c"
 }));
 
+/* ── $ ── */
 const $ = id => document.getElementById(id);
 const D = {
   splash:$("splash"),lobby:$("lobby"),lberr:$("lberr"),app:$("app"),
@@ -377,33 +402,50 @@ const D = {
   tl:$("tl"),tli:$("tl-inner"),ib:$("ib"),mi:$("mi"),sdBtn:$("sdBtn"),clrMsgBtn:$("clrMsgBtn"),
   fn:$("fn"),tTBtn:$("tTBtn"),tBBtn:$("tBBtn"),lbClrPick:$("lbClrPick"),
   pnav:$("pnav"),pFirst:$("pFirst"),pPrev:$("pPrev"),pNext:$("pNext"),pLast:$("pLast"),
-  pinfo:$("pinfo"),midisable:$("midisable")
+  pinfo:$("pinfo"),midisable:$("midisable"),toastCon:$("toast-container")
 };
 
+/* ── トースト ── */
+function showToast(msg, type="warn", ms=4000){
+  const t=document.createElement("div");
+  t.className="toast"+(type==="info"?" info":"");
+  t.textContent=msg;
+  D.toastCon.appendChild(t);
+  setTimeout(()=>{
+    t.style.animation="toastOut .2s ease-in forwards";
+    setTimeout(()=>t.remove(),200);
+  }, ms);
+}
+
+/* ── 入力バー状態 ── */
 D.updateInputBarState = function(enabled){
-  if(enabled&&!isW){D.midisable.style.display="none";D.mi.disabled=false;D.sdBtn.disabled=false;}
-  else{D.midisable.style.display="flex";D.mi.disabled=true;D.sdBtn.disabled=true;}
+  if(enabled && !isW){
+    D.midisable.style.display="none";
+    D.mi.disabled=false;D.sdBtn.disabled=false;
+  } else {
+    D.midisable.style.display="flex";
+    D.mi.disabled=true;D.sdBtn.disabled=true;
+  }
 };
 
 /* ── サーバー時刻オフセット ── */
-let _srvOff = 0;
-try{
-  onValue(ref(db,".info/serverTimeOffset"),s=>{_srvOff=s.val()||0;},()=>{_srvOff=0;});
-}catch{_srvOff=0;}
-const srvNow = () => Date.now() + _srvOff;
+let _srvOff=0;
+onValue(ref(db,".info/serverTimeOffset"), s=>{_srvOff=s.val()||0;}, ()=>{_srvOff=0;});
+const srvNow=()=>Date.now()+_srvOff;
 
-/* ── UID ── */
-const uid = (()=>{
+/* ── UID（永続） ── */
+const uid=(()=>{
   let id=localStorage.getItem("nz_uid");
   if(!id){id="u-"+Math.random().toString(36).slice(2,9)+"-"+Date.now().toString(36);localStorage.setItem("nz_uid",id);}
   return id;
 })();
 
 /* ── 暗号化 ── */
-const enc=(t,k,r=false)=>{if(!t&&t!=="")return"";if(r)return t;return CryptoJS.AES.encrypt(t,k).toString();};
-const dec=(c,k,r=false)=>{
-  if(!c&&c!=="")return null;if(r)return c;
-  try{const b=CryptoJS.AES.decrypt(c,k);const s=b.toString(CryptoJS.enc.Utf8);return s||null;}catch{return null;}
+const enc=(t,k,raw=false)=>{if(t==null)return"";if(raw)return t;return CryptoJS.AES.encrypt(t,k).toString();};
+const dec=(c,k,raw=false)=>{
+  if(!c)return null;if(raw)return c;
+  try{const b=CryptoJS.AES.decrypt(c,k);const s=b.toString(CryptoJS.enc.Utf8);return s||null;}
+  catch{return null;}
 };
 const esc=t=>(t||"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -415,29 +457,13 @@ const updTP=()=>{const n=D.ni.value.replace(/[\s\u3000]+/g,"").trim(),k=D.tk.val
 const updWTP=()=>{const n=D.wni.value.replace(/[\s\u3000]+/g,"").trim(),k=D.wtk.value.trim();if(n&&k){D.wtpv.textContent=gTrip(n,k);D.wtpv.style.display="inline-block";}else D.wtpv.style.display="none";};
 
 /* ロビーと覗き見モードの連動 */
-D.ni.addEventListener("input",()=>{
-  D.wni.value=D.ni.value;
-  localStorage.setItem("nz_ni",D.ni.value);
-  updTP();updWTP();
-});
-D.tk.addEventListener("input",()=>{
-  D.wtk.value=D.tk.value;
-  localStorage.setItem("nz_tk",D.tk.value);
-  updTP();updWTP();
-});
-D.wni.addEventListener("input",()=>{
-  D.ni.value=D.wni.value;
-  localStorage.setItem("nz_ni",D.wni.value);
-  updTP();updWTP();
-});
-D.wtk.addEventListener("input",()=>{
-  D.tk.value=D.wtk.value;
-  localStorage.setItem("nz_tk",D.wtk.value);
-  updTP();updWTP();
-});
+D.ni.addEventListener("input",()=>{D.wni.value=D.ni.value;localStorage.setItem("nz_ni",D.ni.value);updTP();updWTP();});
+D.tk.addEventListener("input",()=>{D.wtk.value=D.tk.value;localStorage.setItem("nz_tk",D.tk.value);updTP();updWTP();});
+D.wni.addEventListener("input",()=>{D.ni.value=D.wni.value;localStorage.setItem("nz_ni",D.wni.value);updTP();updWTP();});
+D.wtk.addEventListener("input",()=>{D.tk.value=D.wtk.value;localStorage.setItem("nz_tk",D.wtk.value);updTP();updWTP();});
 
 /* 覗き見パネル折り畳み */
-let wbOpen = false;
+let wbOpen=false;
 D.wbToggle.addEventListener("click",()=>{
   wbOpen=!wbOpen;
   D.wbBody.classList.toggle("open",wbOpen);
@@ -457,34 +483,19 @@ let tmpColor=curColor;
 function setGlobalColor(c){document.documentElement.style.setProperty("--usr-color",c);if(D.clrDot)D.clrDot.style.background=c;}
 setGlobalColor(curColor);
 
-function syncPickers(activeValue) {
-  [D.lbClrPick, D.wClrPick].forEach(container => {
-    if(!container) return;
-    container.querySelectorAll("button").forEach(b => {
-      b.classList.toggle("sel", b.dataset.color === activeValue);
-    });
-  });
+function syncPickers(v){
+  [D.lbClrPick,D.wClrPick].forEach(con=>{if(!con)return;con.querySelectorAll("button").forEach(b=>b.classList.toggle("sel",b.dataset.color===v));});
 }
-
-function buildPicker(container,selVar,cls,onChange){
-  if(!container)return;container.innerHTML="";
+function buildPicker(con,sel,cls,onChange){
+  if(!con)return;con.innerHTML="";
   COLORS.forEach(({v,n})=>{
     const b=document.createElement("button");
-    b.className=cls+(v===selVar?" sel":"");b.style.background=v;b.title=n;b.dataset.color=v;
-    b.addEventListener("click",()=>{
-      onChange(v);
-    });
-    container.appendChild(b);
+    b.className=cls+(v===sel?" sel":"");b.style.background=v;b.title=n;b.dataset.color=v;
+    b.addEventListener("click",()=>onChange(v));
+    con.appendChild(b);
   });
 }
-
-const onColorSelect = v => {
-  curColor=v;
-  setGlobalColor(v);
-  localStorage.setItem("nz_color",v);
-  syncPickers(v);
-};
-
+const onColorSelect=v=>{curColor=v;setGlobalColor(v);localStorage.setItem("nz_color",v);syncPickers(v);};
 buildPicker(D.lbClrPick,curColor,"clrc",onColorSelect);
 buildPicker(D.wClrPick,curColor,"wclrc",onColorSelect);
 
@@ -494,22 +505,21 @@ D.clrBtn.addEventListener("click",()=>{
   D.clrmod.classList.add("show");
 });
 D.clrOk.addEventListener("click",async()=>{
-  curColor=tmpColor;setGlobalColor(curColor);localStorage.setItem("nz_color",curColor);
-  syncPickers(curColor);
+  curColor=tmpColor;setGlobalColor(curColor);localStorage.setItem("nz_color",curColor);syncPickers(curColor);
   if(curR&&!isW){try{await update(ref(db,`presence/${curR}/${uid}`),{cEnc:enc(curColor,curP,isOff)});}catch{}}
   D.clrmod.classList.remove("show");
 });
 D.clrCancel.addEventListener("click",()=>D.clrmod.classList.remove("show"));
 
 /* ── フォーマット ── */
-const fDT=ts=>{if(!ts)return"";const d=new Date(ts);return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")} : ${String(d.getMinutes()).padStart(2,"0")} : ${String(d.getSeconds()).padStart(2,"0")}`;};
+const fDT=ts=>{if(!ts)return"";const d=new Date(ts);return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}`;};
 const fmtSz=b=>{if(!b||b<=0)return"";if(b<1024)return b+"B";if(b<1048576)return(b/1024).toFixed(1)+"KB";return(b/1048576).toFixed(1)+"MB";};
 
 /* ── 定数 ── */
 const OFF_H=CryptoJS.SHA256("公式部屋").toString();
 const OFF_P="official_public_pass";
-const ROOM_TO=30*60*1000;
-const HB=20000;
+const ROOM_TO=30*60*1000;   // 30分
+const HB=20000;             // ハートビート 20秒
 const PAGE_SIZE=50;
 
 let curR=null,curP=null,curN=null,curT=null,rawR=null;
@@ -536,12 +546,14 @@ D.imod.addEventListener("touchstart",e=>{if(e.target===D.icBtn)return;imodTouche
 D.imod.addEventListener("touchmove",e=>{if(e.touches.length===2){e.preventDefault();imgDragging=false;const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);imgScale=Math.min(8,Math.max(1,imgScale*(d/imgPinchDist)));imgPinchDist=d;clampImg();applyImgTransform();}else if(e.touches.length===1&&imgDragging&&imgScale>1){e.preventDefault();imgX=imgDragIx+(e.touches[0].clientX-imgDragSx);imgY=imgDragIy+(e.touches[0].clientY-imgDragSy);clampImg();applyImgTransform();}},{passive:false});
 D.imod.addEventListener("touchend",()=>{imgDragging=false;imodTouches=[];},{passive:true});
 
-/* ── メディア解析・判定用ロジック（TikTok埋め込み撤廃版） ── */
+/* ── メディア ── */
 let activeAudio=null;
 const stopActiveAudio=()=>{if(activeAudio){try{activeAudio.pause();}catch{}activeAudio=null;}};
 
 const YR=/(?:https?:\/\/)?(?:(?:www\.|m\.|music\.)?youtube\.com\/(?:watch\?(?:[^#\s]*?&)*?v=|embed\/|v\/|shorts\/|live\/)([A-Za-z0-9_-]{11})|youtu\.be\/([A-Za-z0-9_-]{11}))/i;
 const NR=/(?:https?:\/\/)?(?:(?:sp\.|www\.)?nicovideo\.jp\/watch\/|nico\.ms\/)((?:sm|nm|so|lv|co|ch)?\d+)/i;
+/* TikTok（埋め込みなし）: tiktok.com を含むURLを判定 */
+const TKR=/(?:https?:\/\/)?(?:[a-z0-9-]+\.)?tiktok\.com\/[^\s]*/i;
 const AR=/\.(mp3|wav|aac|m4a|ogg|flac)(\?.*)?$/i;
 const IR=/\.(jpe?g|gif|png|webp|bmp|svg)(\?.*)?$/i;
 const UR=/(https?:\/\/[^\s\n<>"]+)/gi;
@@ -549,7 +561,14 @@ const UR=/(https?:\/\/[^\s\n<>"]+)/gi;
 let vcCnt=0;
 function bVideoCard(type,embedSrc,label){
   const id="vc"+(++vcCnt);
-  return `<div class="vc-wrap"><div class="vc ${type}" id="${id}"><span class="vc-badge">${esc(label)}</span><iframe class="vc-frame" src="${esc(embedSrc)}" allow="autoplay;encrypted-media;fullscreen" allowfullscreen></iframe></div></div>`;
+  return `<div class="vc-wrap"><div class="vc ${type}" id="${id}"><span class="vc-badge">${esc(label)}</span><iframe class="vc-frame" src="${esc(embedSrc)}" allow="autoplay;encrypted-media;fullscreen" allowfullscreen loading="lazy"></iframe></div></div>`;
+}
+
+/* TikTokリンクカード（埋め込みなし） */
+function bTikTokLinkCard(url){
+  const su=esc(url);
+  const disp=url.length>50?url.slice(0,50)+"…":url;
+  return `<a class="tk-card" href="${su}" target="_blank" rel="noopener noreferrer"><div class="tk-card-icon"><svg viewBox="0 0 32 32" fill="none"><path d="M21.5 4h-3.7v16.2a3.8 3.8 0 01-3.8 3.6 3.8 3.8 0 01-3.8-3.8 3.8 3.8 0 013.8-3.8c.37 0 .73.06 1.06.16V12.5a7.7 7.7 0 00-1.06-.07 7.6 7.6 0 00-7.6 7.6 7.6 7.6 0 007.6 7.6 7.6 7.6 0 007.6-7.6V12.2a11.1 11.1 0 006.5 2.1V10.6a7.4 7.4 0 01-6.5-6.6z" fill="#fff"/></svg></div><div class="tk-card-body"><span class="tk-card-label">TikTok</span><span class="tk-card-url">${esc(disp)}</span></div><span class="tk-card-arrow">↗</span></a>`;
 }
 
 let aCnt=0;
@@ -560,25 +579,13 @@ const dlSvg=`<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-w
 function bAudio(url){
   const id="au"+(++aCnt),wid="aw"+id,su=esc(url);
   const fname=decodeURIComponent(url.split("/").pop().split("?")[0]||"audio");
-
   requestAnimationFrame(()=>{
     setTimeout(async()=>{
       const aw=$(wid),au=$(id);if(!aw||!au)return;
       const pb=aw.querySelector(".apb"),sk=aw.querySelector(".ask"),tm=aw.querySelector(".atm");
       const dlBtn=aw.querySelector(".aw-dl"),actionsArea=aw.querySelector(".aw-actions");
       const fA=s=>isNaN(s)||!isFinite(s)?"--:--":`${String(Math.floor(s/60)).padStart(2,"0")}:${String(Math.floor(s%60)).padStart(2,"0")}`;
-
-      try{
-        const h=await fetch(url,{method:"HEAD"});
-        const cl=h.headers.get("content-length");
-        if(cl&&parseInt(cl)>0){
-          const sz=document.createElement("span");
-          sz.className="aw-size-badge";
-          sz.textContent=fmtSz(parseInt(cl));
-          actionsArea.appendChild(sz);
-        }
-      }catch{}
-
+      try{const h=await fetch(url,{method:"HEAD"});const cl=h.headers.get("content-length");if(cl&&parseInt(cl)>0){const sz=document.createElement("span");sz.className="aw-size-badge";sz.textContent=fmtSz(parseInt(cl));actionsArea.appendChild(sz);}}catch{}
       au.onplay=()=>{stopActiveAudio();activeAudio=au;pb.innerHTML=paIco();};
       au.onpause=au.onended=()=>{pb.innerHTML=pIco();if(activeAudio===au)activeAudio=null;};
       au.ontimeupdate=()=>{if(!au.duration)return;sk.value=(au.currentTime/au.duration)*100;tm.textContent=`${fA(au.currentTime)} / ${fA(au.duration)}`;};
@@ -588,7 +595,6 @@ function bAudio(url){
       dlBtn.onclick=()=>{if(confirm(`ダウンロードしますか？\n${fname}`)){const a=document.createElement("a");a.href=url;a.download=fname;a.target="_blank";a.click();}};
     },50);
   });
-
   return(
     `<div class="aw" id="${wid}">`+
     `<audio id="${id}" src="${su}" preload="metadata"></audio>`+
@@ -596,22 +602,20 @@ function bAudio(url){
     `<div class="aw-right">`+
     `<div class="aw-info"><span class="aw-badge">AUDIO</span><span class="aw-name" title="${su}">${esc(fname)}</span></div>`+
     `<div class="aw-seek-row"><input type="range" class="ask" value="0" min="0" max="100"><span class="atm">--:-- / --:--</span></div>`+
-    `<div class="aw-actions">` +
-      `<button class="aw-dl">${dlSvg}ダウンロード</button>`+
-    `</div>` +
+    `<div class="aw-actions"><button class="aw-dl">${dlSvg}ダウンロード</button></div>`+
     `</div></div>`
   );
 }
 
 function _parseSegs(txt){
-  const normalized=txt.replace(/[\u3000]/g," ");
+  const norm=txt.replace(/[\u3000]/g," ");
   const parts=[];let last=0,m;UR.lastIndex=0;
-  while((m=UR.exec(normalized))!==null){
-    if(m.index>last)parts.push({t:"t",v:normalized.slice(last,m.index)});
+  while((m=UR.exec(norm))!==null){
+    if(m.index>last)parts.push({t:"t",v:norm.slice(last,m.index)});
     parts.push({t:"u",v:m[0]});last=m.index+m[0].length;
   }
-  if(last<normalized.length)parts.push({t:"t",v:normalized.slice(last)});
-  
+  if(last<norm.length)parts.push({t:"t",v:norm.slice(last)});
+
   const segs=[];
   for(let i=0;i<parts.length;i++){
     const p=parts[i];
@@ -623,21 +627,25 @@ function _parseSegs(txt){
       if(h)segs.push({type:"text",html:h});
     }else{
       const url=p.v,su=esc(url),cl=url.replace(/[?#].*$/,"");
-      
+
+      /* YouTube */
       const ym=url.match(YR);
       if(ym){segs.push({type:"media",html:bVideoCard("yt",`https://www.youtube.com/embed/${ym[1]||ym[2]}?playsinline=1`,"YouTube")});continue;}
-      
+
+      /* ニコニコ */
       const nm=url.match(NR);
       if(nm){segs.push({type:"media",html:bVideoCard("nc",`https://embed.nicovideo.jp/watch/${nm[1]}?noscript=1`,"ニコニコ動画")});continue;}
-      
-      // TikTok関連URL（通常の動画、短縮、vt等含むすべて）を検知した場合は埋め込みせず通常のリンクとして処理
-      if(url.includes("tiktok.com")){
-        segs.push({type:"text",html:`<a href="${su}" target="_blank" rel="noopener noreferrer">${su}</a>`});
-        continue;
-      }
-      
+
+      /* TikTok → リンクカードのみ（埋め込みなし） */
+      if(TKR.test(url)){segs.push({type:"media",html:bTikTokLinkCard(url)});continue;}
+
+      /* 音声 */
       if(AR.test(cl)){segs.push({type:"media",html:bAudio(url)});continue;}
+
+      /* 画像 */
       if(IR.test(cl)||/^data:image\//i.test(url)){segs.push({type:"media",html:`<img class="img-block" src="${su}" alt="" loading="lazy" onclick="window.openImg('${su}')">`});continue;}
+
+      /* 通常リンク */
       segs.push({type:"text",html:`<a href="${su}" target="_blank" rel="noopener noreferrer">${su}</a>`});
     }
   }
@@ -646,7 +654,10 @@ function _parseSegs(txt){
 
 function parseTxtSplit(txt){
   const segs=_parseSegs(txt),textParts=[],mediaParts=[];
-  for(const s of segs){if(s.type==="media")mediaParts.push(`<div class="media-wrap">${s.html}</div>`);else textParts.push(s.html);}
+  for(const s of segs){
+    if(s.type==="media")mediaParts.push(`<div class="media-wrap">${s.html}</div>`);
+    else textParts.push(s.html);
+  }
   return{textHtml:textParts.join("<br>").replace(/^(<br>)+|(<br>)+$/g,""),mediaHtml:mediaParts.join("")};
 }
 
@@ -658,7 +669,7 @@ function cMsg(m){
     d.style.alignItems="center";
     let cls="sm sm-leave";
     if(txt.includes("入室"))cls="sm sm-join";
-    else if(txt.includes("自動退室") || txt.includes("自動退出"))cls="sm sm-auto";
+    else if(txt.includes("自動退室")||txt.includes("自動退出")||txt.includes("自動消去")||txt.includes("タイムアウト"))cls="sm sm-auto";
     d.innerHTML=`<div class="${cls}">${esc(txt)}<span style="color:var(--m2);font-size:9px;margin-left:6px">${fDT(m.time)}</span></div>`;
   }else{
     const sN=dec(m.nEnc,curP,isOff)||"???",sT=dec(m.tEnc,curP,isOff)||"",sC=dec(m.cEnc,curP,isOff)||"#94a3b8";
@@ -674,12 +685,12 @@ function cMsg(m){
 /* ── ページネーション ── */
 function renderPage(pageNumber){
   stopActiveAudio();D.tli.innerHTML="";
-  const totalItems=logArray.length,totalPages=Math.ceil(totalItems/PAGE_SIZE)||1;
+  const total=logArray.length,totalPages=Math.ceil(total/PAGE_SIZE)||1;
   if(pageNumber<1)pageNumber=1;if(pageNumber>totalPages)pageNumber=totalPages;
   currentPage=pageNumber;isLiveMode=(currentPage===totalPages);
   D.updateInputBarState(isLiveMode);
-  const startIdx=(currentPage-1)*PAGE_SIZE,endIdx=Math.min(startIdx+PAGE_SIZE,totalItems);
-  logArray.slice(startIdx,endIdx).forEach(m=>{const el=cMsg(m);if(el)D.tli.appendChild(el);});
+  const si=(currentPage-1)*PAGE_SIZE,ei=Math.min(si+PAGE_SIZE,total);
+  logArray.slice(si,ei).forEach(m=>{const el=cMsg(m);if(el)D.tli.appendChild(el);});
   D.pinfo.textContent=`${currentPage} / ${totalPages}`;
   D.pFirst.disabled=(currentPage===1);D.pPrev.disabled=(currentPage===1);
   D.pNext.disabled=(currentPage===totalPages);D.pLast.disabled=isLiveMode;
@@ -708,19 +719,24 @@ window.addEventListener("resize",updFnPos,{passive:true});
 /* ── Wipe ── */
 async function wipe(r){
   if(!r)return;
-  try{await update(ref(db),{[`rooms/${r}`]:null,[`chat/${r}`]:null,[`presence/${r}`]:null});console.log(`Room[${r}]wiped`);}
+  try{await update(ref(db),{[`rooms/${r}`]:null,[`chat/${r}`]:null,[`presence/${r}`]:null});}
   catch(e){console.error("Wipe failed:",e);}
 }
 
 /* ── clearAll ── */
 function clearAll(){
-  if(hbT){clearInterval(hbT);hbT=null;}if(toT){clearInterval(toT);toT=null;}
-  if(_cOff){_cOff();_cOff=null;}if(_pOff){_pOff();_pOff=null;}if(_rOff){_rOff();_rOff=null;}
-  logArray=[];currentPage=1;isLiveMode=true;stopActiveAudio();D.tli.innerHTML="";
+  if(hbT){clearInterval(hbT);hbT=null;}
+  if(toT){clearInterval(toT);toT=null;}
+  if(_cOff){_cOff();_cOff=null;}
+  if(_pOff){_pOff();_pOff=null;}
+  if(_rOff){_rOff();_rOff=null;}
+  logArray=[];currentPage=1;isLiveMode=true;
+  stopActiveAudio();D.tli.innerHTML="";
   localStorage.removeItem("nz_sess");sessionStorage.clear();
 }
 
 function showLobby(msg=""){
+  const prevR=curR;
   curR=null;clearAll();
   D.lberr.textContent=msg;D.lberr.style.display=msg?"block":"none";
   D.app.classList.remove("visible");D.app.style.display="none";
@@ -728,12 +744,11 @@ function showLobby(msg=""){
   D.lobby.style.display="block";setBtns(true);hideSplash();
   const ni=localStorage.getItem("nz_ni")||"",tk=localStorage.getItem("nz_tk")||"";
   const ri=localStorage.getItem("nz_ri")||"",pi=localStorage.getItem("nz_pi")||"";
-  if(ni) { D.ni.value=ni; D.wni.value=ni; }
-  if(tk) { D.tk.value=tk; D.wtk.value=tk; }
+  if(ni){D.ni.value=ni;D.wni.value=ni;}
+  if(tk){D.tk.value=tk;D.wtk.value=tk;}
   if(ri&&!D.ri.value)D.ri.value=ri;
   if(pi&&!D.pi.value)D.pi.value=pi;
-  updTP();updWTP();
-  syncPickers(curColor);
+  updTP();updWTP();syncPickers(curColor);
 }
 
 const setBtns=ok=>{
@@ -741,9 +756,35 @@ const setBtns=ok=>{
   D.ofBtn.disabled=!ok;D.ofBtn.textContent=ok?"常設公式部屋":"処理中...";
 };
 
+/* ── 自動退室 guard（二重実行防止） ── */
+let _autoExitLock=false;
+async function doAutoExit(name, trip, reason){
+  if(_autoExitLock||isEx)return;
+  _autoExitLock=true;isEx=true;
+  const sR=curR,sP=curP,sO=isOff;
+  try{
+    await remove(ref(db,`presence/${sR}/${uid}`)).catch(()=>{});
+    await push(ref(db,`chat/${sR}`),{
+      type:"sys",
+      text:enc(`${name}${trip} が${reason}のため自動退室しました`,sP,sO),
+      time:srvNow()
+    }).catch(()=>{});
+    const ps=await get(ref(db,`presence/${sR}`)).catch(()=>null);
+    const remaining=ps&&ps.exists()?Object.keys(ps.val()||{}):[];
+    if(!sO&&remaining.length===0)await wipe(sR);
+  }catch(e){console.error("autoExit error",e);}
+  clearAll();isEx=false;_autoExitLock=false;
+  showLobby(reason==="30分間発言がなかった"
+    ?"30分間発言がなかったため、自動退出しました。"
+    :"一定時間動きがなかったため、部屋が自動消去されました。");
+  showToast(reason==="30分間発言がなかった"
+    ?"⏰ 非アクティブのため自動退出しました"
+    :"🗑 部屋が自動消去されました","warn",6000);
+}
+
 /* ── doJoin ── */
 async function doJoin({target,pass,name,trip,asW,isAutoRejoin=false}){
-  clearAll();
+  clearAll();_autoExitLock=false;
   const hashId=(target==="公式部屋")?OFF_H:CryptoJS.SHA256(target).toString();
   isOff=(hashId===OFF_H);isW=asW;curR=hashId;rawR=target;curP=pass;
   curN=asW?"":name;curT=asW?"":trip||"";
@@ -751,10 +792,12 @@ async function doJoin({target,pass,name,trip,asW,isAutoRejoin=false}){
   const pRef=ref(db,`presence/${curR}`),roomRef=ref(db,`rooms/${curR}`);
   const chatRef=ref(db,`chat/${curR}`),myRef=ref(db,`presence/${curR}/${uid}`);
 
+  /* 非公式部屋: タイムアウトチェック */
   if(!isOff){
     const rs=await get(roomRef);
     if(rs.exists()){
-      if(srvNow()-(rs.val()?.lastActivity||srvNow())>ROOM_TO){
+      const la=rs.val()?.lastActivity||srvNow();
+      if(srvNow()-la>ROOM_TO){
         await wipe(curR);
         if(isAutoRejoin){showLobby("部屋が30分経過により自動消去されたため復帰できませんでした。");return;}
       }
@@ -766,21 +809,19 @@ async function doJoin({target,pass,name,trip,asW,isAutoRejoin=false}){
     }
   }
 
+  /* プレゼンス登録（覗き見以外）・入室メッセージ */
   if(!asW){
     const N=srvNow();
     await set(myRef,{nEnc:enc(name,pass,isOff),tEnc:enc(trip||"",pass,isOff),cEnc:enc(curColor,pass,isOff),enteredAt:N,lastSeen:N,lastMessageAt:N});
-    
-    // リロード時や切断後の再接続（sessionStorageに既に入室フラグがある場合）は「入室しました」を流さない
-    const isRejoinInSession = sessionStorage.getItem(`nz_joined_${curR}`) === "true";
-    if(!isRejoinInSession){
+    /* リロード・自動復帰時は入室お知らせを出さない */
+    if(!isAutoRejoin){
       await push(chatRef,{type:"sys",text:enc(`${name}${trip||""} が入室しました`,pass,isOff),time:N});
     }
-    sessionStorage.setItem(`nz_joined_${curR}`, "true");
-
     if(!isOff){localStorage.setItem("nz_ni",name);localStorage.setItem("nz_tk",D.tk.value.trim());}
     localStorage.setItem("nz_sess",JSON.stringify({target,pass,name,trip:trip||"",asW:false}));
   }
 
+  /* UI切替 */
   D.lobby.style.display="none";
   D.app.style.display="flex";D.app.classList.add("visible");
   D.fn.classList.add("visible");
@@ -789,106 +830,92 @@ async function doJoin({target,pass,name,trip,asW,isAutoRejoin=false}){
   if(asW){
     D.ib.classList.remove("show");D.wb.classList.add("show");
     D.exBtn.textContent="ロビーへ戻る";D.ivBtn.style.display="none";D.clrBtn.style.display="none";
-    
     D.wni.value=localStorage.getItem("nz_ni")||"";
     D.wtk.value=localStorage.getItem("nz_tk")||"";
-    updWTP();
-    syncPickers(curColor);
-    
-    wbOpen=false;
-    D.wbBody.classList.remove("open");
-    D.wbArrow.classList.remove("open");
-    D.wbHint.textContent="▼ タップして設定";
+    updWTP();syncPickers(curColor);
+    wbOpen=false;D.wbBody.classList.remove("open");D.wbArrow.classList.remove("open");D.wbHint.textContent="▼ タップして設定";
   }else{
     D.ib.classList.add("show");D.wb.classList.remove("show");
     D.exBtn.textContent="退出";D.ivBtn.style.display=isOff?"none":"block";D.clrBtn.style.display="block";
   }
   D.updateInputBarState(!asW);updFnPos();hideSplash();
 
+  /* 部屋削除監視 */
   if(!isOff){
     _rOff=onValue(roomRef,s=>{
       if(!s.exists()&&curR&&!isEx){
-        isEx=true;
-        clearAll();
+        isEx=true;clearAll();isEx=false;
         showLobby("部屋データが削除または自動消去されました。");
+        showToast("🗑 部屋が削除されました","warn",5000);
       }
     });
   }
 
-  /* ── プレゼンス監視 ＋ 自動退室処理（堅牢化） ── */
-  _pOff=onValue(pRef,async (s)=>{
-    if(!curR || isEx)return;
+  /* ── プレゼンス監視・自動退室チェック ── */
+  _pOff=onValue(pRef,s=>{
+    if(!curR)return;
     const users=s.val()||{};
     const fg=document.createDocumentFragment();
     let cnt=0;
     const now=srvNow();
 
-    // 先に全ユーザーの判定を行う（自身への自動退室判定を含む）
-    const userEntries = Object.entries(users);
-    for (const [k, u] of userEntries) {
-      if(!u) continue;
-      const n=dec(u.nEnc,curP,isOff); if(!n) continue;
-      const t=dec(u.tEnc,curP,isOff)||"", c=dec(u.cEnc,curP,isOff)||"#94a3b8";
+    Object.entries(users).forEach(([k,u])=>{
+      if(!u)return;
+      const n=dec(u.nEnc,curP,isOff);if(!n)return;
+      const t=dec(u.tEnc,curP,isOff)||"",c=dec(u.cEnc,curP,isOff)||"#94a3b8";
       const lastMsg=u.lastMessageAt||u.enteredAt||now;
 
-      // 発言から30分以上経過
-      if(!isOff && (now - lastMsg > ROOM_TO)){
-        // 他者または自分自身のレコードをFirebase上から削除要求
-        remove(ref(db,`presence/${curR}/${k}`)).catch(()=>{});
-        
-        if(k===uid && !isEx){
-          isEx=true;
-          try {
-            await push(ref(db,`chat/${curR}`),{
-              type:"sys",
-              text:enc(`${n}${t} が30分間発言がないため自動退室しました`,curP,isOff),
-              time:srvNow()
-            });
-          } catch(e) {}
-          clearAll();
-          showLobby("30分間発言がなかったため、自動退出しました。");
+      /* 自分の非アクティブ退室チェック */
+      if(!isOff&&k===uid&&!isW&&!_autoExitLock&&!isEx){
+        if(now-lastMsg>ROOM_TO){
+          doAutoExit(n,t,"30分間発言がなかった");
           return;
         }
-        continue;
       }
-      
+
+      /* 他ユーザーの古いpresenceを掃除（自分だけ）- サーバー側に任せるため軽微にのみ */
+      if(!isOff&&k!==uid&&now-lastMsg>ROOM_TO+60000){
+        remove(ref(db,`presence/${curR}/${k}`)).catch(()=>{});
+        return;
+      }
+
       cnt++;
-      const sp=document.createElement("span");
-      sp.className="chip";sp.style.color=c;sp.style.borderColor=c+"44";sp.textContent=n+t;
+      const sp=document.createElement("span");sp.className="chip";
+      sp.style.color=c;sp.style.borderColor=c+"44";sp.textContent=n+t;
       fg.appendChild(sp);
-    }
-    
-    if(!isEx){
-      D.pl.innerHTML="";D.pl.appendChild(fg);
-      D.pcnt.textContent=`[${cnt}人]`;
-    }
+    });
+    D.pl.innerHTML="";D.pl.appendChild(fg);
+    D.pcnt.textContent=`[${cnt}人]`;
   });
 
-  /* チャットログ監視 */
+  /* ── チャットログ監視 ── */
   _cOff=onValue(query(chatRef,orderByChild("time")),snap=>{
     if(!curR)return;
     const newLogs=[];
     if(snap.exists())snap.forEach(cs=>{const m=cs.val();if(m){m.id=cs.key;newLogs.push(m);}});
     logArray=newLogs;
-    if(isLiveMode)renderPage(Math.ceil(logArray.length/PAGE_SIZE)||1);else renderPage(currentPage);
+    if(isLiveMode)renderPage(Math.ceil(logArray.length/PAGE_SIZE)||1);
+    else renderPage(currentPage);
   });
 
-  /* ハートビート */
+  /* ── ハートビート（lastSeen更新）── */
   if(!asW)hbT=setInterval(async()=>{
-    if(!curR||isEx)return;
+    if(!curR||isEx||_autoExitLock)return;
     try{await update(myRef,{lastSeen:srvNow(),cEnc:enc(curColor,curP,isOff)});}catch{}
   },HB);
 
-  /* 部屋タイムアウト監視（1分毎） */
+  /* ── 部屋タイムアウト監視（1分毎・lastActivity基準）── */
   if(!isOff){
     toT=setInterval(async()=>{
-      if(!curR||isEx)return;
+      if(!curR||isEx||_autoExitLock)return;
       try{
         const rs=await get(roomRef);if(!rs.exists())return;
-        if(srvNow()-(rs.val()?.lastActivity||srvNow())>ROOM_TO){
-          isEx=true;
-          await wipe(curR);
+        const la=rs.val()?.lastActivity||srvNow();
+        if(srvNow()-la>ROOM_TO){
+          isEx=true;await wipe(curR);
+          clearAll();isEx=false;
           showLobby("一定時間動きがなかったため部屋が自動消去されました。");
+          showToast("🗑 部屋が自動消去されました","warn",6000);
         }
       }catch{}
     },60000);
@@ -905,7 +932,7 @@ async function exitRoom(realWipe=false){
     if(!sW&&sR){
       await remove(ref(db,`presence/${sR}/${uid}`)).catch(()=>{});
       const ps=await get(ref(db,`presence/${sR}`));
-      const remaining=ps.exists()?Object.keys(ps.val()||[]):[];
+      const remaining=ps.exists()?Object.keys(ps.val()||{}):[];
       if(!sO&&remaining.length===0){
         await wipe(sR);
       }else{
@@ -920,33 +947,36 @@ async function exitRoom(realWipe=false){
 async function sendMsg(){
   if(!curR||isW||isCmp||!isLiveMode)return;
   const txt=D.mi.value.trim();if(!txt)return;
-  D.mi.value="";D.mi.style.height="auto";const N=srvNow();
+  D.mi.value="";D.mi.style.height="auto";
+  const N=srvNow();
   try{
     const upd={};
     if(!isOff)upd[`rooms/${curR}/lastActivity`]=N;
     upd[`presence/${curR}/${uid}/lastSeen`]=N;
     upd[`presence/${curR}/${uid}/lastMessageAt`]=N;
     update(ref(db),upd).catch(()=>{});
-    await push(ref(db,`chat/${curR}`),{type:"msg",nEnc:enc(curN,curP,isOff),tEnc:enc(curT||"",curP,isOff),cEnc:enc(curColor,curP,isOff),text:enc(txt,curP,isOff),time:N});
-  }catch(e){alert("送信失敗: "+e.message);}
+    await push(ref(db,`chat/${curR}`),{
+      type:"msg",
+      nEnc:enc(curN,curP,isOff),tEnc:enc(curT||"",curP,isOff),
+      cEnc:enc(curColor,curP,isOff),text:enc(txt,curP,isOff),time:N
+    });
+  }catch(e){showToast("送信失敗: "+e.message,"warn",4000);}
 }
 
 /* ── upgrade（覗き見→参加） ── */
 async function upgrade(name,trip){
-  if(!curR)return;isW=false;curN=name;curT=trip||"";const N=srvNow();
+  if(!curR)return;isW=false;curN=name;curT=trip||"";
+  const N=srvNow();
   const myRef=ref(db,`presence/${curR}/${uid}`);
   await set(myRef,{nEnc:enc(name,curP,isOff),tEnc:enc(trip||"",curP,isOff),cEnc:enc(curColor,curP,isOff),enteredAt:N,lastSeen:N,lastMessageAt:N});
   await push(ref(db,`chat/${curR}`),{type:"sys",text:enc(`${name}${trip||""} が入室しました`,curP,isOff),time:N});
-  
   localStorage.setItem("nz_ni",name);localStorage.setItem("nz_tk",D.wtk.value.trim());
   localStorage.setItem("nz_sess",JSON.stringify({target:rawR,pass:curP,name,trip:trip||"",asW:false}));
-  
   D.wb.classList.remove("show");D.ib.classList.add("show");
   D.exBtn.textContent="退出";D.ivBtn.style.display=isOff?"none":"block";D.clrBtn.style.display="block";
   D.updateInputBarState(true);updFnPos();
   if(hbT)clearInterval(hbT);
-  const myRef2=ref(db,`presence/${curR}/${uid}`);
-  hbT=setInterval(async()=>{if(!curR||isEx)return;try{await update(myRef2,{lastSeen:srvNow(),cEnc:enc(curColor,curP,isOff)});}catch{}},HB);
+  hbT=setInterval(async()=>{if(!curR||isEx)return;try{await update(myRef,{lastSeen:srvNow(),cEnc:enc(curColor,curP,isOff)});}catch{}},HB);
 }
 
 /* ── イベント ── */
@@ -961,10 +991,16 @@ D.clrMsgBtn.onclick=()=>{D.mi.value="";D.mi.style.height="auto";D.mi.focus();upd
 D.enBtn.onclick=async()=>{
   const n=D.ni.value.replace(/[\s\u3000]+/g,"").trim(),r=D.ri.value.replace(/[\s\u3000]+/g,"").trim(),p=D.pi.value.trim();
   if(!n||!r||!p){alert("必須項目（名前・部屋ID・パスワード）を入力してください");return;}
-  setBtns(false);try{await doJoin({target:r,pass:p,name:n,trip:gTrip(n,D.tk.value.trim()),asW:false});}catch(e){showLobby(e.message);}setBtns(true);
+  setBtns(false);
+  try{await doJoin({target:r,pass:p,name:n,trip:gTrip(n,D.tk.value.trim()),asW:false});}
+  catch(e){showLobby(e.message);}
+  setBtns(true);
 };
 D.ofBtn.onclick=async()=>{
-  setBtns(false);try{await doJoin({target:"公式部屋",pass:OFF_P,name:"",trip:"",asW:true});}catch(e){showLobby(e.message);}setBtns(true);
+  setBtns(false);
+  try{await doJoin({target:"公式部屋",pass:OFF_P,name:"",trip:"",asW:true});}
+  catch(e){showLobby(e.message);}
+  setBtns(true);
 };
 D.gnBtn.onclick=()=>{
   const c="abcdefghijklmnopqrstuvwxyz0123456789";let r="",p="";
@@ -974,14 +1010,12 @@ D.gnBtn.onclick=()=>{
 };
 D.wuBtn.onclick=async()=>{
   const n=D.wni.value.replace(/[\s\u3000]+/g,"").trim(),k=D.wtk.value.trim();
-  if(!n){alert("名前を入力してください");return;}await upgrade(n,gTrip(n,k));
+  if(!n){alert("名前を入力してください");return;}
+  await upgrade(n,gTrip(n,k));
 };
 D.exBtn.onclick=()=>{
-  if(isOff || isW) {
-    exitRoom(false);
-  } else {
-    if(confirm("退出しますか？あなたが最後の1人の場合、部屋の履歴（ログ）は即座に完全消去されます。")) exitRoom(true);
-  }
+  if(isOff||isW){exitRoom(false);}
+  else{if(confirm("退出しますか？あなたが最後の1人の場合、部屋の履歴（ログ）は即座に完全消去されます。"))exitRoom(true);}
 };
 D.ivBtn.onclick=()=>{
   if(!rawR||!curP)return;
@@ -991,7 +1025,7 @@ D.ivBtn.onclick=()=>{
   });
 };
 D.gdBtn.onclick=()=>D.gmod.classList.add("show");
-D.gcBtn.onclick=()=>D.gmod.remove("show");
+D.gcBtn.onclick=()=>D.gmod.classList.remove("show");
 D.gmod.onclick=e=>{if(e.target===D.gmod)D.gmod.classList.remove("show");};
 
 /* ── 起動 ── */
@@ -999,16 +1033,23 @@ D.gmod.onclick=e=>{if(e.target===D.gmod)D.gmod.classList.remove("show");};
   const sp=new URLSearchParams(location.search),sr=sp.get("r"),spp=sp.get("p");
   if(sr&&spp){
     const n=localStorage.getItem("nz_ni")||"";
-    if(n){setBtns(false);try{await doJoin({target:sr,pass:spp,name:n,trip:gTrip(n,localStorage.getItem("nz_tk")||""),asW:false});}catch(e){showLobby(e.message);}setBtns(true);}
-    else{D.ri.value=sr;D.pi.value=spp;showLobby();}
+    if(n){
+      setBtns(false);
+      try{await doJoin({target:sr,pass:spp,name:n,trip:gTrip(n,localStorage.getItem("nz_tk")||""),asW:false,isAutoRejoin:true});}
+      catch(e){showLobby(e.message);}
+      setBtns(true);
+    }else{D.ri.value=sr;D.pi.value=spp;showLobby();}
     return;
   }
+  /* セッション復元（リロード・接続切れ後）*/
   const sessStr=localStorage.getItem("nz_sess");
   if(sessStr){
     try{
       const s=JSON.parse(sessStr);
       if(s&&s.target&&s.pass&&!s.asW){
-        setBtns(false);await doJoin({target:s.target,pass:s.pass,name:s.name,trip:s.trip,asW:false,isAutoRejoin:true});setBtns(true);return;
+        setBtns(false);
+        await doJoin({target:s.target,pass:s.pass,name:s.name,trip:s.trip,asW:false,isAutoRejoin:true});
+        setBtns(true);return;
       }
     }catch{localStorage.removeItem("nz_sess");}
   }

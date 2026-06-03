@@ -451,7 +451,7 @@ const esc=t=>(t||"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','
 
 /* ── トリップ ── */
 const SALT="NEZU_ONETIME_SALT_2026_🔥";
-const gTrip=(n,k)=>{if(!n||!k)return"";try{return"局"+CryptoJS.SHA256(`${n}:${SALT}:${k}`).toString().slice(0,6);}catch{return"";}};
+const gTrip=(n,k)=>{if(!n||!k)return"";try{return"◆"+CryptoJS.SHA256(`${n}:${SALT}:${k}`).toString().slice(0,6);}catch{return"";}};
 
 const updTP=()=>{const n=D.ni.value.replace(/[\s\u3000]+/g,"").trim(),k=D.tk.value.trim();if(n&&k){D.tpv.textContent=gTrip(n,k);D.tpv.style.display="inline-block";}else D.tpv.style.display="none";};
 const updWTP=()=>{const n=D.wni.value.replace(/[\s\u3000]+/g,"").trim(),k=D.wtk.value.trim();if(n&&k){D.wtpv.textContent=gTrip(n,k);D.wtpv.style.display="inline-block";}else D.wtpv.style.display="none";};
@@ -519,7 +519,7 @@ const fmtSz=b=>{if(!b||b<=0)return"";if(b<1024)return b+"B";if(b<1048576)return(
 const OFF_H=CryptoJS.SHA256("公式部屋").toString();
 const OFF_P="official_public_pass";
 const ROOM_TO=30*60*1000;   // 30分
-const HB=10000;             // ハートビート（10秒）
+const HB=10000;             // ハートビートを10秒に縮小して精度向上
 const PAGE_SIZE=50;
 
 let curR=null,curP=null,curN=null,curT=null,rawR=null;
@@ -789,7 +789,7 @@ async function doJoin({target,pass,name,trip,asW,isAutoRejoin=false}){
       lastMessageAt:N
     };
     
-    // 確実にゴースト化を防ぐためのサーバー側自動切断処理の予約
+    // タブが閉じられた、または回線切断時に自動消去するタスクをFirebaseサーバーに予約
     await onDisconnect(myRef).remove();
     await set(myRef, myPresenceData);
 
@@ -848,6 +848,7 @@ async function doJoin({target,pass,name,trip,asW,isAutoRejoin=false}){
         if(now - lastMsg > ROOM_TO){
           _autoExitLock = true;
           isEx = true;
+          // 自身でシステムメッセージを書き込んで、ローカルをクリーンアップ
           await push(chatRef,{type:"sys",text:enc(`${n}${t} が30分間発言がなかったため自動退室しました`,curP,isOff),time:srvNow()}).catch(()=>{});
           await remove(myRef).catch(()=>{});
           triggerLocalExit("timeout");
@@ -922,7 +923,7 @@ async function exitRoom(realWipe=false){
   const sR=curR,sP=curP,sN=curN,sT=curT,sO=isOff,sW=isW;
   if(realWipe||sW)localStorage.removeItem("nz_sess");
   
-  // 正常退出時は速やかにFirebaseサーバー側の自動消去（onDisconnect）予約をキャンセル
+  // 退出時は速やかにオンコネクトの予約を解除
   if(!sW && sR){
     try{await onDisconnect(ref(db,`presence/${sR}/${uid}`)).cancel();}catch{}
   }

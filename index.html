@@ -76,7 +76,6 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 #hdr{background:var(--sf);border-bottom:1px solid var(--bd);padding:6px 12px;flex-shrink:0}
 .hr{display:flex;align-items:center;gap:8px;height:32px}
 .rn{font-weight:800;font-size:14px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
-.pc覆い{font-size:11px;font-weight:700;color:var(--mu);font-family:monospace}
 .pc{font-size:11px;font-weight:700;color:var(--mu);font-family:monospace}
 .hbs {display:flex;gap:4px;z-index:10;}
 .hbs button{padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700;background:var(--bg);border:1px solid var(--bd);color:var(--tx);display:flex;align-items:center;gap:4px}
@@ -162,8 +161,6 @@ a{color:#818cf8}a:hover{text-decoration:underline}
   width:100%;aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden;
   position:relative;border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;
 }
-/* TikTok用縦長サイズ・アスペクト比固定 */
-.vc.tk{aspect-ratio:9/16;width:100%;max-width:280px;margin:0 auto;background:#010101}
 .vc-frame{width:100%;height:100%;border:none;display:block}
 .vc-badge{position:absolute;top:6px;left:6px;background:rgba(0,0,0,.75);color:#fff;font-size:8.5px;font-weight:800;padding:2px 5px;border-radius:4px;letter-spacing:.5px;z-index:2;pointer-events:none}
 
@@ -209,7 +206,7 @@ a{color:#818cf8}a:hover{text-decoration:underline}
         メッセージはブラウザ内で強固に暗号化（AES-256-CBC）され、サーバーを介して受信者の手元に届くまで誰にも解読されません。暗号化キー（パスワード）がネットワークに送信されることは一切ありません。
         <div class="ibox-grid">
           <div class="ibox-item"><b>⏱ 30分自動データ消去</b>最後の発言から30分経過するか、全員が退室するとサーバー上のログは即座に完全消去されます。</div>
-          <div class="ibox-item"><b>📺 各種メディア自動再生</b>YouTube・ニコニコ・TikTok・画像・音声ファイルをタイムライン上でインライン再生可能です。</div>
+          <div class="ibox-item"><b>📺 各種メディア自動再生</b>YouTube・ニコニコ・画像・音声ファイルをタイムライン上でインライン再生可能です。</div>
         </div>
         <div class="abox"><b>⚠️ 注意:</b> 部屋IDとパスワードが完全に一致すれば、誰でも同じ部屋へ入室して会話が可能です。</div>
       </div>
@@ -539,14 +536,12 @@ D.imod.addEventListener("touchstart",e=>{if(e.target===D.icBtn)return;imodTouche
 D.imod.addEventListener("touchmove",e=>{if(e.touches.length===2){e.preventDefault();imgDragging=false;const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);imgScale=Math.min(8,Math.max(1,imgScale*(d/imgPinchDist)));imgPinchDist=d;clampImg();applyImgTransform();}else if(e.touches.length===1&&imgDragging&&imgScale>1){e.preventDefault();imgX=imgDragIx+(e.touches[0].clientX-imgDragSx);imgY=imgDragIy+(e.touches[0].clientY-imgDragSy);clampImg();applyImgTransform();}},{passive:false});
 D.imod.addEventListener("touchend",()=>{imgDragging=false;imodTouches=[];},{passive:true});
 
-/* ── メディア解析・判定用ロジック（TikTok完全対応版） ── */
+/* ── メディア解析・判定用ロジック（TikTok埋め込み撤廃版） ── */
 let activeAudio=null;
 const stopActiveAudio=()=>{if(activeAudio){try{activeAudio.pause();}catch{}activeAudio=null;}};
 
 const YR=/(?:https?:\/\/)?(?:(?:www\.|m\.|music\.)?youtube\.com\/(?:watch\?(?:[^#\s]*?&)*?v=|embed\/|v\/|shorts\/|live\/)([A-Za-z0-9_-]{11})|youtu\.be\/([A-Za-z0-9_-]{11}))/i;
 const NR=/(?:https?:\/\/)?(?:(?:sp\.|www\.)?nicovideo\.jp\/watch\/|nico\.ms\/)((?:sm|nm|so|lv|co|ch)?\d+)/i;
-const TR=/(?:https?:\/\/)?(?:www\.)?tiktok\.com\/@[^\/\s]+\/video\/(\d+)/i;
-const TR_SHORT=/(?:https?:\/\/)?(?:[a-z0-9]+\.)?tiktok\.com\/([A-Za-z0-9]+)/i;
 const AR=/\.(mp3|wav|aac|m4a|ogg|flac)(\?.*)?$/i;
 const IR=/\.(jpe?g|gif|png|webp|bmp|svg)(\?.*)?$/i;
 const UR=/(https?:\/\/[^\s\n<>"]+)/gi;
@@ -555,43 +550,6 @@ let vcCnt=0;
 function bVideoCard(type,embedSrc,label){
   const id="vc"+(++vcCnt);
   return `<div class="vc-wrap"><div class="vc ${type}" id="${id}"><span class="vc-badge">${esc(label)}</span><iframe class="vc-frame" src="${esc(embedSrc)}" allow="autoplay;encrypted-media;fullscreen" allowfullscreen></iframe></div></div>`;
-}
-
-/* TikTok用のoEmbed非同期読み込み解決カード（ブラウザ仕様変更対策済） */
-function bTikTokOembedCard(url) {
-  const id = "tk-oembed-" + (++vcCnt);
-  
-  setTimeout(async () => {
-    const container = document.getElementById(id);
-    if (!container) return;
-    try {
-      const res = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`);
-      if (res.ok) {
-        const json = await res.json();
-        if (json.html) {
-          const srcM = json.html.match(/src="([^"]+)"/);
-          if (srcM && srcM[1]) {
-            container.innerHTML = `<iframe class="vc-frame" src="${esc(srcM[1])}" allow="autoplay;encrypted-media;fullscreen" allowfullscreen></iframe>`;
-            return;
-          }
-        }
-      }
-      // oEmbedで取得できない・または制限されている場合は標準の埋め込みプレイヤーURLを試行
-      let videoId = "";
-      const vm = url.match(/\/video\/(\d+)/);
-      if (vm) videoId = vm[1];
-      
-      if (videoId) {
-        container.innerHTML = `<iframe class="vc-frame" src="https://www.tiktok.com/embed/v2/${videoId}" allow="autoplay;encrypted-media;fullscreen" allowfullscreen></iframe>`;
-      } else {
-        container.innerHTML = `<div style="padding:12px;font-size:11px;color:var(--mu);text-align:center;">動画を読み込めません。<br><a href="${esc(url)}" target="_blank" style="color:#818cf8;text-decoration:underline;">TikTokで直接開く</a></div>`;
-      }
-    } catch (e) {
-      container.innerHTML = `<div style="padding:12px;font-size:11px;color:var(--ro);text-align:center;">通信エラー</div>`;
-    }
-  }, 50);
-
-  return `<div class="vc-wrap"><div class="vc tk" id="${id}"><span class="vc-badge">TikTok</span><div class="spin" style="margin:auto;position:absolute;inset:0;"></div></div></div>`;
 }
 
 let aCnt=0;
@@ -672,13 +630,9 @@ function _parseSegs(txt){
       const nm=url.match(NR);
       if(nm){segs.push({type:"media",html:bVideoCard("nc",`https://embed.nicovideo.jp/watch/${nm[1]}?noscript=1`,"ニコニコ動画")});continue;}
       
-      const tm2=url.match(TR);
-      if(tm2){segs.push({type:"media",html:bVideoCard("tk",`https://www.tiktok.com/embed/v2/${tm2[1]}`,"TikTok")});continue;}
-      
-      // 短縮URL (vt.tiktok.com等) や、通常の動画URLを含めて包括的にTikTokとして判定・oEmbedカードを展開
-      const tmShort=url.match(TR_SHORT);
-      if(tmShort && (url.includes("tiktok.com") || (!url.includes("nico.ms") && !url.includes("youtu.be")))){
-        segs.push({type:"media",html:bTikTokOembedCard(url)});
+      // TikTok関連URL（通常の動画、短縮、vt等含むすべて）を検知した場合は埋め込みせず通常のリンクとして処理
+      if(url.includes("tiktok.com")){
+        segs.push({type:"text",html:`<a href="${su}" target="_blank" rel="noopener noreferrer">${su}</a>`});
         continue;
       }
       
@@ -815,7 +769,14 @@ async function doJoin({target,pass,name,trip,asW,isAutoRejoin=false}){
   if(!asW){
     const N=srvNow();
     await set(myRef,{nEnc:enc(name,pass,isOff),tEnc:enc(trip||"",pass,isOff),cEnc:enc(curColor,pass,isOff),enteredAt:N,lastSeen:N,lastMessageAt:N});
-    await push(chatRef,{type:"sys",text:enc(`${name}${trip||""} が入室しました`,pass,isOff),time:N});
+    
+    // リロード時や切断後の再接続（sessionStorageに既に入室フラグがある場合）は「入室しました」を流さない
+    const isRejoinInSession = sessionStorage.getItem(`nz_joined_${curR}`) === "true";
+    if(!isRejoinInSession){
+      await push(chatRef,{type:"sys",text:enc(`${name}${trip||""} が入室しました`,pass,isOff),time:N});
+    }
+    sessionStorage.setItem(`nz_joined_${curR}`, "true");
+
     if(!isOff){localStorage.setItem("nz_ni",name);localStorage.setItem("nz_tk",D.tk.value.trim());}
     localStorage.setItem("nz_sess",JSON.stringify({target,pass,name,trip:trip||"",asW:false}));
   }
@@ -846,44 +807,61 @@ async function doJoin({target,pass,name,trip,asW,isAutoRejoin=false}){
 
   if(!isOff){
     _rOff=onValue(roomRef,s=>{
-      if(!s.exists()&&curR&&!isEx){isEx=true;clearAll();isEx=false;showLobby("部屋データが削除または自動消去されました。");}
+      if(!s.exists()&&curR&&!isEx){
+        isEx=true;
+        clearAll();
+        showLobby("部屋データが削除または自動消去されました。");
+      }
     });
   }
 
-  /* ── プレゼンス監視 ＋ 自動退室 ── */
-  _pOff=onValue(pRef,s=>{
-    if(!curR)return;
-    const users=s.val()||{},fg=document.createDocumentFragment();
+  /* ── プレゼンス監視 ＋ 自動退室処理（堅牢化） ── */
+  _pOff=onValue(pRef,async (s)=>{
+    if(!curR || isEx)return;
+    const users=s.val()||{};
+    const fg=document.createDocumentFragment();
     let cnt=0;
     const now=srvNow();
 
-    Object.entries(users).forEach(([k,u])=>{
-      if(!u)return;
-      const n=dec(u.nEnc,curP,isOff);if(!n)return;
-      const t=dec(u.tEnc,curP,isOff)||"",c=dec(u.cEnc,curP,isOff)||"#94a3b8";
+    // 先に全ユーザーの判定を行う（自身への自動退室判定を含む）
+    const userEntries = Object.entries(users);
+    for (const [k, u] of userEntries) {
+      if(!u) continue;
+      const n=dec(u.nEnc,curP,isOff); if(!n) continue;
+      const t=dec(u.tEnc,curP,isOff)||"", c=dec(u.cEnc,curP,isOff)||"#94a3b8";
       const lastMsg=u.lastMessageAt||u.enteredAt||now;
 
-      if(!isOff&&now-lastMsg>ROOM_TO){
+      // 発言から30分以上経過
+      if(!isOff && (now - lastMsg > ROOM_TO)){
+        // 他者または自分自身のレコードをFirebase上から削除要求
         remove(ref(db,`presence/${curR}/${k}`)).catch(()=>{});
-        if(k===uid&&!isEx){
+        
+        if(k===uid && !isEx){
           isEx=true;
-          push(ref(db,`chat/${curR}`),{
-            type:"sys",
-            text:enc(`${n}${t} が30分間発言がないため自動退室しました`,curP,isOff),
-            time:srvNow()
-          }).catch(()=>{}).finally(()=>{
-            clearAll();isEx=false;
-            showLobby("30分間発言がなかったため、自動退出しました。");
-          });
+          try {
+            await push(ref(db,`chat/${curR}`),{
+              type:"sys",
+              text:enc(`${n}${t} が30分間発言がないため自動退室しました`,curP,isOff),
+              time:srvNow()
+            });
+          } catch(e) {}
+          clearAll();
+          showLobby("30分間発言がなかったため、自動退出しました。");
+          return;
         }
-        return;
+        continue;
       }
+      
       cnt++;
-      const sp=document.createElement("span");sp.className="chip";sp.style.color=c;sp.style.borderColor=c+"44";sp.textContent=n+t;
+      const sp=document.createElement("span");
+      sp.className="chip";sp.style.color=c;sp.style.borderColor=c+"44";sp.textContent=n+t;
       fg.appendChild(sp);
-    });
-    D.pl.innerHTML="";D.pl.appendChild(fg);
-    D.pcnt.textContent=`[${cnt}人]`;
+    }
+    
+    if(!isEx){
+      D.pl.innerHTML="";D.pl.appendChild(fg);
+      D.pcnt.textContent=`[${cnt}人]`;
+    }
   });
 
   /* チャットログ監視 */
@@ -908,7 +886,8 @@ async function doJoin({target,pass,name,trip,asW,isAutoRejoin=false}){
       try{
         const rs=await get(roomRef);if(!rs.exists())return;
         if(srvNow()-(rs.val()?.lastActivity||srvNow())>ROOM_TO){
-          isEx=true;await wipe(curR);isEx=false;
+          isEx=true;
+          await wipe(curR);
           showLobby("一定時間動きがなかったため部屋が自動消去されました。");
         }
       }catch{}

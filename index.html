@@ -85,7 +85,7 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 #call-container { display:none; flex-direction:column; flex-shrink:0; border-bottom:1px solid var(--bd); background:var(--bg); z-index:10; }
 #call-container.show { display:flex; }
 #call-ctrl { display:flex; gap:6px; padding:8px 12px; background:var(--sf); border-bottom:1px solid var(--bd); flex-wrap:wrap; align-items:center; justify-content:center; }
-.cctrl-btn { padding:4px 10px; border-radius:4px; font-size:11px; font-weight:bold; background:var(--bg); color:var(--tx); border:1px solid var(--bd); cursor:pointer; }
+.cctrl-btn { padding:4px 10px; border-radius:4px; font-size:11px; font-weight:bold; background:var(--bg); color:var(--tx); border:1px solid var(--bd); cursor:pointer; transition: all 0.2s; }
 .cctrl-btn:active { filter:brightness(1.2); }
 .cctrl-btn.off { background:rgba(244,63,94,0.15); color:#fda4af; border-color:rgba(244,63,94,0.3); }
 .cctrl-sel { font-size:11px; padding:4px 6px; border-radius:4px; background:var(--bg); color:var(--tx); border:1px solid var(--bd); outline:none; font-weight:bold; cursor:pointer;}
@@ -287,6 +287,7 @@ a{color:#818cf8}a:hover{text-decoration:underline}
            <button class="cctrl-btn" id="ctrlMic">🎙 ミュート</button>
            <button class="cctrl-btn" id="ctrlCam">📹 カメラオフ</button>
            <button class="cctrl-btn" id="ctrlFlip">🔄 内/外切替</button>
+           <button class="cctrl-btn" id="ctrlRecord">⏺ 録音/録画</button>
         </div>
         <div id="call-area"></div>
     </div>
@@ -435,7 +436,8 @@ const D = {
   callBtn:$("callBtn"),endCallBtn:$("endCallBtn"),callmod:$("callmod"),
   cbAudio:$("cbAudio"),cbVideoIn:$("cbVideoIn"),cbVideoOut:$("cbVideoOut"),cbListen:$("cbListen"),ccBtn:$("ccBtn"),
   callContainer:$("call-container"), callCtrl:$("call-ctrl"), callArea:$("call-area"),
-  ctrlMode:$("ctrlMode"), ctrlMic:$("ctrlMic"), ctrlCam:$("ctrlCam"), ctrlFlip:$("ctrlFlip")
+  ctrlMode:$("ctrlMode"), ctrlMic:$("ctrlMic"), ctrlCam:$("ctrlCam"), ctrlFlip:$("ctrlFlip"),
+  ctrlRecord:$("ctrlRecord") // NEW RECORD BUTTON
 };
 
 D.updateInputBarState = (enabled) => {
@@ -567,6 +569,8 @@ let callMode = 'none'; // 'none', 'audio', 'video', 'listen'
 let localStream = null;
 let pcs = {};
 const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+let mediaRecorder = null;
+let recordedChunks = [];
 
 // メディア管理フラグ
 let currentFacingMode = "user";
@@ -587,11 +591,20 @@ function updateCallCtrlUI() {
     D.ctrlMic.style.display = (callMode === 'listen') ? 'none' : 'flex';
     D.ctrlCam.style.display = (callMode === 'video') ? 'flex' : 'none';
     D.ctrlFlip.style.display = (callMode === 'video') ? 'flex' : 'none';
+    D.ctrlRecord.style.display = (callMode === 'listen') ? 'none' : 'flex';
     
     D.ctrlMic.textContent = micEnabled ? "🎙 ミュート" : "🎙 ミュート解除";
     D.ctrlMic.classList.toggle("off", !micEnabled);
     D.ctrlCam.textContent = camEnabled ? "📹 カメラオフ" : "📹 カメラオン";
     D.ctrlCam.classList.toggle("off", !camEnabled);
+    
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+        D.ctrlRecord.textContent = "⏹ 停止";
+        D.ctrlRecord.classList.add("off");
+    } else {
+        D.ctrlRecord.textContent = callMode === 'video' ? "⏺ 録画" : "⏺ 録音";
+        D.ctrlRecord.classList.remove("off");
+    }
 }
 
 async function startCall(mode) {
@@ -609,7 +622,6 @@ async function startCall(mode) {
         throw new Error("セキュアコンテキスト(HTTPS)でないか、お使いのブラウザがカメラ/マイクに対応していません。");
       }
       
-      // 通信量削減のための制約 (解像度・フレームレートを抑える)
       const vConstraints = mode === 'video' ? {
         facingMode: currentFacingMode,
         width: { ideal: 320, max: 480 },
@@ -649,6 +661,11 @@ async function startCall(mode) {
 async function endCall() {
   const prevMode = callMode;
   callMode = 'none';
+  
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+      mediaRecorder.stop();
+  }
+  
   if (localStream) {
     localStream.getTracks().forEach(t => t.stop());
     localStream = null;
@@ -712,6 +729,7 @@ D.ctrlFlip.onclick = async () => {
         const newVideoTrack = newStream.getVideoTracks()[0];
         const oldVideoTrack = localStream.getVideoTracks()[0];
         
+        // 既存のトラックと差し替え
         if (oldVideoTrack) {
             localStream.removeTrack(oldVideoTrack);
             oldVideoTrack.stop();
@@ -719,21 +737,84 @@ D.ctrlFlip.onclick = async () => {
         localStream.addTrack(newVideoTrack);
         newVideoTrack.enabled = camEnabled;
 
+        // 通信中のPeer接続に乗せるトラックを更新
         for (const id in pcs) {
             const sender = pcs[id].getSenders().find(s => s.track && s.track.kind === 'video');
             if (sender) {
-                sender.replaceTrack(newVideoTrack);
+                sender.replaceTrack(newVideoTrack).catch(()=>{});
             }
         }
         
+        // プレビューの更新
         const myVideoEl = $(`rvw-${uid}`)?.querySelector('video');
         if(myVideoEl) myVideoEl.srcObject = localStream;
         
     } catch(e) {
-        alert("カメラの切り替えに失敗しました。");
+        alert("カメラの切り替えに失敗しました。カメラの権限を確認してください。");
         currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
     }
 };
+
+// 録画・録音機能 (MediaRecorder)
+D.ctrlRecord.onclick = () => {
+    if (!localStream) return;
+
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        return;
+    }
+
+    recordedChunks = [];
+    try {
+        let options = {};
+        if (callMode === 'video') {
+            if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')) {
+                options = { mimeType: 'video/webm;codecs=vp9,opus' };
+            } else if (MediaRecorder.isTypeSupported('video/mp4')) {
+                options = { mimeType: 'video/mp4' };
+            }
+        } else {
+            if (MediaRecorder.isTypeSupported('audio/webm')) {
+                options = { mimeType: 'audio/webm' };
+            } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+                options = { mimeType: 'audio/mp4' };
+            }
+        }
+
+        mediaRecorder = new MediaRecorder(localStream, options);
+        mediaRecorder.ondataavailable = e => {
+            if (e.data && e.data.size > 0) {
+                recordedChunks.push(e.data);
+            }
+        };
+        mediaRecorder.onstop = () => {
+            const actualMime = mediaRecorder.mimeType || '';
+            let ext = 'webm';
+            if (actualMime.includes('mp4')) ext = 'mp4';
+            else if (actualMime.includes('ogg')) ext = 'ogg';
+            else if (actualMime.includes('audio') && !actualMime.includes('webm')) ext = 'm4a';
+            
+            // MIMEの取得に失敗した場合のフォールバック
+            if (!actualMime) ext = callMode === 'video' ? 'mp4' : 'm4a';
+
+            const blob = new Blob(recordedChunks, { type: actualMime || (callMode === 'video' ? 'video/mp4' : 'audio/mp4') });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `record_${Date.now()}.${ext}`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            mediaRecorder = null;
+            updateCallCtrlUI();
+        };
+        mediaRecorder.start();
+        updateCallCtrlUI();
+    } catch (e) {
+        alert("お使いのブラウザでは録画/録音機能がサポートされていないか、開始に失敗しました。\n" + e.message);
+    }
+};
+
 // ────────────────────────────
 
 function createPC(id, nEnc) {
@@ -766,14 +847,13 @@ function createPC(id, nEnc) {
     localStream.getTracks().forEach(t => {
       const sender = pc.addTrack(t, localStream);
       
-      // 送信ビットレートの上限設定 (さらなる通信量削減)
       try {
         const params = sender.getParameters();
         if (!params.encodings) params.encodings = [{}];
         if (t.kind === 'video') {
-           params.encodings[0].maxBitrate = 150000; // 150kbps
+           params.encodings[0].maxBitrate = 150000;
         } else if (t.kind === 'audio') {
-           params.encodings[0].maxBitrate = 24000; // 24kbps
+           params.encodings[0].maxBitrate = 24000;
         }
         sender.setParameters(params).catch(()=>{});
       } catch(e) {}

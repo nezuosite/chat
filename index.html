@@ -430,13 +430,11 @@ let _srvOff = 0;
 onValue(ref(db, ".info/serverTimeOffset"), s => { _srvOff = s.val() || 0; });
 const srvNow = () => Date.now() + _srvOff;
 
-// ▼ 修正箇所：ユーザーIDを localStorage に保存して分身を防ぐ ▼
 const uid = (() => {
   let id = localStorage.getItem("nz_uid");
   if (!id) { id = "u-" + Math.random().toString(36).slice(2,9) + "-" + Date.now().toString(36); localStorage.setItem("nz_uid", id); }
   return id;
 })();
-// ▲ 修正箇所おわり ▲
 
 const saveSession = (data) => {
   let s = {};
@@ -564,13 +562,18 @@ async function startCall(mode) {
   
   if (mode !== 'listen') {
     try {
+      // 修正箇所: 環境がHTTPSかどうかの判定を追加
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("セキュアコンテキスト(HTTPS)でないか、お使いのブラウザがカメラ/マイクに対応していません。");
+      }
       localStream = await navigator.mediaDevices.getUserMedia({
         audio: true,
         video: mode === 'video'
       });
       addRemoteVideo(uid, localStream, enc(curN || "自分"), true);
     } catch (e) {
-      alert("マイク/カメラのアクセスが拒否されました");
+      // 修正箇所: エラー内容を具体的に出力
+      alert("カメラ/マイクの取得に失敗しました:\n" + (e.message || e.name));
       callMode = 'none';
       D.callBtn.style.display = 'flex';
       D.endCallBtn.style.display = 'none';

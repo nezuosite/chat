@@ -81,6 +81,22 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 #pl{display:flex;gap:4px;overflow-x:auto;padding-top:4px;white-space:nowrap}
 .chip{font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,.03);border:1px solid}
 
+/* --- 通話エリア用 CSS --- */
+#call-area { display:none; flex-wrap:wrap; gap:8px; padding:12px; background:var(--bg); border-bottom:1px solid var(--bd); overflow-y:auto; max-height:160px; flex-shrink:0; }
+#call-area.show { display:flex; }
+.remote-video-wrap { width:100px; height:100px; background:#000; border-radius:8px; position:relative; overflow:hidden; border:1px solid var(--bd); flex-shrink:0; }
+.remote-video { width:100%; height:100%; object-fit:cover; background:#111; }
+.remote-name { position:absolute; bottom:4px; left:4px; background:rgba(0,0,0,.7); color:#fff; font-size:9px; font-weight:bold; padding:2px 6px; border-radius:4px; z-index:2; max-width:90px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+.mod-overlay { position:fixed;inset:0;background:rgba(15,23,42,.8);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:10000;padding:16px; }
+.mod-overlay.show { display:flex; }
+.call-btn-row { display:flex; gap:8px; justify-content:center; margin-top:12px; }
+.cb { flex:1; padding:12px; border-radius:8px; font-weight:bold; font-size:13px; color:#fff; text-align:center; cursor:pointer; }
+.cb-audio { background:var(--e2); }
+.cb-video { background:var(--in); }
+.cb-listen { background:var(--m2); }
+/* ----------------------- */
+
 #tobar{display:none;background:rgba(244,63,94,.08);border-bottom:1px solid rgba(244,63,94,.2);padding:4px 12px;flex-shrink:0;align-items:center;gap:8px;}
 #tobar.show{display:flex}
 #tobar-track{flex:1;height:3px;background:rgba(244,63,94,.15);border-radius:2px;overflow:hidden;}
@@ -242,6 +258,11 @@ a{color:#818cf8}a:hover{text-decoration:underline}
         <span class="rn" id="rdsp"></span>
         <span class="pcnt" id="pcnt"></span>
         <div class="hbs">
+          <button class="bclr" id="callBtn" style="display:none">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14" style="margin-right:4px;margin-top:-1px"><path d="M20 15.5c-1.2 0-2.4-.2-3.6-.6-.3-.1-.7 0-1 .2l-2.2 2.2c-2.8-1.4-5.1-3.8-6.6-6.6l2.2-2.2c.3-.3.4-.7.2-1-.4-1.2-.6-2.4-.6-3.6 0-.6-.4-1-1-1H4.4C3.8 3.5 3 4.4 3 5.5c0 9.4 7.6 17 17 17 1.1 0 2-.8 2-1.9v-4.1c0-.5-.4-1-1-1z"/></svg>通話
+          </button>
+          <button class="bx" id="endCallBtn" style="display:none">📞切断</button>
+          
           <button class="bclr" id="clrBtn" style="display:none"><span class="bclr-dot" id="clrDot"></span>色変更</button>
           <button class="bi" id="ivBtn" style="display:none">招待</button>
           <button class="bx" id="exBtn">退出</button>
@@ -249,6 +270,8 @@ a{color:#818cf8}a:hover{text-decoration:underline}
       </div>
       <div id="pl"></div>
     </div>
+    
+    <div id="call-area"></div>
 
     <div id="tobar">
       <div id="tobar-track"><div id="tobar-fill" style="width:100%"></div></div>
@@ -314,6 +337,18 @@ a{color:#818cf8}a:hover{text-decoration:underline}
   <button id="tTBtn" title="最下部へ"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></button>
 </div>
 
+<div id="callmod" class="mod-overlay">
+  <div class="gc">
+    <h3 style="font-size:13px;font-weight:900;color:#a5b4fc;border-bottom:1px solid var(--bd);padding-bottom:8px">通話に参加</h3>
+    <div class="call-btn-row">
+      <button class="cb cb-audio" id="cbAudio">🎙 音声のみ</button>
+      <button class="cb cb-video" id="cbVideo">📹 ビデオ</button>
+      <button class="cb cb-listen" id="cbListen">🎧 聞き専</button>
+    </div>
+    <button class="btn bq" style="margin-top:12px" id="ccBtn">キャンセル</button>
+  </div>
+</div>
+
 <div id="gmod"><div class="gc">
   <h3 style="font-size:13px;font-weight:900;color:#a5b4fc;border-bottom:1px solid var(--bd);padding-bottom:8px">セキュリティガイド / 利用規約</h3>
   <div class="gs"><h4>🔐 暗号化の仕組み</h4>強力なPBKDF2により鍵を生成後、ランダムな初期ベクトル（IV）を用いたAES-256-CBC方式で暗号化されます。</div>
@@ -341,7 +376,7 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getDatabase, ref, push, onValue, set, update, remove, query, orderByChild, get }
+import { getDatabase, ref, push, onValue, set, update, remove, query, orderByChild, get, onChildAdded, off }
   from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -375,7 +410,10 @@ const D = {
   tl:$("tl"),tli:$("tl-inner"),ib:$("ib"),mi:$("mi"),sdBtn:$("sdBtn"),clrMsgBtn:$("clrMsgBtn"),
   fn:$("fn"),tTBtn:$("tTBtn"),tBBtn:$("tBBtn"),lbClrPick:$("lbClrPick"),
   pnav:$("pnav"),pFirst:$("pFirst"),pPrev:$("pPrev"),pNext:$("pNext"),pLast:$("pLast"),
-  pinfo:$("pinfo"),midisable:$("midisable")
+  pinfo:$("pinfo"),midisable:$("midisable"),
+  callBtn:$("callBtn"),endCallBtn:$("endCallBtn"),callmod:$("callmod"),
+  cbAudio:$("cbAudio"),cbVideo:$("cbVideo"),cbListen:$("cbListen"),ccBtn:$("ccBtn"),
+  callArea:$("call-area")
 };
 
 D.updateInputBarState = (enabled) => {
@@ -503,6 +541,176 @@ let logArray=[], currentPage=1, isLiveMode=true;
 let lastMsgAt = 0; // ローカル時刻ベース
 
 const hideSplash = () => { const s=D.splash; if(!s)return; s.style.opacity="0"; s.style.transition="opacity .25s"; setTimeout(()=>s.remove(),260); };
+
+// ─── WebRTC 通話の変数と関数 ───
+let callMode = 'none'; // 'none', 'audio', 'video', 'listen'
+let localStream = null;
+let pcs = {};
+const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+
+D.callBtn.onclick = () => D.callmod.classList.add("show");
+D.ccBtn.onclick = () => D.callmod.classList.remove("show");
+
+D.cbAudio.onclick = () => startCall('audio');
+D.cbVideo.onclick = () => startCall('video');
+D.cbListen.onclick = () => startCall('listen');
+D.endCallBtn.onclick = () => endCall();
+
+async function startCall(mode) {
+  callMode = mode;
+  D.callmod.classList.remove('show');
+  D.callBtn.style.display = 'none';
+  D.endCallBtn.style.display = 'flex';
+  
+  if (mode !== 'listen') {
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: mode === 'video'
+      });
+      addRemoteVideo(uid, localStream, enc(curN || "自分"), true);
+    } catch (e) {
+      alert("マイク/カメラのアクセスが拒否されました");
+      callMode = 'none';
+      D.callBtn.style.display = 'flex';
+      D.endCallBtn.style.display = 'none';
+      return;
+    }
+  }
+
+  D.callArea.classList.add('show');
+  
+  onChildAdded(ref(db, `signals/${curR}/${uid}`), handleSignal);
+  await update(ref(db, `presence/${curR}/${uid}`), { call: mode });
+  updFnPos();
+}
+
+async function endCall() {
+  callMode = 'none';
+  if (localStream) {
+    localStream.getTracks().forEach(t => t.stop());
+    localStream = null;
+  }
+  for (const id in pcs) {
+    pcs[id].close();
+  }
+  pcs = {};
+  D.callArea.innerHTML = '';
+  D.callArea.classList.remove('show');
+  D.callBtn.style.display = isW ? 'none' : 'flex';
+  D.endCallBtn.style.display = 'none';
+  
+  if (curR && !isEx) {
+    off(ref(db, `signals/${curR}/${uid}`)); 
+    await update(ref(db, `presence/${curR}/${uid}`), { call: 'none' }).catch(()=>{});
+  }
+  updFnPos();
+}
+
+function createPC(id, nEnc) {
+  if (pcs[id]) return pcs[id];
+  const pc = new RTCPeerConnection(rtcConfig);
+  pcs[id] = pc;
+  
+  pc.onicecandidate = e => {
+    if (e.candidate) {
+      push(ref(db, `signals/${curR}/${id}`), {
+        from: uid, type: 'ice', data: JSON.stringify(e.candidate), time: srvNow()
+      });
+    }
+  };
+  
+  pc.ontrack = e => addRemoteVideo(id, e.streams[0], nEnc, false);
+  
+  pc.oniceconnectionstatechange = () => {
+    if (['disconnected', 'failed', 'closed'].includes(pc.iceConnectionState)) {
+      removeRemoteVideo(id);
+      pc.close();
+      delete pcs[id];
+    }
+  };
+  
+  if (callMode === 'listen') {
+    pc.addTransceiver('audio', { direction: 'recvonly' });
+    pc.addTransceiver('video', { direction: 'recvonly' });
+  } else if (localStream) {
+    localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+  }
+  
+  return pc;
+}
+
+async function initiateCall(id, nEnc) {
+  const pc = createPC(id, nEnc);
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  push(ref(db, `signals/${curR}/${id}`), {
+    from: uid, type: 'offer', data: JSON.stringify(offer), time: srvNow()
+  });
+}
+
+async function handleSignal(snap) {
+  const sig = snap.val();
+  if (!sig) return;
+  remove(snap.ref).catch(()=>{});
+  
+  if (callMode === 'none') return;
+  
+  const { from, type, data } = sig;
+  const payload = JSON.parse(data);
+  
+  let nEnc = "";
+  try {
+     const ps = await get(ref(db, `presence/${curR}/${from}`));
+     if(ps.exists()) nEnc = ps.val().nEnc;
+  } catch(e){}
+
+  let pc = pcs[from];
+  
+  if (type === 'offer') {
+    if (!pc) pc = createPC(from, nEnc);
+    await pc.setRemoteDescription(new RTCSessionDescription(payload));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    push(ref(db, `signals/${curR}/${from}`), {
+      from: uid, type: 'answer', data: JSON.stringify(answer), time: srvNow()
+    });
+  } else if (type === 'answer') {
+    if (pc) await pc.setRemoteDescription(new RTCSessionDescription(payload));
+  } else if (type === 'ice') {
+    if (pc) await pc.addIceCandidate(new RTCIceCandidate(payload)).catch(()=>{});
+  }
+}
+
+function addRemoteVideo(id, stream, nEnc, isLocal) {
+  let w = $(`rvw-${id}`);
+  if (!w) {
+    w = document.createElement('div');
+    w.id = `rvw-${id}`;
+    w.className = 'remote-video-wrap';
+    const v = document.createElement('video');
+    v.className = 'remote-video';
+    v.autoplay = true;
+    v.playsInline = true;
+    if (isLocal) v.muted = true;
+    
+    const n = document.createElement('div');
+    n.className = 'remote-name';
+    n.textContent = isLocal ? "自分" : (dec(nEnc) || "???");
+    
+    w.appendChild(v);
+    w.appendChild(n);
+    D.callArea.appendChild(w);
+  }
+  const v = w.querySelector('video');
+  if (v.srcObject !== stream) v.srcObject = stream;
+}
+
+function removeRemoteVideo(id) {
+  const w = $(`rvw-${id}`);
+  if (w) w.remove();
+}
+// ─── 通話関連ここまで ───
 
 // 画像ビューア
 let imgScale=1,imgX=0,imgY=0,imgDragging=false,imgDragSx=0,imgDragSy=0,imgDragIx=0,imgDragIy=0;
@@ -648,6 +856,7 @@ async function wipe(r) {
     await set(ref(db,`rooms/${r}`),null);
     await set(ref(db,`chat/${r}`),null);
     await set(ref(db,`presence/${r}`),null);
+    await set(ref(db,`signals/${r}`),null);
   } catch(e){console.error("wipe failed",e);}
 }
 
@@ -658,6 +867,7 @@ function clearAll() {
   symKey=null; logArray=[]; currentPage=1; isLiveMode=true; lastMsgAt=0;
   stopActiveAudio(); D.tli.innerHTML="";
   stopToBar();
+  endCall();
 }
 
 let _toBarRaf=null;
@@ -671,7 +881,6 @@ function startToBar() {
     const pct=(remain/INACTIVITY)*100;
     D.tobarFill.style.width=pct+"%";
     
-    // 分:秒 形式にフォーマット (例: 29:59)
     const m = Math.floor(remain / 60000);
     const s = Math.floor((remain % 60000) / 1000);
     D.tobarLabel.textContent = m + ":" + String(s).padStart(2, "0");
@@ -727,7 +936,6 @@ async function doJoin({target, pass, name, trip, asW, isAutoRejoin=false}) {
   const nowLoc = Date.now();
   const nowSrv = srvNow();
 
-  // 自動復帰のタイマー引継ぎ
   let prevSession = {};
   if (isAutoRejoin && !asW) {
       try { prevSession = JSON.parse(localStorage.getItem("nz_sess") || "{}"); } catch{}
@@ -741,7 +949,6 @@ async function doJoin({target, pass, name, trip, asW, isAutoRejoin=false}) {
       lastMsgAt = nowLoc;
   }
 
-  // ゴミ部屋（全員死んでいる）かどうかの判定とクリーンアップ
   if(!isOff){
       const rs = await get(roomRef);
       const ps = await get(pRef);
@@ -774,7 +981,7 @@ async function doJoin({target, pass, name, trip, asW, isAutoRejoin=false}) {
           nEnc: enc(name),
           tEnc: enc(trip||""),
           cEnc: enc(curColor),
-          // 経過時間を引き継いだサーバー時刻換算値
+          call: 'none',
           lastMsgAt: nowSrv - (nowLoc - lastMsgAt) 
       };
       await set(myRef, myPresence);
@@ -800,12 +1007,14 @@ async function doJoin({target, pass, name, trip, asW, isAutoRejoin=false}) {
   if(asW){
     D.ib.classList.remove("show"); D.wb.classList.add("show");
     D.exBtn.textContent="ロビーへ戻る"; D.ivBtn.style.display="none"; D.clrBtn.style.display="none";
+    D.callBtn.style.display="none"; D.endCallBtn.style.display="none";
     D.wni.value=localStorage.getItem("nz_ni")||""; D.wtk.value=localStorage.getItem("nz_tk")||"";
     updWTP(); syncPickers(curColor);
     wbOpen=false; D.wbBody.classList.remove("open"); D.wbArrow.classList.remove("open"); D.wbHint.textContent="▼ タップして設定";
   } else {
     D.ib.classList.add("show"); D.wb.classList.remove("show");
     D.exBtn.textContent="退出"; D.ivBtn.style.display=isOff?"none":"block"; D.clrBtn.style.display="block";
+    D.callBtn.style.display="flex"; D.endCallBtn.style.display="none";
   }
   D.updateInputBarState(!asW); updFnPos(); hideSplash();
 
@@ -833,7 +1042,7 @@ async function doJoin({target, pass, name, trip, asW, isAutoRejoin=false}) {
     for(const[id, u] of entries){
       if(!u)continue;
       
-      const isZombie = (now - (u.lastMsgAt || 0) >= INACTIVITY + 3000); // 3秒猶予
+      const isZombie = (now - (u.lastMsgAt || 0) >= INACTIVITY + 3000);
 
       if (!isZombie) {
           allDead = false;
@@ -842,8 +1051,23 @@ async function doJoin({target, pass, name, trip, asW, isAutoRejoin=false}) {
           activeCnt++;
           const sp=document.createElement("span"); sp.className="chip";
           sp.style.color=c; sp.style.borderColor=c+"44"; sp.textContent=n+t; fg.appendChild(sp);
+          
+          // --- WebRTC P2P mesh control ---
+          if (callMode !== 'none' && id !== uid) {
+            if (u.call && u.call !== 'none') {
+              if (!pcs[id] && uid > id) {
+                // Initiator
+                initiateCall(id, u.nEnc);
+              }
+            } else {
+              if (pcs[id]) {
+                pcs[id].close();
+                delete pcs[id];
+                removeRemoteVideo(id);
+              }
+            }
+          }
       } else {
-          // ゾンビ化（切断逃走）したユーザーは他のクライアントが掃除する
           if (id !== uid) {
               remove(ref(db, `presence/${curR}/${id}`)).catch(()=>{});
           }
@@ -876,6 +1100,8 @@ async function exitRoom(autoMsg="") {
   if (isEx) return;
   isEx = true;
   _exitLock = true;
+
+  await endCall();
 
   const sR = curR, sN = curN, sT = curT, sO = isOff, sW = isW;
   const myId = uid;
@@ -947,7 +1173,7 @@ async function upgrade(name,trip){
   const myRef=ref(db,`presence/${curR}/${uid}`);
   const chatRef=ref(db,`chat/${curR}`);
 
-  await set(myRef,{nEnc:enc(name),tEnc:enc(trip||""),cEnc:enc(curColor),lastMsgAt:N});
+  await set(myRef,{nEnc:enc(name),tEnc:enc(trip||""),cEnc:enc(curColor),call:callMode,lastMsgAt:N});
   await push(chatRef,{type:"sys",text:enc(`${name}${trip||""} が入室しました`),time:N});
 
   localStorage.setItem("nz_ni",name);
@@ -956,6 +1182,7 @@ async function upgrade(name,trip){
 
   D.wb.classList.remove("show"); D.ib.classList.add("show");
   D.exBtn.textContent="退出"; D.ivBtn.style.display=isOff?"none":"block"; D.clrBtn.style.display="block";
+  D.callBtn.style.display="flex"; D.endCallBtn.style.display="none";
   D.updateInputBarState(true); updFnPos();
 
   startToBar();

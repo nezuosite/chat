@@ -82,8 +82,14 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 .chip{font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,.03);border:1px solid}
 
 /* --- 通話エリア用 CSS --- */
-#call-area { display:none; flex-wrap:wrap; gap:8px; padding:12px; background:var(--bg); border-bottom:1px solid var(--bd); overflow-y:auto; max-height:160px; flex-shrink:0; }
-#call-area.show { display:flex; }
+#call-container { display:none; flex-direction:column; flex-shrink:0; border-bottom:1px solid var(--bd); background:var(--bg); z-index:10; }
+#call-container.show { display:flex; }
+#call-ctrl { display:flex; gap:6px; padding:8px 12px; background:var(--sf); border-bottom:1px solid var(--bd); flex-wrap:wrap; align-items:center; justify-content:center; }
+.cctrl-btn { padding:4px 10px; border-radius:4px; font-size:11px; font-weight:bold; background:var(--bg); color:var(--tx); border:1px solid var(--bd); cursor:pointer; }
+.cctrl-btn:active { filter:brightness(1.2); }
+.cctrl-btn.off { background:rgba(244,63,94,0.15); color:#fda4af; border-color:rgba(244,63,94,0.3); }
+.cctrl-sel { font-size:11px; padding:4px 6px; border-radius:4px; background:var(--bg); color:var(--tx); border:1px solid var(--bd); outline:none; font-weight:bold; cursor:pointer;}
+#call-area { display:flex; flex-wrap:wrap; gap:8px; padding:12px; overflow-y:auto; max-height:160px; }
 .remote-video-wrap { width:100px; height:100px; background:#000; border-radius:8px; position:relative; overflow:hidden; border:1px solid var(--bd); flex-shrink:0; }
 .remote-video { width:100%; height:100%; object-fit:cover; background:#111; }
 .remote-name { position:absolute; bottom:4px; left:4px; background:rgba(0,0,0,.7); color:#fff; font-size:9px; font-weight:bold; padding:2px 6px; border-radius:4px; z-index:2; max-width:90px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -271,7 +277,19 @@ a{color:#818cf8}a:hover{text-decoration:underline}
       <div id="pl"></div>
     </div>
     
-    <div id="call-area"></div>
+    <div id="call-container">
+        <div id="call-ctrl">
+           <select id="ctrlMode" class="cctrl-sel">
+               <option value="audio">🎙 音声のみ</option>
+               <option value="video">📹 ビデオ</option>
+               <option value="listen">🎧 聞き専</option>
+           </select>
+           <button class="cctrl-btn" id="ctrlMic">🎙 ミュート</button>
+           <button class="cctrl-btn" id="ctrlCam">📹 カメラオフ</button>
+           <button class="cctrl-btn" id="ctrlFlip">🔄 内/外切替</button>
+        </div>
+        <div id="call-area"></div>
+    </div>
 
     <div id="tobar">
       <div id="tobar-track"><div id="tobar-fill" style="width:100%"></div></div>
@@ -413,7 +431,8 @@ const D = {
   pinfo:$("pinfo"),midisable:$("midisable"),
   callBtn:$("callBtn"),endCallBtn:$("endCallBtn"),callmod:$("callmod"),
   cbAudio:$("cbAudio"),cbVideo:$("cbVideo"),cbListen:$("cbListen"),ccBtn:$("ccBtn"),
-  callArea:$("call-area")
+  callContainer:$("call-container"), callCtrl:$("call-ctrl"), callArea:$("call-area"),
+  ctrlMode:$("ctrlMode"), ctrlMic:$("ctrlMic"), ctrlCam:$("ctrlCam"), ctrlFlip:$("ctrlFlip")
 };
 
 D.updateInputBarState = (enabled) => {
@@ -546,6 +565,11 @@ let localStream = null;
 let pcs = {};
 const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
+// メディア管理フラグ
+let currentFacingMode = "user";
+let micEnabled = true;
+let camEnabled = true;
+
 D.callBtn.onclick = () => D.callmod.classList.add("show");
 D.ccBtn.onclick = () => D.callmod.classList.remove("show");
 
@@ -554,25 +578,38 @@ D.cbVideo.onclick = () => startCall('video');
 D.cbListen.onclick = () => startCall('listen');
 D.endCallBtn.onclick = () => endCall();
 
+function updateCallCtrlUI() {
+    D.ctrlMode.value = callMode;
+    D.ctrlMic.style.display = (callMode === 'listen') ? 'none' : 'flex';
+    D.ctrlCam.style.display = (callMode === 'video') ? 'flex' : 'none';
+    D.ctrlFlip.style.display = (callMode === 'video') ? 'flex' : 'none';
+    
+    D.ctrlMic.textContent = micEnabled ? "🎙 ミュート" : "🎙 ミュート解除";
+    D.ctrlMic.classList.toggle("off", !micEnabled);
+    D.ctrlCam.textContent = camEnabled ? "📹 カメラオフ" : "📹 カメラオン";
+    D.ctrlCam.classList.toggle("off", !camEnabled);
+}
+
 async function startCall(mode) {
   callMode = mode;
   D.callmod.classList.remove('show');
   D.callBtn.style.display = 'none';
   D.endCallBtn.style.display = 'flex';
   
+  micEnabled = true;
+  camEnabled = true;
+  
   if (mode !== 'listen') {
     try {
-      // 修正箇所: 環境がHTTPSかどうかの判定を追加
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error("セキュアコンテキスト(HTTPS)でないか、お使いのブラウザがカメラ/マイクに対応していません。");
       }
       localStream = await navigator.mediaDevices.getUserMedia({
         audio: true,
-        video: mode === 'video'
+        video: mode === 'video' ? { facingMode: currentFacingMode } : false
       });
       addRemoteVideo(uid, localStream, enc(curN || "自分"), true);
     } catch (e) {
-      // 修正箇所: エラー内容を具体的に出力
       alert("カメラ/マイクの取得に失敗しました:\n" + (e.message || e.name));
       callMode = 'none';
       D.callBtn.style.display = 'flex';
@@ -581,7 +618,8 @@ async function startCall(mode) {
     }
   }
 
-  D.callArea.classList.add('show');
+  D.callContainer.classList.add('show');
+  updateCallCtrlUI();
   
   onChildAdded(ref(db, `signals/${curR}/${uid}`), handleSignal);
   await update(ref(db, `presence/${curR}/${uid}`), { call: mode });
@@ -589,6 +627,7 @@ async function startCall(mode) {
 }
 
 async function endCall() {
+  const prevMode = callMode;
   callMode = 'none';
   if (localStream) {
     localStream.getTracks().forEach(t => t.stop());
@@ -599,16 +638,78 @@ async function endCall() {
   }
   pcs = {};
   D.callArea.innerHTML = '';
-  D.callArea.classList.remove('show');
+  D.callContainer.classList.remove('show');
+  
   D.callBtn.style.display = isW ? 'none' : 'flex';
   D.endCallBtn.style.display = 'none';
   
   if (curR && !isEx) {
     off(ref(db, `signals/${curR}/${uid}`)); 
-    await update(ref(db, `presence/${curR}/${uid}`), { call: 'none' }).catch(()=>{});
+    if(prevMode !== 'none') {
+        await update(ref(db, `presence/${curR}/${uid}`), { call: 'none' }).catch(()=>{});
+    }
   }
   updFnPos();
 }
+
+// ─── 追加：コントロール機能 ───
+D.ctrlMode.onchange = async () => {
+    const newMode = D.ctrlMode.value;
+    if (newMode === callMode) return;
+    await endCall();
+    await startCall(newMode);
+};
+
+D.ctrlMic.onclick = () => {
+    if (!localStream) return;
+    micEnabled = !micEnabled;
+    localStream.getAudioTracks().forEach(t => t.enabled = micEnabled);
+    updateCallCtrlUI();
+};
+
+D.ctrlCam.onclick = () => {
+    if (!localStream || callMode !== 'video') return;
+    camEnabled = !camEnabled;
+    localStream.getVideoTracks().forEach(t => t.enabled = camEnabled);
+    updateCallCtrlUI();
+};
+
+D.ctrlFlip.onclick = async () => {
+    if (callMode !== 'video' || !localStream) return;
+    
+    currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+    
+    try {
+        const newStream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: currentFacingMode } 
+        });
+        
+        const newVideoTrack = newStream.getVideoTracks()[0];
+        const oldVideoTrack = localStream.getVideoTracks()[0];
+        
+        if (oldVideoTrack) {
+            localStream.removeTrack(oldVideoTrack);
+            oldVideoTrack.stop();
+        }
+        localStream.addTrack(newVideoTrack);
+        newVideoTrack.enabled = camEnabled;
+
+        for (const id in pcs) {
+            const sender = pcs[id].getSenders().find(s => s.track && s.track.kind === 'video');
+            if (sender) {
+                sender.replaceTrack(newVideoTrack);
+            }
+        }
+        
+        const myVideoEl = $(`rvw-${uid}`)?.querySelector('video');
+        if(myVideoEl) myVideoEl.srcObject = localStream;
+        
+    } catch(e) {
+        alert("カメラの切り替えに失敗しました。");
+        currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+    }
+};
+// ────────────────────────────
 
 function createPC(id, nEnc) {
   if (pcs[id]) return pcs[id];
@@ -1055,11 +1156,9 @@ async function doJoin({target, pass, name, trip, asW, isAutoRejoin=false}) {
           const sp=document.createElement("span"); sp.className="chip";
           sp.style.color=c; sp.style.borderColor=c+"44"; sp.textContent=n+t; fg.appendChild(sp);
           
-          // --- WebRTC P2P mesh control ---
           if (callMode !== 'none' && id !== uid) {
             if (u.call && u.call !== 'none') {
               if (!pcs[id] && uid > id) {
-                // Initiator
                 initiateCall(id, u.nEnc);
               }
             } else {

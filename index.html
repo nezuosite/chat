@@ -96,8 +96,8 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 
 .mod-overlay { position:fixed;inset:0;background:rgba(15,23,42,.8);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:10000;padding:16px; }
 .mod-overlay.show { display:flex; }
-.call-btn-row { display:flex; gap:8px; justify-content:center; margin-top:12px; }
-.cb { flex:1; padding:12px; border-radius:8px; font-weight:bold; font-size:13px; color:#fff; text-align:center; cursor:pointer; }
+.call-btn-row { display:flex; gap:8px; justify-content:center; margin-top:10px; }
+.cb { flex:1; padding:10px; border-radius:8px; font-weight:bold; font-size:13px; color:#fff; text-align:center; cursor:pointer; }
 .cb-audio { background:var(--e2); }
 .cb-video { background:var(--in); }
 .cb-listen { background:var(--m2); }
@@ -360,8 +360,11 @@ a{color:#818cf8}a:hover{text-decoration:underline}
     <h3 style="font-size:13px;font-weight:900;color:#a5b4fc;border-bottom:1px solid var(--bd);padding-bottom:8px">通話に参加</h3>
     <div class="call-btn-row">
       <button class="cb cb-audio" id="cbAudio">🎙 音声のみ</button>
-      <button class="cb cb-video" id="cbVideo">📹 ビデオ</button>
       <button class="cb cb-listen" id="cbListen">🎧 聞き専</button>
+    </div>
+    <div class="call-btn-row">
+      <button class="cb cb-video" id="cbVideoIn">📹 ビデオ(内)</button>
+      <button class="cb cb-video" id="cbVideoOut" style="background:var(--i2)">📹 ビデオ(外)</button>
     </div>
     <button class="btn bq" style="margin-top:12px" id="ccBtn">キャンセル</button>
   </div>
@@ -430,7 +433,7 @@ const D = {
   pnav:$("pnav"),pFirst:$("pFirst"),pPrev:$("pPrev"),pNext:$("pNext"),pLast:$("pLast"),
   pinfo:$("pinfo"),midisable:$("midisable"),
   callBtn:$("callBtn"),endCallBtn:$("endCallBtn"),callmod:$("callmod"),
-  cbAudio:$("cbAudio"),cbVideo:$("cbVideo"),cbListen:$("cbListen"),ccBtn:$("ccBtn"),
+  cbAudio:$("cbAudio"),cbVideoIn:$("cbVideoIn"),cbVideoOut:$("cbVideoOut"),cbListen:$("cbListen"),ccBtn:$("ccBtn"),
   callContainer:$("call-container"), callCtrl:$("call-ctrl"), callArea:$("call-area"),
   ctrlMode:$("ctrlMode"), ctrlMic:$("ctrlMic"), ctrlCam:$("ctrlCam"), ctrlFlip:$("ctrlFlip")
 };
@@ -574,7 +577,8 @@ D.callBtn.onclick = () => D.callmod.classList.add("show");
 D.ccBtn.onclick = () => D.callmod.classList.remove("show");
 
 D.cbAudio.onclick = () => startCall('audio');
-D.cbVideo.onclick = () => startCall('video');
+D.cbVideoIn.onclick = () => { currentFacingMode = 'user'; startCall('video'); };
+D.cbVideoOut.onclick = () => { currentFacingMode = 'environment'; startCall('video'); };
 D.cbListen.onclick = () => startCall('listen');
 D.endCallBtn.onclick = () => endCall();
 
@@ -604,9 +608,25 @@ async function startCall(mode) {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error("セキュアコンテキスト(HTTPS)でないか、お使いのブラウザがカメラ/マイクに対応していません。");
       }
+      
+      // 通信量削減のための制約 (解像度・フレームレートを抑える)
+      const vConstraints = mode === 'video' ? {
+        facingMode: currentFacingMode,
+        width: { ideal: 320, max: 480 },
+        height: { ideal: 240, max: 360 },
+        frameRate: { ideal: 10, max: 15 }
+      } : false;
+      
+      const aConstraints = {
+        sampleRate: 16000,
+        channelCount: 1,
+        echoCancellation: true,
+        noiseSuppression: true
+      };
+
       localStream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-        video: mode === 'video' ? { facingMode: currentFacingMode } : false
+        audio: aConstraints,
+        video: vConstraints
       });
       addRemoteVideo(uid, localStream, enc(curN || "自分"), true);
     } catch (e) {
@@ -652,7 +672,7 @@ async function endCall() {
   updFnPos();
 }
 
-// ─── 追加：コントロール機能 ───
+// ─── コントロール機能 ───
 D.ctrlMode.onchange = async () => {
     const newMode = D.ctrlMode.value;
     if (newMode === callMode) return;
@@ -681,7 +701,12 @@ D.ctrlFlip.onclick = async () => {
     
     try {
         const newStream = await navigator.mediaDevices.getUserMedia({ 
-            video: { facingMode: currentFacingMode } 
+            video: { 
+                facingMode: currentFacingMode,
+                width: { ideal: 320, max: 480 },
+                height: { ideal: 240, max: 360 },
+                frameRate: { ideal: 10, max: 15 }
+            } 
         });
         
         const newVideoTrack = newStream.getVideoTracks()[0];
@@ -738,7 +763,21 @@ function createPC(id, nEnc) {
     pc.addTransceiver('audio', { direction: 'recvonly' });
     pc.addTransceiver('video', { direction: 'recvonly' });
   } else if (localStream) {
-    localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+    localStream.getTracks().forEach(t => {
+      const sender = pc.addTrack(t, localStream);
+      
+      // 送信ビットレートの上限設定 (さらなる通信量削減)
+      try {
+        const params = sender.getParameters();
+        if (!params.encodings) params.encodings = [{}];
+        if (t.kind === 'video') {
+           params.encodings[0].maxBitrate = 150000; // 150kbps
+        } else if (t.kind === 'audio') {
+           params.encodings[0].maxBitrate = 24000; // 24kbps
+        }
+        sender.setParameters(params).catch(()=>{});
+      } catch(e) {}
+    });
   }
   
   return pc;

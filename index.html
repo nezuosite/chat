@@ -392,11 +392,13 @@ let _srvOff = 0;
 onValue(ref(db, ".info/serverTimeOffset"), s => { _srvOff = s.val() || 0; });
 const srvNow = () => Date.now() + _srvOff;
 
+// ▼ 修正箇所：ユーザーIDを localStorage に保存して分身を防ぐ ▼
 const uid = (() => {
-  let id = sessionStorage.getItem("nz_uid");
-  if (!id) { id = "u-" + Math.random().toString(36).slice(2,9) + "-" + Date.now().toString(36); sessionStorage.setItem("nz_uid", id); }
+  let id = localStorage.getItem("nz_uid");
+  if (!id) { id = "u-" + Math.random().toString(36).slice(2,9) + "-" + Date.now().toString(36); localStorage.setItem("nz_uid", id); }
   return id;
 })();
+// ▲ 修正箇所おわり ▲
 
 const saveSession = (data) => {
   let s = {};

@@ -35,7 +35,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .spt{font-size:10px;font-weight:800;color:var(--m2);letter-spacing:.2em}
 
-/* ロビー：スクロールなしで収まるようスリム化 */
+/* ロビー */
 #lobby{display:none;position:fixed;inset:0;background:var(--bg);z-index:100;overflow:hidden;}
 .lbo{height:100%;display:flex;flex-direction:column;padding:10px 14px calc(10px + var(--safe));gap:6px;justify-content:center;max-width:380px;margin:0 auto}
 .lbt{font-size:14px;font-weight:900;color:#818cf8;text-align:center;letter-spacing:.05em}
@@ -74,21 +74,23 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .hbs button{padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700;background:var(--bg);border:1px solid var(--bd);color:var(--tx);display:flex;align-items:center;gap:4px}
 .bclr-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
 .bx{border-color:rgba(244,63,94,.4)!important;color:#fda4af!important}
-#pl{display:flex;gap:4px;overflow-x:auto;padding-top:4px;white-space:nowrap}
+#pl{display:flex;gap:4px;overflow-x:auto;padding-top:4px;white-space:nowrap;scrollbar-width:none;}
+#pl::-webkit-scrollbar{display:none;}
 .chip{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,.03);border:1px solid}
 
-/* 通話エリア */
-#call-container { display:none; flex-direction:column; flex-shrink:0; border-bottom:1px solid var(--bd); background:var(--bg); z-index:10 }
+/* 通話エリア UI最適化 */
+#call-container { display:none; flex-direction:column; flex-shrink:0; border-bottom:1px solid var(--bd); background:var(--s2); z-index:10 }
 #call-container.show { display:flex }
-#call-ctrl { display:flex; gap:6px; padding:6px 12px; background:var(--sf); border-bottom:1px solid var(--bd); flex-wrap:wrap; align-items:center; justify-content:center }
-.cctrl-btn { padding:4px 8px; border-radius:4px; font-size:10.5px; font-weight:bold; background:var(--bg); color:var(--tx); border:1px solid var(--bd); cursor:pointer }
+#call-ctrl { display:flex; gap:6px; padding:8px 12px; background:var(--sf); border-bottom:1px solid var(--bd); flex-wrap:wrap; align-items:center; justify-content:center }
+.cctrl-sel { font-size:11px; padding:6px 8px; border-radius:6px; background:var(--bg); color:var(--tx); border:1px solid var(--bd); outline:none; font-weight:bold; cursor:pointer }
+.cctrl-btn { padding:6px 10px; border-radius:6px; font-size:11px; font-weight:bold; background:var(--bg); color:var(--tx); border:1px solid var(--bd); cursor:pointer; transition:all 0.2s }
+.cctrl-btn:active { transform:scale(0.95) }
 .cctrl-btn.off { background:rgba(244,63,94,0.15); color:#fda4af; border-color:rgba(244,63,94,0.3) }
-.cctrl-sel { font-size:10.5px; padding:4px 6px; border-radius:4px; background:var(--bg); color:var(--tx); border:1px solid var(--bd); outline:none; font-weight:bold }
-#call-area { display:flex; flex-wrap:wrap; gap:6px; padding:8px 12px; overflow-y:auto; max-height:140px }
-.remote-video-wrap { width:85px; height:85px; background:#000; border-radius:6px; position:relative; overflow:hidden; border:1px solid var(--bd); flex-shrink:0 }
+#call-area { display:flex; flex-wrap:nowrap; overflow-x:auto; gap:8px; padding:10px 12px; max-height:160px; scrollbar-width:thin; }
+.remote-video-wrap { width:100px; height:100px; background:#000; border-radius:8px; position:relative; overflow:hidden; border:1px solid var(--bd); flex-shrink:0; box-shadow:0 4px 6px rgba(0,0,0,0.3); }
 .remote-video { width:100%; height:100%; object-fit:cover; background:#111 }
-.remote-name { position:absolute; bottom:2px; left:2px; right:2px; background:rgba(0,0,0,.75); color:#fff; font-size:8.5px; font-weight:bold; padding:1px 4px; border-radius:3px; z-index:2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; justify-content:space-between; align-items:center }
-.v-status { font-size:8px; font-family:monospace }
+.remote-name { position:absolute; bottom:4px; left:4px; right:4px; background:rgba(0,0,0,.75); color:#fff; font-size:9.5px; font-weight:bold; padding:2px 6px; border-radius:4px; z-index:2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; justify-content:space-between; align-items:center }
+.v-status { font-size:10px; font-family:monospace; flex-shrink:0; margin-left:4px; }
 
 .mod-overlay { position:fixed;inset:0;background:rgba(15,23,42,.8);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:10000;padding:16px }
 .mod-overlay.show { display:flex }
@@ -133,8 +135,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .ts{color:var(--m2);font-size:9.5px;margin-left:auto}
 .mb{align-self:start;background:var(--sf);border:1px solid transparent;border-left:3px solid;border-radius:4px 12px 12px 12px;padding:8px 12px;font-size:14px;line-height:1.5;max-width:100%;word-break:break-all;white-space:pre-wrap}
 
-/* メディアプレイヤーコンテナを「スクロールなしで収まる半分サイズ」に最適化 */
-.media-wrap{margin-top:4px;width:100%;max-width:240px} 
+.media-wrap{margin-top:4px;width:100%;max-width:260px} 
 .media-collapse{border:1px solid var(--bd);border-radius:6px;overflow:hidden;background:var(--s2)}
 .media-collapse-hdr{display:flex;align-items:center;gap:4px;padding:5px 8px;cursor:pointer;user-select:none;background:rgba(255,255,255,.03)}
 .media-collapse-icon{font-size:10px;flex-shrink:0}
@@ -143,6 +144,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .media-collapse-badge.yt{background:rgba(255,0,0,.15);color:#f87171}
 .media-collapse-badge.nc{background:rgba(79,70,229,.2);color:#a5b4fc}
 .media-collapse-badge.tk{background:rgba(0,0,0,.5);color:#fff;border:1px solid rgba(255,255,255,.15)}
+.media-collapse-badge.ig{background:rgba(225,48,108,.15);color:#e1306c}
 .media-collapse-badge.img{background:rgba(16,185,129,.15);color:#34d399}
 .media-collapse-badge.au{background:rgba(99,102,241,.2);color:#818cf8}
 .media-collapse-arrow{font-size:9px;color:var(--m2);transition:transform .2s;flex-shrink:0}
@@ -150,13 +152,19 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .media-collapse-body{display:none;padding:4px;background:#000}
 .media-collapse-body.open{display:block}
 
-/* 縦・横のサイズ比率を維持したプレイヤーサイズ最適化 */
+/* 動画・画像コンテナ */
 .vc-wrap{width:100%;position:relative}
 .vc{width:100%;aspect-ratio:16/9;background:#000;border-radius:4px;overflow:hidden;position:relative;border:1px solid var(--bd);display:flex;align-items:center;justify-content:center}
-/* YouTube Shorts & TikTok用の縦長(9:16)サイズ：最大高260px程度に収める */
-.vc.shorts, .tk-embed-wrap{aspect-ratio:9/16; width:100%; max-width:146px; margin:0 auto; height:260px; background:#000; position:relative; overflow:hidden; border-radius:4px}
-.vc-frame, .tk-embed-frame{position:absolute; top:0; left:0; width:100%; height:100%; border:none}
+/* YouTube Shorts */
+.vc.shorts {aspect-ratio:9/16; width:100%; max-width:160px; margin:0 auto; background:#000; position:relative; overflow:hidden; border-radius:4px;}
+/* Instagram 埋め込み */
+.vc.ig {aspect-ratio:auto; min-height:460px; width:100%; max-width:320px; margin:0 auto; background:#fff; position:relative; overflow:hidden; border-radius:4px;}
+.vc-frame {position:absolute; top:0; left:0; width:100%; height:100%; border:none; overflow:hidden;}
 .vc-badge{position:absolute;top:4px;left:4px;background:rgba(0,0,0,.75);color:#fff;font-size:8px;font-weight:800;padding:1px 3px;border-radius:3px;z-index:2;pointer-events:none}
+
+/* TikTok フルサイズ最適化 */
+.tk-embed-wrap { aspect-ratio:9/16; width:100%; max-width:280px; margin:0 auto; background:#000; position:relative; overflow:hidden; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,0.5); border:1px solid var(--bd); }
+.tk-embed-frame { position:absolute; top:0; left:0; width:100%; height:100%; border:none; overflow:hidden; }
 
 .tk-card{display:inline-flex;align-items:center;gap:6px;background:rgba(1,1,1,.6);border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:6px 10px;margin-top:4px;max-width:100%;text-decoration:none;color:var(--tx)}
 .tk-card-icon{width:22px;height:22px;border-radius:4px;background:#010101;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px}
@@ -165,7 +173,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .tk-card-url{font-size:10px;color:#a5b4fc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px}
 .tk-card-arrow{font-size:10px;color:rgba(255,255,255,.3);margin-left:auto;flex-shrink:0}
 
-.img-block{width:100%;max-width:100%;height:auto;max-height:140px;object-fit:contain;border-radius:4px;border:1px solid var(--bd);cursor:pointer;display:block}
+.img-block{width:100%;max-width:100%;height:auto;max-height:160px;object-fit:contain;border-radius:4px;border:1px solid var(--bd);cursor:pointer;display:block}
 .aw{width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:4px;padding:6px;display:flex;gap:6px;align-items:center}
 .aw-left{flex-shrink:0}
 .apb{width:26px;height:26px;border-radius:50%;background:var(--in);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px}
@@ -178,7 +186,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .asktypetype::-webkit-slider-thumb{-webkit-appearance:none;width:8px;height:8px;border-radius:50%;background:var(--tx)}
 .atm{font-size:9px;color:var(--mu);font-family:monospace}
 .aw-actions{display:flex;align-items:center;gap:6px}
-.aw-dl{display:none!important} /* 要件に基づきダウンロード導線を非表示化 */
+.aw-dl{display:none!important}
 .aw-size-badge{font-size:9px;color:var(--em);font-family:monospace}
 
 #pnav{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--s2);border-top:1px solid var(--bd);padding:5px 8px;flex-shrink:0}
@@ -287,12 +295,13 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <div id="call-container">
         <div id="call-ctrl">
            <select id="ctrlMode" class="cctrl-sel">
-               <option value="audio">🎙 音声通話</option>
-               <option value="video">📹 ビデオ通話</option>
-               <option value="listen">🎧 聞き専部屋</option>
+               <option value="audio">🎙 音声のみ</option>
+               <option value="video-user">📹 ビデオ(内側)</option>
+               <option value="video-environment">📹 ビデオ(外側)</option>
+               <option value="listen">🎧 聴き専(視聴のみ)</option>
            </select>
-           <button class="cctrl-btn" id="ctrlMic">🎙 ミュート</button>
-           <button class="cctrl-btn" id="ctrlCam">📹 カメラオフ</button>
+           <button class="cctrl-btn" id="ctrlMic">🎙 マイクON</button>
+           <button class="cctrl-btn" id="ctrlCam">📹 カメラON</button>
            <button class="cctrl-btn" id="ctrlFlip">🔄 カメラ切替</button>
         </div>
         <div id="call-area"></div>
@@ -367,7 +376,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <h3 style="font-size:13px;font-weight:900;color:#a5b4fc;border-bottom:1px solid var(--bd);padding-bottom:8px">通話に参加</h3>
     <div class="call-btn-row">
       <button class="cb cb-audio" id="cbAudio">🎙 音声のみ</button>
-      <button class="cb cb-listen" id="cbListen">🎧 聞き専</button>
+      <button class="cb cb-listen" id="cbListen">🎧 聴き専(視聴のみ)</button>
     </div>
     <div class="call-btn-row">
       <button class="cb cb-video" id="cbVideoIn">📹 ビデオ(内カメラ)</button>
@@ -384,21 +393,21 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <div class="gs" style="border-left-color: #60a5fa;">
       <h4>🔒 エンドツーエンド暗号化 (E2EE) の仕組み</h4>
       <p style="font-size:10.5px; color:var(--mu); margin-top:2px;">
-        当システムは、入力された「パスワード」から<b>PBKDF2暗号鍵ストレッチング</b>を用いてクライアント（ブラウザ）内で独自の強力な<b>AES-256-CBC</b>秘密鍵を生成します。テキストやカラー情報は通信経路に乗る前に完全に暗号化されます。暗号化されたデータは中間サーバーや運営者であっても絶対に復号不可能です。
+        当システムは、入力された「パスワード」から<b>PBKDF2暗号鍵ストレッチング</b>を用いてクライアント内で独自の<b>AES-256-CBC</b>秘密鍵を生成します。テキストやカラー情報は通信経路に乗る前に完全に暗号化されます。
       </p>
     </div>
     
     <div class="gs" style="border-left-color: #f87171;">
       <h4>⏱ 30分バニッシュ（自動消滅・揮発性記憶）</h4>
       <p style="font-size:10.5px; color:var(--mu); margin-top:2px;">
-        最後の発言から30分経過するとセッション切れとなり自動退出します。さらに、部屋内の全員が退室した（あるいは無通信状態になった）瞬間、Realtime Database上のデータレコード（チャット履歴・シグナリングログ・入室者情報）は連動して<b>即時完全消去(Wipe)</b>され、ログは地球上から永久に失われます。
+        最後の発言から30分経過するとセッション切れとなり自動退出します。さらに、部屋内の全員が退室した瞬間、データベース上のデータは連動して<b>即時完全消去(Wipe)</b>されます。
       </p>
     </div>
 
     <div class="gs" style="border-left-color: #a78bfa;">
       <h4>🚫 徹底した情報漏洩・なりすまし対策</h4>
       <p style="font-size:10.5px; color:var(--mu); margin-top:2px;">
-        画面構成、およびスクリプトによる制御で<b>「テキストの範囲選択・コピー」「スクリーンショット／画面録画」に対するアンチプロテクト処理</b>を施しています。また、トリップキーによる固有ソルト生成により、第三者が同じ名前を使っても「◆偽物」であることが一目で判別可能ななりすまし防止機能を搭載しています。
+        スクリプト制御による「コピー」「スクショ」へのアンチプロテクト処理を施しています。トリップキーによる固有ソルト生成でなりすましも防ぎます。
       </p>
     </div>
 
@@ -430,7 +439,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getDatabase, ref, push, onValue, set, update, remove, query, orderByChild, get, onChildAdded, off }
+import { getDatabase, ref, push, onValue, set, update, remove, query, orderByChild, get, onChildAdded, off, onDisconnect, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -591,8 +600,9 @@ let _cOff=null, _pOff=null;
 let toT=null;
 let logArray=[], currentPage=1, isLiveMode=true;
 let lastMsgAt = 0;
+let myPresRef = null;
+let myDiscMsgRef = null;
 
-// スプラッシュ画面を完全に削除せず「非表示」にする（再利用時のバグ防止）
 const hideSplash = () => { 
   const s = document.getElementById("splash"); 
   if(!s || s.style.display === "none") return; 
@@ -601,7 +611,7 @@ const hideSplash = () => {
   setTimeout(() => { s.style.display = "none"; }, 260); 
 };
 
-// ─── WebRTC 通話 (内・外カメラの確実な切り替え & 録画等削除 & ステータス可視化) ───
+// ─── WebRTC 通話 ───
 let callMode = 'none';
 let localStream = null;
 let pcs = {};
@@ -619,13 +629,16 @@ D.cbListen.onclick = () => startCall('listen');
 D.endCallBtn.onclick = () => endCall();
 
 function updateCallCtrlUI() {
-    D.ctrlMode.value = callMode;
+    if (callMode === 'video') D.ctrlMode.value = "video-" + currentFacingMode;
+    else D.ctrlMode.value = callMode;
+    
     D.ctrlMic.style.display = (callMode === 'listen') ? 'none' : 'flex';
     D.ctrlCam.style.display = (callMode === 'video') ? 'flex' : 'none';
     D.ctrlFlip.style.display = (callMode === 'video') ? 'flex' : 'none';
-    D.ctrlMic.textContent = micEnabled ? "🎙 ミュート" : "🎙 解除";
+    
+    D.ctrlMic.innerHTML = micEnabled ? "🎙 マイクON" : "🔇 マイクOFF";
     D.ctrlMic.classList.toggle("off", !micEnabled);
-    D.ctrlCam.textContent = camEnabled ? "📹 ビデオオフ" : "📹 ビデオオン";
+    D.ctrlCam.innerHTML = camEnabled ? "📹 カメラON" : "🚫 カメラOFF";
     D.ctrlCam.classList.toggle("off", !camEnabled);
 }
 
@@ -640,16 +653,9 @@ async function startCall(mode) {
   if (mode !== 'listen') {
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error("非対応デバイス環境です。");
-      let constraints = {
-        audio: { echoCancellation: true, noiseSuppression: true }
-      };
+      let constraints = { audio: { echoCancellation: true, noiseSuppression: true } };
       if (mode === 'video') {
-        constraints.video = { 
-          facingMode: { exact: currentFacingMode }, 
-          width: { ideal: 320, max: 480 }, 
-          height: { ideal: 240, max: 360 }, 
-          frameRate: { ideal: 12 } 
-        };
+        constraints.video = { facingMode: { exact: currentFacingMode }, width: { ideal: 320, max: 480 }, height: { ideal: 240, max: 360 }, frameRate: { ideal: 12 } };
       }
       try {
         localStream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -690,8 +696,25 @@ async function endCall() {
 }
 
 D.ctrlMode.onchange = async () => {
-    const newMode = D.ctrlMode.value; if (newMode === callMode) return;
-    await endCall(); await startCall(newMode);
+    let newMode = D.ctrlMode.value;
+    let targetFacing = currentFacingMode;
+    
+    if (newMode.startsWith('video-')) {
+        targetFacing = newMode.split('-')[1];
+        newMode = 'video';
+    }
+    
+    if (newMode === callMode && targetFacing === currentFacingMode) return;
+    
+    if (newMode === 'video' && callMode === 'video' && targetFacing !== currentFacingMode) {
+        currentFacingMode = targetFacing;
+        await D.ctrlFlip.onclick();
+        return;
+    }
+
+    currentFacingMode = targetFacing;
+    await endCall(); 
+    await startCall(newMode);
 };
 
 D.ctrlMic.onclick = async () => { 
@@ -715,13 +738,12 @@ D.ctrlCam.onclick = async () => {
 D.ctrlFlip.onclick = async () => {
     if (callMode !== 'video' || !localStream) return;
     currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+    updateCallCtrlUI();
     
     const oldVideoTrack = localStream.getVideoTracks()[0];
     if (oldVideoTrack) { localStream.removeTrack(oldVideoTrack); oldVideoTrack.stop(); }
     
-    let constraints = { 
-      video: { facingMode: { exact: currentFacingMode }, width: { ideal: 320 }, height: { ideal: 240 } } 
-    };
+    let constraints = { video: { facingMode: { exact: currentFacingMode }, width: { ideal: 320 }, height: { ideal: 240 } } };
     try {
       const newStream = await navigator.mediaDevices.getUserMedia(constraints);
       const newVideoTrack = newStream.getVideoTracks()[0];
@@ -746,8 +768,9 @@ D.ctrlFlip.onclick = async () => {
         }
         const myVideoEl = $(`rvw-${uid}`)?.querySelector('video'); if (myVideoEl) myVideoEl.srcObject = localStream;
       } catch(err) {
-        alert("カメラターゲットの切り替えが拒否されました。");
+        alert("カメラの切り替えに失敗しました。");
         currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+        updateCallCtrlUI();
       }
     }
 };
@@ -847,10 +870,11 @@ D.imod.addEventListener("touchend",()=>{imgDragging=false;imodTouches=[];},{pass
 // ─── オーディオ ───
 let activeAudio=null; const stopActiveAudio=()=>{ if(activeAudio){try{activeAudio.pause();}catch{}activeAudio=null;} };
 
-// ─── メディアパーサー (TikTok短縮URL抽出の完全対応化) ───
+// ─── メディアパーサー ───
 const YR  = /(?:https?:\/\/)?(?:(?:www\.|m\.|music\.)?youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|v\/|shorts\/|live\/)([A-Za-z0-9_-]{11})|youtu\.be\/([A-Za-z0-9_-]{11}))/i;
 const NR  = /(?:https?:\/\/)?(?:(?:sp\.|www\.)?nicovideo\.jp\/(?:watch|user\/[0-9]+\/video)\/|nico\.ms\/)((?:sm|nm|so|lv|co|ch)?\d+)/i;
 const TKR = /(?:https?:\/\/)?(?:(?:[a-z0-9-]+\.)?tiktok\.com\/|vt\.tiktok\.com\/|vm\.tiktok\.com\/)([^\s?#]+)/i;
+const IGR = /(?:https?:\/\/)?(?:www\.)?instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/i;
 const AR  = /\.(mp3|wav|aac|m4a|ogg|flac)(\?.*)?$/i;
 const IR  = /\.(jpe?g|gif|png|webp|bmp|svg)(\?.*)?$/i;
 const UR  = /(https?:\/\/[^\s\n<>"]+)/gi;
@@ -965,6 +989,15 @@ function _parseSegs(txt) {
         continue;
       }
       if(TKR.test(url)){ segs.push({type:"media",html:bTikTokEmbed(url)}); continue; }
+      
+      const igm = url.match(IGR);
+      if(igm){
+        const inner=`<div class="vc-wrap"><div class="vc ig"><span class="vc-badge">Instagram</span><iframe class="vc-frame" src="https://www.instagram.com/p/${igm[1]}/embed" allowtransparency="true" frameborder="0" scrolling="no" allow="autoplay;encrypted-media" allowfullscreen loading="lazy" style="background:white; width:100%; height:100%;"></iframe></div></div>`;
+        const label=url.length>30?url.slice(0,30)+"…":url;
+        segs.push({type:"media",html:makeCollapse("ig","Instagram","📷", label, inner)});
+        continue;
+      }
+
       if(AR.test(cl)){segs.push({type:"media",html:bAudio(url)});continue;}
       if(IR.test(cl)||/^data:image\//i.test(url)){
         const label = cl.split("/").pop().split("?")[0] || "画像";
@@ -1053,7 +1086,11 @@ function startToBar() {
     const remain=Math.max(0,INACTIVITY-(Date.now()-lastMsgAt));
     D.tobarFill.style.width=(remain/INACTIVITY)*100+"%";
     D.tobarLabel.textContent=Math.floor(remain/60000)+":"+String(Math.floor((remain%60000)/1000)).padStart(2,"0");
-    if(remain===0&&!_exitLock){ _exitLock=true; exitRoom("30分間発言がなかったため自動退室しました"); return; }
+    if(remain===0&&!_exitLock){ 
+      _exitLock=true; 
+      exitRoom("30分間発言がなかったため自動退室しました"); 
+      return; 
+    }
     _toBarRaf=requestAnimationFrame(tick);
   }; _toBarRaf=requestAnimationFrame(tick);
 }
@@ -1095,7 +1132,13 @@ async function doJoin({target, pass, name, trip, asW, isAutoRejoin=false}) {
   }
 
   if(!asW){
-      await set(ref(db,`presence/${curR}/${uid}`), { nEnc: enc(name), tEnc: enc(trip||""), cEnc: enc(curColor), call: 'none', lastMsgAt: nowSrv - (nowLoc - lastMsgAt) });
+      myPresRef = ref(db, `presence/${curR}/${uid}`);
+      myDiscMsgRef = push(ref(db, `chat/${curR}`));
+
+      onDisconnect(myPresRef).remove();
+      onDisconnect(myDiscMsgRef).set({ type: "sys", text: enc(`${name}${trip||""} が通信切断により退室しました`), time: serverTimestamp() });
+
+      await set(myPresRef, { nEnc: enc(name), tEnc: enc(trip||""), cEnc: enc(curColor), call: 'none', lastMsgAt: nowSrv - (nowLoc - lastMsgAt) });
       if (!isAutoRejoin) await push(ref(db,`chat/${curR}`),{type:"sys",text:enc(`${name}${trip||""} が入室しました`),time:nowSrv});
       if(!isOff){ localStorage.setItem("nz_ni",name); localStorage.setItem("nz_tk",D.tk.value.trim()); localStorage.setItem("nz_ri",target); localStorage.setItem("nz_pi",pass); }
       saveSession({target, pass, name, trip:trip||"", asW:false, lastMsgAt});
@@ -1115,7 +1158,13 @@ async function doJoin({target, pass, name, trip, asW, isAutoRejoin=false}) {
 
   if(!asW){
     startToBar();
-    toT=setInterval(async()=>{ if(!curR||isEx||_exitLock)return; if(Date.now()-lastMsgAt >= INACTIVITY){ _exitLock=true; await exitRoom("30分間発言がなかったため自動退室しました"); } },CHECK_TICK);
+    toT=setInterval(async()=>{ 
+      if(!curR||isEx||_exitLock)return; 
+      if(Date.now()-lastMsgAt >= INACTIVITY){ 
+        _exitLock=true; 
+        await exitRoom("30分間発言がなかったため自動退室しました"); 
+      } 
+    },CHECK_TICK);
   }
 
   _pOff=onValue(ref(db,`presence/${curR}`),async s=>{
@@ -1142,21 +1191,42 @@ async function doJoin({target, pass, name, trip, asW, isAutoRejoin=false}) {
 }
 
 async function exitRoom(autoMsg="") {
-  if (isEx) return; isEx = true; _exitLock = true; await endCall();
+  if (isEx) return; 
+  isEx = true; 
+  _exitLock = true; 
+  await endCall();
   const sR = curR, sN = curN, sT = curT, sO = isOff, sW = isW, myId = uid;
-  localStorage.removeItem("nz_sess"); if (window.history?.replaceState) window.history.replaceState({}, document.title, location.pathname);
-  if (toT) { clearInterval(toT); toT = null; } if (typeof _cOff === "function") { _cOff(); _cOff = null; } if (typeof _pOff === "function") { _pOff(); _pOff = null; } stopToBar();
-
+  
   try {
-    if (!sW && sR) {
-      await set(ref(db, `presence/${sR}/${myId}`), null);
-      const ps = await get(ref(db, `presence/${sR}`)); let hasAlive = false;
-      if (ps.exists()) { const now = srvNow(); for (const u of Object.values(ps.val())) if (now - (u.lastMsgAt || 0) < INACTIVITY + 3000) { hasAlive = true; break; } }
-      if (!sO && !hasAlive) await wipe(sR);
-      else if (hasAlive) await push(ref(db, `chat/${sR}`), { type: "sys", text: enc(autoMsg ? `${sN}${sT} が自動退室しました（30分無発言）` : `${sN}${sT} が退室しました`), time: srvNow() }).catch(() => {});
+    if (!sW && sR && sN) {
+      if (myDiscMsgRef) await onDisconnect(myDiscMsgRef).cancel().catch(()=>{});
+      if (myPresRef) await onDisconnect(myPresRef).cancel().catch(()=>{});
+
+      const ps = await get(ref(db, `presence/${sR}`)); 
+      let hasAlive = false;
+      if (ps.exists()) { 
+        const now = srvNow(); 
+        for (const [k, u] of Object.entries(ps.val())) {
+          if (k !== myId && now - (u.lastMsgAt || 0) < INACTIVITY + 5000) { hasAlive = true; break; } 
+        }
+      }
+      
+      if (!sO && !hasAlive) {
+        await wipe(sR);
+      } else {
+        const msgStr = autoMsg ? `${sN}${sT} が自動退室しました（30分無発言）` : `${sN}${sT} が退室しました`;
+        await push(ref(db, `chat/${sR}`), { type: "sys", text: enc(msgStr), time: srvNow() }).catch(()=>{});
+      }
+      if (myPresRef) await remove(myPresRef).catch(()=>{});
     }
-  } catch (e) {}
-  clearAll(); isEx = false; showLobby(autoMsg);
+  } catch (e) { console.error(e); }
+
+  localStorage.removeItem("nz_sess"); 
+  if (window.history?.replaceState) window.history.replaceState({}, document.title, location.pathname);
+  if (toT) { clearInterval(toT); toT = null; } 
+  if (typeof _cOff === "function") { _cOff(); _cOff = null; } 
+  if (typeof _pOff === "function") { _pOff(); _pOff = null; } 
+  stopToBar(); clearAll(); isEx = false; showLobby(autoMsg);
 }
 
 async function sendMsg(){
@@ -1171,14 +1241,26 @@ async function sendMsg(){
 
 async function upgrade(name,trip){
   if(!curR)return; isW=false; curN=name; curT=trip||""; const N=srvNow(); lastMsgAt = Date.now();
-  await set(ref(db,`presence/${curR}/${uid}`),{nEnc:enc(name),tEnc:enc(trip||""),cEnc:enc(curColor),call:callMode,lastMsgAt:N});
+  
+  myPresRef = ref(db, `presence/${curR}/${uid}`);
+  myDiscMsgRef = push(ref(db, `chat/${curR}`));
+  onDisconnect(myPresRef).remove();
+  onDisconnect(myDiscMsgRef).set({ type: "sys", text: enc(`${name}${trip||""} が通信切断により退室しました`), time: serverTimestamp() });
+
+  await set(myPresRef,{nEnc:enc(name),tEnc:enc(trip||""),cEnc:enc(curColor),call:callMode,lastMsgAt:N});
   await push(ref(db,`chat/${curR}`),{type:"sys",text:enc(`${name}${trip||""} が入室しました`),time:N});
   localStorage.setItem("nz_ni",name); localStorage.setItem("nz_tk",D.wtk.value.trim()); saveSession({target:rawR,pass:curP,name,trip:trip||"",asW:false,lastMsgAt});
   D.wb.classList.remove("show"); D.ib.classList.add("show"); D.exBtn.textContent="退出"; D.ivBtn.style.display=isOff?"none":"block"; D.clrBtn.style.display="block"; 
   D.callBtn.style.display="flex"; D.endCallBtn.style.display="none";
   D.updateInputBarState(true); updFnPos(); startToBar();
   if(toT)clearInterval(toT);
-  toT=setInterval(async()=>{ if(!curR||isEx||_exitLock)return; if(Date.now()-lastMsgAt>=INACTIVITY){ _exitLock=true; await exitRoom("30分間発言がなかったため自動退室しました"); } },CHECK_TICK);
+  toT=setInterval(async()=>{ 
+    if(!curR||isEx||_exitLock)return; 
+    if(Date.now()-lastMsgAt>=INACTIVITY){ 
+      _exitLock=true; 
+      await exitRoom("30分間発言がなかったため自動退室しました"); 
+    } 
+  },CHECK_TICK);
 }
 
 let isCmp=false;
@@ -1206,7 +1288,6 @@ D.gdBtn.onclick=()=>D.gmod.classList.add("show");
 D.gcBtn.onclick=()=>D.gmod.classList.remove("show");
 D.gmod.onclick=e=>{if(e.target===D.gmod)D.gmod.classList.remove("show");};
 
-// 初期化ブロックを try-catch で囲み、エラー時は必ずロビー画面を表示するように修正
 (async()=>{
   try {
     const sp=new URLSearchParams(location.search),sr=sp.get("r"),spp=sp.get("p");

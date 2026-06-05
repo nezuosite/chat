@@ -23,137 +23,170 @@ html,body{
   height:100%;width:100%;overflow:hidden;
   background:var(--bg);color:var(--tx);
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Noto Sans JP",sans-serif;
-  -webkit-user-select:none;user-select:none;
   touch-action:pan-y;overscroll-behavior:none;-webkit-text-size-adjust:100%;
 }
+
 input,textarea,select{font-family:inherit;-webkit-user-select:text;user-select:text;font-size:16px!important}
 button{cursor:pointer;font-family:inherit;border:none;background:none}
 button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
-a{color:#818cf8}a:hover{text-decoration:underline}
 
 #splash{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
 .spin{width:26px;height:26px;border:3px solid var(--in);border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .spt{font-size:10px;font-weight:800;color:var(--m2);letter-spacing:.2em}
 
-#lobby{display:none;position:fixed;inset:0;overflow-y:auto;background:var(--bg);z-index:100;touch-action:pan-y;}
-.lbo{min-height:100%;display:flex;flex-direction:column;padding:12px 12px calc(12px + var(--safe));gap:8px;justify-content:center}
-.lbt{font-size:13px;font-weight:900;color:#818cf8;text-align:center;letter-spacing:.08em;flex-shrink:0}
-.lbsub{font-size:8px;font-weight:700;color:var(--m2);text-align:center;letter-spacing:.12em;margin-top:-2px;flex-shrink:0}
-.lbi{display:flex;flex-direction:column;gap:6px;max-width:380px;width:100%;margin:0 auto}
-.ibox{background:rgba(79,70,229,.04);border:1px solid rgba(99,102,241,.15);border-radius:8px;padding:10px;font-size:10px;color:var(--mu);line-height:1.5;flex-shrink:0}
-.ibox-title{font-size:11px;font-weight:900;color:#a5b4fc;margin-bottom:6px;display:flex;align-items:center;gap:4px}
-.ibox-grid{display:grid;grid-template-columns:1fr;gap:6px;margin-top:6px}
-.ibox-grid .ibox-item{background:rgba(15,23,42,.4);border:1px solid rgba(99,102,241,.1);border-radius:6px;padding:6px 8px;font-size:9.5px;line-height:1.4}
-.ibox-grid .ibox-item b{display:block;color:#a5b4fc;font-size:10px;margin-bottom:2px}
-
-#lberr{background:var(--rg);border:1px solid rgba(244,63,94,.3);border-radius:4px;padding:6px;font-size:11px;color:#fda4af;display:none;white-space:pre-wrap;flex-shrink:0;text-align:center;font-weight:bold}
-.fg{display:flex;flex-direction:column;gap:2px;flex-shrink:0}
-.fl{font-size:10px;font-weight:700;color:var(--mu)}
-.inp{width:100%;background:var(--sf);border:1px solid var(--bd);border-radius:5px;padding:5px 8px;color:var(--tx);outline:none;font-size:12.5px}
+/* ロビー：スクロールなしで収まるようスリム化 */
+#lobby{display:none;position:fixed;inset:0;background:var(--bg);z-index:100;overflow:hidden;}
+.lbo{height:100%;display:flex;flex-direction:column;padding:10px 14px calc(10px + var(--safe));gap:6px;justify-content:center;max-width:380px;margin:0 auto}
+.lbt{font-size:14px;font-weight:900;color:#818cf8;text-align:center;letter-spacing:.05em}
+.lbsub{font-size:8px;font-weight:700;color:var(--m2);text-align:center;letter-spacing:.1em;margin-top:-4px}
+.lbi{display:flex;flex-direction:column;gap:5px;width:100%}
+.ibox{background:rgba(79,70,229,.04);border:1px solid rgba(99,102,241,.15);border-radius:6px;padding:6px 10px;font-size:10.5px;color:var(--mu);line-height:1.4}
+.ibox b{color:#a5b4fc}
+#lberr{background:var(--rg);border:1px solid rgba(244,63,94,.3);border-radius:4px;padding:4px;font-size:11px;color:#fda4af;display:none;text-align:center;font-weight:bold}
+.fg{display:flex;flex-direction:column;gap:1px}
+.fl{font-size:9.5px;font-weight:700;color:var(--mu)}
+.inp{width:100%;background:var(--sf);border:1px solid var(--bd);border-radius:5px;padding:4px 8px;color:var(--tx);outline:none;font-size:12px}
 .inp:focus{border-color:var(--in)}
 .rw{display:flex;gap:4px;align-items:center}
-.tp{font-family:monospace;font-size:10px;color:var(--em);background:rgba(0,255,102,.1);padding:1px 4px;border-radius:3px;display:none}
+.tp{font-family:monospace;font-size:9.5px;color:var(--em);background:rgba(0,255,102,.1);padding:1px 4px;border-radius:3px;display:none}
 .clrbox{display:flex;flex-direction:column;gap:2px;background:var(--s2);padding:4px 8px;border-radius:5px;border:1px solid var(--bd)}
-.clrlbl{font-size:10px;font-weight:700;color:var(--mu)}
+.clrlbl{font-size:9px;font-weight:700;color:var(--mu)}
 .clrpick-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:4px}
-.clrc,.wclrc,.clrc2{aspect-ratio:1;width:100%;max-width:20px;border-radius:50%;margin:0 auto;border:2px solid transparent;cursor:pointer;transition:transform 0.1s}
+.clrc,.wclrc,.clrc2{aspect-ratio:1;width:100%;max-width:18px;border-radius:50%;margin:0 auto;border:2px solid transparent;cursor:pointer}
 .clrc.sel,.wclrc.sel,.clrc2.sel{border-color:var(--tx);transform:scale(1.1)}
-.brow{display:grid;grid-template-columns:1fr 1.8fr 1.3fr;gap:4px;margin-top:2px}
-.btn{padding:6px;border-radius:5px;font-size:11.5px;font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center}
+.brow{display:grid;grid-template-columns:1fr 1.6fr 1.3fr;gap:4px;margin-top:2px}
+.btn{padding:5px;border-radius:5px;font-size:11px;font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center}
 .btn:active{opacity:0.8}
 .bq{background:var(--sf);color:var(--tx);border:1px solid var(--bd)}
 .bp{background:var(--in);color:#fff}
 .bo{background:var(--e2);color:#fff}
-.glink{font-size:10px;color:#a5b4fc;text-align:center;margin-top:4px;text-decoration:underline;cursor:pointer;font-weight:bold;}
+.glink{font-size:10px;color:#a5b4fc;text-align:center;margin-top:2px;text-decoration:underline;cursor:pointer;font-weight:bold}
 
-#app{display:none;position:fixed;inset:0;flex-direction:column;overflow:hidden;z-index:50;}
-#app.visible{display:flex;}
-#cp{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;background:#0d1117;position:relative;}
+#app{display:none;position:fixed;inset:0;flex-direction:column;overflow:hidden;z-index:50}
+#app.visible{display:flex}
+#cp{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;background:#0d1117;position:relative}
 #hdr{background:var(--sf);border-bottom:1px solid var(--bd);padding:6px 12px;flex-shrink:0}
 .hr{display:flex;align-items:center;gap:8px;height:32px}
-.rn{font-weight:800;font-size:14px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
-.pcnt{font-size:11px;font-weight:700;color:var(--mu);font-family:monospace}
-.hbs{display:flex;gap:4px;z-index:10;}
+.rn{font-weight:800;font-size:13px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.pcnt{font-size:10.5px;font-weight:700;color:var(--mu);font-family:monospace}
+.hbs{display:flex;gap:4px;z-index:10}
 .hbs button{padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700;background:var(--bg);border:1px solid var(--bd);color:var(--tx);display:flex;align-items:center;gap:4px}
 .bclr-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
 .bx{border-color:rgba(244,63,94,.4)!important;color:#fda4af!important}
 #pl{display:flex;gap:4px;overflow-x:auto;padding-top:4px;white-space:nowrap}
-.chip{font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,.03);border:1px solid}
+.chip{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,.03);border:1px solid}
 
-/* --- 通話エリア用 CSS --- */
-#call-container { display:none; flex-direction:column; flex-shrink:0; border-bottom:1px solid var(--bd); background:var(--bg); z-index:10; }
-#call-container.show { display:flex; }
-#call-ctrl { display:flex; gap:6px; padding:8px 12px; background:var(--sf); border-bottom:1px solid var(--bd); flex-wrap:wrap; align-items:center; justify-content:center; }
-.cctrl-btn { padding:4px 10px; border-radius:4px; font-size:11px; font-weight:bold; background:var(--bg); color:var(--tx); border:1px solid var(--bd); cursor:pointer; transition: all 0.2s; }
-.cctrl-btn:active { filter:brightness(1.2); }
-.cctrl-btn.off { background:rgba(244,63,94,0.15); color:#fda4af; border-color:rgba(244,63,94,0.3); }
-.cctrl-sel { font-size:11px; padding:4px 6px; border-radius:4px; background:var(--bg); color:var(--tx); border:1px solid var(--bd); outline:none; font-weight:bold; cursor:pointer;}
-#call-area { display:flex; flex-wrap:wrap; gap:8px; padding:12px; overflow-y:auto; max-height:160px; }
-.remote-video-wrap { width:100px; height:100px; background:#000; border-radius:8px; position:relative; overflow:hidden; border:1px solid var(--bd); flex-shrink:0; }
-.remote-video { width:100%; height:100%; object-fit:cover; background:#111; }
-.remote-name { position:absolute; bottom:4px; left:4px; background:rgba(0,0,0,.7); color:#fff; font-size:9px; font-weight:bold; padding:2px 6px; border-radius:4px; z-index:2; max-width:90px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* 通話エリア */
+#call-container { display:none; flex-direction:column; flex-shrink:0; border-bottom:1px solid var(--bd); background:var(--bg); z-index:10 }
+#call-container.show { display:flex }
+#call-ctrl { display:flex; gap:6px; padding:6px 12px; background:var(--sf); border-bottom:1px solid var(--bd); flex-wrap:wrap; align-items:center; justify-content:center }
+.cctrl-btn { padding:4px 8px; border-radius:4px; font-size:10.5px; font-weight:bold; background:var(--bg); color:var(--tx); border:1px solid var(--bd); cursor:pointer }
+.cctrl-btn.off { background:rgba(244,63,94,0.15); color:#fda4af; border-color:rgba(244,63,94,0.3) }
+.cctrl-sel { font-size:10.5px; padding:4px 6px; border-radius:4px; background:var(--bg); color:var(--tx); border:1px solid var(--bd); outline:none; font-weight:bold }
+#call-area { display:flex; flex-wrap:wrap; gap:6px; padding:8px 12px; overflow-y:auto; max-height:140px }
+.remote-video-wrap { width:85px; height:85px; background:#000; border-radius:6px; position:relative; overflow:hidden; border:1px solid var(--bd); flex-shrink:0 }
+.remote-video { width:100%; height:100%; object-fit:cover; background:#111 }
+.remote-name { position:absolute; bottom:2px; left:2px; right:2px; background:rgba(0,0,0,.75); color:#fff; font-size:8.5px; font-weight:bold; padding:1px 4px; border-radius:3px; z-index:2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; justify-content:space-between; align-items:center }
+.v-status { font-size:8px; font-family:monospace }
 
-.mod-overlay { position:fixed;inset:0;background:rgba(15,23,42,.8);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:10000;padding:16px; }
-.mod-overlay.show { display:flex; }
-.call-btn-row { display:flex; gap:8px; justify-content:center; margin-top:10px; }
-.cb { flex:1; padding:10px; border-radius:8px; font-weight:bold; font-size:13px; color:#fff; text-align:center; cursor:pointer; }
-.cb-audio { background:var(--e2); }
-.cb-video { background:var(--in); }
-.cb-listen { background:var(--m2); }
+.mod-overlay { position:fixed;inset:0;background:rgba(15,23,42,.8);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:10000;padding:16px }
+.mod-overlay.show { display:flex }
+.call-btn-row { display:flex; gap:8px; justify-content:center; margin-top:10px }
+.cb { flex:1; padding:10px; border-radius:8px; font-weight:bold; font-size:12.5px; color:#fff; text-align:center; cursor:pointer }
+.cb-audio { background:var(--e2) }
+.cb-video { background:var(--in) }
+.cb-listen { background:var(--m2) }
 
-#tobar{display:none;background:rgba(244,63,94,.08);border-bottom:1px solid rgba(244,63,94,.2);padding:4px 12px;flex-shrink:0;align-items:center;gap:8px;}
+#tobar{display:none;background:rgba(244,63,94,.08);border-bottom:1px solid rgba(244,63,94,.2);padding:4px 12px;flex-shrink:0;align-items:center;gap:8px}
 #tobar.show{display:flex}
-#tobar-track{flex:1;height:3px;background:rgba(244,63,94,.15);border-radius:2px;overflow:hidden;}
-#tobar-fill{height:100%;background:var(--ro);border-radius:2px;transition:width .5s linear;}
+#tobar-track{flex:1;height:3px;background:rgba(244,63,94,.15);border-radius:2px;overflow:hidden}
+#tobar-fill{height:100%;background:var(--ro);border-radius:2px;transition:width .5s linear}
 #tobar-label{font-size:9.5px;font-weight:800;color:#fda4af;font-family:monospace;white-space:nowrap}
 
 #wb{display:none;background:rgba(79,70,229,.1);border-bottom:1px solid var(--in);flex-shrink:0}
 #wb.show{display:block}
-#wb-toggle{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;cursor:pointer;user-select:none;background:rgba(79,70,229,.18);border-bottom:1px solid rgba(99,102,241,.2);}
-#wb-toggle:hover{background:rgba(79,70,229,.28);}
-.wb-toggle-left{display:flex;align-items:center;gap:8px;}
-.wb-badge{background:var(--in);color:#fff;font-size:9px;font-weight:800;padding:2px 6px;border-radius:10px;letter-spacing:.05em;}
-.wb-toggle-title{font-size:11px;font-weight:800;color:#a5b4fc;}
-.wb-toggle-hint{font-size:9.5px;color:var(--mu);}
-#wb-arrow{font-size:14px;color:#818cf8;transition:transform .2s;}
-#wb-arrow.open{transform:rotate(180deg);}
-#wb-body{display:none;padding:10px 14px 12px;}
-#wb-body.open{display:block;}
+#wb-toggle{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;cursor:pointer;user-select:none;background:rgba(79,70,229,.18);border-bottom:1px solid rgba(99,102,241,.2)}
+.wb-toggle-left{display:flex;align-items:center;gap:8px}
+.wb-badge{background:var(--in);color:#fff;font-size:9px;font-weight:800;padding:2px 6px;border-radius:10px;letter-spacing:.05em}
+.wb-toggle-title{font-size:11px;font-weight:800;color:#a5b4fc}
+.wb-toggle-hint{font-size:9.5px;color:var(--mu)}
+#wb-arrow{font-size:14px;color:#818cf8;transition:transform .2s}
+#wb-arrow.open{transform:rotate(180deg)}
+#wb-body{display:none;padding:10px 14px 12px}
+#wb-body.open{display:block}
 .wbf{display:flex;flex-direction:column;gap:8px;max-width:400px;margin:0 auto}
 .wbr{display:flex;gap:6px;align-items:center}
 .wbi{flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:6px 10px;color:var(--tx);font-size:13px}
 .wclrbox{display:flex;flex-direction:column;gap:4px;background:var(--bg);padding:6px 10px;border-radius:6px;border:1px solid var(--bd)}
 .bwb{background:var(--in);color:#fff;font-size:12px;font-weight:700;padding:9px;border-radius:6px;text-align:center}
 
-#tl{flex:1;min-height:0;overflow-y:scroll;overflow-x:hidden;padding:12px 14px;background-color:#0d1117;-webkit-overflow-scrolling:touch;touch-action:pan-y!important;overscroll-behavior-y:contain;}
-#tl-inner{display:flex;flex-direction:column;justify-content:flex-end;gap:10px;width:100%;max-width:600px;margin:0 auto;min-height:100%;}
+#tl{flex:1;min-height:0;overflow-y:scroll;overflow-x:hidden;padding:12px 14px;background-color:#0d1117;-webkit-overflow-scrolling:touch;touch-action:pan-y!important;overscroll-behavior-y:contain}
+#tl-inner{display:flex;flex-direction:column;justify-content:flex-end;gap:10px;width:100%;max-width:600px;margin:0 auto;min-height:100%}
 .mw{display:flex;flex-direction:column;width:100%;animation:fadeIn .15s ease-out}
 @keyframes fadeIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
-.sm{align-self:center;font-size:10px;padding:4px 10px;border-radius:6px;text-align:center;margin:2px 0;}
-.sm-join{background:rgba(79,70,229,.1);color:#a5b4fc;border:1px solid rgba(79,70,229,.25);}
-.sm-leave{background:rgba(148,163,184,.07);color:#94a3b8;border:1px solid rgba(148,163,184,.15);}
-.sm-auto{background:rgba(244,63,94,.12);color:#fb7185;border:1px solid rgba(244,63,94,.3);}
+.sm{align-self:center;font-size:10px;padding:4px 10px;border-radius:6px;text-align:center;margin:2px 0}
+.sm-join{background:rgba(79,70,229,.1);color:#a5b4fc;border:1px solid rgba(79,70,229,.25)}
+.sm-leave{background:rgba(148,163,184,.07);color:#94a3b8;border:1px solid rgba(148,163,184,.15)}
+.sm-auto{background:rgba(244,63,94,.12);color:#fb7185;border:1px solid rgba(244,63,94,.3)}
 .mm{display:flex;align-items:center;gap:6px;font-size:11px;margin-bottom:2px;padding-left:4px}
 .ts{color:var(--m2);font-size:9.5px;margin-left:auto}
 .mb{align-self:start;background:var(--sf);border:1px solid transparent;border-left:3px solid;border-radius:4px 12px 12px 12px;padding:8px 12px;font-size:14px;line-height:1.5;max-width:100%;word-break:break-all;white-space:pre-wrap}
 
-/* TikTok link card */
-.tk-card{display:inline-flex;align-items:center;gap:8px;background:rgba(1,1,1,.6);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 12px;margin-top:6px;max-width:100%;text-decoration:none;color:var(--tx);transition:background .15s;}
-.tk-card:hover{background:rgba(1,1,1,.8);text-decoration:none;}
-.tk-card-icon{width:28px;height:28px;border-radius:6px;background:#010101;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.tk-card-icon svg{width:16px;height:16px;}
-.tk-card-body{display:flex;flex-direction:column;gap:2px;min-width:0;}
-.tk-card-label{font-size:9px;font-weight:800;color:rgba(255,255,255,.4);letter-spacing:.08em;text-transform:uppercase;}
-.tk-card-url{font-size:11px;color:#a5b4fc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;}
-.tk-card-arrow{font-size:12px;color:rgba(255,255,255,.3);margin-left:auto;flex-shrink:0;}
+/* メディアプレイヤーコンテナを「スクロールなしで収まる半分サイズ」に最適化 */
+.media-wrap{margin-top:4px;width:100%;max-width:240px} 
+.media-collapse{border:1px solid var(--bd);border-radius:6px;overflow:hidden;background:var(--s2)}
+.media-collapse-hdr{display:flex;align-items:center;gap:4px;padding:5px 8px;cursor:pointer;user-select:none;background:rgba(255,255,255,.03)}
+.media-collapse-icon{font-size:10px;flex-shrink:0}
+.media-collapse-label{font-size:9.5px;font-weight:700;color:var(--mu);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.media-collapse-badge{font-size:8px;font-weight:800;padding:1px 4px;border-radius:3px;flex-shrink:0}
+.media-collapse-badge.yt{background:rgba(255,0,0,.15);color:#f87171}
+.media-collapse-badge.nc{background:rgba(79,70,229,.2);color:#a5b4fc}
+.media-collapse-badge.tk{background:rgba(0,0,0,.5);color:#fff;border:1px solid rgba(255,255,255,.15)}
+.media-collapse-badge.img{background:rgba(16,185,129,.15);color:#34d399}
+.media-collapse-badge.au{background:rgba(99,102,241,.2);color:#818cf8}
+.media-collapse-arrow{font-size:9px;color:var(--m2);transition:transform .2s;flex-shrink:0}
+.media-collapse-arrow.open{transform:rotate(180deg)}
+.media-collapse-body{display:none;padding:4px;background:#000}
+.media-collapse-body.open{display:block}
 
-#pnav{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--s2);border-top:1px solid var(--bd);padding:5px 8px;flex-shrink:0;}
+/* 縦・横のサイズ比率を維持したプレイヤーサイズ最適化 */
+.vc-wrap{width:100%;position:relative}
+.vc{width:100%;aspect-ratio:16/9;background:#000;border-radius:4px;overflow:hidden;position:relative;border:1px solid var(--bd);display:flex;align-items:center;justify-content:center}
+/* YouTube Shorts & TikTok用の縦長(9:16)サイズ：最大高260px程度に収める */
+.vc.shorts, .tk-embed-wrap{aspect-ratio:9/16; width:100%; max-width:146px; margin:0 auto; height:260px; background:#000; position:relative; overflow:hidden; border-radius:4px}
+.vc-frame, .tk-embed-frame{position:absolute; top:0; left:0; width:100%; height:100%; border:none}
+.vc-badge{position:absolute;top:4px;left:4px;background:rgba(0,0,0,.75);color:#fff;font-size:8px;font-weight:800;padding:1px 3px;border-radius:3px;z-index:2;pointer-events:none}
+
+.tk-card{display:inline-flex;align-items:center;gap:6px;background:rgba(1,1,1,.6);border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:6px 10px;margin-top:4px;max-width:100%;text-decoration:none;color:var(--tx)}
+.tk-card-icon{width:22px;height:22px;border-radius:4px;background:#010101;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px}
+.tk-card-body{display:flex;flex-direction:column;min-width:0}
+.tk-card-label{font-size:8px;font-weight:800;color:rgba(255,255,255,.4);letter-spacing:.05em}
+.tk-card-url{font-size:10px;color:#a5b4fc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px}
+.tk-card-arrow{font-size:10px;color:rgba(255,255,255,.3);margin-left:auto;flex-shrink:0}
+
+.img-block{width:100%;max-width:100%;height:auto;max-height:140px;object-fit:contain;border-radius:4px;border:1px solid var(--bd);cursor:pointer;display:block}
+.aw{width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:4px;padding:6px;display:flex;gap:6px;align-items:center}
+.aw-left{flex-shrink:0}
+.apb{width:26px;height:26px;border-radius:50%;background:var(--in);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px}
+.aw-right{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.aw-info{display:flex;align-items:center;gap:4px;font-size:10px;flex-wrap:wrap}
+.aw-badge{background:var(--m2);color:#fff;font-size:8px;font-weight:800;padding:1px 3px;border-radius:2px}
+.aw-name{color:var(--tx);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.aw-seek-row{display:flex;align-items:center;gap:4px}
+.asktypetype{flex:1;height:3px;background:var(--bd);outline:none;border-radius:2px;-webkit-appearance:none}
+.asktypetype::-webkit-slider-thumb{-webkit-appearance:none;width:8px;height:8px;border-radius:50%;background:var(--tx)}
+.atm{font-size:9px;color:var(--mu);font-family:monospace}
+.aw-actions{display:flex;align-items:center;gap:6px}
+.aw-dl{display:none!important} /* 要件に基づきダウンロード導線を非表示化 */
+.aw-size-badge{font-size:9px;color:var(--em);font-family:monospace}
+
+#pnav{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--s2);border-top:1px solid var(--bd);padding:5px 8px;flex-shrink:0}
 .pbtn{padding:4px 10px;background:var(--sf);border:1px solid var(--bd);border-radius:4px;color:var(--tx);font-size:10px;font-weight:700}
 .pbtn:disabled{opacity:0.25;cursor:not-allowed}
 #pinfo{font-size:10px;font-weight:700;color:var(--mu);min-width:60px;text-align:center;font-family:monospace}
 
-#ib{display:none;padding:8px 12px calc(8px + var(--safe));background:var(--sf);border-top:1px solid var(--bd);align-items:flex-end;gap:8px;flex-shrink:0;}
+#ib{display:none;padding:8px 12px calc(8px + var(--safe));background:var(--sf);border-top:1px solid var(--bd);align-items:flex-end;gap:8px;flex-shrink:0}
 #ib.show{display:flex}
 .mi-container{position:relative;flex:1;display:flex;align-items:center;background:var(--bg);border:1px solid var(--bd);border-radius:20px;padding:4px 34px 4px 12px}
 #mi{width:100%;background:none;border:none;color:var(--tx);outline:none;resize:none;font-size:14px;max-height:80px;line-height:1.4;padding:4px 0}
@@ -162,74 +195,27 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 .bsd svg{width:16px;height:16px;transform:rotate(45deg);margin-top:-1px;margin-right:2px}
 #midisable{position:absolute;inset:0;background:rgba(15,23,42,.92);border-radius:20px;display:none;align-items:center;justify-content:center;font-size:11px;color:var(--ro);font-weight:700;z-index:5}
 
-#fn{position:fixed;right:16px;bottom:80px;display:none;flex-direction:column;gap:10px;z-index:90;pointer-events:none;}
-#fn.visible{display:flex;}
-#fn button{width:40px;height:40px;border-radius:50%;background:rgba(30,41,59,.75);backdrop-filter:blur(4px);border:1px solid var(--bd);color:rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.3);transition:color .2s,transform .15s;pointer-events:auto;}
-#fn button:hover,#fn button:active{color:rgba(255,255,255,1);transform:scale(1.05);}
+#fn{position:fixed;right:16px;bottom:80px;display:none;flex-direction:column;gap:10px;z-index:90;pointer-events:none}
+#fn.visible{display:flex}
+#fn button{width:40px;height:40px;border-radius:50%;background:rgba(30,41,59,.75);backdrop-filter:blur(4px);border:1px solid var(--bd);color:rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.3);pointer-events:auto}
 #fn svg{width:20px;height:20px;stroke-width:2.5}
 
-#gmod,#imod,#clrmod{position:fixed;inset:0;background:rgba(15,23,42,.8);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:10000;padding:16px;}
+#gmod,#imod,#clrmod{position:fixed;inset:0;background:rgba(15,23,42,.8);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:10000;padding:16px}
 #gmod.show,#imod.show,#clrmod.show{display:flex}
-.gc,.clrmc{background:var(--sf);border:1px solid var(--bd);border-radius:16px;width:100%;max-width:480px;display:flex;flex-direction:column;gap:12px;padding:16px;max-height:85vh;overflow-y:auto;touch-action:pan-y;}
-.gs{border-left:3px solid var(--in);padding-left:12px;font-size:11.5px;color:var(--tx);line-height:1.5;background:rgba(255,255,255,0.02);padding:10px 12px;border-radius:4px;}
-.gs h4{font-size:13px;margin-bottom:4px}
-.gs ul { margin-left: 18px; margin-top: 4px; display: flex; flex-direction: column; gap: 6px; color: var(--mu); }
-.gs ul li b { color: var(--tx); }
+.gc,.clrmc{background:var(--sf);border:1px solid var(--bd);border-radius:12px;width:100%;max-width:440px;display:flex;flex-direction:column;gap:10px;padding:14px;max-height:85vh;overflow-y:auto}
+.gs{border-left:3px solid var(--in);padding:8px 10px;font-size:11.5px;color:var(--tx);line-height:1.4;background:rgba(255,255,255,0.02);border-radius:4px}
+.gs h4{font-size:12.5px;margin-bottom:3px;font-weight:800}
+.gs ul { margin-left: 14px; margin-top: 2px; display: flex; flex-direction: column; gap: 4px; color: var(--mu) }
+.gs ul li b { color: var(--tx) }
 .cx{position:absolute;top:16px;right:16px;width:36px;height:36px;border-radius:50%;background:rgba(15,23,42,.6);color:#fff;font-size:22px;display:flex;align-items:center;justify-content:center}
 
-/* ─── メディア折りたたみ ─── */
-.media-wrap{margin-top:6px;width:100%;max-width:440px}
-.media-collapse{border:1px solid var(--bd);border-radius:8px;overflow:hidden;background:var(--s2);}
-.media-collapse-hdr{display:flex;align-items:center;gap:6px;padding:6px 10px;cursor:pointer;user-select:none;background:rgba(255,255,255,.03);transition:background .15s;}
-.media-collapse-hdr:hover{background:rgba(255,255,255,.06);}
-.media-collapse-hdr:active{background:rgba(255,255,255,.09);}
-.media-collapse-icon{font-size:11px;flex-shrink:0;}
-.media-collapse-label{font-size:10px;font-weight:700;color:var(--mu);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.media-collapse-badge{font-size:8.5px;font-weight:800;padding:1px 5px;border-radius:3px;flex-shrink:0;}
-.media-collapse-badge.yt{background:rgba(255,0,0,.15);color:#f87171;}
-.media-collapse-badge.nc{background:rgba(79,70,229,.2);color:#a5b4fc;}
-.media-collapse-badge.tk{background:rgba(0,0,0,.5);color:#fff;border:1px solid rgba(255,255,255,.15);}
-.media-collapse-badge.img{background:rgba(16,185,129,.15);color:#34d399;}
-.media-collapse-badge.au{background:rgba(99,102,241,.2);color:#818cf8;}
-.media-collapse-arrow{font-size:10px;color:var(--m2);transition:transform .2s;flex-shrink:0;}
-.media-collapse-arrow.open{transform:rotate(180deg);}
-.media-collapse-body{display:none;padding:8px;}
-.media-collapse-body.open{display:block;}
-
-/* TikTok embed */
-.tk-embed-wrap{width:100%;position:relative;overflow:hidden;border-radius:6px; display:flex; justify-content:center; background:#000;}
-.tk-embed-frame{width:100%; max-width:340px; border:none; display:block; aspect-ratio: 9/16; height: auto;}
-
-.img-block{width:100%;max-width:100%;height:auto;max-height:240px;object-fit:contain;border-radius:8px;border:1px solid var(--bd);cursor:pointer;display:block;}
-.vc-wrap{width:100%;position:relative;margin-bottom:4px}
-.vc{width:100%;aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden;position:relative;border:1px solid var(--bd);display:flex;align-items:center;justify-content:center}
-/* YouTube Shorts用の縦長スタイル */
-.vc.shorts{aspect-ratio:9/16; max-width:320px; margin:0 auto; height:auto;}
-.vc-frame{position:absolute; top:0; left:0; width:100%; height:100%; border:none;}
-.vc-badge{position:absolute;top:6px;left:6px;background:rgba(0,0,0,.75);color:#fff;font-size:8.5px;font-weight:800;padding:2px 5px;border-radius:4px;letter-spacing:.5px;z-index:2;pointer-events:none}
-.aw{width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:8px;display:flex;gap:10px;align-items:center}
-.aw-left{flex-shrink:0}
-.apb{width:36px;height:36px;border-radius:50%;background:var(--in);display:flex;align-items:center;justify-content:center;cursor:pointer}
-.apb svg{width:16px;height:16px}
-.aw-right{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
-.aw-info{display:flex;align-items:center;gap:6px;font-size:11px;flex-wrap:wrap}
-.aw-badge{background:var(--m2);color:#fff;font-size:8.5px;font-weight:800;padding:1px 4px;border-radius:3px;flex-shrink:0}
-.aw-name{color:var(--tx);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
-.aw-seek-row{display:flex;align-items:center;gap:8px}
-.asktypetype{flex:1;height:4px;background:var(--bd);outline:none;border-radius:2px;-webkit-appearance:none}
-.asktypetype::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;border-radius:50%;background:var(--tx)}
-.atm{font-size:10px;color:var(--mu);font-family:monospace;white-space:nowrap}
-.aw-actions{display:flex;align-items:center;gap:8px;margin-top:2px}
-.aw-dl{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--mu);cursor:pointer}
-.aw-dl svg{width:11px;height:11px}
-.aw-size-badge{font-size:9.5px;color:var(--em);font-family:monospace;font-weight:700}
 .clr-prev{background:var(--bg);padding:10px;border-radius:8px;text-align:center;font-size:12px;font-weight:700}
 .clr-btns{display:flex;gap:8px;margin-top:4px}
 .clr-cancel,.clr-ok{flex:1;padding:10px;border-radius:8px;font-size:13px;font-weight:700;text-align:center}
 .clr-cancel{background:var(--bg);border:1px solid var(--bd);color:var(--tx)}
 .clr-ok{background:var(--in);color:#fff}
 #imod-wrap{width:100%;height:100%;display:flex;align-items:center;justify-content:center}
-#imEl{max-width:100%;max-height:100%;object-fit:contain;transition:transform .1s ease-out;will-change:transform}
+#imEl{max-width:100%;max-height:100%;object-fit:contain}
 </style>
 </head>
 <body>
@@ -238,16 +224,12 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 
 <div id="lobby">
   <div class="lbo">
-    <h2 class="lbt">NEZU ONETIME CHAT</h2>
+    <h2 class="lbt">⚡ NEZU ONETIME CHAT</h2>
     <div class="lbsub">P2P-LIKE ENCRYPTED DISPOSABLE CHAT</div>
     <div class="lbi">
       <div class="ibox">
-        <div class="ibox-title">🔒 PBKDF2 エンドツーエンド暗号化</div>
-        メッセージはブラウザ内で強固に暗号化され、受信者の手元に届くまで解読されません。
-        <div class="ibox-grid">
-          <div class="ibox-item"><b>⏱ 30分で自動消滅</b><br>30分間メッセージを送信しないと自動退室になります。全員退室で履歴は即時完全消去されます。</div>
-          <div class="ibox-item"><b>📺 メディアのインライン再生</b><br>YouTube・ニコニコ動画・TikTok・画像・音声URLを貼るだけで自動展開・再生されます。</div>
-        </div>
+        🔑 <b>完全使い捨てセキュリティ空間</b><br>
+        ブラウザ間(E2EE)でメッセージを高度暗号化。サーバーに生データは一切残りません。発言停止から<b>30分で完全自動消滅</b>し、全員退室で履歴は即時完全パージされます。
       </div>
       <div id="lberr"></div>
       <div class="fg">
@@ -255,30 +237,30 @@ a{color:#818cf8}a:hover{text-decoration:underline}
         <input type="text" id="ni" class="inp" placeholder="ニックネーム（最大10文字）" maxlength="10" autocomplete="username">
       </div>
       <div class="fg">
-        <label class="fl">トリップキー *（必須・なりすまし防止）</label>
+        <label class="fl">トリップキー *（なりすまし防止・必須）</label>
         <div class="rw">
-          <input type="text" id="tk" class="inp" placeholder="秘密キーを入力（必須）" autocomplete="off" spellcheck="false" style="flex:1">
+          <input type="text" id="tk" class="inp" placeholder="自由な秘密キー（固有ID生成用）" autocomplete="off" spellcheck="false" style="flex:1">
           <span id="tpv" class="tp"></span>
         </div>
       </div>
       <div class="clrbox">
-        <div class="clrlbl">名前・吹き出し枠のカラー</div>
+        <div class="clrlbl">吹き出し・ネームカラー</div>
         <div class="clrpick-grid" id="lbClrPick"></div>
       </div>
       <div class="fg">
         <label class="fl">部屋ID *</label>
-        <input type="text" id="ri" class="inp" placeholder="部屋の名前（共有キー）" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <input type="text" id="ri" class="inp" placeholder="共有する部屋名" autocomplete="off" autocapitalize="off" spellcheck="false">
       </div>
       <div class="fg">
-        <label class="fl">部屋パスワード *（暗号化キー）</label>
-        <input type="text" id="pi" class="inp" placeholder="参加者全員で共有するパスワード" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <label class="fl">部屋パスワード *（エンドツーエンド暗号化キー）</label>
+        <input type="text" id="pi" class="inp" placeholder="共通暗号化パスワード" autocomplete="off" autocapitalize="off" spellcheck="false">
       </div>
       <div class="brow">
         <button class="btn bq" id="gnBtn">自動生成</button>
         <button class="btn bp" id="enBtn">入室する</button>
         <button class="btn bo" id="ofBtn">常設公式部屋</button>
       </div>
-      <div class="glink" id="gdBtn">📖 使い方 / セキュリティガイド / 利用規約</div>
+      <div class="glink" id="gdBtn">📖 使い方 / 安全性 / 利用規約</div>
     </div>
   </div>
 </div>
@@ -294,7 +276,6 @@ a{color:#818cf8}a:hover{text-decoration:underline}
             <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14" style="margin-right:4px;margin-top:-1px"><path d="M20 15.5c-1.2 0-2.4-.2-3.6-.6-.3-.1-.7 0-1 .2l-2.2 2.2c-2.8-1.4-5.1-3.8-6.6-6.6l2.2-2.2c.3-.3.4-.7.2-1-.4-1.2-.6-2.4-.6-3.6 0-.6-.4-1-1-1H4.4C3.8 3.5 3 4.4 3 5.5c0 9.4 7.6 17 17 17 1.1 0 2-.8 2-1.9v-4.1c0-.5-.4-1-1-1z"/></svg>通話
           </button>
           <button class="bx" id="endCallBtn" style="display:none">📞切断</button>
-          
           <button class="bclr" id="clrBtn" style="display:none"><span class="bclr-dot" id="clrDot"></span>色変更</button>
           <button class="bi" id="ivBtn" style="display:none">招待</button>
           <button class="bx" id="exBtn">退出</button>
@@ -306,14 +287,13 @@ a{color:#818cf8}a:hover{text-decoration:underline}
     <div id="call-container">
         <div id="call-ctrl">
            <select id="ctrlMode" class="cctrl-sel">
-               <option value="audio">🎙 音声のみ</option>
-               <option value="video">📹 ビデオ</option>
-               <option value="listen">🎧 聞き専</option>
+               <option value="audio">🎙 音声通話</option>
+               <option value="video">📹 ビデオ通話</option>
+               <option value="listen">🎧 聞き専部屋</option>
            </select>
            <button class="cctrl-btn" id="ctrlMic">🎙 ミュート</button>
            <button class="cctrl-btn" id="ctrlCam">📹 カメラオフ</button>
-           <button class="cctrl-btn" id="ctrlFlip">🔄 内/外切替</button>
-           <button class="cctrl-btn" id="ctrlRecord">⏺ 録音/録画</button>
+           <button class="cctrl-btn" id="ctrlFlip">🔄 カメラ切替</button>
         </div>
         <div id="call-area"></div>
     </div>
@@ -382,17 +362,6 @@ a{color:#818cf8}a:hover{text-decoration:underline}
   <button id="tTBtn" title="最下部へ"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></button>
 </div>
 
-<div id="cammod" class="mod-overlay">
-  <div class="gc">
-    <h3 style="font-size:13px;font-weight:900;color:#a5b4fc;border-bottom:1px solid var(--bd);padding-bottom:8px">カメラを選択</h3>
-    <div class="call-btn-row">
-      <button class="cb cb-video" id="camInBtn">📱 内カメラ（フロント）</button>
-      <button class="cb cb-video" id="camOutBtn" style="background:var(--i2)">🌐 外カメラ（リア）</button>
-    </div>
-    <button class="btn bq" style="margin-top:12px" id="camCancelBtn">キャンセル</button>
-  </div>
-</div>
-
 <div id="callmod" class="mod-overlay">
   <div class="gc">
     <h3 style="font-size:13px;font-weight:900;color:#a5b4fc;border-bottom:1px solid var(--bd);padding-bottom:8px">通話に参加</h3>
@@ -410,39 +379,35 @@ a{color:#818cf8}a:hover{text-decoration:underline}
 
 <div id="gmod" class="mod-overlay">
   <div class="gc" style="max-width: 500px;">
-    <h3 style="font-size:15px;font-weight:900;color:#a5b4fc;border-bottom:1px solid var(--bd);padding-bottom:8px">📖 ガイド & ルール</h3>
+    <h3 style="font-size:14px;font-weight:900;color:#a5b4fc;border-bottom:1px solid var(--bd);padding-bottom:6px">📖 ガイド ＆ セキュリティ仕様</h3>
     
     <div class="gs" style="border-left-color: #60a5fa;">
-      <h4 style="color:#60a5fa">📖 基本的な使い方</h4>
-      <ul>
-        <li><b>部屋の作成・参加:</b> 任意の「部屋ID」と「パスワード」を決めて参加者に共有し、入室してください。</li>
-        <li><b>自動URL展開:</b> YouTube、ニコニコ、TikTok、画像、音声リンクを貼ると自動でプレイヤーになります。</li>
-        <li><b>通話機能:</b> 右上の「通話」から、音声・ビデオ通話・聞き専が選べます。</li>
-      </ul>
+      <h4>🔒 エンドツーエンド暗号化 (E2EE) の仕組み</h4>
+      <p style="font-size:10.5px; color:var(--mu); margin-top:2px;">
+        当システムは、入力された「パスワード」から<b>PBKDF2暗号鍵ストレッチング</b>を用いてクライアント（ブラウザ）内で独自の強力な<b>AES-256-CBC</b>秘密鍵を生成します。テキストやカラー情報は通信経路に乗る前に完全に暗号化されます。暗号化されたデータは中間サーバーや運営者であっても絶対に復号不可能です。
+      </p>
     </div>
     
-    <div class="gs" style="border-left-color: #34d399;">
-      <h4 style="color:#34d399">🔐 セキュリティガイド (E2EE)</h4>
-      <ul>
-        <li><b>完全暗号化:</b> メッセージは送信前にブラウザ内で暗号化(AES-256-CBC)され、同じパスワードを持つ人のみ解読可能です。</li>
-        <li><b>サーバーに残らない:</b> サーバーは暗号化された文字の運び屋にすぎません。運営者にも内容は一切見えません。</li>
-      </ul>
-    </div>
-
     <div class="gs" style="border-left-color: #f87171;">
-      <h4 style="color:#f87171">⏱ 30分タイムアウトと完全消去</h4>
-      <ul>
-        <li>最後に発言してから<b>30分経過すると自動退室</b>となります。</li>
-        <li>参加者が<b>全員退室した瞬間、部屋のデータは完全に消去</b>され、復元できなくなります。</li>
-      </ul>
+      <h4>⏱ 30分バニッシュ（自動消滅・揮発性記憶）</h4>
+      <p style="font-size:10.5px; color:var(--mu); margin-top:2px;">
+        最後の発言から30分経過するとセッション切れとなり自動退出します。さらに、部屋内の全員が退室した（あるいは無通信状態になった）瞬間、Realtime Database上のデータレコード（チャット履歴・シグナリングログ・入室者情報）は連動して<b>即時完全消去(Wipe)</b>され、ログは地球上から永久に失われます。
+      </p>
     </div>
 
-    <div class="gs" style="border-color:rgba(244,63,94,.3); background: rgba(244,63,94, 0.05);">
-      <h4 style="color:#fda4af">⛔ 利用規約・禁止事項</h4>
-      <p style="margin-top:4px; font-size:11px; color:var(--tx);">違法な取引、犯罪の計画、ハラスメント、スパム行為を固く禁じます。これらに同意の上ご利用ください。</p>
+    <div class="gs" style="border-left-color: #a78bfa;">
+      <h4>🚫 徹底した情報漏洩・なりすまし対策</h4>
+      <p style="font-size:10.5px; color:var(--mu); margin-top:2px;">
+        画面構成、およびスクリプトによる制御で<b>「テキストの範囲選択・コピー」「スクリーンショット／画面録画」に対するアンチプロテクト処理</b>を施しています。また、トリップキーによる固有ソルト生成により、第三者が同じ名前を使っても「◆偽物」であることが一目で判別可能ななりすまし防止機能を搭載しています。
+      </p>
+    </div>
+
+    <div class="gs" style="border-color:rgba(244,63,94,.3); background: rgba(244,63,94, 0.04);">
+      <h4>⛔ 利用規約・同意事項</h4>
+      <p style="font-size:10.5px; color:var(--tx); margin-top:2px;">犯罪行為の計画、違法な取引、スパム、ハラスメント等を目的とした利用は禁止します。上記暗号構造、及び自己責任原則に同意の上でご利用ください。</p>
     </div>
     
-    <button class="btn bp" id="gcBtn" style="font-size:12px;padding:10px;margin-top:8px">同意して閉じる</button>
+    <button class="btn bp" id="gcBtn" style="font-size:12px;padding:8px;margin-top:4px">規約に同意してチャットを始める</button>
   </div>
 </div>
 
@@ -482,7 +447,6 @@ const app = initializeApp(firebaseConfig);
 const db  = getDatabase(app);
 const $   = id => document.getElementById(id);
 
-// ─── DOM refs ───
 const D = {
   splash:$("splash"),lobby:$("lobby"),lberr:$("lberr"),app:$("app"),
   ni:$("ni"),tk:$("tk"),ri:$("ri"),pi:$("pi"),
@@ -503,9 +467,7 @@ const D = {
   callBtn:$("callBtn"),endCallBtn:$("endCallBtn"),callmod:$("callmod"),
   cbAudio:$("cbAudio"),cbVideoIn:$("cbVideoIn"),cbVideoOut:$("cbVideoOut"),cbListen:$("cbListen"),ccBtn:$("ccBtn"),
   callContainer:$("call-container"), callCtrl:$("call-ctrl"), callArea:$("call-area"),
-  ctrlMode:$("ctrlMode"), ctrlMic:$("ctrlMic"), ctrlCam:$("ctrlCam"), ctrlFlip:$("ctrlFlip"),
-  ctrlRecord:$("ctrlRecord"),
-  cammod:$("cammod"),camInBtn:$("camInBtn"),camOutBtn:$("camOutBtn"),camCancelBtn:$("camCancelBtn")
+  ctrlMode:$("ctrlMode"), ctrlMic:$("ctrlMic"), ctrlCam:$("ctrlCam"), ctrlFlip:$("ctrlFlip")
 };
 
 D.updateInputBarState = (enabled) => {
@@ -630,24 +592,23 @@ let toT=null;
 let logArray=[], currentPage=1, isLiveMode=true;
 let lastMsgAt = 0;
 
-const hideSplash = () => { const s=D.splash; if(!s)return; s.style.opacity="0"; s.style.transition="opacity .25s"; setTimeout(()=>s.remove(),260); };
+// スプラッシュ画面を完全に削除せず「非表示」にする（再利用時のバグ防止）
+const hideSplash = () => { 
+  const s = document.getElementById("splash"); 
+  if(!s || s.style.display === "none") return; 
+  s.style.opacity = "0"; 
+  s.style.transition = "opacity .25s"; 
+  setTimeout(() => { s.style.display = "none"; }, 260); 
+};
 
-// ─── WebRTC 通話 ───
+// ─── WebRTC 通話 (内・外カメラの確実な切り替え & 録画等削除 & ステータス可視化) ───
 let callMode = 'none';
 let localStream = null;
 let pcs = {};
-const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
-let mediaRecorder = null;
-let recordedChunks = [];
-let currentFacingMode = "user";
+const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }] };
+let currentFacingMode = "user"; 
 let micEnabled = true;
 let camEnabled = true;
-
-let _camModalResolve = null;
-function showCamModal() { return new Promise(resolve => { _camModalResolve = resolve; D.cammod.classList.add("show"); }); }
-D.camInBtn.onclick = () => { D.cammod.classList.remove("show"); if(_camModalResolve){_camModalResolve("user");_camModalResolve=null;} };
-D.camOutBtn.onclick = () => { D.cammod.classList.remove("show"); if(_camModalResolve){_camModalResolve("environment");_camModalResolve=null;} };
-D.camCancelBtn.onclick = () => { D.cammod.classList.remove("show"); if(_camModalResolve){_camModalResolve(null);_camModalResolve=null;} };
 
 D.callBtn.onclick = () => { if(isW) return; D.callmod.classList.add("show"); };
 D.ccBtn.onclick = () => D.callmod.classList.remove("show");
@@ -662,22 +623,14 @@ function updateCallCtrlUI() {
     D.ctrlMic.style.display = (callMode === 'listen') ? 'none' : 'flex';
     D.ctrlCam.style.display = (callMode === 'video') ? 'flex' : 'none';
     D.ctrlFlip.style.display = (callMode === 'video') ? 'flex' : 'none';
-    D.ctrlRecord.style.display = (callMode === 'listen') ? 'none' : 'flex';
-    D.ctrlMic.textContent = micEnabled ? "🎙 ミュート" : "🎙 ミュート解除";
+    D.ctrlMic.textContent = micEnabled ? "🎙 ミュート" : "🎙 解除";
     D.ctrlMic.classList.toggle("off", !micEnabled);
-    D.ctrlCam.textContent = camEnabled ? "📹 カメラオフ" : "📹 カメラオン";
+    D.ctrlCam.textContent = camEnabled ? "📹 ビデオオフ" : "📹 ビデオオン";
     D.ctrlCam.classList.toggle("off", !camEnabled);
-    if (mediaRecorder && mediaRecorder.state === 'recording') {
-        D.ctrlRecord.textContent = "⏹ 停止";
-        D.ctrlRecord.classList.add("off");
-    } else {
-        D.ctrlRecord.textContent = callMode === 'video' ? "⏺ 録画" : "⏺ 録音";
-        D.ctrlRecord.classList.remove("off");
-    }
 }
 
 async function startCall(mode) {
-  if(isW) return; // 覗き見モードでの通話禁止を徹底
+  if(isW) return;
   callMode = mode;
   D.callmod.classList.remove('show');
   D.callBtn.style.display = 'none';
@@ -686,106 +639,147 @@ async function startCall(mode) {
 
   if (mode !== 'listen') {
     try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error("お使いのブラウザがカメラ/マイクに対応していません。");
-      const vConstraints = mode === 'video' ? { facingMode: currentFacingMode, width: { ideal: 320, max: 480 }, height: { ideal: 240, max: 360 }, frameRate: { ideal: 10, max: 15 } } : false;
-      const aConstraints = { sampleRate: 16000, channelCount: 1, echoCancellation: true, noiseSuppression: true };
-      localStream = await navigator.mediaDevices.getUserMedia({ audio: aConstraints, video: vConstraints });
-      addRemoteVideo(uid, localStream, enc(curN || "自分"), true);
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error("非対応デバイス環境です。");
+      let constraints = {
+        audio: { echoCancellation: true, noiseSuppression: true }
+      };
+      if (mode === 'video') {
+        constraints.video = { 
+          facingMode: { exact: currentFacingMode }, 
+          width: { ideal: 320, max: 480 }, 
+          height: { ideal: 240, max: 360 }, 
+          frameRate: { ideal: 12 } 
+        };
+      }
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (err) {
+        if (mode === 'video') {
+          constraints.video = { facingMode: currentFacingMode, width: { ideal: 320 }, height: { ideal: 240 } };
+          localStream = await navigator.mediaDevices.getUserMedia(constraints);
+        } else { throw err; }
+      }
+      addRemoteVideo(uid, localStream, enc(curN || "自分"), true, mode, micEnabled, camEnabled);
     } catch (e) {
-      alert("カメラ/マイクの取得に失敗しました:\n" + (e.message || e.name));
+      alert("メディアデバイスの確保に失敗しました:\n" + (e.message || e.name));
       callMode = 'none';
       D.callBtn.style.display = 'flex'; D.endCallBtn.style.display = 'none'; return;
     }
+  } else {
+    addRemoteVideo(uid, null, enc(curN || "自分"), true, 'listen', false, false);
   }
 
   D.callContainer.classList.add('show');
   updateCallCtrlUI();
   onChildAdded(ref(db, `signals/${curR}/${uid}`), handleSignal);
-  await update(ref(db, `presence/${curR}/${uid}`), { call: mode });
+  await update(ref(db, `presence/${curR}/${uid}`), { call: mode, mic: micEnabled, cam: camEnabled });
   updFnPos();
 }
 
 async function endCall() {
   const prevMode = callMode; callMode = 'none';
-  if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
   if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
   for (const id in pcs) { pcs[id].close(); } pcs = {};
   D.callArea.innerHTML = ''; D.callContainer.classList.remove('show');
   if(!isW) D.callBtn.style.display = 'flex'; D.endCallBtn.style.display = 'none';
   if (curR && !isEx && !isW) {
     off(ref(db, `signals/${curR}/${uid}`));
-    if (prevMode !== 'none') await update(ref(db, `presence/${curR}/${uid}`), { call: 'none' }).catch(()=>{});
+    if (prevMode !== 'none') await update(ref(db, `presence/${curR}/${uid}`), { call: 'none', mic: null, cam: null }).catch(()=>{});
   }
   updFnPos();
 }
 
 D.ctrlMode.onchange = async () => {
     const newMode = D.ctrlMode.value; if (newMode === callMode) return;
-    if (newMode === 'video') {
-        D.ctrlMode.value = callMode; const facing = await showCamModal();
-        if (facing === null) return; currentFacingMode = facing;
-        await endCall(); await startCall('video');
-    } else { await endCall(); await startCall(newMode); }
+    await endCall(); await startCall(newMode);
 };
 
-D.ctrlMic.onclick = () => { if (!localStream) return; micEnabled = !micEnabled; localStream.getAudioTracks().forEach(t => t.enabled = micEnabled); updateCallCtrlUI(); };
-D.ctrlCam.onclick = () => { if (!localStream || callMode !== 'video') return; camEnabled = !camEnabled; localStream.getVideoTracks().forEach(t => t.enabled = camEnabled); updateCallCtrlUI(); };
+D.ctrlMic.onclick = async () => { 
+  if (!localStream) return; 
+  micEnabled = !micEnabled; 
+  localStream.getAudioTracks().forEach(t => t.enabled = micEnabled); 
+  updateCallCtrlUI();
+  updateMyStatusIcon();
+  if (curR && !isW) await update(ref(db, `presence/${curR}/${uid}`), { mic: micEnabled });
+};
+
+D.ctrlCam.onclick = async () => { 
+  if (!localStream || callMode !== 'video') return; 
+  camEnabled = !camEnabled; 
+  localStream.getVideoTracks().forEach(t => t.enabled = camEnabled); 
+  updateCallCtrlUI();
+  updateMyStatusIcon();
+  if (curR && !isW) await update(ref(db, `presence/${curR}/${uid}`), { cam: camEnabled });
+};
+
 D.ctrlFlip.onclick = async () => {
     if (callMode !== 'video' || !localStream) return;
     currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+    
+    const oldVideoTrack = localStream.getVideoTracks()[0];
+    if (oldVideoTrack) { localStream.removeTrack(oldVideoTrack); oldVideoTrack.stop(); }
+    
+    let constraints = { 
+      video: { facingMode: { exact: currentFacingMode }, width: { ideal: 320 }, height: { ideal: 240 } } 
+    };
     try {
-        const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode, width:{ideal:320,max:480}, height:{ideal:240,max:360}, frameRate:{ideal:10,max:15} } });
+      const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+      const newVideoTrack = newStream.getVideoTracks()[0];
+      localStream.addTrack(newVideoTrack);
+      newVideoTrack.enabled = camEnabled;
+      
+      for (const id in pcs) {
+          const sender = pcs[id].getSenders().find(s => s.track && s.track.kind === 'video');
+          if (sender) sender.replaceTrack(newVideoTrack).catch(()=>{});
+      }
+      const myVideoEl = $(`rvw-${uid}`)?.querySelector('video'); if (myVideoEl) myVideoEl.srcObject = localStream;
+    } catch(e) {
+      try {
+        constraints.video = { facingMode: currentFacingMode, width: { ideal: 320 } };
+        const newStream = await navigator.mediaDevices.getUserMedia(constraints);
         const newVideoTrack = newStream.getVideoTracks()[0];
-        const oldVideoTrack = localStream.getVideoTracks()[0];
-        if (oldVideoTrack) { localStream.removeTrack(oldVideoTrack); oldVideoTrack.stop(); }
-        localStream.addTrack(newVideoTrack); newVideoTrack.enabled = camEnabled;
+        localStream.addTrack(newVideoTrack);
+        newVideoTrack.enabled = camEnabled;
         for (const id in pcs) {
             const sender = pcs[id].getSenders().find(s => s.track && s.track.kind === 'video');
             if (sender) sender.replaceTrack(newVideoTrack).catch(()=>{});
         }
         const myVideoEl = $(`rvw-${uid}`)?.querySelector('video'); if (myVideoEl) myVideoEl.srcObject = localStream;
-    } catch(e) { alert("カメラの切り替えに失敗しました。"); currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user'; }
+      } catch(err) {
+        alert("カメラターゲットの切り替えが拒否されました。");
+        currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+      }
+    }
 };
 
-D.ctrlRecord.onclick = () => {
-    if (!localStream) return;
-    if (mediaRecorder && mediaRecorder.state === 'recording') { mediaRecorder.stop(); return; }
-    recordedChunks = [];
-    try {
-        let options = {};
-        if (callMode === 'video') {
-            if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')) options = { mimeType: 'video/webm;codecs=vp9,opus' };
-            else if (MediaRecorder.isTypeSupported('video/mp4')) options = { mimeType: 'video/mp4' };
-        } else {
-            if (MediaRecorder.isTypeSupported('audio/webm')) options = { mimeType: 'audio/webm' };
-            else if (MediaRecorder.isTypeSupported('audio/mp4')) options = { mimeType: 'audio/mp4' };
-        }
-        mediaRecorder = new MediaRecorder(localStream, options);
-        mediaRecorder.ondataavailable = e => { if (e.data && e.data.size > 0) recordedChunks.push(e.data); };
-        mediaRecorder.onstop = () => {
-            const actualMime = mediaRecorder.mimeType || ''; let ext = 'webm';
-            if (actualMime.includes('mp4')) ext = 'mp4'; else if (actualMime.includes('ogg')) ext = 'ogg'; else if (actualMime.includes('audio') && !actualMime.includes('webm')) ext = 'm4a';
-            if (!actualMime) ext = callMode === 'video' ? 'mp4' : 'm4a';
-            const blob = new Blob(recordedChunks, { type: actualMime || (callMode === 'video' ? 'video/mp4' : 'audio/mp4') });
-            const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `record_${Date.now()}.${ext}`; a.click();
-            URL.revokeObjectURL(url); mediaRecorder = null; updateCallCtrlUI();
-        };
-        mediaRecorder.start(); updateCallCtrlUI();
-    } catch (e) { alert("録画/録音機能がサポートされていません。"); }
-};
+function updateMyStatusIcon() {
+  const statEl = $(`vstat-${uid}`);
+  if(statEl) {
+    if(callMode==='listen') statEl.textContent = '🎧';
+    else statEl.textContent = (micEnabled ? '🎙':'🔇') + (callMode==='video' ? (camEnabled?'📹':'🚫'):'');
+  }
+}
 
 function createPC(id, nEnc) {
   if (pcs[id]) return pcs[id];
   const pc = new RTCPeerConnection(rtcConfig); pcs[id] = pc;
   pc.onicecandidate = e => { if (e.candidate) push(ref(db, `signals/${curR}/${id}`), { from: uid, type: 'ice', data: JSON.stringify(e.candidate), time: srvNow() }); };
-  pc.ontrack = e => addRemoteVideo(id, e.streams[0], nEnc, false);
+  pc.ontrack = e => {
+    onValue(ref(db, `presence/${curR}/${id}`), snap => {
+      const u = snap.val();
+      if(u) addRemoteVideo(id, e.streams[0], nEnc, false, u.call, u.mic, u.cam);
+    });
+  };
   pc.oniceconnectionstatechange = () => { if (['disconnected', 'failed', 'closed'].includes(pc.iceConnectionState)) { removeRemoteVideo(id); pc.close(); delete pcs[id]; } };
-  if (callMode === 'listen') { pc.addTransceiver('audio', { direction: 'recvonly' }); pc.addTransceiver('video', { direction: 'recvonly' }); }
-  else if (localStream) {
+  
+  if (callMode === 'listen') { 
+    pc.addTransceiver('audio', { direction: 'recvonly' }); 
+    pc.addTransceiver('video', { direction: 'recvonly' }); 
+  } else if (localStream) {
     localStream.getTracks().forEach(t => {
       const sender = pc.addTrack(t, localStream);
       try { const params = sender.getParameters(); if (!params.encodings) params.encodings = [{}];
-        if (t.kind === 'video') params.encodings[0].maxBitrate = 150000; else if (t.kind === 'audio') params.encodings[0].maxBitrate = 24000;
+        if (t.kind === 'video') params.encodings[0].maxBitrate = 120000; else if (t.kind === 'audio') params.encodings[0].maxBitrate = 24000;
         sender.setParameters(params).catch(()=>{});
       } catch(e) {}
     });
@@ -812,16 +806,25 @@ async function handleSignal(snap) {
   else if (type === 'ice') { if (pc) await pc.addIceCandidate(new RTCIceCandidate(payload)).catch(()=>{}); }
 }
 
-function addRemoteVideo(id, stream, nEnc, isLocal) {
+function addRemoteVideo(id, stream, nEnc, isLocal, mode, mic, cam) {
   let w = $(`rvw-${id}`);
   if (!w) {
     w = document.createElement('div'); w.id = `rvw-${id}`; w.className = 'remote-video-wrap';
     const v = document.createElement('video'); v.className = 'remote-video'; v.autoplay = true; v.playsInline = true;
     if (isLocal) v.muted = true;
-    const n = document.createElement('div'); n.className = 'remote-name'; n.textContent = isLocal ? "自分" : (dec(nEnc) || "???");
-    w.appendChild(v); w.appendChild(n); D.callArea.appendChild(w);
+    const n = document.createElement('div'); n.className = 'remote-name';
+    const nSpan = document.createElement('span'); nSpan.textContent = isLocal ? "自分" : (dec(nEnc) || "???");
+    const sSpan = document.createElement('span'); sSpan.id = `vstat-${id}`; sSpan.className = 'v-status';
+    n.appendChild(nSpan); n.appendChild(sSpan); w.appendChild(v); w.appendChild(n); D.callArea.appendChild(w);
   }
-  const v = w.querySelector('video'); if (v.srcObject !== stream) v.srcObject = stream;
+  const v = w.querySelector('video');
+  if (stream && v.srcObject !== stream) v.srcObject = stream;
+  
+  const statEl = $(`vstat-${id}`);
+  if(statEl) {
+    if(mode === 'listen') statEl.textContent = '🎧';
+    else statEl.textContent = (mic !== false ? '🎙':'🔇') + (mode==='video' ? (cam!==false?'📹':'🚫'):'');
+  }
 }
 function removeRemoteVideo(id) { const w = $(`rvw-${id}`); if (w) w.remove(); }
 
@@ -844,7 +847,7 @@ D.imod.addEventListener("touchend",()=>{imgDragging=false;imodTouches=[];},{pass
 // ─── オーディオ ───
 let activeAudio=null; const stopActiveAudio=()=>{ if(activeAudio){try{activeAudio.pause();}catch{}activeAudio=null;} };
 
-// ─── メディアパーサー ───
+// ─── メディアパーサー (TikTok短縮URL抽出の完全対応化) ───
 const YR  = /(?:https?:\/\/)?(?:(?:www\.|m\.|music\.)?youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|v\/|shorts\/|live\/)([A-Za-z0-9_-]{11})|youtu\.be\/([A-Za-z0-9_-]{11}))/i;
 const NR  = /(?:https?:\/\/)?(?:(?:sp\.|www\.)?nicovideo\.jp\/(?:watch|user\/[0-9]+\/video)\/|nico\.ms\/)((?:sm|nm|so|lv|co|ch)?\d+)/i;
 const TKR = /(?:https?:\/\/)?(?:(?:[a-z0-9-]+\.)?tiktok\.com\/|vt\.tiktok\.com\/|vm\.tiktok\.com\/)([^\s?#]+)/i;
@@ -877,46 +880,44 @@ const bVideoCard=(type,embedSrc,label)=>{
   return `<div class="vc-wrap"><div class="vc ${type}" id="${id}"><span class="vc-badge">${esc(label)}</span><iframe class="vc-frame" src="${esc(embedSrc)}" allow="autoplay;encrypted-media;fullscreen" allowfullscreen loading="lazy"></iframe></div></div>`; 
 };
 
-// TikTok oEmbed & Fallback (公式スクリプトを利用した完全対応版)
 function bTikTokEmbed(url) {
-  const su = esc(url), shortLabel = url.length > 45 ? url.slice(0,45)+"…" : url;
-  const vidMatch = url.match(/\/video\/(\d+)/i);
-  
-  if (vidMatch) {
-    const embedUrl = `https://www.tiktok.com/embed/v2/${vidMatch[1]}`;
-    return makeCollapse("tk","TikTok","🎵", shortLabel, `<div class="tk-embed-wrap"><iframe class="tk-embed-frame" src="${esc(embedUrl)}" allow="autoplay;encrypted-media" allowfullscreen loading="lazy"></iframe></div>`);
-  }
-
-  // 動画IDが直接URLにない短縮URL等は公式スクリプトのblockquote自動展開を利用
+  const su = esc(url), shortLabel = url.length > 30 ? url.slice(0,30)+"…" : url;
   const placeholderId = "tkph" + (++_colCnt);
-  const fallbackHtml = `<a class="tk-card" href="${su}" target="_blank" style="margin:10px auto; display:inline-flex;"><div class="tk-card-icon">🎵</div><div class="tk-card-body"><span class="tk-card-label">TikTok</span><span class="tk-card-url">${esc(shortLabel)}</span></div><span class="tk-card-arrow">↗</span></a>`;
-  
-  const inner = `<div id="${placeholderId}" class="tk-embed-wrap" style="background:#000; flex-direction:column; align-items:center; justify-content:center; padding:10px 0;">
-    <blockquote class="tiktok-embed" cite="${su}" data-video-id="" style="max-width: 605px;min-width: 325px; margin:0; padding:0;">
-      <section></section>
-    </blockquote>
-    ${fallbackHtml}
-  </div>`;
 
-  // embed.jsを再読み込みして動的に追加されたblockquoteを展開させる
-  requestAnimationFrame(() => setTimeout(() => {
-    const existingScript = document.querySelector('script[id="tiktok-embed-script"]');
-    if (existingScript) existingScript.remove();
-    const sc = document.createElement('script');
-    sc.id = "tiktok-embed-script";
-    sc.src = "https://www.tiktok.com/embed.js";
-    sc.async = true;
-    document.body.appendChild(sc);
-  }, 100));
+  let innerHtml = `<div id="${placeholderId}" class="tk-embed-wrap"></div>`;
 
-  return makeCollapse("tk","TikTok","🎵", shortLabel, inner);
+  setTimeout(async () => {
+    const el = $(placeholderId);
+    if(!el) return;
+    
+    let vidMatch = url.match(/\/video\/(\d+)/i);
+    if (vidMatch) {
+      el.innerHTML = `<iframe class="tk-embed-frame" src="https://www.tiktok.com/embed/v2/${vidMatch[1]}" allow="autoplay;encrypted-media" allowfullscreen loading="lazy"></iframe>`;
+      return;
+    }
+    
+    try {
+      const res = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`);
+      const json = await res.json();
+      if(json && json.embed_product_id) {
+         el.innerHTML = `<iframe class="tk-embed-frame" src="https://www.tiktok.com/embed/v2/${json.embed_product_id}" allow="autoplay;encrypted-media" allowfullscreen loading="lazy"></iframe>`;
+      } else {
+         el.style.height = "auto";
+         el.innerHTML = `<a class="tk-card" href="${su}" target="_blank"><div class="tk-card-icon">🎵</div><div class="tk-card-body"><span class="tk-card-label">TikTok</span><span class="tk-card-url">${su}</span></div><span class="tk-card-arrow">↗</span></a>`;
+      }
+    } catch(e) {
+      el.style.height = "auto";
+      el.innerHTML = `<a class="tk-card" href="${su}" target="_blank"><div class="tk-card-icon">🎵</div><div class="tk-card-body"><span class="tk-card-label">TikTok</span><span class="tk-card-url">${su}</span></div><span class="tk-card-arrow">↗</span></a>`;
+    }
+  }, 100);
+
+  return makeCollapse("tk","TikTok","🎵", shortLabel, innerHtml);
 }
 
 let aCnt=0;
-const dlSvg = `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>`;
 function bAudio(url) {
   const id="au"+(++aCnt),wid="aw"+id,su=esc(url),fname=decodeURIComponent(url.split("/").pop().split("?")[0]||"audio");
-  const inner = `<div class="aw" id="${wid}"><audio id="${id}" src="${su}" preload="metadata"></audio><div class="aw-left"><div class="apb">▶</div></div><div class="aw-right"><div class="aw-info"><span class="aw-badge">AUDIO</span><span class="aw-name" title="${su}">${esc(fname)}</span></div><div class="aw-seek-row"><input type="range" class="asktypetype" value="0" min="0" max="100"><span class="atm">--:-- / --:--</span></div><div class="aw-actions"><button class="aw-dl">${dlSvg}ダウンロード</button></div></div></div>`;
+  const inner = `<div class="aw" id="${wid}"><audio id="${id}" src="${su}" preload="metadata"></audio><div class="aw-left"><div class="apb">▶</div></div><div class="aw-right"><div class="aw-info"><span class="aw-badge">AUDIO</span><span class="aw-name" title="${su}">${esc(fname)}</span></div><div class="aw-seek-row"><input type="range" class="asktypetype" value="0" min="0" max="100"><span class="atm">--:--</span></div><div class="aw-actions"></div></div></div>`;
   requestAnimationFrame(()=>setTimeout(async()=>{
     const aw=$(wid),au=$(id); if(!aw||!au)return;
     const pb=aw.querySelector(".apb"),sk=aw.querySelector(".asktypetype"),tm=aw.querySelector(".atm"),actA=aw.querySelector(".aw-actions");
@@ -924,12 +925,10 @@ function bAudio(url) {
     try { const h=await fetch(url,{method:"HEAD"}); const cl=h.headers.get("content-length"); if(cl&&parseInt(cl)>0&&actA){const sz=document.createElement("span");sz.className="aw-size-badge";sz.textContent=fmtSz(parseInt(cl));actA.appendChild(sz);} } catch {}
     au.onplay=()=>{stopActiveAudio();activeAudio=au;if(pb)pb.innerHTML="⏸";};
     au.onpause=au.onended=()=>{if(pb)pb.innerHTML="▶";if(activeAudio===au)activeAudio=null;};
-    au.ontimeupdate=()=>{if(!au.duration||!sk||!tm)return;sk.value=(au.currentTime/au.duration)*100;tm.textContent=`${fA(au.currentTime)} / ${fA(au.duration)}`;};
-    au.onloadedmetadata=()=>{if(tm)tm.textContent=`--:-- / ${fA(au.duration)}`;};
+    au.ontimeupdate=()=>{if(!au.duration||!sk||!tm)return;sk.value=(au.currentTime/au.duration)*100;tm.textContent=`${fA(au.currentTime)}`;};
+    au.onloadedmetadata=()=>{if(tm)tm.textContent=`${fA(au.duration)}`;};
     if(pb)pb.onclick=()=>{if(au.paused)au.play().catch(()=>{});else au.pause();};
     if(sk)sk.oninput=()=>{if(au.duration)au.currentTime=(sk.value/100)*au.duration;};
-    const dlBtn=aw.querySelector(".aw-dl");
-    if(dlBtn)dlBtn.onclick=()=>{if(confirm(`ダウンロードしますか？\n${fname}`)){const a=document.createElement("a");a.href=url;a.download=fname;a.target="_blank";a.click();}};
   },50));
   return makeCollapse("au","AUDIO","🎵", fname, inner);
 }
@@ -954,14 +953,14 @@ function _parseSegs(txt) {
         const isShorts = url.includes('/shorts/');
         const cls = isShorts ? "yt shorts" : "yt";
         const inner=bVideoCard(cls,`https://www.youtube.com/embed/${ym[1]||ym[2]}?playsinline=1`,"YouTube");
-        const label=url.length>45?url.slice(0,45)+"…":url;
+        const label=url.length>30?url.slice(0,30)+"…":url;
         segs.push({type:"media",html:makeCollapse("yt","YouTube","▶", label, inner)});
         continue;
       }
       const nm=url.match(NR);
       if(nm){
         const inner=bVideoCard("nc",`https://embed.nicovideo.jp/watch/${nm[1]}?noscript=1`,"ニコニコ動画");
-        const label=url.length>45?url.slice(0,45)+"…":url;
+        const label=url.length>30?url.slice(0,30)+"…":url;
         segs.push({type:"media",html:makeCollapse("nc","ニコニコ","▶", label, inner)});
         continue;
       }
@@ -1105,15 +1104,12 @@ async function doJoin({target, pass, name, trip, asW, isAutoRejoin=false}) {
   D.lobby.style.display="none"; D.app.style.display="flex"; D.app.classList.add("visible"); D.fn.classList.add("visible"); D.rdsp.textContent=target;
   if(asW){
     D.ib.classList.remove("show"); D.wb.classList.add("show"); D.exBtn.textContent="ロビーへ戻る"; D.ivBtn.style.display="none"; D.clrBtn.style.display="none"; 
-    // 覗き見モードの時は通話機能を完全にオフ
-    D.callBtn.style.display="none"; 
-    D.endCallBtn.style.display="none";
+    D.callBtn.style.display="none"; D.endCallBtn.style.display="none";
     D.wni.value=localStorage.getItem("nz_ni")||""; D.wtk.value=localStorage.getItem("nz_tk")||""; updWTP(); syncPickers(curColor);
     wbOpen=false; D.wbBody.classList.remove("open"); D.wbArrow.classList.remove("open"); D.wbHint.textContent="▼ タップして設定";
   } else {
     D.ib.classList.add("show"); D.wb.classList.remove("show"); D.exBtn.textContent="退出"; D.ivBtn.style.display=isOff?"none":"block"; D.clrBtn.style.display="block"; 
-    D.callBtn.style.display="flex"; 
-    D.endCallBtn.style.display="none";
+    D.callBtn.style.display="flex"; D.endCallBtn.style.display="none";
   }
   D.updateInputBarState(!asW); updFnPos(); hideSplash();
 
@@ -1179,9 +1175,7 @@ async function upgrade(name,trip){
   await push(ref(db,`chat/${curR}`),{type:"sys",text:enc(`${name}${trip||""} が入室しました`),time:N});
   localStorage.setItem("nz_ni",name); localStorage.setItem("nz_tk",D.wtk.value.trim()); saveSession({target:rawR,pass:curP,name,trip:trip||"",asW:false,lastMsgAt});
   D.wb.classList.remove("show"); D.ib.classList.add("show"); D.exBtn.textContent="退出"; D.ivBtn.style.display=isOff?"none":"block"; D.clrBtn.style.display="block"; 
-  // 参加に昇格したら通話ボタンを表示
-  D.callBtn.style.display="flex"; 
-  D.endCallBtn.style.display="none";
+  D.callBtn.style.display="flex"; D.endCallBtn.style.display="none";
   D.updateInputBarState(true); updFnPos(); startToBar();
   if(toT)clearInterval(toT);
   toT=setInterval(async()=>{ if(!curR||isEx||_exitLock)return; if(Date.now()-lastMsgAt>=INACTIVITY){ _exitLock=true; await exitRoom("30分間発言がなかったため自動退室しました"); } },CHECK_TICK);
@@ -1212,26 +1206,31 @@ D.gdBtn.onclick=()=>D.gmod.classList.add("show");
 D.gcBtn.onclick=()=>D.gmod.classList.remove("show");
 D.gmod.onclick=e=>{if(e.target===D.gmod)D.gmod.classList.remove("show");};
 
+// 初期化ブロックを try-catch で囲み、エラー時は必ずロビー画面を表示するように修正
 (async()=>{
-  const sp=new URLSearchParams(location.search),sr=sp.get("r"),spp=sp.get("p");
-  if(sr&&spp){
-    const n=localStorage.getItem("nz_ni")||"";
-    if(n){ setBtns(false); try{await doJoin({target:sr,pass:spp,name:n,trip:gTrip(n,localStorage.getItem("nz_tk")||""),asW:false,isAutoRejoin:true});} catch(e){showLobby(e.message);} setBtns(true); }
-    else {D.ri.value=sr;D.pi.value=spp;showLobby();} return;
+  try {
+    const sp=new URLSearchParams(location.search),sr=sp.get("r"),spp=sp.get("p");
+    if(sr&&spp){
+      const n=localStorage.getItem("nz_ni")||"";
+      if(n){ setBtns(false); try{await doJoin({target:sr,pass:spp,name:n,trip:gTrip(n,localStorage.getItem("nz_tk")||""),asW:false,isAutoRejoin:true});} catch(e){showLobby(e.message);} setBtns(true); }
+      else {D.ri.value=sr;D.pi.value=spp;showLobby();} return;
+    }
+    const sessStr=localStorage.getItem("nz_sess");
+    if(sessStr){
+      try{
+        const s=JSON.parse(sessStr);
+        if(s&&s.target&&s.pass){
+          setBtns(false);
+          if(s.asW){ try{ await doJoin({target:s.target,pass:s.pass,name:"",trip:"",asW:true,isAutoRejoin:true}); } catch(e){ showLobby(e.message); } }
+          else { try{ await doJoin({target:s.target,pass:s.pass,name:s.name,trip:s.trip,asW:false,isAutoRejoin:true}); } catch(e){ showLobby(e.message); } }
+          setBtns(true);return;
+        }
+      }catch{localStorage.removeItem("nz_sess");}
+    }
+    showLobby();
+  } catch(err) {
+    showLobby("初期化エラーが発生しました: " + err.message);
   }
-  const sessStr=localStorage.getItem("nz_sess");
-  if(sessStr){
-    try{
-      const s=JSON.parse(sessStr);
-      if(s&&s.target&&s.pass){
-        setBtns(false);
-        if(s.asW){ try{ await doJoin({target:s.target,pass:s.pass,name:"",trip:"",asW:true,isAutoRejoin:true}); } catch(e){ showLobby(e.message); } }
-        else { try{ await doJoin({target:s.target,pass:s.pass,name:s.name,trip:s.trip,asW:false,isAutoRejoin:true}); } catch(e){ showLobby(e.message); } }
-        setBtns(true);return;
-      }
-    }catch{localStorage.removeItem("nz_sess");}
-  }
-  showLobby();
 })();
 </script>
 </body>

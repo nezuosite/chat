@@ -19,13 +19,7 @@
   --safe:env(safe-area-inset-bottom,0px);
   --usr-color:#94a3b8;
 }
-html,body{
-  height:100%;width:100%;overflow:hidden;
-  background:var(--bg);color:var(--tx);
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Noto Sans JP",sans-serif;
-  touch-action:pan-y;overscroll-behavior:none;-webkit-text-size-adjust:100%;
-}
-
+html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Noto Sans JP",sans-serif;touch-action:pan-y;overscroll-behavior:none;-webkit-text-size-adjust:100%}
 input,textarea,select{font-family:inherit;-webkit-user-select:text;user-select:text;font-size:16px!important}
 button{cursor:pointer;font-family:inherit;border:none;background:none}
 button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
@@ -35,9 +29,13 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .spt{font-size:10px;font-weight:800;color:var(--m2);letter-spacing:.2em}
 
+/* エラーバー */
+#errbar{display:none;position:fixed;top:0;left:0;right:0;z-index:99999;background:rgba(244,63,94,.95);color:#fff;font-size:11px;font-weight:700;padding:8px 14px;text-align:center;animation:slideDown .3s ease}
+@keyframes slideDown{from{transform:translateY(-100%)}to{transform:translateY(0)}}
+
 /* ロビー */
-#lobby{display:none;position:fixed;inset:0;background:var(--bg);z-index:100;overflow:hidden;}
-.lbo{height:100%;display:flex;flex-direction:column;padding:10px 14px calc(10px + var(--safe));gap:6px;justify-content:center;max-width:380px;margin:0 auto}
+#lobby{display:none;position:fixed;inset:0;background:var(--bg);z-index:100;overflow-y:auto}
+.lbo{min-height:100%;display:flex;flex-direction:column;padding:10px 14px calc(20px + var(--safe));gap:6px;justify-content:center;max-width:380px;margin:0 auto}
 .lbt{font-size:14px;font-weight:900;color:#818cf8;text-align:center;letter-spacing:.05em}
 .lbsub{font-size:8px;font-weight:700;color:var(--m2);text-align:center;letter-spacing:.1em;margin-top:-4px}
 .lbi{display:flex;flex-direction:column;gap:5px;width:100%}
@@ -63,6 +61,12 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .bo{background:var(--e2);color:#fff}
 .glink{font-size:10px;color:#a5b4fc;text-align:center;margin-top:2px;text-decoration:underline;cursor:pointer;font-weight:bold}
 
+/* DB接続ステータス */
+#dbstat{font-size:9px;font-weight:700;text-align:center;padding:3px;border-radius:4px;margin-top:2px}
+.dbstat-ok{background:rgba(16,185,129,.1);color:var(--e2);border:1px solid rgba(16,185,129,.2)}
+.dbstat-ng{background:rgba(244,63,94,.1);color:#fda4af;border:1px solid rgba(244,63,94,.2)}
+.dbstat-wait{background:rgba(148,163,184,.08);color:var(--mu);border:1px solid var(--bd)}
+
 #app{display:none;position:fixed;inset:0;flex-direction:column;overflow:hidden;z-index:50}
 #app.visible{display:flex}
 #cp{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;background:#0d1117;position:relative}
@@ -74,31 +78,31 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .hbs button{padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700;background:var(--bg);border:1px solid var(--bd);color:var(--tx);display:flex;align-items:center;gap:4px}
 .bclr-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
 .bx{border-color:rgba(244,63,94,.4)!important;color:#fda4af!important}
-#pl{display:flex;gap:4px;overflow-x:auto;padding-top:4px;white-space:nowrap;scrollbar-width:none;}
-#pl::-webkit-scrollbar{display:none;}
+#pl{display:flex;gap:4px;overflow-x:auto;padding-top:4px;white-space:nowrap;scrollbar-width:none}
+#pl::-webkit-scrollbar{display:none}
 .chip{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,.03);border:1px solid}
 
-/* 通話エリア UI最適化 */
-#call-container { display:none; flex-direction:column; flex-shrink:0; border-bottom:1px solid var(--bd); background:var(--s2); z-index:10 }
-#call-container.show { display:flex }
-#call-ctrl { display:flex; gap:6px; padding:8px 12px; background:var(--sf); border-bottom:1px solid var(--bd); flex-wrap:wrap; align-items:center; justify-content:center }
-.cctrl-sel { font-size:11px; padding:6px 8px; border-radius:6px; background:var(--bg); color:var(--tx); border:1px solid var(--bd); outline:none; font-weight:bold; cursor:pointer }
-.cctrl-btn { padding:6px 10px; border-radius:6px; font-size:11px; font-weight:bold; background:var(--bg); color:var(--tx); border:1px solid var(--bd); cursor:pointer; transition:all 0.2s }
-.cctrl-btn:active { transform:scale(0.95) }
-.cctrl-btn.off { background:rgba(244,63,94,0.15); color:#fda4af; border-color:rgba(244,63,94,0.3) }
-#call-area { display:flex; flex-wrap:nowrap; overflow-x:auto; gap:8px; padding:10px 12px; max-height:160px; scrollbar-width:thin; }
-.remote-video-wrap { width:100px; height:100px; background:#000; border-radius:8px; position:relative; overflow:hidden; border:1px solid var(--bd); flex-shrink:0; box-shadow:0 4px 6px rgba(0,0,0,0.3); }
-.remote-video { width:100%; height:100%; object-fit:cover; background:#111 }
-.remote-name { position:absolute; bottom:4px; left:4px; right:4px; background:rgba(0,0,0,.75); color:#fff; font-size:9.5px; font-weight:bold; padding:2px 6px; border-radius:4px; z-index:2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; justify-content:space-between; align-items:center }
-.v-status { font-size:10px; font-family:monospace; flex-shrink:0; margin-left:4px; }
+/* 通話エリア */
+#call-container{display:none;flex-direction:column;flex-shrink:0;border-bottom:1px solid var(--bd);background:var(--s2);z-index:10}
+#call-container.show{display:flex}
+#call-ctrl{display:flex;gap:6px;padding:8px 12px;background:var(--sf);border-bottom:1px solid var(--bd);flex-wrap:wrap;align-items:center;justify-content:center}
+.cctrl-sel{font-size:11px;padding:6px 8px;border-radius:6px;background:var(--bg);color:var(--tx);border:1px solid var(--bd);outline:none;font-weight:bold;cursor:pointer}
+.cctrl-btn{padding:6px 10px;border-radius:6px;font-size:11px;font-weight:bold;background:var(--bg);color:var(--tx);border:1px solid var(--bd);cursor:pointer;transition:all 0.2s}
+.cctrl-btn:active{transform:scale(0.95)}
+.cctrl-btn.off{background:rgba(244,63,94,0.15);color:#fda4af;border-color:rgba(244,63,94,0.3)}
+#call-area{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:8px;padding:10px 12px;max-height:160px;scrollbar-width:thin}
+.remote-video-wrap{width:100px;height:100px;background:#000;border-radius:8px;position:relative;overflow:hidden;border:1px solid var(--bd);flex-shrink:0;box-shadow:0 4px 6px rgba(0,0,0,.3)}
+.remote-video{width:100%;height:100%;object-fit:cover;background:#111}
+.remote-name{position:absolute;bottom:4px;left:4px;right:4px;background:rgba(0,0,0,.75);color:#fff;font-size:9.5px;font-weight:bold;padding:2px 6px;border-radius:4px;z-index:2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;justify-content:space-between;align-items:center}
+.v-status{font-size:10px;font-family:monospace;flex-shrink:0;margin-left:4px}
 
-.mod-overlay { position:fixed;inset:0;background:rgba(15,23,42,.8);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:10000;padding:16px }
-.mod-overlay.show { display:flex }
-.call-btn-row { display:flex; gap:8px; justify-content:center; margin-top:10px }
-.cb { flex:1; padding:10px; border-radius:8px; font-weight:bold; font-size:12.5px; color:#fff; text-align:center; cursor:pointer }
-.cb-audio { background:var(--e2) }
-.cb-video { background:var(--in) }
-.cb-listen { background:var(--m2) }
+.mod-overlay{position:fixed;inset:0;background:rgba(15,23,42,.8);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:10000;padding:16px}
+.mod-overlay.show{display:flex}
+.call-btn-row{display:flex;gap:8px;justify-content:center;margin-top:10px}
+.cb{flex:1;padding:10px;border-radius:8px;font-weight:bold;font-size:12.5px;color:#fff;text-align:center;cursor:pointer}
+.cb-audio{background:var(--e2)}
+.cb-video{background:var(--in)}
+.cb-listen{background:var(--m2)}
 
 #tobar{display:none;background:rgba(244,63,94,.08);border-bottom:1px solid rgba(244,63,94,.2);padding:4px 12px;flex-shrink:0;align-items:center;gap:8px}
 #tobar.show{display:flex}
@@ -135,7 +139,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .ts{color:var(--m2);font-size:9.5px;margin-left:auto}
 .mb{align-self:start;background:var(--sf);border:1px solid transparent;border-left:3px solid;border-radius:4px 12px 12px 12px;padding:8px 12px;font-size:14px;line-height:1.5;max-width:100%;word-break:break-all;white-space:pre-wrap}
 
-.media-wrap{margin-top:4px;width:100%;max-width:260px} 
+.media-wrap{margin-top:4px;width:100%;max-width:260px}
 .media-collapse{border:1px solid var(--bd);border-radius:6px;overflow:hidden;background:var(--s2)}
 .media-collapse-hdr{display:flex;align-items:center;gap:4px;padding:5px 8px;cursor:pointer;user-select:none;background:rgba(255,255,255,.03)}
 .media-collapse-icon{font-size:10px;flex-shrink:0}
@@ -152,12 +156,10 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .media-collapse-body{display:none;padding:4px;background:#000}
 .media-collapse-body.open{display:block}
 
-/* 動画・画像コンテナ */
 .vc-wrap{width:100%;position:relative}
 .vc{width:100%;aspect-ratio:16/9;background:#000;border-radius:4px;overflow:hidden;position:relative;border:1px solid var(--bd);display:flex;align-items:center;justify-content:center}
-/* YouTube Shorts, TikTok, Instagram の最適化 */
-.vc.shorts { aspect-ratio: 9/16; width: 100%; max-width: 320px; margin: 0 auto; background: #000; position: relative; overflow: hidden; border-radius: 8px; border: 1px solid var(--bd); }
-.vc-frame {position:absolute; top:0; left:0; width:100%; height:100%; border:none; overflow:hidden;}
+.vc.shorts{aspect-ratio:9/16;width:100%;max-width:320px;margin:0 auto;background:#000;position:relative;overflow:hidden;border-radius:8px;border:1px solid var(--bd)}
+.vc-frame{position:absolute;top:0;left:0;width:100%;height:100%;border:none;overflow:hidden}
 .vc-badge{position:absolute;top:4px;left:4px;background:rgba(0,0,0,.75);color:#fff;font-size:8px;font-weight:800;padding:1px 3px;border-radius:3px;z-index:2;pointer-events:none}
 
 .tk-card{display:inline-flex;align-items:center;gap:6px;background:rgba(1,1,1,.6);border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:6px 10px;margin-top:4px;max-width:100%;text-decoration:none;color:var(--tx)}
@@ -219,6 +221,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 </head>
 <body>
 
+<div id="errbar"></div>
 <div id="splash"><div class="spin"></div><div class="spt">NEZU ONETIME CHAT</div></div>
 
 <div id="lobby">
@@ -226,10 +229,8 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <h2 class="lbt">⚡ NEZU ONETIME CHAT</h2>
     <div class="lbsub">P2P-LIKE ENCRYPTED DISPOSABLE CHAT</div>
     <div class="lbi">
-      <div class="ibox">
-        🔑 <b>完全使い捨てセキュリティ空間</b><br>
-        ブラウザ間(E2EE)でメッセージを高度暗号化。サーバーに生データは一切残りません。発言停止から<b>30分で完全自動消滅</b>し、全員退室で履歴は即時完全パージされます。
-      </div>
+      <div class="ibox">🔑 <b>完全使い捨てセキュリティ空間</b><br>ブラウザ間(E2EE)でメッセージを高度暗号化。サーバーに生データは一切残りません。発言停止から<b>30分で完全自動消滅</b>し、全員退室で履歴は即時完全パージされます。</div>
+      <div id="dbstat" class="dbstat-wait">● DB接続確認中...</div>
       <div id="lberr"></div>
       <div class="fg">
         <label class="fl">表示名 *</label>
@@ -282,20 +283,20 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       </div>
       <div id="pl"></div>
     </div>
-    
+
     <div id="call-container">
-        <div id="call-ctrl">
-           <select id="ctrlMode" class="cctrl-sel">
-               <option value="audio">🎙 音声のみ</option>
-               <option value="video-user">📹 ビデオ(内側)</option>
-               <option value="video-environment">📹 ビデオ(外側)</option>
-               <option value="listen">🎧 聴き専(視聴のみ)</option>
-           </select>
-           <button class="cctrl-btn" id="ctrlMic">🎙 マイクON</button>
-           <button class="cctrl-btn" id="ctrlCam">📹 カメラON</button>
-           <button class="cctrl-btn" id="ctrlFlip">🔄 カメラ切替</button>
-        </div>
-        <div id="call-area"></div>
+      <div id="call-ctrl">
+        <select id="ctrlMode" class="cctrl-sel">
+          <option value="audio">🎙 音声のみ</option>
+          <option value="video-user">📹 ビデオ(内側)</option>
+          <option value="video-environment">📹 ビデオ(外側)</option>
+          <option value="listen">🎧 聴き専(視聴のみ)</option>
+        </select>
+        <button class="cctrl-btn" id="ctrlMic">🎙 マイクON</button>
+        <button class="cctrl-btn" id="ctrlCam">📹 カメラON</button>
+        <button class="cctrl-btn" id="ctrlFlip">🔄 カメラ切替</button>
+      </div>
+      <div id="call-area"></div>
     </div>
 
     <div id="tobar">
@@ -378,23 +379,19 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 </div>
 
 <div id="gmod" class="mod-overlay">
-  <div class="gc" style="max-width: 500px;">
+  <div class="gc" style="max-width:500px">
     <h3 style="font-size:14px;font-weight:900;color:#a5b4fc;border-bottom:1px solid var(--bd);padding-bottom:6px">📖 ガイド ＆ セキュリティ仕様</h3>
-    <div class="gs" style="border-left-color: #60a5fa;">
+    <div class="gs" style="border-left-color:#60a5fa">
       <h4>🔒 エンドツーエンド暗号化 (E2EE)</h4>
-      <p style="font-size:10.5px; color:var(--mu); margin-top:2px;">
-        当システムは、入力された「パスワード」から<b>PBKDF2暗号鍵ストレッチング</b>を用いてクライアント内で独自の<b>AES-256-CBC</b>秘密鍵を生成します。テキストやカラー情報は通信経路に乗る前に完全に暗号化されます。
-      </p>
+      <p style="font-size:10.5px;color:var(--mu);margin-top:2px">当システムは、入力された「パスワード」からクライアント内で独自の<b>AES-256-CBC</b>秘密鍵を生成します。テキストやカラー情報は通信経路に乗る前に完全に暗号化されます。</p>
     </div>
-    <div class="gs" style="border-left-color: #f87171;">
+    <div class="gs" style="border-left-color:#f87171">
       <h4>⏱ 30分バニッシュ（自動消滅・揮発性記憶）</h4>
-      <p style="font-size:10.5px; color:var(--mu); margin-top:2px;">
-        最後の発言から30分経過するとセッション切れとなり自動退出します。さらに、部屋内の全員が退室した瞬間、データベース上のデータは連動して<b>即時完全消去(Wipe)</b>されます。
-      </p>
+      <p style="font-size:10.5px;color:var(--mu);margin-top:2px">最後の発言から30分経過するとセッション切れとなり自動退出します。全員退室で即時完全消去(Wipe)されます。</p>
     </div>
-    <div class="gs" style="border-color:rgba(244,63,94,.3); background: rgba(244,63,94, 0.04);">
+    <div class="gs" style="border-color:rgba(244,63,94,.3);background:rgba(244,63,94,.04)">
       <h4>⛔ 利用規約・同意事項</h4>
-      <p style="font-size:10.5px; color:var(--tx); margin-top:2px;">犯罪行為の計画、違法な取引、スパム等を目的とした利用は禁止します。上記暗号構造、及び自己責任原則に同意の上でご利用ください。</p>
+      <p style="font-size:10.5px;color:var(--tx);margin-top:2px">犯罪行為の計画、違法な取引、スパム等を目的とした利用は禁止します。上記暗号構造、及び自己責任原則に同意の上でご利用ください。</p>
     </div>
     <button class="btn bp" id="gcBtn" style="font-size:12px;padding:8px;margin-top:4px">規約に同意してチャットを始める</button>
   </div>
@@ -422,6 +419,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/fireba
 import { getDatabase, ref, push, onValue, set, update, remove, query, orderByChild, get, onChildAdded, off, onDisconnect, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
+// ─── Firebase初期化 ───
 const firebaseConfig = {
   apiKey: "AIzaSyCsRidc0smUQDaBwq-oki5NzxSHx6-ljiw",
   authDomain: "nezuochat.firebaseapp.com",
@@ -432,60 +430,73 @@ const firebaseConfig = {
   appId: "1:154725381397:web:8742ccd957e20cee8ce51c"
 };
 
-const app = initializeApp(firebaseConfig);
-const db  = getDatabase(app);
-const $   = id => document.getElementById(id);
+const fbApp = initializeApp(firebaseConfig);
+const db    = getDatabase(fbApp);
+const $el   = id => document.getElementById(id);
 
+// ─── DOM参照 ───
 const D = {
-  splash:$("splash"),lobby:$("lobby"),lberr:$("lberr"),app:$("app"),
-  ni:$("ni"),tk:$("tk"),ri:$("ri"),pi:$("pi"),
-  tpv:$("tpv"),enBtn:$("enBtn"),ofBtn:$("ofBtn"),gnBtn:$("gnBtn"),
-  gdBtn:$("gdBtn"),gmod:$("gmod"),gcBtn:$("gcBtn"),
-  imod:$("imod"),imEl:$("imEl"),icBtn:$("icBtn"),imodWrap:$("imod-wrap"),
-  clrmod:$("clrmod"),clrPick2:$("clrPick2"),clrPrev:$("clrPrev"),
-  clrOk:$("clrOk"),clrCancel:$("clrCancel"),clrBtn:$("clrBtn"),clrDot:$("clrDot"),
-  hdr:$("hdr"),rdsp:$("rdsp"),pcnt:$("pcnt"),
-  pl:$("pl"),ivBtn:$("ivBtn"),exBtn:$("exBtn"),
-  tobar:$("tobar"),tobarFill:$("tobar-fill"),tobarLabel:$("tobar-label"),
-  wb:$("wb"),wbToggle:$("wb-toggle"),wbBody:$("wb-body"),wbArrow:$("wb-arrow"),wbHint:$("wb-hint"),
-  wni:$("wni"),wtk:$("wtk"),wtpv:$("wtpv"),wuBtn:$("wuBtn"),wClrPick:$("wClrPick"),
-  tl:$("tl"),tli:$("tl-inner"),ib:$("ib"),mi:$("mi"),sdBtn:$("sdBtn"),clrMsgBtn:$("clrMsgBtn"),
-  fn:$("fn"),tTBtn:$("tTBtn"),tBBtn:$("tBBtn"),lbClrPick:$("lbClrPick"),
-  pnav:$("pnav"),pFirst:$("pFirst"),pPrev:$("pPrev"),pNext:$("pNext"),pLast:$("pLast"),
-  pinfo:$("pinfo"),midisable:$("midisable"),
-  callBtn:$("callBtn"),endCallBtn:$("endCallBtn"),callmod:$("callmod"),
-  cbAudio:$("cbAudio"),cbVideoIn:$("cbVideoIn"),cbVideoOut:$("cbVideoOut"),cbListen:$("cbListen"),ccBtn:$("ccBtn"),
-  callContainer:$("call-container"), callCtrl:$("call-ctrl"), callArea:$("call-area"),
-  ctrlMode:$("ctrlMode"), ctrlMic:$("ctrlMic"), ctrlCam:$("ctrlCam"), ctrlFlip:$("ctrlFlip")
+  errbar:$el("errbar"),splash:$el("splash"),lobby:$el("lobby"),lberr:$el("lberr"),dbstat:$el("dbstat"),
+  app:$el("app"),ni:$el("ni"),tk:$el("tk"),ri:$el("ri"),pi:$el("pi"),
+  tpv:$el("tpv"),enBtn:$el("enBtn"),ofBtn:$el("ofBtn"),gnBtn:$el("gnBtn"),
+  gdBtn:$el("gdBtn"),gmod:$el("gmod"),gcBtn:$el("gcBtn"),
+  imod:$el("imod"),imEl:$el("imEl"),icBtn:$el("icBtn"),imodWrap:$el("imod-wrap"),
+  clrmod:$el("clrmod"),clrPick2:$el("clrPick2"),clrPrev:$el("clrPrev"),
+  clrOk:$el("clrOk"),clrCancel:$el("clrCancel"),clrBtn:$el("clrBtn"),clrDot:$el("clrDot"),
+  hdr:$el("hdr"),rdsp:$el("rdsp"),pcnt:$el("pcnt"),
+  pl:$el("pl"),ivBtn:$el("ivBtn"),exBtn:$el("exBtn"),
+  tobar:$el("tobar"),tobarFill:$el("tobar-fill"),tobarLabel:$el("tobar-label"),
+  wb:$el("wb"),wbToggle:$el("wb-toggle"),wbBody:$el("wb-body"),wbArrow:$el("wb-arrow"),wbHint:$el("wb-hint"),
+  wni:$el("wni"),wtk:$el("wtk"),wtpv:$el("wtpv"),wuBtn:$el("wuBtn"),wClrPick:$el("wClrPick"),
+  tl:$el("tl"),tli:$el("tl-inner"),ib:$el("ib"),mi:$el("mi"),sdBtn:$el("sdBtn"),clrMsgBtn:$el("clrMsgBtn"),
+  fn:$el("fn"),tTBtn:$el("tTBtn"),tBBtn:$el("tBBtn"),lbClrPick:$el("lbClrPick"),
+  pnav:$el("pnav"),pFirst:$el("pFirst"),pPrev:$el("pPrev"),pNext:$el("pNext"),pLast:$el("pLast"),
+  pinfo:$el("pinfo"),midisable:$el("midisable"),
+  callBtn:$el("callBtn"),endCallBtn:$el("endCallBtn"),callmod:$el("callmod"),
+  cbAudio:$el("cbAudio"),cbVideoIn:$el("cbVideoIn"),cbVideoOut:$el("cbVideoOut"),cbListen:$el("cbListen"),ccBtn:$el("ccBtn"),
+  callContainer:$el("call-container"),callArea:$el("call-area"),
+  ctrlMode:$el("ctrlMode"),ctrlMic:$el("ctrlMic"),ctrlCam:$el("ctrlCam"),ctrlFlip:$el("ctrlFlip")
 };
 
-D.updateInputBarState = (enabled) => {
-  if (enabled && !isW) {
-    D.midisable.style.display = "none";
-    D.mi.disabled = false; D.sdBtn.disabled = false;
-  } else {
-    D.midisable.style.display = "flex";
-    D.mi.disabled = true;  D.sdBtn.disabled = true;
+// ─── エラー表示 ───
+function showErrBar(msg, durationMs=5000) {
+  D.errbar.textContent = msg;
+  D.errbar.style.display = "block";
+  clearTimeout(D.errbar._t);
+  D.errbar._t = setTimeout(() => { D.errbar.style.display = "none"; }, durationMs);
+}
+
+// ─── DB接続監視 ───
+let _dbConnected = false;
+onValue(ref(db, ".info/connected"), snap => {
+  _dbConnected = !!snap.val();
+  if (D.dbstat) {
+    D.dbstat.className = "dbstat-" + (_dbConnected ? "ok" : "ng");
+    D.dbstat.textContent = _dbConnected ? "● DB接続済 (Firebase Realtime)" : "● DB未接続 — ネットワークを確認";
   }
-};
+});
 
+// ─── サーバー時刻オフセット ───
 let _srvOff = 0;
 onValue(ref(db, ".info/serverTimeOffset"), s => { _srvOff = s.val() || 0; });
 const srvNow = () => Date.now() + _srvOff;
 
+// ─── UID(永続) ───
 const uid = (() => {
   let id = localStorage.getItem("nz_uid");
   if (!id) { id = "u-" + Math.random().toString(36).slice(2,9) + "-" + Date.now().toString(36); localStorage.setItem("nz_uid", id); }
   return id;
 })();
 
-const saveSession = (data) => {
+// ─── セッション保存 ───
+const saveSession = data => {
   let s = {};
-  try { s = JSON.parse(localStorage.getItem("nz_sess") || "{}"); } catch{}
+  try { s = JSON.parse(localStorage.getItem("nz_sess") || "{}"); } catch {}
   Object.assign(s, data);
   localStorage.setItem("nz_sess", JSON.stringify(s));
 };
 
+// ─── 暗号化 ───
 let symKey = null;
 const enc = t => {
   if (!t || !symKey) return "";
@@ -504,22 +515,25 @@ const dec = c => {
     return CryptoJS.AES.decrypt(c, symKey, { mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }).toString(CryptoJS.enc.Utf8) || null;
   } catch { return null; }
 };
-const esc = t => (t||"").replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const esc = t => (t || "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":'&#39;' }[c]));
 
-const SALT = "NEZU_ONETIME_SALT_2026_🔥";
+// ─── トリップ生成 ───
+const TRIP_SALT = "NEZU_ONETIME_SALT_2026_🔥";
 const gTrip = (n, k) => {
   if (!n || !k) return "";
-  try { return "◆" + CryptoJS.PBKDF2(k, SALT+n, {keySize:4,iterations:2000}).toString(CryptoJS.enc.Base64).replace(/[+/=]/g,"").slice(0,8); }
-  catch { return ""; }
+  try {
+    return "◆" + CryptoJS.PBKDF2(k, TRIP_SALT + n, { keySize: 4, iterations: 2000 }).toString(CryptoJS.enc.Base64).replace(/[+/=]/g, "").slice(0, 8);
+  } catch { return ""; }
 };
-const updTP  = () => { const n=D.ni.value.replace(/[\s\u3000]+/g,"").trim(),k=D.tk.value.trim(); if(n&&k){D.tpv.textContent=gTrip(n,k);D.tpv.style.display="inline-block";}else D.tpv.style.display="none"; };
-const updWTP = () => { const n=D.wni.value.replace(/[\s\u3000]+/g,"").trim(),k=D.wtk.value.trim(); if(n&&k){D.wtpv.textContent=gTrip(n,k);D.wtpv.style.display="inline-block";}else D.wtpv.style.display="none"; };
+const updTP  = () => { const n=D.ni.value.replace(/[\s\u3000]+/g,"").trim(), k=D.tk.value.trim(); if(n&&k){D.tpv.textContent=gTrip(n,k);D.tpv.style.display="inline-block";}else D.tpv.style.display="none"; };
+const updWTP = () => { const n=D.wni.value.replace(/[\s\u3000]+/g,"").trim(), k=D.wtk.value.trim(); if(n&&k){D.wtpv.textContent=gTrip(n,k);D.wtpv.style.display="inline-block";}else D.wtpv.style.display="none"; };
 
-D.ni.addEventListener("input",  ()=>{ D.wni.value=D.ni.value;  localStorage.setItem("nz_ni",D.ni.value);  updTP(); updWTP(); });
-D.tk.addEventListener("input",  ()=>{ D.wtk.value=D.tk.value;  localStorage.setItem("nz_tk",D.tk.value);  updTP(); updWTP(); });
-D.wni.addEventListener("input", ()=>{ D.ni.value=D.wni.value;  localStorage.setItem("nz_ni",D.wni.value); updTP(); updWTP(); });
-D.wtk.addEventListener("input", ()=>{ D.tk.value=D.wtk.value;  localStorage.setItem("nz_tk",D.wtk.value); updTP(); updWTP(); });
+D.ni.addEventListener("input",  () => { D.wni.value=D.ni.value;  localStorage.setItem("nz_ni",D.ni.value);  updTP(); updWTP(); });
+D.tk.addEventListener("input",  () => { D.wtk.value=D.tk.value;  localStorage.setItem("nz_tk",D.tk.value);  updTP(); updWTP(); });
+D.wni.addEventListener("input", () => { D.ni.value=D.wni.value;  localStorage.setItem("nz_ni",D.wni.value); updTP(); updWTP(); });
+D.wtk.addEventListener("input", () => { D.tk.value=D.wtk.value;  localStorage.setItem("nz_tk",D.wtk.value); updTP(); updWTP(); });
 
+// ─── 覗き見トグル ───
 let wbOpen = false;
 D.wbToggle.addEventListener("click", () => {
   wbOpen = !wbOpen;
@@ -528,6 +542,7 @@ D.wbToggle.addEventListener("click", () => {
   D.wbHint.textContent = wbOpen ? "▲ 閉じる" : "▼ タップして設定";
 });
 
+// ─── カラーパレット ───
 const COLORS = [
   {v:"#94a3b8",n:"グレー"},{v:"#f1f5f9",n:"ホワイト"},{v:"#818cf8",n:"インディゴ"},{v:"#60a5fa",n:"ブルー"},
   {v:"#34d399",n:"エメラルド"},{v:"#a3e635",n:"ライム"},{v:"#fbbf24",n:"アンバー"},{v:"#fb923c",n:"オレンジ"},
@@ -537,243 +552,285 @@ const COLORS = [
 let curColor = localStorage.getItem("nz_color") || "#94a3b8";
 let tmpColor = curColor;
 
-const setGlobalColor = c => { document.documentElement.style.setProperty("--usr-color",c); if(D.clrDot) D.clrDot.style.background=c; };
+const setGlobalColor = c => { document.documentElement.style.setProperty("--usr-color", c); if (D.clrDot) D.clrDot.style.background = c; };
 setGlobalColor(curColor);
 
-const syncPickers = v => { [D.lbClrPick,D.wClrPick].forEach(con=>{ if(!con)return; con.querySelectorAll("button").forEach(b=>b.classList.toggle("sel",b.dataset.color===v)); }); };
+const syncPickers = v => {
+  [D.lbClrPick, D.wClrPick].forEach(con => {
+    if (!con) return;
+    con.querySelectorAll("button").forEach(b => b.classList.toggle("sel", b.dataset.color === v));
+  });
+};
 function buildPicker(con, sel, cls, onChange) {
   if (!con) return; con.innerHTML = "";
-  COLORS.forEach(({v,n}) => {
+  COLORS.forEach(({ v, n }) => {
     const b = document.createElement("button");
-    b.className = cls+(v===sel?" sel":""); b.style.background=v; b.title=n; b.dataset.color=v;
-    b.addEventListener("click",()=>onChange(v)); con.appendChild(b);
+    b.className = cls + (v === sel ? " sel" : ""); b.style.background = v; b.title = n; b.dataset.color = v;
+    b.addEventListener("click", () => onChange(v)); con.appendChild(b);
   });
 }
-const onColorSelect = v => { curColor=v; setGlobalColor(v); localStorage.setItem("nz_color",v); syncPickers(v); };
+const onColorSelect = v => { curColor = v; setGlobalColor(v); localStorage.setItem("nz_color", v); syncPickers(v); };
 buildPicker(D.lbClrPick, curColor, "clrc",  onColorSelect);
 buildPicker(D.wClrPick,  curColor, "wclrc", onColorSelect);
 
 D.clrBtn.addEventListener("click", () => {
   tmpColor = curColor;
-  buildPicker(D.clrPick2, curColor, "clrc2", v => { tmpColor=v; D.clrPrev.innerHTML=`<span style="color:${v}">■ この色で名前と吹き出し枠が表示されます</span>`; });
+  buildPicker(D.clrPick2, curColor, "clrc2", v => {
+    tmpColor = v;
+    D.clrPrev.innerHTML = `<span style="color:${v}">■ この色で名前と吹き出し枠が表示されます</span>`;
+  });
   D.clrmod.classList.add("show");
 });
 D.clrOk.addEventListener("click", async () => {
-  curColor=tmpColor; setGlobalColor(curColor); localStorage.setItem("nz_color",curColor); syncPickers(curColor);
-  if (curR && !isW) { try { await update(ref(db,`presence/${curR}/${uid}`),{cEnc:enc(curColor)}); } catch {} }
+  curColor = tmpColor; setGlobalColor(curColor); localStorage.setItem("nz_color", curColor); syncPickers(curColor);
+  if (curR && !isW) { try { await update(ref(db, `presence/${curR}/${uid}`), { cEnc: enc(curColor) }); } catch {} }
   D.clrmod.classList.remove("show");
 });
 D.clrCancel.addEventListener("click", () => D.clrmod.classList.remove("show"));
 
-const fDT = ts => { if(!ts)return""; const d=new Date(ts); return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}`; };
-const fmtSz = b => { if(!b||b<=0)return""; if(b<1024)return b+"B"; if(b<1048576)return(b/1024).toFixed(1)+"KB"; return(b/1048576).toFixed(1)+"MB"; };
+// ─── ユーティリティ ───
+const fDT = ts => {
+  if (!ts) return "";
+  const d = new Date(ts);
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}`;
+};
+const fmtSz = b => {
+  if (!b || b <= 0) return "";
+  if (b < 1024) return b + "B"; if (b < 1048576) return (b/1024).toFixed(1) + "KB"; return (b/1048576).toFixed(1) + "MB";
+};
 
+// ─── 定数 ───
 const OFF_H      = CryptoJS.SHA256("公式部屋").toString();
 const OFF_P      = "official_public_pass";
 const INACTIVITY = 30 * 60 * 1000;
-const CHECK_TICK = 1000;
+const PRESENCE_TIMEOUT = 75000; // 75秒以上 lastActive 更新なし→退室扱い
+const HEARTBEAT_INTERVAL = 20000; // 20秒ごと
 const PAGE_SIZE  = 50;
 
+// ─── 状態変数 ───
 let curR=null, curP=null, curN=null, curT=null, rawR=null;
 let isOff=false, isW=false, isEx=false, _exitLock=false;
 let _cOff=null, _pOff=null;
-let toT=null; let heartbeatTimer=null;
+let toT=null, heartbeatTimer=null;
 let logArray=[], currentPage=1, isLiveMode=true;
-let lastMsgAt = 0;
-let myPresRef = null;
+let lastMsgAt=0;
+let myPresRef=null;
 
-const hideSplash = () => { 
-  const s = document.getElementById("splash"); 
-  if(!s || s.style.display === "none") return; 
-  s.style.opacity = "0"; 
-  s.style.transition = "opacity .25s"; 
-  setTimeout(() => { s.style.display = "none"; }, 260); 
+// ─── 入力バー制御 ───
+const setInputBarEnabled = enabled => {
+  if (enabled && !isW) {
+    D.midisable.style.display = "none";
+    D.mi.disabled = false; D.sdBtn.disabled = false;
+  } else {
+    D.midisable.style.display = "flex";
+    D.mi.disabled = true; D.sdBtn.disabled = true;
+  }
+};
+
+// ─── スプラッシュ非表示 ───
+const hideSplash = () => {
+  const s = D.splash;
+  if (!s || s.style.display === "none") return;
+  s.style.opacity = "0"; s.style.transition = "opacity .25s";
+  setTimeout(() => { s.style.display = "none"; }, 260);
 };
 
 // ─── WebRTC 通話 ───
 let callMode = 'none';
 let localStream = null;
 let pcs = {};
-const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }] };
-let currentFacingMode = "user"; 
+const rtcConfig = { iceServers: [{ urls:"stun:stun.l.google.com:19302"}, {urls:"stun:stun1.l.google.com:19302"}] };
+let currentFacingMode = "user";
 let micEnabled = true;
 let camEnabled = true;
 
-D.callBtn.onclick = () => { if(isW) return; D.callmod.classList.add("show"); };
-D.ccBtn.onclick = () => D.callmod.classList.remove("show");
-D.cbAudio.onclick = () => startCall('audio');
-D.cbVideoIn.onclick = () => { currentFacingMode = 'user'; startCall('video'); };
-D.cbVideoOut.onclick = () => { currentFacingMode = 'environment'; startCall('video'); };
-D.cbListen.onclick = () => startCall('listen');
+D.callBtn.onclick  = () => { if (isW) return; D.callmod.classList.add("show"); };
+D.ccBtn.onclick    = () => D.callmod.classList.remove("show");
+D.cbAudio.onclick  = () => startCall("audio");
+D.cbVideoIn.onclick  = () => { currentFacingMode = "user"; startCall("video"); };
+D.cbVideoOut.onclick = () => { currentFacingMode = "environment"; startCall("video"); };
+D.cbListen.onclick = () => startCall("listen");
 D.endCallBtn.onclick = () => endCall();
 
 function updateCallCtrlUI() {
-    if (callMode === 'video') D.ctrlMode.value = "video-" + currentFacingMode;
-    else D.ctrlMode.value = callMode;
-    D.ctrlMic.style.display = (callMode === 'listen') ? 'none' : 'flex';
-    D.ctrlCam.style.display = (callMode === 'video') ? 'flex' : 'none';
-    D.ctrlFlip.style.display = (callMode === 'video') ? 'flex' : 'none';
-    D.ctrlMic.innerHTML = micEnabled ? "🎙 マイクON" : "🔇 マイクOFF";
-    D.ctrlMic.classList.toggle("off", !micEnabled);
-    D.ctrlCam.innerHTML = camEnabled ? "📹 カメラON" : "🚫 カメラOFF";
-    D.ctrlCam.classList.toggle("off", !camEnabled);
+  if (callMode === "video") D.ctrlMode.value = "video-" + currentFacingMode;
+  else D.ctrlMode.value = callMode;
+  D.ctrlMic.style.display  = (callMode === "listen") ? "none" : "flex";
+  D.ctrlCam.style.display  = (callMode === "video")  ? "flex" : "none";
+  D.ctrlFlip.style.display = (callMode === "video")  ? "flex" : "none";
+  D.ctrlMic.innerHTML = micEnabled ? "🎙 マイクON" : "🔇 マイクOFF";
+  D.ctrlMic.classList.toggle("off", !micEnabled);
+  D.ctrlCam.innerHTML = camEnabled ? "📹 カメラON" : "🚫 カメラOFF";
+  D.ctrlCam.classList.toggle("off", !camEnabled);
 }
 
 async function startCall(mode) {
-  if(isW) return;
+  if (isW) return;
   callMode = mode;
-  D.callmod.classList.remove('show');
-  D.callBtn.style.display = 'none';
-  D.endCallBtn.style.display = 'flex';
+  D.callmod.classList.remove("show");
+  D.callBtn.style.display = "none";
+  D.endCallBtn.style.display = "flex";
   micEnabled = true; camEnabled = true;
-  if (mode !== 'listen') {
+  if (mode !== "listen") {
     try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error("非対応環境です。");
-      let constraints = { audio: { echoCancellation: true, noiseSuppression: true } };
-      if (mode === 'video') { constraints.video = { facingMode: { exact: currentFacingMode }, width: { ideal: 320, max: 480 }, height: { ideal: 240, max: 360 }, frameRate: { ideal: 12 } }; }
-      try { localStream = await navigator.mediaDevices.getUserMedia(constraints); } 
-      catch (err) { if (mode === 'video') { constraints.video = { facingMode: currentFacingMode, width: { ideal: 320 }, height: { ideal: 240 } }; localStream = await navigator.mediaDevices.getUserMedia(constraints); } else { throw err; } }
+      if (!navigator.mediaDevices?.getUserMedia) throw new Error("非対応環境です。");
+      let constraints = { audio: { echoCancellation:true, noiseSuppression:true } };
+      if (mode === "video") { constraints.video = { facingMode:{ exact:currentFacingMode }, width:{ ideal:320, max:480 }, height:{ ideal:240, max:360 }, frameRate:{ ideal:12 } }; }
+      try { localStream = await navigator.mediaDevices.getUserMedia(constraints); }
+      catch (err) {
+        if (mode === "video") { constraints.video = { facingMode:currentFacingMode, width:{ ideal:320 }, height:{ ideal:240 } }; localStream = await navigator.mediaDevices.getUserMedia(constraints); }
+        else throw err;
+      }
       addRemoteVideo(uid, localStream, enc(curN || "自分"), true, mode, micEnabled, camEnabled);
     } catch (e) {
-      alert("メディアデバイスの確保に失敗しました:\n" + (e.message || e.name));
-      callMode = 'none'; D.callBtn.style.display = 'flex'; D.endCallBtn.style.display = 'none'; return;
+      showErrBar("メディアデバイスの確保に失敗: " + (e.message || e.name));
+      callMode = "none"; D.callBtn.style.display = "flex"; D.endCallBtn.style.display = "none"; return;
     }
-  } else { addRemoteVideo(uid, null, enc(curN || "自分"), true, 'listen', false, false); }
-  D.callContainer.classList.add('show');
+  } else { addRemoteVideo(uid, null, enc(curN || "自分"), true, "listen", false, false); }
+  D.callContainer.classList.add("show");
   updateCallCtrlUI();
   onChildAdded(ref(db, `signals/${curR}/${uid}`), handleSignal);
-  await update(ref(db, `presence/${curR}/${uid}`), { call: mode, mic: micEnabled, cam: camEnabled });
+  await update(ref(db, `presence/${curR}/${uid}`), { call:mode, mic:micEnabled, cam:camEnabled });
   updFnPos();
 }
 
 async function endCall() {
-  const prevMode = callMode; callMode = 'none';
+  const prevMode = callMode; callMode = "none";
   if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
-  for (const id in pcs) { pcs[id].close(); } pcs = {};
-  D.callArea.innerHTML = ''; D.callContainer.classList.remove('show');
-  if(!isW) D.callBtn.style.display = 'flex'; D.endCallBtn.style.display = 'none';
+  for (const id in pcs) { try { pcs[id].close(); } catch {} }
+  pcs = {};
+  D.callArea.innerHTML = ""; D.callContainer.classList.remove("show");
+  if (!isW) D.callBtn.style.display = "flex"; D.endCallBtn.style.display = "none";
   if (curR && !isEx && !isW) {
-    off(ref(db, `signals/${curR}/${uid}`));
-    if (prevMode !== 'none') await update(ref(db, `presence/${curR}/${uid}`), { call: 'none', mic: null, cam: null }).catch(()=>{});
+    try { off(ref(db, `signals/${curR}/${uid}`)); } catch {}
+    if (prevMode !== "none") await update(ref(db, `presence/${curR}/${uid}`), { call:"none", mic:null, cam:null }).catch(() => {});
   }
   updFnPos();
 }
 
 D.ctrlMode.onchange = async () => {
-    let newMode = D.ctrlMode.value; let targetFacing = currentFacingMode;
-    if (newMode.startsWith('video-')) { targetFacing = newMode.split('-')[1]; newMode = 'video'; }
-    if (newMode === callMode && targetFacing === currentFacingMode) return;
-    if (newMode === 'video' && callMode === 'video' && targetFacing !== currentFacingMode) { currentFacingMode = targetFacing; await D.ctrlFlip.onclick(); return; }
-    currentFacingMode = targetFacing; await endCall(); await startCall(newMode);
+  let newMode = D.ctrlMode.value; let targetFacing = currentFacingMode;
+  if (newMode.startsWith("video-")) { targetFacing = newMode.split("-")[1]; newMode = "video"; }
+  if (newMode === callMode && targetFacing === currentFacingMode) return;
+  if (newMode === "video" && callMode === "video" && targetFacing !== currentFacingMode) { currentFacingMode = targetFacing; await D.ctrlFlip.onclick(); return; }
+  currentFacingMode = targetFacing; await endCall(); await startCall(newMode);
 };
 
-D.ctrlMic.onclick = async () => { 
-  if (!localStream) return; micEnabled = !micEnabled; 
-  localStream.getAudioTracks().forEach(t => t.enabled = micEnabled); 
+D.ctrlMic.onclick = async () => {
+  if (!localStream) return; micEnabled = !micEnabled;
+  localStream.getAudioTracks().forEach(t => t.enabled = micEnabled);
   updateCallCtrlUI(); updateMyStatusIcon();
-  if (curR && !isW) await update(ref(db, `presence/${curR}/${uid}`), { mic: micEnabled });
+  if (curR && !isW) await update(ref(db, `presence/${curR}/${uid}`), { mic:micEnabled });
 };
 
-D.ctrlCam.onclick = async () => { 
-  if (!localStream || callMode !== 'video') return; camEnabled = !camEnabled; 
-  localStream.getVideoTracks().forEach(t => t.enabled = camEnabled); 
+D.ctrlCam.onclick = async () => {
+  if (!localStream || callMode !== "video") return; camEnabled = !camEnabled;
+  localStream.getVideoTracks().forEach(t => t.enabled = camEnabled);
   updateCallCtrlUI(); updateMyStatusIcon();
-  if (curR && !isW) await update(ref(db, `presence/${curR}/${uid}`), { cam: camEnabled });
+  if (curR && !isW) await update(ref(db, `presence/${curR}/${uid}`), { cam:camEnabled });
 };
 
 D.ctrlFlip.onclick = async () => {
-    if (callMode !== 'video' || !localStream) return;
-    currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user'; updateCallCtrlUI();
-    const oldVideoTrack = localStream.getVideoTracks()[0];
-    if (oldVideoTrack) { localStream.removeTrack(oldVideoTrack); oldVideoTrack.stop(); }
-    let constraints = { video: { facingMode: { exact: currentFacingMode }, width: { ideal: 320 }, height: { ideal: 240 } } };
-    try {
-      const newStream = await navigator.mediaDevices.getUserMedia(constraints); const newVideoTrack = newStream.getVideoTracks()[0];
-      localStream.addTrack(newVideoTrack); newVideoTrack.enabled = camEnabled;
-      for (const id in pcs) { const sender = pcs[id].getSenders().find(s => s.track && s.track.kind === 'video'); if (sender) sender.replaceTrack(newVideoTrack).catch(()=>{}); }
-      const myVideoEl = $(`rvw-${uid}`)?.querySelector('video'); if (myVideoEl) myVideoEl.srcObject = localStream;
-    } catch(e) {
-      alert("カメラの切り替えに失敗しました。");
-      currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user'; updateCallCtrlUI();
-    }
+  if (callMode !== "video" || !localStream) return;
+  currentFacingMode = currentFacingMode === "user" ? "environment" : "user"; updateCallCtrlUI();
+  const oldTrack = localStream.getVideoTracks()[0];
+  if (oldTrack) { localStream.removeTrack(oldTrack); oldTrack.stop(); }
+  const constraints = { video:{ facingMode:{ exact:currentFacingMode }, width:{ ideal:320 }, height:{ ideal:240 } } };
+  try {
+    const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+    const newTrack = newStream.getVideoTracks()[0];
+    localStream.addTrack(newTrack); newTrack.enabled = camEnabled;
+    for (const id in pcs) { const s = pcs[id].getSenders().find(s => s.track?.kind === "video"); if (s) s.replaceTrack(newTrack).catch(() => {}); }
+    const myV = $el(`rvw-${uid}`)?.querySelector("video"); if (myV) myV.srcObject = localStream;
+  } catch (e) {
+    showErrBar("カメラの切り替えに失敗しました。");
+    currentFacingMode = currentFacingMode === "user" ? "environment" : "user"; updateCallCtrlUI();
+  }
 };
 
 function updateMyStatusIcon() {
-  const statEl = $(`vstat-${uid}`);
-  if(statEl) statEl.textContent = callMode==='listen' ? '🎧' : (micEnabled ? '🎙':'🔇') + (callMode==='video' ? (camEnabled?'📹':'🚫'):'');
+  const el = $el(`vstat-${uid}`);
+  if (el) el.textContent = callMode === "listen" ? "🎧" : (micEnabled ? "🎙" : "🔇") + (callMode === "video" ? (camEnabled ? "📹" : "🚫") : "");
 }
 
 function createPC(id, nEnc) {
   if (pcs[id]) return pcs[id];
   const pc = new RTCPeerConnection(rtcConfig); pcs[id] = pc;
-  pc.onicecandidate = e => { if (e.candidate) push(ref(db, `signals/${curR}/${id}`), { from: uid, type: 'ice', data: JSON.stringify(e.candidate), time: srvNow() }); };
-  pc.ontrack = e => { onValue(ref(db, `presence/${curR}/${id}`), snap => { const u = snap.val(); if(u) addRemoteVideo(id, e.streams[0], nEnc, false, u.call, u.mic, u.cam); }); };
-  pc.oniceconnectionstatechange = () => { if (['disconnected', 'failed', 'closed'].includes(pc.iceConnectionState)) { removeRemoteVideo(id); pc.close(); delete pcs[id]; } };
-  if (callMode === 'listen') { pc.addTransceiver('audio', { direction: 'recvonly' }); pc.addTransceiver('video', { direction: 'recvonly' }); } 
-  else if (localStream) {
+  pc.onicecandidate = e => { if (e.candidate) push(ref(db, `signals/${curR}/${id}`), { from:uid, type:"ice", data:JSON.stringify(e.candidate), time:srvNow() }); };
+  pc.ontrack = e => { onValue(ref(db, `presence/${curR}/${id}`), snap => { const u = snap.val(); if (u) addRemoteVideo(id, e.streams[0], nEnc, false, u.call, u.mic, u.cam); }); };
+  pc.oniceconnectionstatechange = () => { if (["disconnected","failed","closed"].includes(pc.iceConnectionState)) { removeRemoteVideo(id); pc.close(); delete pcs[id]; } };
+  if (callMode === "listen") {
+    pc.addTransceiver("audio", { direction:"recvonly" });
+    pc.addTransceiver("video", { direction:"recvonly" });
+  } else if (localStream) {
     localStream.getTracks().forEach(t => {
       const sender = pc.addTrack(t, localStream);
-      try { const params = sender.getParameters(); if (!params.encodings) params.encodings = [{}];
-        if (t.kind === 'video') params.encodings[0].maxBitrate = 120000; else if (t.kind === 'audio') params.encodings[0].maxBitrate = 24000;
-        sender.setParameters(params).catch(()=>{});
-      } catch(e) {}
+      try { const p = sender.getParameters(); if (!p.encodings) p.encodings = [{}]; if (t.kind === "video") p.encodings[0].maxBitrate = 120000; else if (t.kind === "audio") p.encodings[0].maxBitrate = 24000; sender.setParameters(p).catch(() => {}); } catch {}
     });
-  } return pc;
+  }
+  return pc;
 }
 
 async function initiateCall(id, nEnc) {
-  const pc = createPC(id, nEnc); const offer = await pc.createOffer(); await pc.setLocalDescription(offer);
-  push(ref(db, `signals/${curR}/${id}`), { from: uid, type: 'offer', data: JSON.stringify(offer), time: srvNow() });
+  const pc = createPC(id, nEnc);
+  const offer = await pc.createOffer(); await pc.setLocalDescription(offer);
+  push(ref(db, `signals/${curR}/${id}`), { from:uid, type:"offer", data:JSON.stringify(offer), time:srvNow() });
 }
 
 async function handleSignal(snap) {
-  const sig = snap.val(); if (!sig) return; remove(snap.ref).catch(()=>{}); if (callMode === 'none') return;
+  const sig = snap.val(); if (!sig) return;
+  remove(snap.ref).catch(() => {});
+  if (callMode === "none") return;
   const { from, type, data } = sig; const payload = JSON.parse(data); let nEnc = "";
-  try { const ps = await get(ref(db, `presence/${curR}/${from}`)); if(ps.exists()) nEnc = ps.val().nEnc; } catch(e){}
+  try { const ps = await get(ref(db, `presence/${curR}/${from}`)); if (ps.exists()) nEnc = ps.val().nEnc; } catch {}
   let pc = pcs[from];
-  if (type === 'offer') {
+  if (type === "offer") {
     if (!pc) pc = createPC(from, nEnc);
     await pc.setRemoteDescription(new RTCSessionDescription(payload));
     const answer = await pc.createAnswer(); await pc.setLocalDescription(answer);
-    push(ref(db, `signals/${curR}/${from}`), { from: uid, type: 'answer', data: JSON.stringify(answer), time: srvNow() });
-  } else if (type === 'answer') { if (pc) await pc.setRemoteDescription(new RTCSessionDescription(payload)); }
-  else if (type === 'ice') { if (pc) await pc.addIceCandidate(new RTCIceCandidate(payload)).catch(()=>{}); }
+    push(ref(db, `signals/${curR}/${from}`), { from:uid, type:"answer", data:JSON.stringify(answer), time:srvNow() });
+  } else if (type === "answer") { if (pc) await pc.setRemoteDescription(new RTCSessionDescription(payload)); }
+  else if (type === "ice") { if (pc) await pc.addIceCandidate(new RTCIceCandidate(payload)).catch(() => {}); }
 }
 
 function addRemoteVideo(id, stream, nEnc, isLocal, mode, mic, cam) {
-  let w = $(`rvw-${id}`);
+  let w = $el(`rvw-${id}`);
   if (!w) {
-    w = document.createElement('div'); w.id = `rvw-${id}`; w.className = 'remote-video-wrap';
-    const v = document.createElement('video'); v.className = 'remote-video'; v.autoplay = true; v.playsInline = true;
+    w = document.createElement("div"); w.id = `rvw-${id}`; w.className = "remote-video-wrap";
+    const v = document.createElement("video"); v.className = "remote-video"; v.autoplay = true; v.playsInline = true;
     if (isLocal) v.muted = true;
-    const n = document.createElement('div'); n.className = 'remote-name';
-    const nSpan = document.createElement('span'); nSpan.textContent = isLocal ? "自分" : (dec(nEnc) || "???");
-    const sSpan = document.createElement('span'); sSpan.id = `vstat-${id}`; sSpan.className = 'v-status';
+    const n = document.createElement("div"); n.className = "remote-name";
+    const nSpan = document.createElement("span"); nSpan.textContent = isLocal ? "自分" : (dec(nEnc) || "???");
+    const sSpan = document.createElement("span"); sSpan.id = `vstat-${id}`; sSpan.className = "v-status";
     n.appendChild(nSpan); n.appendChild(sSpan); w.appendChild(v); w.appendChild(n); D.callArea.appendChild(w);
   }
-  const v = w.querySelector('video');
+  const v = w.querySelector("video");
   if (stream && v.srcObject !== stream) v.srcObject = stream;
-  const statEl = $(`vstat-${id}`);
-  if(statEl) statEl.textContent = mode === 'listen' ? '🎧' : (mic !== false ? '🎙':'🔇') + (mode==='video' ? (cam!==false?'📹':'🚫'):'');
+  const statEl = $el(`vstat-${id}`);
+  if (statEl) statEl.textContent = mode === "listen" ? "🎧" : (mic !== false ? "🎙" : "🔇") + (mode === "video" ? (cam !== false ? "📹" : "🚫") : "");
 }
-function removeRemoteVideo(id) { const w = $(`rvw-${id}`); if (w) w.remove(); }
+function removeRemoteVideo(id) { const w = $el(`rvw-${id}`); if (w) w.remove(); }
 
-// ─── 画像モーダルビューア ───
-let imgScale=1,imgX=0,imgY=0,imgDragging=false,imgDragSx=0,imgDragSy=0,imgDragIx=0,imgDragIy=0;
-let imgPinchDist=0,imgLastTap=0,imodTouches=[];
-const resetImgTransform=()=>{imgScale=1;imgX=0;imgY=0;applyImgTransform();};
-const applyImgTransform=()=>{ D.imEl.style.transform=`translate(${imgX}px,${imgY}px) scale(${imgScale})`; };
-const clampImg=()=>{ if(imgScale<=1){imgX=0;imgY=0;return;} const sw=D.imEl.offsetWidth*imgScale,sh=D.imEl.offsetHeight*imgScale,mx=Math.max(0,(sw-window.innerWidth)/2),my=Math.max(0,(sh-window.innerHeight)/2); imgX=Math.max(-mx,Math.min(mx,imgX));imgY=Math.max(-my,Math.min(my,imgY)); };
-
+// ─── 画像モーダル ───
+let imgScale=1, imgX=0, imgY=0, imgDragging=false, imgDragSx=0, imgDragSy=0, imgDragIx=0, imgDragIy=0;
+const resetImgTransform = () => { imgScale=1; imgX=0; imgY=0; applyImgTransform(); };
+const applyImgTransform = () => { D.imEl.style.transform = `translate(${imgX}px,${imgY}px) scale(${imgScale})`; };
+const clampImg = () => {
+  if (imgScale <= 1) { imgX=0; imgY=0; return; }
+  const sw=D.imEl.offsetWidth*imgScale, sh=D.imEl.offsetHeight*imgScale;
+  const mx=Math.max(0,(sw-window.innerWidth)/2), my=Math.max(0,(sh-window.innerHeight)/2);
+  imgX=Math.max(-mx,Math.min(mx,imgX)); imgY=Math.max(-my,Math.min(my,imgY));
+};
 window.openImg = src => { D.imEl.src=src; resetImgTransform(); D.imod.classList.add("show"); };
-D.icBtn.onclick = () => { D.imod.classList.remove("show"); setTimeout(()=>{D.imEl.src="";resetImgTransform();},200); };
-D.imod.addEventListener("wheel", e=>{ e.preventDefault(); imgScale=Math.min(8,Math.max(1,imgScale*(e.deltaY>0?.85:1.18))); clampImg(); applyImgTransform(); },{passive:false});
-D.imod.addEventListener("mousedown", e=>{ if(e.target===D.icBtn)return; imgDragging=true;imgDragSx=e.clientX;imgDragSy=e.clientY;imgDragIx=imgX;imgDragIy=imgY; D.imod.style.cursor=imgScale>1?"grabbing":"default"; e.preventDefault(); });
-document.addEventListener("mousemove", e=>{ if(!imgDragging)return; if(imgScale>1){imgX=imgDragIx+(e.clientX-imgDragSx);imgY=imgDragIy+(e.clientY-imgDragSy);clampImg();applyImgTransform();} });
-document.addEventListener("mouseup", e=>{ if(!imgDragging)return; imgDragging=false; D.imod.style.cursor="default"; if(Math.abs(e.clientX-imgDragSx)+Math.abs(e.clientY-imgDragSy)<5&&imgScale<=1&&(e.target===D.imod||e.target===D.imodWrap))D.icBtn.click(); });
+D.icBtn.onclick = () => { D.imod.classList.remove("show"); setTimeout(() => { D.imEl.src=""; resetImgTransform(); }, 200); };
+D.imod.addEventListener("wheel", e => { e.preventDefault(); imgScale=Math.min(8,Math.max(1,imgScale*(e.deltaY>0?.85:1.18))); clampImg(); applyImgTransform(); }, { passive:false });
+D.imod.addEventListener("mousedown", e => { if(e.target===D.icBtn)return; imgDragging=true; imgDragSx=e.clientX; imgDragSy=e.clientY; imgDragIx=imgX; imgDragIy=imgY; D.imod.style.cursor=imgScale>1?"grabbing":"default"; e.preventDefault(); });
+document.addEventListener("mousemove", e => { if(!imgDragging)return; if(imgScale>1){imgX=imgDragIx+(e.clientX-imgDragSx);imgY=imgDragIy+(e.clientY-imgDragSy);clampImg();applyImgTransform();} });
+document.addEventListener("mouseup",  e => { if(!imgDragging)return; imgDragging=false; D.imod.style.cursor="default"; if(Math.abs(e.clientX-imgDragSx)+Math.abs(e.clientY-imgDragSy)<5&&imgScale<=1&&(e.target===D.imod||e.target===D.imodWrap))D.icBtn.click(); });
 
 // ─── オーディオ ───
-let activeAudio=null; const stopActiveAudio=()=>{ if(activeAudio){try{activeAudio.pause();}catch{}activeAudio=null;} };
+let activeAudio = null;
+const stopActiveAudio = () => { if (activeAudio) { try { activeAudio.pause(); } catch {} activeAudio = null; } };
 
 // ─── メディアパーサー ───
 const YR  = /(?:https?:\/\/)?(?:(?:www\.|m\.|music\.)?youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|v\/|shorts\/|live\/)([A-Za-z0-9_-]{11})|youtu\.be\/([A-Za-z0-9_-]{11}))/i;
@@ -798,419 +855,576 @@ function makeCollapse(badgeCls, badgeText, icon, labelText, bodyHtml) {
   </div>`;
 }
 window.toggleCollapse = (id) => {
-  const body = $("body-" + id), arr = $("arr-" + id);
+  const body = $el("body-" + id), arr = $el("arr-" + id);
   if (!body || !arr) return;
   const open = body.classList.toggle("open"); arr.classList.toggle("open", open);
 };
 
-let vcCnt=0;
-const bVideoCard=(type,embedSrc,label)=>{ 
-  const id="vc"+(++vcCnt); 
-  return `<div class="vc-wrap"><div class="vc ${type}" id="${id}"><span class="vc-badge">${esc(label)}</span><iframe class="vc-frame" src="${esc(embedSrc)}" allow="autoplay;encrypted-media;fullscreen" allowfullscreen loading="lazy"></iframe></div></div>`; 
+let vcCnt = 0;
+const bVideoCard = (type, embedSrc, label) => {
+  const id = "vc" + (++vcCnt);
+  return `<div class="vc-wrap"><div class="vc ${type}" id="${id}"><span class="vc-badge">${esc(label)}</span><iframe class="vc-frame" src="${esc(embedSrc)}" allow="autoplay;encrypted-media;fullscreen" allowfullscreen loading="lazy"></iframe></div></div>`;
 };
 
 function bTikTokEmbed(url) {
-  const su = esc(url), shortLabel = url.length > 30 ? url.slice(0,30)+"…" : url;
+  const su = esc(url), shortLabel = url.length > 30 ? url.slice(0,30) + "…" : url;
   const placeholderId = "tkph" + (++_colCnt);
-  let innerHtml = `<div id="${placeholderId}" style="width:100%; max-width:325px; margin:0 auto; background:#000; border-radius:8px; overflow:hidden; border:1px solid var(--bd);"></div>`;
-  
+  const innerHtml = `<div id="${placeholderId}" style="width:100%;max-width:325px;margin:0 auto;background:#000;border-radius:8px;overflow:hidden;border:1px solid var(--bd);"></div>`;
   setTimeout(async () => {
-    const el = $(placeholderId); if(!el) return;
-    const iframeHtml = (id) => `<iframe src="https://www.tiktok.com/embed/v2/${id}" width="100%" height="600" frameborder="0" scrolling="no" allow="autoplay;encrypted-media" allowfullscreen style="display:block; overflow:hidden; border:none;"></iframe>`;
-    
-    let vidMatch = url.match(/\/video\/(\d+)/i);
+    const el = $el(placeholderId); if (!el) return;
+    const iframeHtml = id => `<iframe src="https://www.tiktok.com/embed/v2/${id}" width="100%" height="600" frameborder="0" scrolling="no" allow="autoplay;encrypted-media" allowfullscreen style="display:block;overflow:hidden;border:none;"></iframe>`;
+    // Stage 1: URL内に動画IDが直接含まれる場合
+    const vidMatch = url.match(/\/video\/(\d+)/i);
     if (vidMatch) { el.innerHTML = iframeHtml(vidMatch[1]); return; }
+    // Stage 2: oEmbed API
     try {
-      const res = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`); const json = await res.json();
-      if(json && json.embed_product_id) { el.innerHTML = iframeHtml(json.embed_product_id); } 
-      else { el.style.background="transparent"; el.innerHTML = `<a class="tk-card" href="${su}" target="_blank"><div class="tk-card-icon">🎵</div><div class="tk-card-body"><span class="tk-card-label">TikTok</span><span class="tk-card-url">${su}</span></div><span class="tk-card-arrow">↗</span></a>`; }
-    } catch(e) {
-      el.style.background="transparent"; el.innerHTML = `<a class="tk-card" href="${su}" target="_blank"><div class="tk-card-icon">🎵</div><div class="tk-card-body"><span class="tk-card-label">TikTok</span><span class="tk-card-url">${su}</span></div><span class="tk-card-arrow">↗</span></a>`;
-    }
+      const res = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`);
+      const json = await res.json();
+      if (json?.embed_product_id) { el.innerHTML = iframeHtml(json.embed_product_id); return; }
+    } catch {}
+    // Stage 3: フォールバックカード
+    el.style.background = "transparent";
+    el.innerHTML = `<a class="tk-card" href="${su}" target="_blank" rel="noopener noreferrer"><div class="tk-card-icon">🎵</div><div class="tk-card-body"><span class="tk-card-label">TikTok</span><span class="tk-card-url">${su}</span></div><span class="tk-card-arrow">↗</span></a>`;
   }, 100);
   return makeCollapse("tk","TikTok","🎵", shortLabel, innerHtml);
 }
 
-let aCnt=0;
+let aCnt = 0;
 function bAudio(url) {
-  const id="au"+(++aCnt),wid="aw"+id,su=esc(url),fname=decodeURIComponent(url.split("/").pop().split("?")[0]||"audio");
+  const id = "au" + (++aCnt), wid = "aw" + id, su = esc(url);
+  const fname = decodeURIComponent(url.split("/").pop().split("?")[0] || "audio");
   const inner = `<div class="aw" id="${wid}"><audio id="${id}" src="${su}" preload="metadata"></audio><div class="aw-left"><div class="apb">▶</div></div><div class="aw-right"><div class="aw-info"><span class="aw-badge">AUDIO</span><span class="aw-name" title="${su}">${esc(fname)}</span></div><div class="aw-seek-row"><input type="range" class="asktypetype" value="0" min="0" max="100"><span class="atm">--:--</span></div><div class="aw-actions"></div></div></div>`;
-  requestAnimationFrame(()=>setTimeout(async()=>{
-    const aw=$(wid),au=$(id); if(!aw||!au)return;
-    const pb=aw.querySelector(".apb"),sk=aw.querySelector(".asktypetype"),tm=aw.querySelector(".atm"),actA=aw.querySelector(".aw-actions");
-    const fA=s=>isNaN(s)||!isFinite(s)?"--:--":`${String(Math.floor(s/60)).padStart(2,"0")}:${String(Math.floor(s%60)).padStart(2,"0")}`;
-    try { const h=await fetch(url,{method:"HEAD"}); const cl=h.headers.get("content-length"); if(cl&&parseInt(cl)>0&&actA){const sz=document.createElement("span");sz.className="aw-size-badge";sz.textContent=fmtSz(parseInt(cl));actA.appendChild(sz);} } catch {}
-    au.onplay=()=>{stopActiveAudio();activeAudio=au;if(pb)pb.innerHTML="⏸";};
-    au.onpause=au.onended=()=>{if(pb)pb.innerHTML="▶";if(activeAudio===au)activeAudio=null;};
-    au.ontimeupdate=()=>{if(!au.duration||!sk||!tm)return;sk.value=(au.currentTime/au.duration)*100;tm.textContent=`${fA(au.currentTime)}`;};
-    au.onloadedmetadata=()=>{if(tm)tm.textContent=`${fA(au.duration)}`;};
-    if(pb)pb.onclick=()=>{if(au.paused)au.play().catch(()=>{});else au.pause();};
-    if(sk)sk.oninput=()=>{if(au.duration)au.currentTime=(sk.value/100)*au.duration;};
-  },50));
+  requestAnimationFrame(() => setTimeout(async () => {
+    const aw = $el(wid), au = $el(id); if (!aw || !au) return;
+    const pb = aw.querySelector(".apb"), sk = aw.querySelector(".asktypetype"), tm = aw.querySelector(".atm"), actA = aw.querySelector(".aw-actions");
+    const fA = s => isNaN(s) || !isFinite(s) ? "--:--" : `${String(Math.floor(s/60)).padStart(2,"0")}:${String(Math.floor(s%60)).padStart(2,"0")}`;
+    try { const h = await fetch(url, { method:"HEAD" }); const cl = h.headers.get("content-length"); if (cl && parseInt(cl) > 0 && actA) { const sz = document.createElement("span"); sz.className = "aw-size-badge"; sz.textContent = fmtSz(parseInt(cl)); actA.appendChild(sz); } } catch {}
+    au.onplay = () => { stopActiveAudio(); activeAudio = au; if (pb) pb.innerHTML = "⏸"; };
+    au.onpause = au.onended = () => { if (pb) pb.innerHTML = "▶"; if (activeAudio === au) activeAudio = null; };
+    au.ontimeupdate = () => { if (!au.duration || !sk || !tm) return; sk.value = (au.currentTime/au.duration)*100; tm.textContent = fA(au.currentTime); };
+    au.onloadedmetadata = () => { if (tm) tm.textContent = fA(au.duration); };
+    if (pb) pb.onclick = () => { if (au.paused) au.play().catch(() => {}); else au.pause(); };
+    if (sk) sk.oninput = () => { if (au.duration) au.currentTime = (sk.value/100) * au.duration; };
+  }, 50));
   return makeCollapse("au","AUDIO","🎵", fname, inner);
 }
 
 function _parseSegs(txt) {
-  const norm=txt.replace(/[\u3000]/g," "); const parts=[]; let last=0,m; UR.lastIndex=0;
-  while((m=UR.exec(norm))!==null){ if(m.index>last)parts.push({t:"t",v:norm.slice(last,m.index)}); parts.push({t:"u",v:m[0]}); last=m.index+m[0].length; }
-  if(last<norm.length)parts.push({t:"t",v:norm.slice(last)});
-  const segs=[];
-  for(let i=0;i<parts.length;i++){
-    const p=parts[i];
-    if(p.t==="t"){
-      let v=p.v;
-      if(i<parts.length-1&&parts[i+1].t==="u")v=v.replace(/[ \t]+$/,"");
-      if(i>0&&parts[i-1].t==="u")v=v.replace(/^[ \t]+/,"");
-      const h=esc(v).replace(/\n/g,"<br>").replace(/(<br>){3,}/g,"<br><br>");
-      if(h)segs.push({type:"text",html:h});
-    } else {
-      const url=p.v,su=esc(url),cl=url.replace(/[?#].*$/,"");
-      const ym=url.match(YR);
-      if(ym){
-        const isShorts = url.includes('/shorts/');
-        const cls = isShorts ? "yt shorts" : "yt";
-        const inner=bVideoCard(cls,`https://www.youtube.com/embed/${ym[1]||ym[2]}?playsinline=1`,"YouTube");
-        const label=url.length>30?url.slice(0,30)+"…":url;
-        segs.push({type:"media",html:makeCollapse("yt","YouTube","▶", label, inner)});
-        continue;
-      }
-      const nm=url.match(NR);
-      if(nm){
-        const inner=bVideoCard("nc",`https://embed.nicovideo.jp/watch/${nm[1]}?noscript=1`,"ニコニコ動画");
-        const label=url.length>30?url.slice(0,30)+"…":url;
-        segs.push({type:"media",html:makeCollapse("nc","ニコニコ","▶", label, inner)});
-        continue;
-      }
-      if(TKR.test(url)){ segs.push({type:"media",html:bTikTokEmbed(url)}); continue; }
-      
-      const igm = url.match(IGR);
-      if(igm){
-        const embedSrc = `https://www.instagram.com/p/${igm[1]}/embed`;
-        const inner=`<div class="vc-wrap" style="display:flex; justify-content:center; padding: 4px 0;">
-          <iframe src="${embedSrc}" width="320" height="480" frameborder="0" scrolling="no" allowtransparency="true" allow="autoplay;encrypted-media" allowfullscreen style="background:#fff; border-radius:8px; border:1px solid var(--bd);"></iframe>
-        </div>`;
-        const label=url.length>30?url.slice(0,30)+"…":url;
-        segs.push({type:"media",html:makeCollapse("ig","Instagram","📷", label, inner)});
-        continue;
-      }
+  const norm = txt.replace(/[\u3000]/g, " ");
+  const parts = []; let last = 0, m;
+  UR.lastIndex = 0;
+  while ((m = UR.exec(norm)) !== null) {
+    if (m.index > last) parts.push({ t:"t", v:norm.slice(last, m.index) });
+    parts.push({ t:"u", v:m[0] }); last = m.index + m[0].length;
+  }
+  if (last < norm.length) parts.push({ t:"t", v:norm.slice(last) });
 
-      if(AR.test(cl)){segs.push({type:"media",html:bAudio(url)});continue;}
-      if(IR.test(cl)||/^data:image\//i.test(url)){
+  const segs = [];
+  for (let i = 0; i < parts.length; i++) {
+    const p = parts[i];
+    if (p.t === "t") {
+      let v = p.v;
+      if (i < parts.length-1 && parts[i+1].t === "u") v = v.replace(/[ \t]+$/, "");
+      if (i > 0 && parts[i-1].t === "u") v = v.replace(/^[ \t]+/, "");
+      const h = esc(v).replace(/\n/g, "<br>").replace(/(<br>){3,}/g, "<br><br>");
+      if (h) segs.push({ type:"text", html:h });
+    } else {
+      const url = p.v, su = esc(url), cl = url.replace(/[?#].*$/, "");
+      const ym = url.match(YR);
+      if (ym) {
+        const isShorts = url.includes("/shorts/"), cls = isShorts ? "yt shorts" : "yt";
+        const inner = bVideoCard(cls, `https://www.youtube.com/embed/${ym[1]||ym[2]}?playsinline=1`, "YouTube");
+        segs.push({ type:"media", html:makeCollapse("yt","YouTube","▶", url.length>30?url.slice(0,30)+"…":url, inner) }); continue;
+      }
+      const nm = url.match(NR);
+      if (nm) {
+        const inner = bVideoCard("nc", `https://embed.nicovideo.jp/watch/${nm[1]}?noscript=1`, "ニコニコ動画");
+        segs.push({ type:"media", html:makeCollapse("nc","ニコニコ","▶", url.length>30?url.slice(0,30)+"…":url, inner) }); continue;
+      }
+      if (TKR.test(url)) { segs.push({ type:"media", html:bTikTokEmbed(url) }); continue; }
+      const igm = url.match(IGR);
+      if (igm) {
+        const inner = `<div class="vc-wrap" style="display:flex;justify-content:center;padding:4px 0"><iframe src="https://www.instagram.com/p/${igm[1]}/embed" width="320" height="480" frameborder="0" scrolling="no" allowtransparency="true" allow="autoplay;encrypted-media" allowfullscreen style="background:#fff;border-radius:8px;border:1px solid var(--bd);"></iframe></div>`;
+        segs.push({ type:"media", html:makeCollapse("ig","Instagram","📷", url.length>30?url.slice(0,30)+"…":url, inner) }); continue;
+      }
+      if (AR.test(cl)) { segs.push({ type:"media", html:bAudio(url) }); continue; }
+      if (IR.test(cl) || /^data:image\//i.test(url)) {
         const label = cl.split("/").pop().split("?")[0] || "画像";
         const inner = `<img class="img-block" src="${su}" alt="" loading="lazy" onclick="window.openImg('${su}')">`;
-        segs.push({type:"media",html:makeCollapse("img","画像","🖼", label, inner)});
-        continue;
+        segs.push({ type:"media", html:makeCollapse("img","画像","🖼", label, inner) }); continue;
       }
-      segs.push({type:"text",html:`<a href="${su}" target="_blank" rel="noopener noreferrer">${su}</a>`});
+      segs.push({ type:"text", html:`<a href="${su}" target="_blank" rel="noopener noreferrer">${su}</a>` });
     }
   }
   return segs;
 }
 
 function parseTxtSplit(txt) {
-  const segs=_parseSegs(txt),textParts=[],mediaParts=[];
-  for(const s of segs){ if(s.type==="media")mediaParts.push(`<div class="media-wrap">${s.html}</div>`); else textParts.push(s.html); }
-  return {textHtml:textParts.join("<br>").replace(/^(<br>)+|(<br>)+$/g,""),mediaHtml:mediaParts.join("")};
+  const segs = _parseSegs(txt), textParts = [], mediaParts = [];
+  for (const s of segs) { if (s.type === "media") mediaParts.push(`<div class="media-wrap">${s.html}</div>`); else textParts.push(s.html); }
+  return { textHtml:textParts.join("<br>").replace(/^(<br>)+|(<br>)+$/g,""), mediaHtml:mediaParts.join("") };
 }
 
 function cMsg(m) {
-  const txt=dec(m.text); if(!txt)return null;
-  const d=document.createElement("div"); d.className="mw"; d.dataset.ts=m.time||0;
-  if(m.type==="sys"){
-    d.style.alignItems="center";
-    let cls="sm sm-leave";
-    if(txt.includes("入室"))cls="sm sm-join";
-    else if(txt.includes("自動退室")||txt.includes("タイムアウト"))cls="sm sm-auto";
-    d.innerHTML=`<div class="${cls}">${esc(txt)}<span style="color:var(--m2);font-size:9px;margin-left:6px">${fDT(m.time)}</span></div>`;
+  const txt = dec(m.text); if (!txt) return null;
+  const d = document.createElement("div"); d.className = "mw"; d.dataset.ts = m.time || 0;
+  if (m.type === "sys") {
+    d.style.alignItems = "center";
+    let cls = "sm sm-leave";
+    if (txt.includes("入室")) cls = "sm sm-join";
+    else if (txt.includes("自動退室") || txt.includes("タイムアウト")) cls = "sm sm-auto";
+    d.innerHTML = `<div class="${cls}">${esc(txt)}<span style="color:var(--m2);font-size:9px;margin-left:6px">${fDT(m.time)}</span></div>`;
   } else {
-    const sN=dec(m.nEnc)||"???",sT=dec(m.tEnc)||"",sC=dec(m.cEnc)||"#94a3b8";
-    const {textHtml,mediaHtml}=parseTxtSplit(txt);
-    let inner=`<div class="mm"><span style="color:${esc(sC)};font-weight:700">${esc(sN)}</span><span style="color:var(--m2);font-family:monospace">${esc(sT)}</span><span class="ts">${fDT(m.time)}</span></div>`;
-    if(textHtml)inner+=`<div class="mb" style="border-color:${esc(sC)}">${textHtml}</div>`;
-    if(mediaHtml)inner+=mediaHtml;
-    d.innerHTML=inner;
+    const sN = dec(m.nEnc)||"???", sT = dec(m.tEnc)||"", sC = dec(m.cEnc)||"#94a3b8";
+    const { textHtml, mediaHtml } = parseTxtSplit(txt);
+    let inner = `<div class="mm"><span style="color:${esc(sC)};font-weight:700">${esc(sN)}</span><span style="color:var(--m2);font-family:monospace">${esc(sT)}</span><span class="ts">${fDT(m.time)}</span></div>`;
+    if (textHtml) inner += `<div class="mb" style="border-color:${esc(sC)}">${textHtml}</div>`;
+    if (mediaHtml) inner += mediaHtml;
+    d.innerHTML = inner;
   }
   return d;
 }
 
+// ─── ページネーション ───
 function renderPage(pageNumber) {
-  stopActiveAudio(); D.tli.innerHTML="";
-  const total=logArray.length,totalPages=Math.ceil(total/PAGE_SIZE)||1;
-  if(pageNumber<1)pageNumber=1; if(pageNumber>totalPages)pageNumber=totalPages;
-  currentPage=pageNumber; isLiveMode=(currentPage===totalPages);
-  D.updateInputBarState(isLiveMode);
-  const si=(currentPage-1)*PAGE_SIZE,ei=Math.min(si+PAGE_SIZE,total);
-  logArray.slice(si,ei).forEach(m=>{ const el=cMsg(m); if(el)D.tli.appendChild(el); });
-  D.pinfo.textContent=`${currentPage} / ${totalPages}`;
-  D.pFirst.disabled=(currentPage===1); D.pPrev.disabled=(currentPage===1);
-  D.pNext.disabled=(currentPage===totalPages); D.pLast.disabled=isLiveMode;
-  requestAnimationFrame(()=>setTimeout(()=>{ if(isLiveMode)D.tl.scrollTop=D.tl.scrollHeight; else D.tl.scrollTop=0; updFnPos(); },50));
+  stopActiveAudio(); D.tli.innerHTML = "";
+  const total = logArray.length, totalPages = Math.ceil(total / PAGE_SIZE) || 1;
+  if (pageNumber < 1) pageNumber = 1; if (pageNumber > totalPages) pageNumber = totalPages;
+  currentPage = pageNumber; isLiveMode = (currentPage === totalPages);
+  setInputBarEnabled(isLiveMode);
+  const si = (currentPage-1)*PAGE_SIZE, ei = Math.min(si+PAGE_SIZE, total);
+  logArray.slice(si, ei).forEach(m => { const el = cMsg(m); if (el) D.tli.appendChild(el); });
+  D.pinfo.textContent = `${currentPage} / ${totalPages}`;
+  D.pFirst.disabled = (currentPage === 1); D.pPrev.disabled = (currentPage === 1);
+  D.pNext.disabled  = (currentPage === totalPages); D.pLast.disabled = isLiveMode;
+  requestAnimationFrame(() => setTimeout(() => { if (isLiveMode) D.tl.scrollTop = D.tl.scrollHeight; else D.tl.scrollTop = 0; updFnPos(); }, 50));
 }
-D.pFirst.onclick=()=>renderPage(1); D.pPrev.onclick=()=>{ if(currentPage>1)renderPage(currentPage-1); };
-D.pNext.onclick=()=>{ if(currentPage<Math.ceil(logArray.length/PAGE_SIZE))renderPage(currentPage+1); };
-D.pLast.onclick=()=>{ isLiveMode=true; renderPage(Math.ceil(logArray.length/PAGE_SIZE)||1); };
+D.pFirst.onclick = () => renderPage(1);
+D.pPrev.onclick  = () => { if (currentPage > 1) renderPage(currentPage-1); };
+D.pNext.onclick  = () => { if (currentPage < Math.ceil(logArray.length/PAGE_SIZE)) renderPage(currentPage+1); };
+D.pLast.onclick  = () => { isLiveMode = true; renderPage(Math.ceil(logArray.length/PAGE_SIZE)||1); };
 
-const scBottom=(instant=false)=>{ requestAnimationFrame(()=>setTimeout(()=>D.tl.scrollTo({top:D.tl.scrollHeight,behavior:instant?"auto":"smooth"}),30)); };
-const scTop=()=>D.tl.scrollTo({top:0,behavior:"smooth"});
-D.tBBtn.onclick=()=>scTop(); D.tTBtn.onclick=()=>scBottom();
-D.mi.addEventListener("focus",()=>setTimeout(()=>scBottom(true),150));
+const scBottom = (instant=false) => { requestAnimationFrame(() => setTimeout(() => D.tl.scrollTo({ top:D.tl.scrollHeight, behavior:instant?"auto":"smooth" }), 30)); };
+const scTop    = () => D.tl.scrollTo({ top:0, behavior:"smooth" });
+D.tBBtn.onclick = () => scTop(); D.tTBtn.onclick = () => scBottom();
+D.mi.addEventListener("focus", () => setTimeout(() => scBottom(true), 150));
 
-function updFnPos() { const ibH=D.ib.classList.contains("show")?D.ib.offsetHeight:0; const navH=D.pnav?D.pnav.offsetHeight:0; D.fn.style.bottom=(ibH+navH+16)+"px"; }
-D.tl.addEventListener("scroll",updFnPos,{passive:true}); window.addEventListener("resize",updFnPos,{passive:true});
+function updFnPos() {
+  const ibH  = D.ib.classList.contains("show") ? D.ib.offsetHeight : 0;
+  const navH = D.pnav ? D.pnav.offsetHeight : 0;
+  D.fn.style.bottom = (ibH + navH + 16) + "px";
+}
+D.tl.addEventListener("scroll", updFnPos, { passive:true });
+window.addEventListener("resize", updFnPos, { passive:true });
 
+// ─── DB Wipe ───
 async function wipe(r) {
-  if(!r)return;
+  if (!r) return;
   try {
-    await set(ref(db,`rooms/${r}`),null); await set(ref(db,`chat/${r}`),null);
-    await set(ref(db,`presence/${r}`),null); await set(ref(db,`signals/${r}`),null);
-  } catch(e){}
+    await Promise.all([
+      set(ref(db, `rooms/${r}`),    null),
+      set(ref(db, `chat/${r}`),     null),
+      set(ref(db, `presence/${r}`), null),
+      set(ref(db, `signals/${r}`),  null),
+    ]);
+  } catch (e) { console.error("wipe error:", e); }
 }
 
+// ─── クリーンアップ ───
 function clearAll() {
-  if(toT){clearInterval(toT);toT=null;}
-  if(heartbeatTimer){clearInterval(heartbeatTimer);heartbeatTimer=null;}
-  if(typeof _cOff==="function"){_cOff();_cOff=null;}
-  if(typeof _pOff==="function"){_pOff();_pOff=null;}
-  symKey=null; logArray=[]; currentPage=1; isLiveMode=true; lastMsgAt=0;
-  stopActiveAudio(); D.tli.innerHTML=""; stopToBar(); endCall();
+  if (toT)          { clearInterval(toT); toT = null; }
+  if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+  if (typeof _cOff === "function") { _cOff(); _cOff = null; }
+  if (typeof _pOff === "function") { _pOff(); _pOff = null; }
+  symKey = null; logArray = []; currentPage = 1; isLiveMode = true; lastMsgAt = 0;
+  stopActiveAudio(); D.tli.innerHTML = ""; stopToBar(); endCall();
 }
 
-let _toBarRaf=null;
+// ─── タイムアウトバー ───
+let _toBarRaf = null;
 function startToBar() {
-  if(isW)return; D.tobar.classList.add("show");
-  const tick=()=>{
-    if(!lastMsgAt){_toBarRaf=requestAnimationFrame(tick);return;}
-    const remain=Math.max(0,INACTIVITY-(srvNow()-lastMsgAt));
-    D.tobarFill.style.width=(remain/INACTIVITY)*100+"%";
-    D.tobarLabel.textContent=Math.floor(remain/60000)+":"+String(Math.floor((remain%60000)/1000)).padStart(2,"0");
-    if(remain===0&&!_exitLock){ _exitLock=true; exitRoom("30分間発言がなかったため自動退室しました"); return; }
-    _toBarRaf=requestAnimationFrame(tick);
-  }; _toBarRaf=requestAnimationFrame(tick);
+  if (isW) return;
+  D.tobar.classList.add("show");
+  const tick = () => {
+    if (!lastMsgAt) { _toBarRaf = requestAnimationFrame(tick); return; }
+    const remain = Math.max(0, INACTIVITY - (srvNow() - lastMsgAt));
+    D.tobarFill.style.width = (remain / INACTIVITY) * 100 + "%";
+    D.tobarLabel.textContent = Math.floor(remain/60000) + ":" + String(Math.floor((remain%60000)/1000)).padStart(2,"0");
+    if (remain === 0 && !_exitLock) { _exitLock = true; exitRoom("30分間発言がなかったため自動退室しました"); return; }
+    _toBarRaf = requestAnimationFrame(tick);
+  };
+  _toBarRaf = requestAnimationFrame(tick);
 }
-function stopToBar() { D.tobar.classList.remove("show"); if(_toBarRaf){cancelAnimationFrame(_toBarRaf);_toBarRaf=null;} }
+function stopToBar() { D.tobar.classList.remove("show"); if (_toBarRaf) { cancelAnimationFrame(_toBarRaf); _toBarRaf = null; } }
 
+// ─── ロビー表示 ───
 function showLobby(msg="") {
-  curR=null; clearAll(); D.lberr.textContent=msg; D.lberr.style.display=msg?"block":"none";
-  D.app.classList.remove("visible"); D.app.style.display="none"; D.fn.classList.remove("visible");
-  D.lobby.style.display="block"; setBtns(true); hideSplash();
-  const ni=localStorage.getItem("nz_ni")||"",tk=localStorage.getItem("nz_tk")||"",ri=localStorage.getItem("nz_ri")||"",pi=localStorage.getItem("nz_pi")||"";
-  if(ni){D.ni.value=ni;D.wni.value=ni;} if(tk){D.tk.value=tk;D.wtk.value=tk;}
-  if(ri&&!D.ri.value)D.ri.value=ri; if(pi&&!D.pi.value)D.pi.value=pi;
+  curR = null; clearAll();
+  D.lberr.textContent = msg; D.lberr.style.display = msg ? "block" : "none";
+  D.app.classList.remove("visible"); D.app.style.display = "none"; D.fn.classList.remove("visible");
+  D.lobby.style.display = "block"; setBtns(true); hideSplash();
+  const ni=localStorage.getItem("nz_ni")||"", tk=localStorage.getItem("nz_tk")||"", ri=localStorage.getItem("nz_ri")||"", pi=localStorage.getItem("nz_pi")||"";
+  if (ni) { D.ni.value=ni; D.wni.value=ni; }
+  if (tk) { D.tk.value=tk; D.wtk.value=tk; }
+  if (ri && !D.ri.value) D.ri.value = ri;
+  if (pi && !D.pi.value) D.pi.value = pi;
   updTP(); updWTP(); syncPickers(curColor);
 }
-const setBtns=ok=>{ D.enBtn.disabled=!ok; D.enBtn.textContent=ok?"入室する":"処理中..."; D.ofBtn.disabled=!ok; D.ofBtn.textContent=ok?"常設公式部屋":"処理中..."; };
+const setBtns = ok => {
+  D.enBtn.disabled = !ok; D.enBtn.textContent = ok ? "入室する"   : "処理中...";
+  D.ofBtn.disabled = !ok; D.ofBtn.textContent = ok ? "常設公式部屋" : "処理中...";
+};
 
-async function doJoin({target, pass, name, trip, asW, isAutoRejoin=false}) {
-  clearAll(); _exitLock=false; isEx=false;
-  const hashId = (target==="公式部屋") ? OFF_H : CryptoJS.SHA256(target).toString();
-  isOff=(hashId===OFF_H); isW=asW; curR=hashId; rawR=target; curP=pass; curN=asW?"":name; curT=asW?"":(trip||"");
-  symKey=CryptoJS.PBKDF2(pass,"NEZU_ROOM_SALT_2026",{keySize:256/32,iterations:2000});
+// ─── 入室処理 ─── (FIX: 複数バグ修正)
+async function doJoin({ target, pass, name, trip, asW, isAutoRejoin=false }) {
+  clearAll(); _exitLock = false; isEx = false;
+
+  // 部屋ハッシュ・パラメータ設定
+  const hashId = (target === "公式部屋") ? OFF_H : CryptoJS.SHA256(target).toString();
+  isOff = (hashId === OFF_H); isW = asW;
+  curR = hashId; rawR = target; curP = pass;
+  curN = asW ? "" : name; curT = asW ? "" : (trip || "");
+
+  // FIX: symKey を PBKDF2 で正しく生成 (keySize=8 で 256bit)
+  symKey = CryptoJS.PBKDF2(pass, "NEZU_ROOM_SALT_2026", { keySize: 8, iterations: 2000 });
 
   const nowSrv = srvNow();
+
+  // 自動再入室: タイムアウトチェック
   if (isAutoRejoin && !asW) {
-      const prevSession = JSON.parse(localStorage.getItem("nz_sess") || "{}");
-      if (nowSrv - (prevSession.lastMsgAt || 0) >= INACTIVITY) { localStorage.removeItem("nz_sess"); throw new Error("無発言タイムアウトにより退室扱いとなりました。"); }
-      lastMsgAt = prevSession.lastMsgAt || nowSrv;
-  } else if (!asW) { lastMsgAt = nowSrv; }
-
-  if(!isOff){
-      const rs = await get(ref(db,`rooms/${curR}`)), ps = await get(ref(db,`presence/${curR}`));
-      let hasAlive = false;
-      if (ps.exists()) for (const u of Object.values(ps.val() || {})) if (nowSrv - (u.lastActive || 0) < 75000) { hasAlive = true; break; }
-      if (rs.exists() && ps.exists() && !hasAlive) { await wipe(curR); if (isAutoRejoin) { localStorage.removeItem("nz_sess"); throw new Error("部屋が消去されたため復帰できませんでした。"); } }
-      if(!(await get(ref(db,`rooms/${curR}`))).exists()){
-          if(isAutoRejoin){ localStorage.removeItem("nz_sess"); throw new Error("部屋が消去されたため復帰できませんでした。"); }
-          await set(ref(db,`rooms/${curR}`),{created:nowSrv});
-      }
+    const prev = JSON.parse(localStorage.getItem("nz_sess") || "{}");
+    if (nowSrv - (prev.lastMsgAt || 0) >= INACTIVITY) {
+      localStorage.removeItem("nz_sess"); throw new Error("長時間操作がなかったため自動退室扱いになりました。");
+    }
+    lastMsgAt = prev.lastMsgAt || nowSrv;
+  } else if (!asW) {
+    lastMsgAt = nowSrv;
   }
 
-  if(!asW){
-      myPresRef = ref(db, `presence/${curR}/${uid}`);
-      await onDisconnect(myPresRef).update({ offlineAt: serverTimestamp() }).catch(()=>{});
-
-      await set(myPresRef, { nEnc: enc(name), tEnc: enc(trip||""), cEnc: enc(curColor), call: 'none', lastActive: nowSrv, offlineAt: null });
-      if (!isAutoRejoin) await push(ref(db,`chat/${curR}`),{type:"sys",text:enc(`${name}${trip||""} が入室しました`),time:nowSrv});
-      if(!isOff){ localStorage.setItem("nz_ni",name); localStorage.setItem("nz_tk",D.tk.value.trim()); localStorage.setItem("nz_ri",target); localStorage.setItem("nz_pi",pass); }
-      saveSession({target, pass, name, trip:trip||"", asW:false, lastMsgAt});
-      
-      heartbeatTimer = setInterval(() => { if (curR && !isEx && !isW) update(myPresRef, { lastActive: srvNow() }).catch(()=>{}); }, 15000);
-  } else { saveSession({target, pass, name:"", trip:"", asW:true, lastMsgAt:srvNow()}); }
-
-  D.lobby.style.display="none"; D.app.style.display="flex"; D.app.classList.add("visible"); D.fn.classList.add("visible"); D.rdsp.textContent=target;
-  if(asW){
-    D.ib.classList.remove("show"); D.wb.classList.add("show"); D.exBtn.textContent="ロビーへ戻る"; D.ivBtn.style.display="none"; D.clrBtn.style.display="none"; 
-    D.callBtn.style.display="none"; D.endCallBtn.style.display="none";
-    D.wni.value=localStorage.getItem("nz_ni")||""; D.wtk.value=localStorage.getItem("nz_tk")||""; updWTP(); syncPickers(curColor);
-    wbOpen=false; D.wbBody.classList.remove("open"); D.wbArrow.classList.remove("open"); D.wbHint.textContent="▼ タップして設定";
-  } else {
-    D.ib.classList.add("show"); D.wb.classList.remove("show"); D.exBtn.textContent="退出"; D.ivBtn.style.display=isOff?"none":"block"; D.clrBtn.style.display="block"; 
-    D.callBtn.style.display="flex"; D.endCallBtn.style.display="none";
-  }
-  D.updateInputBarState(!asW); updFnPos(); hideSplash();
-
-  if(!asW){
-    startToBar();
-    toT=setInterval(async()=>{ 
-      if(!curR||isEx||_exitLock)return; 
-      if(srvNow() - lastMsgAt >= INACTIVITY){ _exitLock=true; await exitRoom("30分間発言がなかったため自動退室しました"); } 
-    },CHECK_TICK);
-  }
-
-  _pOff=onValue(ref(db,`presence/${curR}`),async s=>{
-    if(!curR)return;
-    const entries=Object.entries(s.val()||{}), fg=document.createDocumentFragment(), now = srvNow();
-    let activeCnt=0;
-    let activeUids = [];
-    
-    for(const[id, u] of entries){
-      if(!u)continue;
-      const isOfflineSet = u.offlineAt && (now - u.offlineAt > 30000); 
-      const isTimeout = now - (u.lastActive || 0) > 75000;             
-      
-      if (!isOfflineSet && !isTimeout) {
-          activeUids.push(id);
-          const n=dec(u.nEnc); if(!n)continue;
-          activeCnt++; const sp=document.createElement("span"); sp.className="chip"; sp.style.color=dec(u.cEnc)||"#94a3b8"; sp.style.borderColor=(dec(u.cEnc)||"#94a3b8")+"44"; sp.textContent=n+(dec(u.tEnc)||""); fg.appendChild(sp);
-          if (callMode !== 'none' && id !== uid) { if (u.call && u.call !== 'none') { if (!pcs[id] && uid > id) initiateCall(id, u.nEnc); } else if (pcs[id]) { pcs[id].close(); delete pcs[id]; removeRemoteVideo(id); } }
+  // 公式部屋以外: 既存ルーム確認・Wipe・新規作成
+  if (!isOff) {
+    const [rsSnap, psSnap] = await Promise.all([
+      get(ref(db, `rooms/${curR}`)),
+      get(ref(db, `presence/${curR}`))
+    ]);
+    let hasAlive = false;
+    if (psSnap.exists()) {
+      for (const u of Object.values(psSnap.val() || {})) {
+        const isOfflineSet = u.offlineAt && (nowSrv - u.offlineAt > 30000);
+        const isTimeout    = nowSrv - (u.lastActive || 0) > PRESENCE_TIMEOUT;
+        if (!isOfflineSet && !isTimeout) { hasAlive = true; break; }
       }
     }
-    
-    D.pl.innerHTML=""; D.pl.appendChild(fg); D.pcnt.textContent=`[${activeCnt}人]`;
+    // 部屋データはあるが全員離脱している場合はWipe
+    if (rsSnap.exists() && !hasAlive) {
+      await wipe(curR);
+      if (isAutoRejoin) { localStorage.removeItem("nz_sess"); throw new Error("部屋が消去されたため復帰できませんでした。"); }
+    }
+    // 新規部屋作成
+    const roomNow = await get(ref(db, `rooms/${curR}`));
+    if (!roomNow.exists()) {
+      if (isAutoRejoin) { localStorage.removeItem("nz_sess"); throw new Error("部屋が消去されたため復帰できませんでした。"); }
+      await set(ref(db, `rooms/${curR}`), { created: nowSrv, createdBy: uid });
+    }
+  }
 
+  // Presence 書き込み (非覗き見のみ)
+  if (!asW) {
+    myPresRef = ref(db, `presence/${curR}/${uid}`);
+    // FIX: onDisconnect を先に設定してから set する
+    await onDisconnect(myPresRef).remove().catch(() => {});
+    await set(myPresRef, {
+      nEnc: enc(name), tEnc: enc(trip || ""), cEnc: enc(curColor),
+      call: "none", lastActive: nowSrv, offlineAt: null
+    });
+    if (!isAutoRejoin) {
+      await push(ref(db, `chat/${curR}`), { type:"sys", text:enc(`${name}${trip||""} が入室しました`), time:nowSrv });
+    }
+    if (!isOff) {
+      localStorage.setItem("nz_ni", name);
+      localStorage.setItem("nz_tk", D.tk.value.trim());
+      localStorage.setItem("nz_ri", target);
+      localStorage.setItem("nz_pi", pass);
+    }
+    saveSession({ target, pass, name, trip:trip||"", asW:false, lastMsgAt });
+
+    // ハートビート (FIX: 既存タイマーは clearAll で消えているので安全)
+    heartbeatTimer = setInterval(() => {
+      if (curR && !isEx && !isW) update(myPresRef, { lastActive: srvNow() }).catch(() => {});
+    }, HEARTBEAT_INTERVAL);
+  } else {
+    saveSession({ target, pass, name:"", trip:"", asW:true, lastMsgAt:srvNow() });
+  }
+
+  // UI切り替え
+  D.lobby.style.display = "none";
+  D.app.style.display = "flex"; D.app.classList.add("visible");
+  D.fn.classList.add("visible");
+  D.rdsp.textContent = target;
+
+  if (asW) {
+    D.ib.classList.remove("show"); D.wb.classList.add("show");
+    D.exBtn.textContent = "ロビーへ戻る"; D.ivBtn.style.display = "none";
+    D.clrBtn.style.display = "none"; D.callBtn.style.display = "none"; D.endCallBtn.style.display = "none";
+    D.wni.value = localStorage.getItem("nz_ni") || ""; D.wtk.value = localStorage.getItem("nz_tk") || "";
+    updWTP(); syncPickers(curColor);
+    wbOpen = false; D.wbBody.classList.remove("open"); D.wbArrow.classList.remove("open"); D.wbHint.textContent = "▼ タップして設定";
+  } else {
+    D.ib.classList.add("show"); D.wb.classList.remove("show");
+    D.exBtn.textContent = "退出"; D.ivBtn.style.display = isOff ? "none" : "block";
+    D.clrBtn.style.display = "block"; D.callBtn.style.display = "flex"; D.endCallBtn.style.display = "none";
+  }
+  setInputBarEnabled(!asW); updFnPos(); hideSplash();
+
+  // タイムアウト監視
+  if (!asW) {
+    startToBar();
+    toT = setInterval(async () => {
+      if (!curR || isEx || _exitLock) return;
+      if (srvNow() - lastMsgAt >= INACTIVITY) { _exitLock = true; await exitRoom("30分間発言がなかったため自動退室しました"); }
+    }, 1000);
+  }
+
+  // Presence 購読
+  _pOff = onValue(ref(db, `presence/${curR}`), async snap => {
+    if (!curR) return;
+    const entries = Object.entries(snap.val() || {});
+    const now = srvNow();
+    const fg = document.createDocumentFragment();
+    let activeCnt = 0;
+    const activeUids = [];
+
+    for (const [id, u] of entries) {
+      if (!u) continue;
+      const isOfflineSet = u.offlineAt && (now - u.offlineAt > 30000);
+      const isTimeout    = now - (u.lastActive || 0) > PRESENCE_TIMEOUT;
+      if (!isOfflineSet && !isTimeout) {
+        activeUids.push(id);
+        const n = dec(u.nEnc); if (!n) continue;
+        activeCnt++;
+        const sp = document.createElement("span"); sp.className = "chip";
+        sp.style.color = dec(u.cEnc) || "#94a3b8";
+        sp.style.borderColor = (dec(u.cEnc) || "#94a3b8") + "44";
+        sp.textContent = n + (dec(u.tEnc) || ""); fg.appendChild(sp);
+        // 通話中の他ユーザーにP2P接続
+        if (callMode !== "none" && id !== uid) {
+          if (u.call && u.call !== "none") { if (!pcs[id] && uid > id) initiateCall(id, u.nEnc); }
+          else if (pcs[id]) { pcs[id].close(); delete pcs[id]; removeRemoteVideo(id); }
+        }
+        // リモートビデオステータス更新
+        const statEl = $el(`vstat-${id}`);
+        if (statEl) statEl.textContent = u.call === "listen" ? "🎧" : (u.mic !== false ? "🎙" : "🔇") + (u.call === "video" ? (u.cam !== false ? "📹" : "🚫") : "");
+      }
+    }
+    D.pl.innerHTML = ""; D.pl.appendChild(fg); D.pcnt.textContent = `[${activeCnt}人]`;
+
+    // 最小UIDのユーザーがゴーストをクリーンアップ
     if (!isW && activeUids.length > 0) {
       activeUids.sort();
       if (activeUids[0] === uid) {
-        for(const[id, u] of entries){
+        for (const [id, u] of entries) {
+          if (id === uid) continue;
           const isOfflineSet = u.offlineAt && (now - u.offlineAt > 30000);
-          const isTimeout = now - (u.lastActive || 0) > 75000;
+          const isTimeout    = now - (u.lastActive || 0) > PRESENCE_TIMEOUT;
           if (isOfflineSet || isTimeout) {
-             const n = dec(u.nEnc)||"???", t = dec(u.tEnc)||"";
-             await push(ref(db, `chat/${curR}`), { type: "sys", text: enc(`${n}${t} が通信切断・タイムアウトにより退室しました`), time: now }).catch(()=>{});
-             await remove(ref(db, `presence/${curR}/${id}`)).catch(()=>{});
+            const n = dec(u.nEnc) || "???", t = dec(u.tEnc) || "";
+            await push(ref(db, `chat/${curR}`), { type:"sys", text:enc(`${n}${t} が通信切断・タイムアウトにより退室しました`), time:now }).catch(() => {});
+            await remove(ref(db, `presence/${curR}/${id}`)).catch(() => {});
           }
         }
       }
     }
   });
 
-  _cOff=onValue(query(ref(db,`chat/${curR}`),orderByChild("time")),snap=>{
-    if(!curR)return; const newLogs=[];
-    if(snap.exists())snap.forEach(cs=>{ const m=cs.val(); if(m){m.id=cs.key;newLogs.push(m);} });
-    logArray=newLogs; if(isLiveMode)renderPage(Math.ceil(logArray.length/PAGE_SIZE)||1); else renderPage(currentPage);
+  // チャットログ購読
+  _cOff = onValue(query(ref(db, `chat/${curR}`), orderByChild("time")), snap => {
+    if (!curR) return;
+    const newLogs = [];
+    if (snap.exists()) snap.forEach(cs => { const m = cs.val(); if (m) { m.id = cs.key; newLogs.push(m); } });
+    logArray = newLogs;
+    if (isLiveMode) renderPage(Math.ceil(logArray.length/PAGE_SIZE)||1);
+    else renderPage(currentPage);
   });
 }
 
+// ─── 退室処理 ───
 async function exitRoom(autoMsg="") {
-  if (isEx) return; 
-  isEx = true; 
-  _exitLock = true; 
+  if (isEx) return;
+  isEx = true; _exitLock = true;
   await endCall();
-  if(heartbeatTimer){clearInterval(heartbeatTimer);heartbeatTimer=null;}
-  
-  const sR = curR, sN = curN, sT = curT, sO = isOff, sW = isW, myId = uid;
+  if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+  if (toT) { clearInterval(toT); toT = null; }
+
+  const sR=curR, sN=curN, sT=curT, sO=isOff, sW=isW, myId=uid;
+
   try {
     if (!sW && sR && sN) {
-      if (myPresRef) await onDisconnect(myPresRef).cancel().catch(()=>{});
+      if (myPresRef) await onDisconnect(myPresRef).cancel().catch(() => {});
 
-      const ps = await get(ref(db, `presence/${sR}`)); 
+      // 他のアクティブユーザー数を確認
+      const ps = await get(ref(db, `presence/${sR}`));
       let activeCount = 0;
-      if (ps.exists()) { 
-        const now = srvNow(); 
+      if (ps.exists()) {
+        const now = srvNow();
         for (const [k, u] of Object.entries(ps.val())) {
-          if (k !== myId) {
-             const isOffSet = u.offlineAt && (now - u.offlineAt > 30000);
-             const isTo = now - (u.lastActive || 0) > 75000;
-             if(!isOffSet && !isTo) activeCount++;
-          }
+          if (k === myId) continue;
+          const isOffSet = u.offlineAt && (now - u.offlineAt > 30000);
+          const isTo     = now - (u.lastActive || 0) > PRESENCE_TIMEOUT;
+          if (!isOffSet && !isTo) activeCount++;
         }
       }
-      
+
       if (!sO && activeCount === 0) {
+        // 最後の1人なのでWipe
         await wipe(sR);
       } else {
-        const msgStr = autoMsg ? `${sN}${sT} が自動退室しました（30分無発言）` : `${sN}${sT} が退室しました`;
-        await push(ref(db, `chat/${sR}`), { type: "sys", text: enc(msgStr), time: srvNow() }).catch(()=>{});
-        if (myPresRef) await remove(myPresRef).catch(()=>{});
+        const msgStr = autoMsg
+          ? `${sN}${sT} が自動退室しました（30分無発言）`
+          : `${sN}${sT} が退室しました`;
+        await push(ref(db, `chat/${sR}`), { type:"sys", text:enc(msgStr), time:srvNow() }).catch(() => {});
+        if (myPresRef) await remove(myPresRef).catch(() => {});
       }
     }
-  } catch (e) { console.error(e); }
+  } catch (e) { console.error("exitRoom error:", e); }
 
-  localStorage.removeItem("nz_sess"); 
+  localStorage.removeItem("nz_sess");
   if (window.history?.replaceState) window.history.replaceState({}, document.title, location.pathname);
   stopToBar(); clearAll(); isEx = false; showLobby(autoMsg);
 }
 
-async function sendMsg(){
-  if(!curR||isW||isCmp||!isLiveMode)return;
-  const txt=D.mi.value.trim(); if(!txt)return;
-  D.mi.value=""; D.mi.style.height="auto"; const N=srvNow(); lastMsgAt = N; saveSession({ lastMsgAt });
-  try { await push(ref(db,`chat/${curR}`),{ type:"msg",nEnc:enc(curN),tEnc:enc(curT||""), cEnc:enc(curColor),text:enc(txt),time:N }); } catch(e){alert("送信失敗: "+e.message);}
-}
+// ─── メッセージ送信 ───
+let isCmp = false;
+D.mi.addEventListener("compositionstart", () => { isCmp = true; });
+D.mi.addEventListener("compositionend",   () => { isCmp = false; });
+D.mi.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !isCmp) { e.preventDefault(); sendMsg(); } });
+D.mi.addEventListener("input",   () => { D.mi.style.height = "auto"; D.mi.style.height = Math.min(D.mi.scrollHeight, 80) + "px"; updFnPos(); });
+D.sdBtn.onclick   = () => sendMsg();
+D.clrMsgBtn.onclick = () => { D.mi.value = ""; D.mi.style.height = "auto"; D.mi.focus(); updFnPos(); };
 
-async function upgrade(name,trip){
-  if(!curR)return; isW=false; curN=name; curT=trip||""; const N=srvNow(); lastMsgAt = N;
-  myPresRef = ref(db, `presence/${curR}/${uid}`);
-  await onDisconnect(myPresRef).update({ offlineAt: serverTimestamp() }).catch(()=>{});
-  await set(myPresRef,{nEnc:enc(name),tEnc:enc(trip||""),cEnc:enc(curColor),call:callMode,lastActive:N,offlineAt:null});
-  await push(ref(db,`chat/${curR}`),{type:"sys",text:enc(`${name}${trip||""} が入室しました`),time:N});
-  localStorage.setItem("nz_ni",name); localStorage.setItem("nz_tk",D.wtk.value.trim()); saveSession({target:rawR,pass:curP,name,trip:trip||"",asW:false,lastMsgAt});
-  
-  D.wb.classList.remove("show"); D.ib.classList.add("show"); D.exBtn.textContent="退出"; D.ivBtn.style.display=isOff?"none":"block"; D.clrBtn.style.display="block"; 
-  D.callBtn.style.display="flex"; D.endCallBtn.style.display="none";
-  D.updateInputBarState(true); updFnPos(); startToBar();
-  
-  if(toT)clearInterval(toT);
-  toT=setInterval(async()=>{ if(!curR||isEx||_exitLock)return; if(srvNow()-lastMsgAt>=INACTIVITY){ _exitLock=true; await exitRoom("30分間発言がなかったため自動退室しました"); } },CHECK_TICK);
-  heartbeatTimer = setInterval(() => { if (curR && !isEx && !isW) update(myPresRef, { lastActive: srvNow() }).catch(()=>{}); }, 15000);
-}
-
-let isCmp=false;
-D.mi.addEventListener("compositionstart",()=>{isCmp=true;}); D.mi.addEventListener("compositionend",()=>{isCmp=false;});
-D.mi.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey&&!isCmp){e.preventDefault();sendMsg();}});
-D.mi.addEventListener("input",()=>{D.mi.style.height="auto";D.mi.style.height=Math.min(D.mi.scrollHeight,80)+"px";updFnPos();});
-D.sdBtn.onclick=()=>sendMsg(); D.clrMsgBtn.onclick=()=>{D.mi.value="";D.mi.style.height="auto";D.mi.focus();updFnPos();};
-
-D.enBtn.onclick=async()=>{
-  const n=D.ni.value.replace(/[\s\u3000]+/g,"").trim(),r=D.ri.value.replace(/[\s\u3000]+/g,"").trim(),p=D.pi.value.trim(),k=D.tk.value.trim();
-  if(!n||!r||!p){alert("必須項目を入力してください");return;} if(!k){alert("トリップキーを入力してください");return;}
-  setBtns(false); try{await doJoin({target:r,pass:p,name:n,trip:gTrip(n,k),asW:false});} catch(e){showLobby(e.message);} setBtns(true);
-};
-D.ofBtn.onclick=async()=>{ setBtns(false); try{await doJoin({target:"公式部屋",pass:OFF_P,name:"",trip:"",asW:true});} catch(e){showLobby(e.message);} setBtns(true); };
-D.gnBtn.onclick=()=>{ const c="abcdefghijklmnopqrstuvwxyz0123456789";let r="",p=""; for(let i=0;i<10;i++)r+=c[Math.floor(Math.random()*c.length)]; for(let i=0;i<12;i++)p+=c[Math.floor(Math.random()*c.length)]; D.ri.value=r; D.pi.value=p; updTP(); };
-D.wuBtn.onclick=async()=>{ const n=D.wni.value.replace(/[\s\u3000]+/g,"").trim(),k=D.wtk.value.trim(); if(!n){alert("名前を入力してください");return;} if(!k){alert("トリップキーを入力してください");return;} await upgrade(n,gTrip(n,k)); };
-D.exBtn.onclick=()=>{ if(isOff||isW) exitRoom(""); else if(confirm("退出しますか？あなたが最後の1人の場合、履歴は完全消去されます。")) exitRoom(""); };
-D.ivBtn.onclick=()=>{
-  if(!rawR||!curP)return; const u=`${location.protocol}//${location.host}${location.pathname}?r=${encodeURIComponent(rawR)}&p=${encodeURIComponent(curP)}`;
-  if(navigator.clipboard?.writeText) navigator.clipboard.writeText(u).then(()=>alert("招待リンクをコピーしました！")).catch(()=>copyFallback(u)); else copyFallback(u);
-};
-function copyFallback(text){ const ta=document.createElement("textarea");ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);alert("招待リンクをコピーしました！"); }
-
-D.gdBtn.onclick=()=>D.gmod.classList.add("show");
-D.gcBtn.onclick=()=>D.gmod.classList.remove("show");
-D.gmod.onclick=e=>{if(e.target===D.gmod)D.gmod.classList.remove("show");};
-
-(async()=>{
+async function sendMsg() {
+  if (!curR || isW || isCmp || !isLiveMode) return;
+  const txt = D.mi.value.trim(); if (!txt) return;
+  D.mi.value = ""; D.mi.style.height = "auto";
+  const N = srvNow(); lastMsgAt = N; saveSession({ lastMsgAt });
   try {
-    const sp=new URLSearchParams(location.search),sr=sp.get("r"),spp=sp.get("p");
-    if(sr&&spp){
-      const n=localStorage.getItem("nz_ni")||"";
-      if(n){ setBtns(false); try{await doJoin({target:sr,pass:spp,name:n,trip:gTrip(n,localStorage.getItem("nz_tk")||""),asW:false,isAutoRejoin:true});} catch(e){showLobby(e.message);} setBtns(true); }
-      else {D.ri.value=sr;D.pi.value=spp;showLobby();} return;
+    await push(ref(db, `chat/${curR}`), { type:"msg", nEnc:enc(curN), tEnc:enc(curT||""), cEnc:enc(curColor), text:enc(txt), time:N });
+  } catch (e) { showErrBar("送信失敗: " + e.message); }
+}
+
+// ─── 覗き見→参加アップグレード ───
+async function upgrade(name, trip) {
+  if (!curR) return;
+  isW = false; curN = name; curT = trip || "";
+  const N = srvNow(); lastMsgAt = N;
+  myPresRef = ref(db, `presence/${curR}/${uid}`);
+  await onDisconnect(myPresRef).remove().catch(() => {});
+  await set(myPresRef, { nEnc:enc(name), tEnc:enc(trip||""), cEnc:enc(curColor), call:"none", lastActive:N, offlineAt:null });
+  await push(ref(db, `chat/${curR}`), { type:"sys", text:enc(`${name}${trip||""} が入室しました`), time:N });
+  localStorage.setItem("nz_ni", name); localStorage.setItem("nz_tk", D.wtk.value.trim());
+  saveSession({ target:rawR, pass:curP, name, trip:trip||"", asW:false, lastMsgAt });
+
+  D.wb.classList.remove("show"); D.ib.classList.add("show");
+  D.exBtn.textContent = "退出"; D.ivBtn.style.display = isOff ? "none" : "block";
+  D.clrBtn.style.display = "block"; D.callBtn.style.display = "flex"; D.endCallBtn.style.display = "none";
+  setInputBarEnabled(true); updFnPos(); startToBar();
+
+  // FIX: 既存タイマーをクリアしてから再設定
+  if (toT) clearInterval(toT);
+  toT = setInterval(async () => {
+    if (!curR || isEx || _exitLock) return;
+    if (srvNow() - lastMsgAt >= INACTIVITY) { _exitLock = true; await exitRoom("30分間発言がなかったため自動退室しました"); }
+  }, 1000);
+  // FIX: heartbeatTimerも重複しないようにクリア
+  if (heartbeatTimer) clearInterval(heartbeatTimer);
+  heartbeatTimer = setInterval(() => {
+    if (curR && !isEx && !isW) update(myPresRef, { lastActive: srvNow() }).catch(() => {});
+  }, HEARTBEAT_INTERVAL);
+}
+
+// ─── ボタンイベント ───
+D.enBtn.onclick = async () => {
+  const n=D.ni.value.replace(/[\s\u3000]+/g,"").trim(), r=D.ri.value.replace(/[\s\u3000]+/g,"").trim(), p=D.pi.value.trim(), k=D.tk.value.trim();
+  if (!n || !r || !p) { D.lberr.textContent="必須項目を入力してください"; D.lberr.style.display="block"; return; }
+  if (!k) { D.lberr.textContent="トリップキーを入力してください"; D.lberr.style.display="block"; return; }
+  D.lberr.style.display = "none";
+  setBtns(false);
+  try { await doJoin({ target:r, pass:p, name:n, trip:gTrip(n,k), asW:false }); }
+  catch (e) { showLobby(e.message); }
+  setBtns(true);
+};
+
+D.ofBtn.onclick = async () => {
+  setBtns(false);
+  try { await doJoin({ target:"公式部屋", pass:OFF_P, name:"", trip:"", asW:true }); }
+  catch (e) { showLobby(e.message); }
+  setBtns(true);
+};
+
+D.gnBtn.onclick = () => {
+  const c = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let r = "", p = "";
+  for (let i=0; i<10; i++) r += c[Math.floor(Math.random()*c.length)];
+  for (let i=0; i<12; i++) p += c[Math.floor(Math.random()*c.length)];
+  D.ri.value = r; D.pi.value = p; updTP();
+};
+
+D.wuBtn.onclick = async () => {
+  const n=D.wni.value.replace(/[\s\u3000]+/g,"").trim(), k=D.wtk.value.trim();
+  if (!n) { showErrBar("名前を入力してください"); return; }
+  if (!k) { showErrBar("トリップキーを入力してください"); return; }
+  await upgrade(n, gTrip(n, k));
+};
+
+D.exBtn.onclick = () => {
+  if (isOff || isW) { exitRoom(""); }
+  else if (confirm("退出しますか？あなたが最後の1人の場合、履歴は完全消去されます。")) exitRoom("");
+};
+
+D.ivBtn.onclick = () => {
+  if (!rawR || !curP) return;
+  const u = `${location.protocol}//${location.host}${location.pathname}?r=${encodeURIComponent(rawR)}&p=${encodeURIComponent(curP)}`;
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(u).then(() => showErrBar("✅ 招待リンクをコピーしました！")).catch(() => copyFallback(u));
+  else copyFallback(u);
+};
+function copyFallback(text) {
+  const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
+  showErrBar("✅ 招待リンクをコピーしました！");
+}
+
+D.gdBtn.onclick = () => D.gmod.classList.add("show");
+D.gcBtn.onclick = () => D.gmod.classList.remove("show");
+D.gmod.onclick  = e => { if (e.target === D.gmod) D.gmod.classList.remove("show"); };
+
+// ─── 初期化 ───
+(async () => {
+  try {
+    const sp = new URLSearchParams(location.search), sr = sp.get("r"), spp = sp.get("p");
+    if (sr && spp) {
+      const n = localStorage.getItem("nz_ni") || "";
+      if (n) {
+        setBtns(false);
+        try { await doJoin({ target:sr, pass:spp, name:n, trip:gTrip(n, localStorage.getItem("nz_tk")||""), asW:false, isAutoRejoin:true }); }
+        catch (e) { showLobby(e.message); }
+        setBtns(true);
+      } else { D.ri.value=sr; D.pi.value=spp; showLobby(); }
+      return;
     }
-    const sessStr=localStorage.getItem("nz_sess");
-    if(sessStr){
-      try{
-        const s=JSON.parse(sessStr);
-        if(s&&s.target&&s.pass){
+    const sessStr = localStorage.getItem("nz_sess");
+    if (sessStr) {
+      try {
+        const s = JSON.parse(sessStr);
+        if (s?.target && s?.pass) {
           setBtns(false);
-          if(s.asW){ try{ await doJoin({target:s.target,pass:s.pass,name:"",trip:"",asW:true,isAutoRejoin:true}); } catch(e){ showLobby(e.message); } }
-          else { try{ await doJoin({target:s.target,pass:s.pass,name:s.name,trip:s.trip,asW:false,isAutoRejoin:true}); } catch(e){ showLobby(e.message); } }
-          setBtns(true);return;
+          try {
+            if (s.asW) await doJoin({ target:s.target, pass:s.pass, name:"", trip:"", asW:true, isAutoRejoin:true });
+            else       await doJoin({ target:s.target, pass:s.pass, name:s.name, trip:s.trip, asW:false, isAutoRejoin:true });
+          } catch (e) { showLobby(e.message); }
+          setBtns(true); return;
         }
-      }catch{localStorage.removeItem("nz_sess");}
+      } catch { localStorage.removeItem("nz_sess"); }
     }
     showLobby();
-  } catch(err) {
+  } catch (err) {
     showLobby("初期化エラーが発生しました: " + err.message);
   }
 })();

@@ -58,6 +58,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .brow{display:grid;grid-template-columns:1fr 1.6fr 1.3fr;gap:4px;margin-top:2px}
 .btn{padding:5px;border-radius:5px;font-size:11px;font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center}
 .btn:active{opacity:0.8}
+.btn:disabled{opacity:0.5;cursor:not-allowed}
 .bq{background:var(--sf);color:var(--tx);border:1px solid var(--bd)}
 .bp{background:var(--in);color:#fff}
 .bo{background:var(--e2);color:#fff}
@@ -72,6 +73,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .pcnt{font-size:10.5px;font-weight:700;color:var(--mu);font-family:monospace}
 .hbs{display:flex;gap:4px;z-index:10}
 .hbs button{padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700;background:var(--bg);border:1px solid var(--bd);color:var(--tx);display:flex;align-items:center;gap:4px}
+.hbs button:disabled{opacity:0.5;cursor:not-allowed}
 .bclr-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
 .bx{border-color:rgba(244,63,94,.4)!important;color:#fda4af!important}
 #pl{display:flex;gap:4px;overflow-x:auto;padding-top:4px;white-space:nowrap;scrollbar-width:none;}
@@ -122,6 +124,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .wbi{flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:6px 10px;color:var(--tx);font-size:13px}
 .wclrbox{display:flex;flex-direction:column;gap:4px;background:var(--bg);padding:6px 10px;border-radius:6px;border:1px solid var(--bd)}
 .bwb{background:var(--in);color:#fff;font-size:12px;font-weight:700;padding:9px;border-radius:6px;text-align:center}
+.bwb:disabled{opacity:0.5;cursor:not-allowed}
 
 #tl{flex:1;min-height:0;overflow-y:scroll;overflow-x:hidden;padding:12px 14px;background-color:#0d1117;-webkit-overflow-scrolling:touch;touch-action:pan-y!important;overscroll-behavior-y:contain}
 #tl-inner{display:flex;flex-direction:column;justify-content:flex-end;gap:10px;width:100%;max-width:600px;margin:0 auto;min-height:100%}
@@ -155,7 +158,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 /* 動画・画像コンテナ */
 .vc-wrap{width:100%;position:relative}
 .vc{width:100%;aspect-ratio:16/9;background:#000;border-radius:4px;overflow:hidden;position:relative;border:1px solid var(--bd);display:flex;align-items:center;justify-content:center}
-/* YouTube Shorts, TikTok, Instagram の最適化 */
+/* YouTube Shortsの最適化 */
 .vc.shorts { aspect-ratio: 9/16; width: 100%; max-width: 320px; margin: 0 auto; background: #000; position: relative; overflow: hidden; border-radius: 8px; border: 1px solid var(--bd); }
 .vc-frame {position:absolute; top:0; left:0; width:100%; height:100%; border:none; overflow:hidden;}
 .vc-badge{position:absolute;top:4px;left:4px;background:rgba(0,0,0,.75);color:#fff;font-size:8px;font-weight:800;padding:1px 3px;border-radius:3px;z-index:2;pointer-events:none}
@@ -576,6 +579,7 @@ const PAGE_SIZE  = 50;
 
 let curR=null, curP=null, curN=null, curT=null, rawR=null;
 let isOff=false, isW=false, isEx=false, _exitLock=false;
+let isActionLocked = false; // 連打防止用フラグ
 let _cOff=null, _pOff=null;
 let toT=null; let heartbeatTimer=null;
 let logArray=[], currentPage=1, isLiveMode=true;
@@ -601,11 +605,12 @@ let camEnabled = true;
 
 D.callBtn.onclick = () => { if(isW) return; D.callmod.classList.add("show"); };
 D.ccBtn.onclick = () => D.callmod.classList.remove("show");
-D.cbAudio.onclick = () => startCall('audio');
-D.cbVideoIn.onclick = () => { currentFacingMode = 'user'; startCall('video'); };
-D.cbVideoOut.onclick = () => { currentFacingMode = 'environment'; startCall('video'); };
-D.cbListen.onclick = () => startCall('listen');
-D.endCallBtn.onclick = () => endCall();
+
+D.cbAudio.onclick = () => { if(confirm("音声通話を開始しますか？")) startCall('audio'); };
+D.cbVideoIn.onclick = () => { if(confirm("ビデオ通話(内カメラ)を開始しますか？")) { currentFacingMode = 'user'; startCall('video'); } };
+D.cbVideoOut.onclick = () => { if(confirm("ビデオ通話(外カメラ)を開始しますか？")) { currentFacingMode = 'environment'; startCall('video'); } };
+D.cbListen.onclick = () => { if(confirm("聴き専(視聴のみ)で参加しますか？")) startCall('listen'); };
+D.endCallBtn.onclick = () => { if(confirm("通話を終了しますか？")) endCall(); };
 
 function updateCallCtrlUI() {
     if (callMode === 'video') D.ctrlMode.value = "video-" + currentFacingMode;
@@ -663,8 +668,20 @@ D.ctrlMode.onchange = async () => {
     let newMode = D.ctrlMode.value; let targetFacing = currentFacingMode;
     if (newMode.startsWith('video-')) { targetFacing = newMode.split('-')[1]; newMode = 'video'; }
     if (newMode === callMode && targetFacing === currentFacingMode) return;
-    if (newMode === 'video' && callMode === 'video' && targetFacing !== currentFacingMode) { currentFacingMode = targetFacing; await D.ctrlFlip.onclick(); return; }
-    currentFacingMode = targetFacing; await endCall(); await startCall(newMode);
+    
+    if(!confirm("通話モードを切り替えますか？")) {
+        updateCallCtrlUI(); // 選択を元に戻す
+        return;
+    }
+
+    if (newMode === 'video' && callMode === 'video' && targetFacing !== currentFacingMode) { 
+        currentFacingMode = targetFacing; 
+        await executeFlip(); 
+        return; 
+    }
+    currentFacingMode = targetFacing; 
+    await endCall(); 
+    await startCall(newMode);
 };
 
 D.ctrlMic.onclick = async () => { 
@@ -681,8 +698,7 @@ D.ctrlCam.onclick = async () => {
   if (curR && !isW) await update(ref(db, `presence/${curR}/${uid}`), { cam: camEnabled });
 };
 
-D.ctrlFlip.onclick = async () => {
-    if (callMode !== 'video' || !localStream) return;
+async function executeFlip() {
     currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user'; updateCallCtrlUI();
     const oldVideoTrack = localStream.getVideoTracks()[0];
     if (oldVideoTrack) { localStream.removeTrack(oldVideoTrack); oldVideoTrack.stop(); }
@@ -696,6 +712,12 @@ D.ctrlFlip.onclick = async () => {
       alert("カメラの切り替えに失敗しました。");
       currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user'; updateCallCtrlUI();
     }
+}
+
+D.ctrlFlip.onclick = async () => {
+    if (callMode !== 'video' || !localStream) return;
+    if(!confirm("カメラの前後を切り替えますか？")) return;
+    await executeFlip();
 };
 
 function updateMyStatusIcon() {
@@ -812,11 +834,11 @@ const bVideoCard=(type,embedSrc,label)=>{
 function bTikTokEmbed(url) {
   const su = esc(url), shortLabel = url.length > 30 ? url.slice(0,30)+"…" : url;
   const placeholderId = "tkph" + (++_colCnt);
-  let innerHtml = `<div id="${placeholderId}" style="width:100%; max-width:325px; margin:0 auto; background:#000; border-radius:8px; overflow:hidden; border:1px solid var(--bd);"></div>`;
+  let innerHtml = `<div id="${placeholderId}" style="width:100%; max-width:340px; aspect-ratio:9/16; margin:0 auto; background:#000; border-radius:8px; overflow:hidden; border:1px solid var(--bd);"></div>`;
   
   setTimeout(async () => {
     const el = $(placeholderId); if(!el) return;
-    const iframeHtml = (id) => `<iframe src="https://www.tiktok.com/embed/v2/${id}" width="100%" height="600" frameborder="0" scrolling="no" allow="autoplay;encrypted-media" allowfullscreen style="display:block; overflow:hidden; border:none;"></iframe>`;
+    const iframeHtml = (id) => `<iframe src="https://www.tiktok.com/embed/v2/${id}" style="width:100%; height:100%; border:none; display:block;" frameborder="0" scrolling="no" allow="autoplay;encrypted-media" allowfullscreen></iframe>`;
     
     let vidMatch = url.match(/\/video\/(\d+)/i);
     if (vidMatch) { el.innerHTML = iframeHtml(vidMatch[1]); return; }
@@ -887,7 +909,7 @@ function _parseSegs(txt) {
       if(igm){
         const embedSrc = `https://www.instagram.com/p/${igm[1]}/embed`;
         const inner=`<div class="vc-wrap" style="display:flex; justify-content:center; padding: 4px 0;">
-          <iframe src="${embedSrc}" width="320" height="480" frameborder="0" scrolling="no" allowtransparency="true" allow="autoplay;encrypted-media" allowfullscreen style="background:#fff; border-radius:8px; border:1px solid var(--bd);"></iframe>
+          <iframe src="${embedSrc}" style="width:100%; max-width:340px; aspect-ratio:9/16; min-height:500px; background:#fff; border-radius:8px; border:1px solid var(--bd);" frameborder="0" scrolling="no" allowtransparency="true" allow="autoplay;encrypted-media" allowfullscreen></iframe>
         </div>`;
         const label=url.length>30?url.slice(0,30)+"…":url;
         segs.push({type:"media",html:makeCollapse("ig","Instagram","📷", label, inner)});
@@ -1171,14 +1193,51 @@ D.mi.addEventListener("input",()=>{D.mi.style.height="auto";D.mi.style.height=Ma
 D.sdBtn.onclick=()=>sendMsg(); D.clrMsgBtn.onclick=()=>{D.mi.value="";D.mi.style.height="auto";D.mi.focus();updFnPos();};
 
 D.enBtn.onclick=async()=>{
+  if(isActionLocked) return;
   const n=D.ni.value.replace(/[\s\u3000]+/g,"").trim(),r=D.ri.value.replace(/[\s\u3000]+/g,"").trim(),p=D.pi.value.trim(),k=D.tk.value.trim();
   if(!n||!r||!p){alert("必須項目を入力してください");return;} if(!k){alert("トリップキーを入力してください");return;}
-  setBtns(false); try{await doJoin({target:r,pass:p,name:n,trip:gTrip(n,k),asW:false});} catch(e){showLobby(e.message);} setBtns(true);
+  isActionLocked = true;
+  setBtns(false); 
+  try{await doJoin({target:r,pass:p,name:n,trip:gTrip(n,k),asW:false});} catch(e){showLobby(e.message);} 
+  setBtns(true);
+  isActionLocked = false;
 };
-D.ofBtn.onclick=async()=>{ setBtns(false); try{await doJoin({target:"公式部屋",pass:OFF_P,name:"",trip:"",asW:true});} catch(e){showLobby(e.message);} setBtns(true); };
+
+D.ofBtn.onclick=async()=>{ 
+  if(isActionLocked) return;
+  isActionLocked = true;
+  setBtns(false); 
+  try{await doJoin({target:"公式部屋",pass:OFF_P,name:"",trip:"",asW:true});} catch(e){showLobby(e.message);} 
+  setBtns(true); 
+  isActionLocked = false;
+};
+
 D.gnBtn.onclick=()=>{ const c="abcdefghijklmnopqrstuvwxyz0123456789";let r="",p=""; for(let i=0;i<10;i++)r+=c[Math.floor(Math.random()*c.length)]; for(let i=0;i<12;i++)p+=c[Math.floor(Math.random()*c.length)]; D.ri.value=r; D.pi.value=p; updTP(); };
-D.wuBtn.onclick=async()=>{ const n=D.wni.value.replace(/[\s\u3000]+/g,"").trim(),k=D.wtk.value.trim(); if(!n){alert("名前を入力してください");return;} if(!k){alert("トリップキーを入力してください");return;} await upgrade(n,gTrip(n,k)); };
-D.exBtn.onclick=()=>{ if(isOff||isW) exitRoom(""); else if(confirm("退出しますか？あなたが最後の1人の場合、履歴は完全消去されます。")) exitRoom(""); };
+
+D.wuBtn.onclick=async()=>{ 
+  if(isActionLocked) return;
+  const n=D.wni.value.replace(/[\s\u3000]+/g,"").trim(),k=D.wtk.value.trim(); 
+  if(!n){alert("名前を入力してください");return;} if(!k){alert("トリップキーを入力してください");return;} 
+  isActionLocked = true;
+  D.wuBtn.disabled = true;
+  await upgrade(n,gTrip(n,k)); 
+  D.wuBtn.disabled = false;
+  isActionLocked = false;
+};
+
+D.exBtn.onclick=async()=>{
+  if(isActionLocked) return;
+  if(isOff||isW) {
+    isActionLocked = true; D.exBtn.disabled = true;
+    await exitRoom("");
+    D.exBtn.disabled = false; isActionLocked = false;
+  } else if(confirm("退出しますか？あなたが最後の1人の場合、履歴は完全消去されます。")) {
+    isActionLocked = true; D.exBtn.disabled = true;
+    await exitRoom("");
+    D.exBtn.disabled = false; isActionLocked = false;
+  }
+};
+
 D.ivBtn.onclick=()=>{
   if(!rawR||!curP)return; const u=`${location.protocol}//${location.host}${location.pathname}?r=${encodeURIComponent(rawR)}&p=${encodeURIComponent(curP)}`;
   if(navigator.clipboard?.writeText) navigator.clipboard.writeText(u).then(()=>alert("招待リンクをコピーしました！")).catch(()=>copyFallback(u)); else copyFallback(u);

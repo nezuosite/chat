@@ -62,7 +62,6 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .bq{background:var(--sf);color:var(--tx);border:1px solid var(--bd)}
 .bp{background:var(--in);color:#fff}
 .bo{background:var(--e2);color:#fff}
-/* 誤タップ防止のため余白を拡大 */
 .glink{font-size:11px;color:#a5b4fc;text-align:center;margin-top:16px;padding:12px 0;text-decoration:underline;cursor:pointer;font-weight:bold}
 
 #app{display:none;position:fixed;inset:0;flex-direction:column;overflow:hidden;z-index:50}
@@ -81,7 +80,6 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 #pl::-webkit-scrollbar{display:none;}
 .chip{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,.03);border:1px solid}
 
-/* 通話エリア UI最適化 */
 #call-container { display:none; flex-direction:column; flex-shrink:0; border-bottom:1px solid var(--bd); background:var(--s2); z-index:10 }
 #call-container.show { display:flex }
 #call-ctrl { display:flex; gap:6px; padding:8px 12px; background:var(--sf); border-bottom:1px solid var(--bd); flex-wrap:wrap; align-items:center; justify-content:center }
@@ -156,10 +154,8 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .media-collapse-body{display:none;padding:4px;background:#000}
 .media-collapse-body.open{display:block}
 
-/* 動画・画像コンテナ */
 .vc-wrap{width:100%;position:relative}
 .vc{width:100%;aspect-ratio:16/9;background:#000;border-radius:4px;overflow:hidden;position:relative;border:1px solid var(--bd);display:flex;align-items:center;justify-content:center}
-/* YouTube Shortsの最適化 */
 .vc.shorts { aspect-ratio: 9/16; width: 100%; max-width: 320px; margin: 0 auto; background: #000; position: relative; overflow: hidden; border-radius: 8px; border: 1px solid var(--bd); }
 .vc-frame {position:absolute; top:0; left:0; width:100%; height:100%; border:none; overflow:hidden;}
 .vc-badge{position:absolute;top:4px;left:4px;background:rgba(0,0,0,.75);color:#fff;font-size:8px;font-weight:800;padding:1px 3px;border-radius:3px;z-index:2;pointer-events:none}
@@ -575,17 +571,16 @@ const fmtSz = b => { if(!b||b<=0)return""; if(b<1024)return b+"B"; if(b<1048576)
 const OFF_H      = CryptoJS.SHA256("公式部屋").toString();
 const OFF_P      = "official_public_pass";
 const INACTIVITY = 30 * 60 * 1000;
-const CHECK_TICK = 1000;
 const PAGE_SIZE  = 50;
 
 let curR=null, curP=null, curN=null, curT=null, rawR=null;
 let isOff=false, isW=false, isEx=false, _exitLock=false;
 let isActionLocked = false;
 let _cOff=null, _pOff=null;
-let toT=null; let heartbeatTimer=null;
 let logArray=[], currentPage=1, isLiveMode=true;
 let lastMsgAt = 0;
 let myPresRef = null;
+let lastActiveWrite = 0;
 
 const hideSplash = () => { 
   const s = document.getElementById("splash"); 
@@ -595,7 +590,7 @@ const hideSplash = () => {
   setTimeout(() => { s.style.display = "none"; }, 260); 
 };
 
-// ─── WebRTC 通話 ───
+// --- WebRTC 通話 ---
 let callMode = 'none';
 let localStream = null;
 let pcs = {};
@@ -670,9 +665,7 @@ D.ctrlMode.onchange = async () => {
     if (newMode.startsWith('video-')) { targetFacing = newMode.split('-')[1]; newMode = 'video'; }
     if (newMode === callMode && targetFacing === currentFacingMode) return;
     
-    if(!confirm("通話モードを切り替えますか？")) {
-        updateCallCtrlUI(); return;
-    }
+    if(!confirm("通話モードを切り替えますか？")) { updateCallCtrlUI(); return; }
 
     if (newMode === 'video' && callMode === 'video' && targetFacing !== currentFacingMode) { 
         currentFacingMode = targetFacing; 
@@ -728,7 +721,7 @@ function updateMyStatusIcon() {
 function createPC(id, nEnc) {
   if (pcs[id]) return pcs[id];
   const pc = new RTCPeerConnection(rtcConfig); pcs[id] = pc;
-  pc.onicecandidate = e => { if (e.candidate) push(ref(db, `signals/${curR}/${id}`), { from: uid, type: 'ice', data: JSON.stringify(e.candidate), time: srvNow() }); };
+  pc.onicecandidate = e => { if (e.candidate) push(ref(db, `signals/${curR}/${id}`), { from: uid, type: 'ice', data: JSON.stringify(e.candidate), time: serverTimestamp() }); };
   pc.ontrack = e => { onValue(ref(db, `presence/${curR}/${id}`), snap => { const u = snap.val(); if(u) addRemoteVideo(id, e.streams[0], nEnc, false, u.call, u.mic, u.cam); }); };
   pc.oniceconnectionstatechange = () => { if (['disconnected', 'failed', 'closed'].includes(pc.iceConnectionState)) { removeRemoteVideo(id); pc.close(); delete pcs[id]; } };
   if (callMode === 'listen') { pc.addTransceiver('audio', { direction: 'recvonly' }); pc.addTransceiver('video', { direction: 'recvonly' }); } 
@@ -745,7 +738,7 @@ function createPC(id, nEnc) {
 
 async function initiateCall(id, nEnc) {
   const pc = createPC(id, nEnc); const offer = await pc.createOffer(); await pc.setLocalDescription(offer);
-  push(ref(db, `signals/${curR}/${id}`), { from: uid, type: 'offer', data: JSON.stringify(offer), time: srvNow() });
+  push(ref(db, `signals/${curR}/${id}`), { from: uid, type: 'offer', data: JSON.stringify(offer), time: serverTimestamp() });
 }
 
 async function handleSignal(snap) {
@@ -757,7 +750,7 @@ async function handleSignal(snap) {
     if (!pc) pc = createPC(from, nEnc);
     await pc.setRemoteDescription(new RTCSessionDescription(payload));
     const answer = await pc.createAnswer(); await pc.setLocalDescription(answer);
-    push(ref(db, `signals/${curR}/${from}`), { from: uid, type: 'answer', data: JSON.stringify(answer), time: srvNow() });
+    push(ref(db, `signals/${curR}/${from}`), { from: uid, type: 'answer', data: JSON.stringify(answer), time: serverTimestamp() });
   } else if (type === 'answer') { if (pc) await pc.setRemoteDescription(new RTCSessionDescription(payload)); }
   else if (type === 'ice') { if (pc) await pc.addIceCandidate(new RTCIceCandidate(payload)).catch(()=>{}); }
 }
@@ -780,9 +773,8 @@ function addRemoteVideo(id, stream, nEnc, isLocal, mode, mic, cam) {
 }
 function removeRemoteVideo(id) { const w = $(`rvw-${id}`); if (w) w.remove(); }
 
-// ─── 画像モーダルビューア ───
+// --- 画像モーダルビューア ---
 let imgScale=1,imgX=0,imgY=0,imgDragging=false,imgDragSx=0,imgDragSy=0,imgDragIx=0,imgDragIy=0;
-let imgPinchDist=0,imgLastTap=0,imodTouches=[];
 const resetImgTransform=()=>{imgScale=1;imgX=0;imgY=0;applyImgTransform();};
 const applyImgTransform=()=>{ D.imEl.style.transform=`translate(${imgX}px,${imgY}px) scale(${imgScale})`; };
 const clampImg=()=>{ if(imgScale<=1){imgX=0;imgY=0;return;} const sw=D.imEl.offsetWidth*imgScale,sh=D.imEl.offsetHeight*imgScale,mx=Math.max(0,(sw-window.innerWidth)/2),my=Math.max(0,(sh-window.innerHeight)/2); imgX=Math.max(-mx,Math.min(mx,imgX));imgY=Math.max(-my,Math.min(my,imgY)); };
@@ -794,10 +786,10 @@ D.imod.addEventListener("mousedown", e=>{ if(e.target===D.icBtn)return; imgDragg
 document.addEventListener("mousemove", e=>{ if(!imgDragging)return; if(imgScale>1){imgX=imgDragIx+(e.clientX-imgDragSx);imgY=imgDragIy+(e.clientY-imgDragSy);clampImg();applyImgTransform();} });
 document.addEventListener("mouseup", e=>{ if(!imgDragging)return; imgDragging=false; D.imod.style.cursor="default"; if(Math.abs(e.clientX-imgDragSx)+Math.abs(e.clientY-imgDragSy)<5&&imgScale<=1&&(e.target===D.imod||e.target===D.imodWrap))D.icBtn.click(); });
 
-// ─── オーディオ ───
+// --- オーディオ ---
 let activeAudio=null; const stopActiveAudio=()=>{ if(activeAudio){try{activeAudio.pause();}catch{}activeAudio=null;} };
 
-// ─── メディアパーサー (URL変換を最適化) ───
+// --- メディアパーサー ---
 const YR  = /(?:https?:\/\/)?(?:(?:www\.|m\.|music\.)?youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|v\/|shorts\/|live\/)([A-Za-z0-9_-]{11})|youtu\.be\/([A-Za-z0-9_-]{11}))/i;
 const NR  = /(?:https?:\/\/)?(?:(?:sp\.|www\.)?nicovideo\.jp\/(?:watch|user\/[0-9]+\/video)\/|nico\.ms\/)((?:sm|nm|so|lv|co|ch)?\d+)/i;
 const TKR = /(?:https?:\/\/)?(?:(?:[a-z0-9-]+\.)?tiktok\.com\/|vt\.tiktok\.com\/|vm\.tiktok\.com\/)([^\s?#]+)/i;
@@ -887,7 +879,6 @@ function _parseSegs(txt) {
       if(h)segs.push({type:"text",html:h});
     } else {
       const url=p.v,su=esc(url),cl=url.replace(/[?#].*$/,"");
-      
       const ym=url.match(YR);
       if(ym){
         const isShorts = url.includes('/shorts/');
@@ -897,7 +888,6 @@ function _parseSegs(txt) {
         segs.push({type:"media",html:makeCollapse("yt","YouTube","▶", label, inner)});
         continue;
       }
-      
       const nm=url.match(NR);
       if(nm){
         const inner=bVideoCard("nc",`https://embed.nicovideo.jp/watch/${nm[1]}?noscript=1`,"ニコニコ動画");
@@ -905,9 +895,7 @@ function _parseSegs(txt) {
         segs.push({type:"media",html:makeCollapse("nc","ニコニコ","▶", label, inner)});
         continue;
       }
-      
       if(TKR.test(url)){ segs.push({type:"media",html:bTikTokEmbed(url)}); continue; }
-      
       const igm = url.match(IGR);
       if(igm){
         const isReel = url.includes('/reel/');
@@ -919,7 +907,6 @@ function _parseSegs(txt) {
         segs.push({type:"media",html:makeCollapse("ig","Instagram","📷", label, inner)});
         continue;
       }
-
       if(AR.test(cl)){segs.push({type:"media",html:bAudio(url)});continue;}
       if(IR.test(cl)||/^data:image\//i.test(url)){
         const label = cl.split("/").pop().split("?")[0] || "画像";
@@ -993,13 +980,24 @@ async function wipe(r) {
 }
 
 function clearAll() {
-  if(toT){clearInterval(toT);toT=null;}
-  if(heartbeatTimer){clearInterval(heartbeatTimer);heartbeatTimer=null;}
   if(typeof _cOff==="function"){_cOff();_cOff=null;}
   if(typeof _pOff==="function"){_pOff();_pOff=null;}
-  symKey=null; logArray=[]; currentPage=1; isLiveMode=true; lastMsgAt=0;
+  symKey=null; logArray=[]; currentPage=1; isLiveMode=true; lastMsgAt=0; lastActiveWrite=0;
   stopActiveAudio(); D.tli.innerHTML=""; stopToBar(); endCall();
 }
+
+// イベント駆動 30秒スロットルアップデート
+const markActive = () => {
+    if (!curR || isEx || isW || !myPresRef) return;
+    const now = srvNow();
+    if (now - lastActiveWrite > 30000) { 
+        lastActiveWrite = now;
+        update(myPresRef, { lastActive: serverTimestamp() }).catch(()=>{});
+    }
+};
+document.addEventListener("mousemove", markActive, {passive:true});
+document.addEventListener("keydown", markActive, {passive:true});
+document.addEventListener("touchstart", markActive, {passive:true});
 
 let _toBarRaf=null;
 function startToBar() {
@@ -1046,20 +1044,19 @@ async function doJoin({target, pass, name, trip, asW, isAutoRejoin=false}) {
       if (rs.exists() && ps.exists() && !hasAlive) { await wipe(curR); if (isAutoRejoin) { localStorage.removeItem("nz_sess"); throw new Error("部屋が消去されたため復帰できませんでした。"); } }
       if(!(await get(ref(db,`rooms/${curR}`))).exists()){
           if(isAutoRejoin){ localStorage.removeItem("nz_sess"); throw new Error("部屋が消去されたため復帰できませんでした。"); }
-          await set(ref(db,`rooms/${curR}`),{created:nowSrv});
+          await set(ref(db,`rooms/${curR}`),{created:serverTimestamp()});
       }
   }
 
   if(!asW){
       myPresRef = ref(db, `presence/${curR}/${uid}`);
       await onDisconnect(myPresRef).update({ offlineAt: serverTimestamp() }).catch(()=>{});
-
-      await set(myPresRef, { nEnc: enc(name), tEnc: enc(trip||""), cEnc: enc(curColor), call: 'none', lastActive: nowSrv, offlineAt: null });
-      if (!isAutoRejoin) await push(ref(db,`chat/${curR}`),{type:"sys",text:enc(`${name}${trip||""} が入室しました`),time:nowSrv});
+      
+      lastActiveWrite = nowSrv;
+      await set(myPresRef, { nEnc: enc(name), tEnc: enc(trip||""), cEnc: enc(curColor), call: 'none', lastActive: serverTimestamp(), offlineAt: null });
+      if (!isAutoRejoin) await push(ref(db,`chat/${curR}`),{type:"sys",text:enc(`${name}${trip||""} が入室しました`),time:serverTimestamp()});
       if(!isOff){ localStorage.setItem("nz_ni",name); localStorage.setItem("nz_tk",D.tk.value.trim()); localStorage.setItem("nz_ri",target); localStorage.setItem("nz_pi",pass); }
       saveSession({target, pass, name, trip:trip||"", asW:false, lastMsgAt});
-      
-      heartbeatTimer = setInterval(() => { if (curR && !isEx && !isW) update(myPresRef, { lastActive: srvNow() }).catch(()=>{}); }, 60000);
   } else { saveSession({target, pass, name:"", trip:"", asW:true, lastMsgAt:srvNow()}); }
 
   D.lobby.style.display="none"; D.app.style.display="flex"; D.app.classList.add("visible"); D.fn.classList.add("visible"); D.rdsp.textContent=target;
@@ -1074,15 +1071,10 @@ async function doJoin({target, pass, name, trip, asW, isAutoRejoin=false}) {
   }
   D.updateInputBarState(!asW); updFnPos(); hideSplash();
 
-  if(!asW){
-    startToBar();
-    toT=setInterval(async()=>{ 
-      if(!curR||isEx||_exitLock)return; 
-      if(srvNow() - lastMsgAt >= INACTIVITY){ _exitLock=true; await exitRoom("30分間発言がなかったため自動退室しました"); } 
-    },CHECK_TICK);
-  }
+  if(!asW) startToBar();
 
-  _pOff=onValue(ref(db,`presence/${curR}`),async s=>{
+  // イベント駆動型クリーンアップ
+  _pOff=onValue(ref(db,`presence/${curR}`), s=>{
     if(!curR)return;
     const entries=Object.entries(s.val()||{}), fg=document.createDocumentFragment(), now = srvNow();
     let activeCnt=0;
@@ -1091,29 +1083,47 @@ async function doJoin({target, pass, name, trip, asW, isAutoRejoin=false}) {
     for(const[id, u] of entries){
       if(!u)continue;
       const isOfflineSet = u.offlineAt && (now - u.offlineAt > 30000); 
-      const isTimeout = now - (u.lastActive || 0) > INACTIVITY; // 30分間更新がなければ確実に消去
+      const isTimeout = now - (u.lastActive || 0) > INACTIVITY;
       
       if (!isOfflineSet && !isTimeout) {
           activeUids.push(id);
           const n=dec(u.nEnc); if(!n)continue;
-          activeCnt++; const sp=document.createElement("span"); sp.className="chip"; sp.style.color=dec(u.cEnc)||"#94a3b8"; sp.style.borderColor=(dec(u.cEnc)||"#94a3b8")+"44"; sp.textContent=n+(dec(u.tEnc)||""); fg.appendChild(sp);
+          activeCnt++; 
+          const sp=document.createElement("span"); 
+          sp.className="chip"; 
+          sp.style.color=dec(u.cEnc)||"#94a3b8"; 
+          sp.style.borderColor=(dec(u.cEnc)||"#94a3b8")+"44"; 
+          sp.textContent=n+(dec(u.tEnc)||""); 
+          fg.appendChild(sp);
           if (callMode !== 'none' && id !== uid) { if (u.call && u.call !== 'none') { if (!pcs[id] && uid > id) initiateCall(id, u.nEnc); } else if (pcs[id]) { pcs[id].close(); delete pcs[id]; removeRemoteVideo(id); } }
       }
     }
     
     D.pl.innerHTML=""; D.pl.appendChild(fg); D.pcnt.textContent=`[${activeCnt}人]`;
 
+    // バッチ更新によるアトミックな自己清掃
     if (!isW && activeUids.length > 0) {
       activeUids.sort();
       if (activeUids[0] === uid) {
+        const updates = {};
+        let needsUpdate = false;
         for(const[id, u] of entries){
           const isOfflineSet = u.offlineAt && (now - u.offlineAt > 30000);
           const isTimeout = now - (u.lastActive || 0) > INACTIVITY;
           if (isOfflineSet || isTimeout) {
              const n = dec(u.nEnc)||"???", t = dec(u.tEnc)||"";
-             await push(ref(db, `chat/${curR}`), { type: "sys", text: enc(`${n}${t} が退室・タイムアウトしました`), time: now }).catch(()=>{});
-             await remove(ref(db, `presence/${curR}/${id}`)).catch(()=>{});
+             updates[`presence/${curR}/${id}`] = null;
+             const newMsgKey = push(ref(db, `chat/${curR}`)).key;
+             updates[`chat/${curR}/${newMsgKey}`] = { 
+                 type: "sys", 
+                 text: enc(`${n}${t} が退室・タイムアウトしました`), 
+                 time: serverTimestamp() 
+             };
+             needsUpdate = true;
           }
+        }
+        if (needsUpdate) {
+            update(ref(db), updates).catch(()=>{});
         }
       }
     }
@@ -1131,7 +1141,6 @@ async function exitRoom(autoMsg="") {
   isEx = true; 
   _exitLock = true; 
   await endCall();
-  if(heartbeatTimer){clearInterval(heartbeatTimer);heartbeatTimer=null;}
   
   const sR = curR, sN = curN, sT = curT, sO = isOff, sW = isW, myId = uid;
   try {
@@ -1155,7 +1164,7 @@ async function exitRoom(autoMsg="") {
         await wipe(sR);
       } else {
         const msgStr = autoMsg ? `${sN}${sT} が自動退室しました（30分無発言）` : `${sN}${sT} が退室しました`;
-        await push(ref(db, `chat/${sR}`), { type: "sys", text: enc(msgStr), time: srvNow() }).catch(()=>{});
+        await push(ref(db, `chat/${sR}`), { type: "sys", text: enc(msgStr), time: serverTimestamp() }).catch(()=>{});
         if (myPresRef) await remove(myPresRef).catch(()=>{});
       }
     }
@@ -1169,25 +1178,24 @@ async function exitRoom(autoMsg="") {
 async function sendMsg(){
   if(!curR||isW||isCmp||!isLiveMode)return;
   const txt=D.mi.value.trim(); if(!txt)return;
-  D.mi.value=""; D.mi.style.height="auto"; const N=srvNow(); lastMsgAt = N; saveSession({ lastMsgAt });
-  try { await push(ref(db,`chat/${curR}`),{ type:"msg",nEnc:enc(curN),tEnc:enc(curT||""), cEnc:enc(curColor),text:enc(txt),time:N }); } catch(e){alert("送信失敗: "+e.message);}
+  D.mi.value=""; D.mi.style.height="auto"; 
+  lastMsgAt = srvNow(); 
+  saveSession({ lastMsgAt });
+  try { await push(ref(db,`chat/${curR}`),{ type:"msg",nEnc:enc(curN),tEnc:enc(curT||""), cEnc:enc(curColor),text:enc(txt),time:serverTimestamp() }); } catch(e){alert("送信失敗: "+e.message);}
 }
 
 async function upgrade(name,trip){
-  if(!curR)return; isW=false; curN=name; curT=trip||""; const N=srvNow(); lastMsgAt = N;
+  if(!curR)return; isW=false; curN=name; curT=trip||""; 
+  lastMsgAt = srvNow(); lastActiveWrite = srvNow();
   myPresRef = ref(db, `presence/${curR}/${uid}`);
   await onDisconnect(myPresRef).update({ offlineAt: serverTimestamp() }).catch(()=>{});
-  await set(myPresRef,{nEnc:enc(name),tEnc:enc(trip||""),cEnc:enc(curColor),call:callMode,lastActive:N,offlineAt:null});
-  await push(ref(db,`chat/${curR}`),{type:"sys",text:enc(`${name}${trip||""} が入室しました`),time:N});
+  await set(myPresRef,{nEnc:enc(name),tEnc:enc(trip||""),cEnc:enc(curColor),call:callMode,lastActive:serverTimestamp(),offlineAt:null});
+  await push(ref(db,`chat/${curR}`),{type:"sys",text:enc(`${name}${trip||""} が入室しました`),time:serverTimestamp()});
   localStorage.setItem("nz_ni",name); localStorage.setItem("nz_tk",D.wtk.value.trim()); saveSession({target:rawR,pass:curP,name,trip:trip||"",asW:false,lastMsgAt});
   
   D.wb.classList.remove("show"); D.ib.classList.add("show"); D.exBtn.textContent="退出"; D.ivBtn.style.display=isOff?"none":"block"; D.clrBtn.style.display="block"; 
   D.callBtn.style.display="flex"; D.endCallBtn.style.display="none";
   D.updateInputBarState(true); updFnPos(); startToBar();
-  
-  if(toT)clearInterval(toT);
-  toT=setInterval(async()=>{ if(!curR||isEx||_exitLock)return; if(srvNow()-lastMsgAt>=INACTIVITY){ _exitLock=true; await exitRoom("30分間発言がなかったため自動退室しました"); } },CHECK_TICK);
-  heartbeatTimer = setInterval(() => { if (curR && !isEx && !isW) update(myPresRef, { lastActive: srvNow() }).catch(()=>{}); }, 60000);
 }
 
 let isCmp=false;
@@ -1242,7 +1250,6 @@ D.exBtn.onclick=async()=>{
   }
 };
 
-// クリップボードAPIを確実に動作させる処理
 D.ivBtn.onclick = async () => {
   if(!rawR||!curP) return; 
   const u = `${location.protocol}//${location.host}${location.pathname}?r=${encodeURIComponent(rawR)}&p=${encodeURIComponent(curP)}`;
@@ -1250,12 +1257,8 @@ D.ivBtn.onclick = async () => {
     if (navigator.clipboard && window.isSecureContext) {
       await navigator.clipboard.writeText(u);
       alert("招待リンクをコピーしました！");
-    } else {
-      copyFallback(u);
-    }
-  } catch(e) {
-    copyFallback(u);
-  }
+    } else { copyFallback(u); }
+  } catch(e) { copyFallback(u); }
 };
 
 function copyFallback(text){ 
@@ -1272,15 +1275,22 @@ D.gdBtn.onclick=()=>D.gmod.classList.add("show");
 D.gcBtn.onclick=()=>D.gmod.classList.remove("show");
 D.gmod.onclick=e=>{if(e.target===D.gmod)D.gmod.classList.remove("show");};
 
+// 二重の退室補完（Beacon）
+window.addEventListener("pagehide", () => {
+  if (curR && !isEx && !isW) {
+    const url = `${firebaseConfig.databaseURL}/presence/${curR}/${uid}.json?x-http-method-override=PATCH`;
+    const payload = JSON.stringify({ offlineAt: { ".sv": "timestamp" } });
+    if (navigator.sendBeacon) navigator.sendBeacon(url, new Blob([payload], { type: "text/plain" }));
+  }
+});
+
 (async()=>{
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible" && curR && !isEx && !isW) {
         if (srvNow() - lastMsgAt >= INACTIVITY && !_exitLock) {
             _exitLock = true;
             exitRoom("30分間発言がなかったため自動退室しました");
-        } else if (myPresRef) {
-            update(myPresRef, { lastActive: srvNow() }).catch(()=>{});
-        }
+        } else { markActive(); }
     }
   });
 

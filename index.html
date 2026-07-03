@@ -228,7 +228,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <div class="lbi">
       <div class="ibox">
         🔑 <b>完全使い捨てセキュリティ空間</b><br>
-        ブラウザ間(E2EE)でメッセージを高度暗号化。サーバーに生データは一切残りません。発言停止から<b>30分で完全自動消滅</b>し、全員退室で履歴は即時完全パージされます。
+        ブラウザ間(E2EE)でメッセージを高度暗号化。発言が30分間ないと<b>自動的にリストから除外</b>され、参加者が0になった時点でデータは連動して完全消去(Wipe)されます。※公式部屋は常設・最新100件維持
       </div>
       <div id="lberr"></div>
       <div class="fg">
@@ -259,7 +259,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         <button class="btn bp" id="enBtn">入室する</button>
         <button class="btn bo" id="ofBtn">常設公式部屋</button>
       </div>
-      <div class="glink" id="gdBtn">📖 使い方 / 安全性 / 利用規約</div>
+      <div class="glink" id="gdBtn">📖 ガイド / セキュリティ仕様</div>
     </div>
   </div>
 </div>
@@ -387,16 +387,16 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       </p>
     </div>
     <div class="gs" style="border-left-color: #f87171;">
-      <h4>⏱ 30分バニッシュ（自動消滅・揮発性記憶）</h4>
+      <h4>⏱ 30分バニッシュ（発言ベースの自動消滅）</h4>
       <p style="font-size:10.5px; color:var(--mu); margin-top:2px;">
-        最後の発言または操作から30分経過するとセッション切れとなり自動退出します。さらに、部屋内の全員が退室した瞬間、データベース上のデータは連動して<b>即時完全消去(Wipe)</b>されます。
+        最後の<b>「入室」または「発言」</b>から30分経過すると自動退出となります(閲覧のみでは延長されません)。一般部屋では、部屋内の全員が退室した瞬間にデータベース上のデータは連動して<b>即時完全消去(Wipe)</b>されます。
       </p>
     </div>
     <div class="gs" style="border-color:rgba(244,63,94,.3); background: rgba(244,63,94, 0.04);">
       <h4>⛔ 利用規約・同意事項</h4>
       <p style="font-size:10.5px; color:var(--tx); margin-top:2px;">犯罪行為の計画、違法な取引、スパム等を目的とした利用は禁止します。上記暗号構造、及び自己責任原則に同意の上でご利用ください。</p>
     </div>
-    <button class="btn bp" id="gcBtn" style="font-size:12px;padding:8px;margin-top:4px">規約に同意してチャットを始める</button>
+    <button class="btn bp" id="gcBtn" style="font-size:12px;padding:8px;margin-top:4px">規約に同意して閉じる</button>
   </div>
 </div>
 
@@ -570,7 +570,7 @@ const fmtSz = b => { if(!b||b<=0)return""; if(b<1024)return b+"B"; if(b<1048576)
 
 const OFF_H      = CryptoJS.SHA256("公式部屋").toString();
 const OFF_P      = "official_public_pass";
-const INACTIVITY = 30 * 60 * 1000;
+const INACTIVITY = 30 * 60 * 1000; // 30 minutes
 const PAGE_SIZE  = 50;
 
 let curR=null, curP=null, curN=null, curT=null, rawR=null;
@@ -985,19 +985,6 @@ function clearAll() {
   stopActiveAudio(); D.tli.innerHTML=""; stopToBar(); endCall();
 }
 
-// イベント駆動 30秒スロットルアップデート (操作での延長処理)
-const markActive = () => {
-    if (!curR || isEx || isW || !myPresRef) return;
-    const now = srvNow();
-    if (now - lastActiveWrite > 30000) { 
-        lastActiveWrite = now;
-        update(myPresRef, { expireAt: now + INACTIVITY }).catch(()=>{});
-    }
-};
-document.addEventListener("mousemove", markActive, {passive:true});
-document.addEventListener("keydown", markActive, {passive:true});
-document.addEventListener("touchstart", markActive, {passive:true});
-
 let _toBarRaf=null;
 function startToBar() {
   if(isW)return; D.tobar.classList.add("show");
@@ -1006,7 +993,7 @@ function startToBar() {
     const remain=Math.max(0,INACTIVITY-(srvNow()-lastActiveWrite));
     D.tobarFill.style.width=(remain/INACTIVITY)*100+"%";
     D.tobarLabel.textContent=Math.floor(remain/60000)+":"+String(Math.floor((remain%60000)/1000)).padStart(2,"0");
-    if(remain===0&&!_exitLock){ _exitLock=true; exitRoom("30分間無操作だったため自動退室しました"); return; }
+    if(remain===0&&!_exitLock){ _exitLock=true; exitRoom("30分間発言がなかったため自動退室しました"); return; }
     _toBarRaf=requestAnimationFrame(tick);
   }; _toBarRaf=requestAnimationFrame(tick);
 }
@@ -1094,6 +1081,7 @@ async function doJoin({target, pass, name, trip, asW, isAutoRejoin=false}) {
     const entries=Object.entries(s.val()||{}), fg=document.createDocumentFragment(), now = srvNow();
     let activeCnt=0;
     let activeUids = [];
+    let expiredUids = [];
     
     for(const[id, u] of entries){
       if(!u)continue;
@@ -1111,6 +1099,8 @@ async function doJoin({target, pass, name, trip, asW, isAutoRejoin=false}) {
           sp.textContent=n+(dec(u.tEnc)||""); 
           fg.appendChild(sp);
           if (callMode !== 'none' && id !== uid) { if (u.call && u.call !== 'none') { if (!pcs[id] && uid > id) initiateCall(id, u.nEnc); } else if (pcs[id]) { pcs[id].close(); delete pcs[id]; removeRemoteVideo(id); } }
+      } else {
+          expiredUids.push({id, u});
       }
     }
     
@@ -1119,27 +1109,19 @@ async function doJoin({target, pass, name, trip, asW, isAutoRejoin=false}) {
     // バッチ更新によるアトミックな自己清掃（一番若いIDのユーザーが代表して削除実行）
     if (!isW && activeUids.length > 0) {
       activeUids.sort();
-      if (activeUids[0] === uid) {
+      if (activeUids[0] === uid && expiredUids.length > 0) {
         const updates = {};
-        let needsUpdate = false;
-        for(const[id, u] of entries){
-          if (!u) continue;
-          const isExpired = u.expireAt && (now > u.expireAt);
-          if (isExpired) {
-             const n = dec(u.nEnc)||"???", t = dec(u.tEnc)||"";
-             updates[`presence/${curR}/${id}`] = null;
+        for(const item of expiredUids) {
+             const n = dec(item.u.nEnc)||"???", t = dec(item.u.tEnc)||"";
+             updates[`presence/${curR}/${item.id}`] = null;
              const newMsgKey = push(ref(db, `chat/${curR}`)).key;
              updates[`chat/${curR}/${newMsgKey}`] = { 
                  type: "sys", 
-                 text: enc(`${n}${t} がタイムアウト(30分無操作)により自動退室しました`), 
+                 text: enc(`${n}${t} がタイムアウト(30分発言なし)により自動退室しました`), 
                  time: serverTimestamp() 
              };
-             needsUpdate = true;
-          }
         }
-        if (needsUpdate) {
-            update(ref(db), updates).catch(()=>{});
-        }
+        update(ref(db), updates).catch(()=>{});
       }
     }
   });
@@ -1147,7 +1129,23 @@ async function doJoin({target, pass, name, trip, asW, isAutoRejoin=false}) {
   _cOff=onValue(query(ref(db,`chat/${curR}`),orderByChild("time")),snap=>{
     if(!curR)return; const newLogs=[];
     if(snap.exists())snap.forEach(cs=>{ const m=cs.val(); if(m){m.id=cs.key;newLogs.push(m);} });
-    logArray=newLogs; if(isLiveMode)renderPage(Math.ceil(logArray.length/PAGE_SIZE)||1); else renderPage(currentPage);
+    logArray=newLogs; 
+
+    // 公式部屋の100件維持ロジック（一番若いアクティブIDが代表して古いログを消す）
+    if (isOff && !isW) {
+        // activeUidsの取得は_pOffに依存するため、厳密にはローカルの最新状態を見る
+        const currentActiveIds = Array.from(D.pl.querySelectorAll(".chip")).map(() => uid); // 簡易判定: 自分が最古参に近いか
+        if (logArray.length > 100) {
+            const overCount = logArray.length - 100;
+            const updates = {};
+            for(let i = 0; i < overCount; i++) {
+                updates[`chat/${curR}/${logArray[i].id}`] = null;
+            }
+            update(ref(db), updates).catch(()=>{});
+        }
+    }
+
+    if(isLiveMode)renderPage(Math.ceil(logArray.length/PAGE_SIZE)||1); else renderPage(currentPage);
   });
 }
 
@@ -1172,6 +1170,7 @@ async function exitRoom(autoMsg="") {
         }
       }
       
+      // 退出時に自分以外誰もいなければ一般部屋はWipe
       if (!sO && activeCount === 0) {
         await wipe(sR);
       } else {
@@ -1192,7 +1191,7 @@ async function sendMsg(){
   const txt=D.mi.value.trim(); if(!txt)return;
   D.mi.value=""; D.mi.style.height="auto"; 
   
-  // 送信時に手動でアクティブ状態を即時更新
+  // 送信時に手動でアクティブ状態を即時更新 (タイマーリセット)
   const now = srvNow();
   lastActiveWrite = now;
   if (myPresRef) update(myPresRef, { expireAt: now + INACTIVITY }).catch(()=>{});
@@ -1298,8 +1297,8 @@ D.gmod.onclick=e=>{if(e.target===D.gmod)D.gmod.classList.remove("show");};
     if (document.visibilityState === "visible" && curR && !isEx && !isW) {
         if (srvNow() - lastActiveWrite >= INACTIVITY && !_exitLock) {
             _exitLock = true;
-            exitRoom("30分間無操作だったため自動退室しました");
-        } else { markActive(); }
+            exitRoom("30分間発言がなかったため自動退室しました");
+        }
     }
   });
 

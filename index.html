@@ -389,7 +389,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <div class="gs" style="border-left-color: #f87171;">
       <h4>⏱ 30分バニッシュ（自動消滅・揮発性記憶）</h4>
       <p style="font-size:10.5px; color:var(--mu); margin-top:2px;">
-        最後の発言から30分経過するとセッション切れとなり自動退出します。さらに、部屋内の全員が退室した瞬間、データベース上のデータは連動して<b>即時完全消去(Wipe)</b>されます。
+        最後の発言または操作から30分経過するとセッション切れとなり自動退出します。さらに、部屋内の全員が退室した瞬間、データベース上のデータは連動して<b>即時完全消去(Wipe)</b>されます。
       </p>
     </div>
     <div class="gs" style="border-color:rgba(244,63,94,.3); background: rgba(244,63,94, 0.04);">
@@ -419,7 +419,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getDatabase, ref, push, onValue, set, update, remove, query, orderByChild, get, onChildAdded, off, onDisconnect, serverTimestamp }
+import { getDatabase, ref, push, onValue, set, update, remove, query, orderByChild, get, onChildAdded, off, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -578,7 +578,6 @@ let isOff=false, isW=false, isEx=false, _exitLock=false;
 let isActionLocked = false;
 let _cOff=null, _pOff=null;
 let logArray=[], currentPage=1, isLiveMode=true;
-let lastMsgAt = 0;
 let myPresRef = null;
 let lastActiveWrite = 0;
 
@@ -933,7 +932,7 @@ function cMsg(m) {
     d.style.alignItems="center";
     let cls="sm sm-leave";
     if(txt.includes("入室"))cls="sm sm-join";
-    else if(txt.includes("自動退室")||txt.includes("タイムアウト"))cls="sm sm-auto";
+    else if(txt.includes("退室")||txt.includes("タイムアウト"))cls="sm sm-auto";
     d.innerHTML=`<div class="${cls}">${esc(txt)}<span style="color:var(--m2);font-size:9px;margin-left:6px">${fDT(m.time)}</span></div>`;
   } else {
     const sN=dec(m.nEnc)||"???",sT=dec(m.tEnc)||"",sC=dec(m.cEnc)||"#94a3b8";
@@ -982,17 +981,17 @@ async function wipe(r) {
 function clearAll() {
   if(typeof _cOff==="function"){_cOff();_cOff=null;}
   if(typeof _pOff==="function"){_pOff();_pOff=null;}
-  symKey=null; logArray=[]; currentPage=1; isLiveMode=true; lastMsgAt=0; lastActiveWrite=0;
+  symKey=null; logArray=[]; currentPage=1; isLiveMode=true; lastActiveWrite=0;
   stopActiveAudio(); D.tli.innerHTML=""; stopToBar(); endCall();
 }
 
-// イベント駆動 30秒スロットルアップデート
+// イベント駆動 30秒スロットルアップデート (操作での延長処理)
 const markActive = () => {
     if (!curR || isEx || isW || !myPresRef) return;
     const now = srvNow();
     if (now - lastActiveWrite > 30000) { 
         lastActiveWrite = now;
-        update(myPresRef, { lastActive: serverTimestamp() }).catch(()=>{});
+        update(myPresRef, { expireAt: now + INACTIVITY }).catch(()=>{});
     }
 };
 document.addEventListener("mousemove", markActive, {passive:true});
@@ -1003,11 +1002,11 @@ let _toBarRaf=null;
 function startToBar() {
   if(isW)return; D.tobar.classList.add("show");
   const tick=()=>{
-    if(!lastMsgAt){_toBarRaf=requestAnimationFrame(tick);return;}
-    const remain=Math.max(0,INACTIVITY-(srvNow()-lastMsgAt));
+    if(!lastActiveWrite){_toBarRaf=requestAnimationFrame(tick);return;}
+    const remain=Math.max(0,INACTIVITY-(srvNow()-lastActiveWrite));
     D.tobarFill.style.width=(remain/INACTIVITY)*100+"%";
     D.tobarLabel.textContent=Math.floor(remain/60000)+":"+String(Math.floor((remain%60000)/1000)).padStart(2,"0");
-    if(remain===0&&!_exitLock){ _exitLock=true; exitRoom("30分間発言がなかったため自動退室しました"); return; }
+    if(remain===0&&!_exitLock){ _exitLock=true; exitRoom("30分間無操作だったため自動退室しました"); return; }
     _toBarRaf=requestAnimationFrame(tick);
   }; _toBarRaf=requestAnimationFrame(tick);
 }
@@ -1031,17 +1030,34 @@ async function doJoin({target, pass, name, trip, asW, isAutoRejoin=false}) {
   symKey=CryptoJS.PBKDF2(pass,"NEZU_ROOM_SALT_2026",{keySize:256/32,iterations:2000});
 
   const nowSrv = srvNow();
-  if (isAutoRejoin && !asW) {
-      const prevSession = JSON.parse(localStorage.getItem("nz_sess") || "{}");
-      if (nowSrv - (prevSession.lastMsgAt || 0) >= INACTIVITY) { localStorage.removeItem("nz_sess"); throw new Error("無発言タイムアウトにより退室扱いとなりました。"); }
-      lastMsgAt = prevSession.lastMsgAt || nowSrv;
-  } else if (!asW) { lastMsgAt = nowSrv; }
 
+  // 入室時の事前掃除 (自分が最初の入室者の場合、部屋に残ったゴーストを一掃する)
   if(!isOff){
       const rs = await get(ref(db,`rooms/${curR}`)), ps = await get(ref(db,`presence/${curR}`));
       let hasAlive = false;
-      if (ps.exists()) for (const u of Object.values(ps.val() || {})) if (nowSrv - (u.lastActive || 0) < INACTIVITY) { hasAlive = true; break; }
-      if (rs.exists() && ps.exists() && !hasAlive) { await wipe(curR); if (isAutoRejoin) { localStorage.removeItem("nz_sess"); throw new Error("部屋が消去されたため復帰できませんでした。"); } }
+      const updates = {};
+      let needsCleanup = false;
+
+      if (ps.exists()) {
+          for (const [id, u] of Object.entries(ps.val() || {})) {
+              if (u.expireAt && nowSrv > u.expireAt) {
+                  updates[`presence/${curR}/${id}`] = null;
+                  needsCleanup = true;
+              } else if (u.expireAt && nowSrv <= u.expireAt) {
+                  hasAlive = true;
+              }
+          }
+      }
+      
+      // ゴーストデータがあれば削除実行
+      if (needsCleanup) {
+          await update(ref(db), updates).catch(()=>{});
+      }
+
+      if (rs.exists() && ps.exists() && !hasAlive) {
+          await wipe(curR); 
+          if (isAutoRejoin) { localStorage.removeItem("nz_sess"); throw new Error("部屋が消去されたため復帰できませんでした。"); } 
+      }
       if(!(await get(ref(db,`rooms/${curR}`))).exists()){
           if(isAutoRejoin){ localStorage.removeItem("nz_sess"); throw new Error("部屋が消去されたため復帰できませんでした。"); }
           await set(ref(db,`rooms/${curR}`),{created:serverTimestamp()});
@@ -1050,14 +1066,13 @@ async function doJoin({target, pass, name, trip, asW, isAutoRejoin=false}) {
 
   if(!asW){
       myPresRef = ref(db, `presence/${curR}/${uid}`);
-      await onDisconnect(myPresRef).update({ offlineAt: serverTimestamp() }).catch(()=>{});
-      
       lastActiveWrite = nowSrv;
-      await set(myPresRef, { nEnc: enc(name), tEnc: enc(trip||""), cEnc: enc(curColor), call: 'none', lastActive: serverTimestamp(), offlineAt: null });
+      
+      await set(myPresRef, { nEnc: enc(name), tEnc: enc(trip||""), cEnc: enc(curColor), call: 'none', expireAt: nowSrv + INACTIVITY });
       if (!isAutoRejoin) await push(ref(db,`chat/${curR}`),{type:"sys",text:enc(`${name}${trip||""} が入室しました`),time:serverTimestamp()});
       if(!isOff){ localStorage.setItem("nz_ni",name); localStorage.setItem("nz_tk",D.tk.value.trim()); localStorage.setItem("nz_ri",target); localStorage.setItem("nz_pi",pass); }
-      saveSession({target, pass, name, trip:trip||"", asW:false, lastMsgAt});
-  } else { saveSession({target, pass, name:"", trip:"", asW:true, lastMsgAt:srvNow()}); }
+      saveSession({target, pass, name, trip:trip||"", asW:false});
+  } else { saveSession({target, pass, name:"", trip:"", asW:true}); }
 
   D.lobby.style.display="none"; D.app.style.display="flex"; D.app.classList.add("visible"); D.fn.classList.add("visible"); D.rdsp.textContent=target;
   if(asW){
@@ -1073,7 +1088,7 @@ async function doJoin({target, pass, name, trip, asW, isAutoRejoin=false}) {
 
   if(!asW) startToBar();
 
-  // イベント駆動型クリーンアップ
+  // イベント駆動型 分散型ガベージコレクション
   _pOff=onValue(ref(db,`presence/${curR}`), s=>{
     if(!curR)return;
     const entries=Object.entries(s.val()||{}), fg=document.createDocumentFragment(), now = srvNow();
@@ -1082,10 +1097,10 @@ async function doJoin({target, pass, name, trip, asW, isAutoRejoin=false}) {
     
     for(const[id, u] of entries){
       if(!u)continue;
-      const isOfflineSet = u.offlineAt && (now - u.offlineAt > 30000); 
-      const isTimeout = now - (u.lastActive || 0) > INACTIVITY;
       
-      if (!isOfflineSet && !isTimeout) {
+      const isExpired = u.expireAt && (now > u.expireAt);
+      
+      if (!isExpired) {
           activeUids.push(id);
           const n=dec(u.nEnc); if(!n)continue;
           activeCnt++; 
@@ -1101,22 +1116,22 @@ async function doJoin({target, pass, name, trip, asW, isAutoRejoin=false}) {
     
     D.pl.innerHTML=""; D.pl.appendChild(fg); D.pcnt.textContent=`[${activeCnt}人]`;
 
-    // バッチ更新によるアトミックな自己清掃
+    // バッチ更新によるアトミックな自己清掃（一番若いIDのユーザーが代表して削除実行）
     if (!isW && activeUids.length > 0) {
       activeUids.sort();
       if (activeUids[0] === uid) {
         const updates = {};
         let needsUpdate = false;
         for(const[id, u] of entries){
-          const isOfflineSet = u.offlineAt && (now - u.offlineAt > 30000);
-          const isTimeout = now - (u.lastActive || 0) > INACTIVITY;
-          if (isOfflineSet || isTimeout) {
+          if (!u) continue;
+          const isExpired = u.expireAt && (now > u.expireAt);
+          if (isExpired) {
              const n = dec(u.nEnc)||"???", t = dec(u.tEnc)||"";
              updates[`presence/${curR}/${id}`] = null;
              const newMsgKey = push(ref(db, `chat/${curR}`)).key;
              updates[`chat/${curR}/${newMsgKey}`] = { 
                  type: "sys", 
-                 text: enc(`${n}${t} が退室・タイムアウトしました`), 
+                 text: enc(`${n}${t} がタイムアウト(30分無操作)により自動退室しました`), 
                  time: serverTimestamp() 
              };
              needsUpdate = true;
@@ -1145,17 +1160,14 @@ async function exitRoom(autoMsg="") {
   const sR = curR, sN = curN, sT = curT, sO = isOff, sW = isW, myId = uid;
   try {
     if (!sW && sR && sN) {
-      if (myPresRef) await onDisconnect(myPresRef).cancel().catch(()=>{});
-
       const ps = await get(ref(db, `presence/${sR}`)); 
       let activeCount = 0;
       if (ps.exists()) { 
         const now = srvNow(); 
         for (const [k, u] of Object.entries(ps.val())) {
           if (k !== myId) {
-             const isOffSet = u.offlineAt && (now - u.offlineAt > 30000);
-             const isTo = now - (u.lastActive || 0) > INACTIVITY;
-             if(!isOffSet && !isTo) activeCount++;
+             const isExpired = u.expireAt && now > u.expireAt;
+             if(!isExpired) activeCount++;
           }
         }
       }
@@ -1163,7 +1175,7 @@ async function exitRoom(autoMsg="") {
       if (!sO && activeCount === 0) {
         await wipe(sR);
       } else {
-        const msgStr = autoMsg ? `${sN}${sT} が自動退室しました（30分無発言）` : `${sN}${sT} が退室しました`;
+        const msgStr = autoMsg ? autoMsg : `${sN}${sT} が退室しました`;
         await push(ref(db, `chat/${sR}`), { type: "sys", text: enc(msgStr), time: serverTimestamp() }).catch(()=>{});
         if (myPresRef) await remove(myPresRef).catch(()=>{});
       }
@@ -1179,19 +1191,25 @@ async function sendMsg(){
   if(!curR||isW||isCmp||!isLiveMode)return;
   const txt=D.mi.value.trim(); if(!txt)return;
   D.mi.value=""; D.mi.style.height="auto"; 
-  lastMsgAt = srvNow(); 
-  saveSession({ lastMsgAt });
+  
+  // 送信時に手動でアクティブ状態を即時更新
+  const now = srvNow();
+  lastActiveWrite = now;
+  if (myPresRef) update(myPresRef, { expireAt: now + INACTIVITY }).catch(()=>{});
+
   try { await push(ref(db,`chat/${curR}`),{ type:"msg",nEnc:enc(curN),tEnc:enc(curT||""), cEnc:enc(curColor),text:enc(txt),time:serverTimestamp() }); } catch(e){alert("送信失敗: "+e.message);}
 }
 
 async function upgrade(name,trip){
   if(!curR)return; isW=false; curN=name; curT=trip||""; 
-  lastMsgAt = srvNow(); lastActiveWrite = srvNow();
+  
+  const now = srvNow();
+  lastActiveWrite = now;
   myPresRef = ref(db, `presence/${curR}/${uid}`);
-  await onDisconnect(myPresRef).update({ offlineAt: serverTimestamp() }).catch(()=>{});
-  await set(myPresRef,{nEnc:enc(name),tEnc:enc(trip||""),cEnc:enc(curColor),call:callMode,lastActive:serverTimestamp(),offlineAt:null});
+  await set(myPresRef,{nEnc:enc(name),tEnc:enc(trip||""),cEnc:enc(curColor),call:callMode,expireAt:now + INACTIVITY});
+  
   await push(ref(db,`chat/${curR}`),{type:"sys",text:enc(`${name}${trip||""} が入室しました`),time:serverTimestamp()});
-  localStorage.setItem("nz_ni",name); localStorage.setItem("nz_tk",D.wtk.value.trim()); saveSession({target:rawR,pass:curP,name,trip:trip||"",asW:false,lastMsgAt});
+  localStorage.setItem("nz_ni",name); localStorage.setItem("nz_tk",D.wtk.value.trim()); saveSession({target:rawR,pass:curP,name,trip:trip||"",asW:false});
   
   D.wb.classList.remove("show"); D.ib.classList.add("show"); D.exBtn.textContent="退出"; D.ivBtn.style.display=isOff?"none":"block"; D.clrBtn.style.display="block"; 
   D.callBtn.style.display="flex"; D.endCallBtn.style.display="none";
@@ -1275,21 +1293,12 @@ D.gdBtn.onclick=()=>D.gmod.classList.add("show");
 D.gcBtn.onclick=()=>D.gmod.classList.remove("show");
 D.gmod.onclick=e=>{if(e.target===D.gmod)D.gmod.classList.remove("show");};
 
-// 二重の退室補完（Beacon）
-window.addEventListener("pagehide", () => {
-  if (curR && !isEx && !isW) {
-    const url = `${firebaseConfig.databaseURL}/presence/${curR}/${uid}.json?x-http-method-override=PATCH`;
-    const payload = JSON.stringify({ offlineAt: { ".sv": "timestamp" } });
-    if (navigator.sendBeacon) navigator.sendBeacon(url, new Blob([payload], { type: "text/plain" }));
-  }
-});
-
 (async()=>{
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible" && curR && !isEx && !isW) {
-        if (srvNow() - lastMsgAt >= INACTIVITY && !_exitLock) {
+        if (srvNow() - lastActiveWrite >= INACTIVITY && !_exitLock) {
             _exitLock = true;
-            exitRoom("30分間発言がなかったため自動退室しました");
+            exitRoom("30分間無操作だったため自動退室しました");
         } else { markActive(); }
     }
   });

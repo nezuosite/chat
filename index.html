@@ -62,7 +62,8 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .bq{background:var(--sf);color:var(--tx);border:1px solid var(--bd)}
 .bp{background:var(--in);color:#fff}
 .bo{background:var(--e2);color:#fff}
-.glink{font-size:10px;color:#a5b4fc;text-align:center;margin-top:2px;text-decoration:underline;cursor:pointer;font-weight:bold}
+/* 誤タップ防止のため余白を拡大 */
+.glink{font-size:11px;color:#a5b4fc;text-align:center;margin-top:16px;padding:12px 0;text-decoration:underline;cursor:pointer;font-weight:bold}
 
 #app{display:none;position:fixed;inset:0;flex-direction:column;overflow:hidden;z-index:50}
 #app.visible{display:flex}
@@ -579,7 +580,7 @@ const PAGE_SIZE  = 50;
 
 let curR=null, curP=null, curN=null, curT=null, rawR=null;
 let isOff=false, isW=false, isEx=false, _exitLock=false;
-let isActionLocked = false; // 連打防止用フラグ
+let isActionLocked = false;
 let _cOff=null, _pOff=null;
 let toT=null; let heartbeatTimer=null;
 let logArray=[], currentPage=1, isLiveMode=true;
@@ -670,8 +671,7 @@ D.ctrlMode.onchange = async () => {
     if (newMode === callMode && targetFacing === currentFacingMode) return;
     
     if(!confirm("通話モードを切り替えますか？")) {
-        updateCallCtrlUI(); // 選択を元に戻す
-        return;
+        updateCallCtrlUI(); return;
     }
 
     if (newMode === 'video' && callMode === 'video' && targetFacing !== currentFacingMode) { 
@@ -797,7 +797,7 @@ document.addEventListener("mouseup", e=>{ if(!imgDragging)return; imgDragging=fa
 // ─── オーディオ ───
 let activeAudio=null; const stopActiveAudio=()=>{ if(activeAudio){try{activeAudio.pause();}catch{}activeAudio=null;} };
 
-// ─── メディアパーサー ───
+// ─── メディアパーサー (URL変換を最適化) ───
 const YR  = /(?:https?:\/\/)?(?:(?:www\.|m\.|music\.)?youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|v\/|shorts\/|live\/)([A-Za-z0-9_-]{11})|youtu\.be\/([A-Za-z0-9_-]{11}))/i;
 const NR  = /(?:https?:\/\/)?(?:(?:sp\.|www\.)?nicovideo\.jp\/(?:watch|user\/[0-9]+\/video)\/|nico\.ms\/)((?:sm|nm|so|lv|co|ch)?\d+)/i;
 const TKR = /(?:https?:\/\/)?(?:(?:[a-z0-9-]+\.)?tiktok\.com\/|vt\.tiktok\.com\/|vm\.tiktok\.com\/)([^\s?#]+)/i;
@@ -887,6 +887,7 @@ function _parseSegs(txt) {
       if(h)segs.push({type:"text",html:h});
     } else {
       const url=p.v,su=esc(url),cl=url.replace(/[?#].*$/,"");
+      
       const ym=url.match(YR);
       if(ym){
         const isShorts = url.includes('/shorts/');
@@ -896,6 +897,7 @@ function _parseSegs(txt) {
         segs.push({type:"media",html:makeCollapse("yt","YouTube","▶", label, inner)});
         continue;
       }
+      
       const nm=url.match(NR);
       if(nm){
         const inner=bVideoCard("nc",`https://embed.nicovideo.jp/watch/${nm[1]}?noscript=1`,"ニコニコ動画");
@@ -903,13 +905,15 @@ function _parseSegs(txt) {
         segs.push({type:"media",html:makeCollapse("nc","ニコニコ","▶", label, inner)});
         continue;
       }
+      
       if(TKR.test(url)){ segs.push({type:"media",html:bTikTokEmbed(url)}); continue; }
       
       const igm = url.match(IGR);
       if(igm){
-        const embedSrc = `https://www.instagram.com/p/${igm[1]}/embed`;
+        const isReel = url.includes('/reel/');
+        const embedSrc = `https://www.instagram.com/${isReel ? 'reel' : 'p'}/${igm[1]}/embed/`;
         const inner=`<div class="vc-wrap" style="display:flex; justify-content:center; padding: 4px 0;">
-          <iframe src="${embedSrc}" style="width:100%; max-width:340px; aspect-ratio:9/16; min-height:500px; background:#fff; border-radius:8px; border:1px solid var(--bd);" frameborder="0" scrolling="no" allowtransparency="true" allow="autoplay;encrypted-media" allowfullscreen></iframe>
+          <iframe src="${embedSrc}" style="width:100%; max-width:340px; aspect-ratio:9/16; min-height:480px; background:#fff; border-radius:8px; border:1px solid var(--bd);" frameborder="0" scrolling="no" allowtransparency="true" allow="autoplay;encrypted-media" allowfullscreen></iframe>
         </div>`;
         const label=url.length>30?url.slice(0,30)+"…":url;
         segs.push({type:"media",html:makeCollapse("ig","Instagram","📷", label, inner)});
@@ -1038,7 +1042,7 @@ async function doJoin({target, pass, name, trip, asW, isAutoRejoin=false}) {
   if(!isOff){
       const rs = await get(ref(db,`rooms/${curR}`)), ps = await get(ref(db,`presence/${curR}`));
       let hasAlive = false;
-      if (ps.exists()) for (const u of Object.values(ps.val() || {})) if (nowSrv - (u.lastActive || 0) < 75000) { hasAlive = true; break; }
+      if (ps.exists()) for (const u of Object.values(ps.val() || {})) if (nowSrv - (u.lastActive || 0) < INACTIVITY) { hasAlive = true; break; }
       if (rs.exists() && ps.exists() && !hasAlive) { await wipe(curR); if (isAutoRejoin) { localStorage.removeItem("nz_sess"); throw new Error("部屋が消去されたため復帰できませんでした。"); } }
       if(!(await get(ref(db,`rooms/${curR}`))).exists()){
           if(isAutoRejoin){ localStorage.removeItem("nz_sess"); throw new Error("部屋が消去されたため復帰できませんでした。"); }
@@ -1055,7 +1059,7 @@ async function doJoin({target, pass, name, trip, asW, isAutoRejoin=false}) {
       if(!isOff){ localStorage.setItem("nz_ni",name); localStorage.setItem("nz_tk",D.tk.value.trim()); localStorage.setItem("nz_ri",target); localStorage.setItem("nz_pi",pass); }
       saveSession({target, pass, name, trip:trip||"", asW:false, lastMsgAt});
       
-      heartbeatTimer = setInterval(() => { if (curR && !isEx && !isW) update(myPresRef, { lastActive: srvNow() }).catch(()=>{}); }, 15000);
+      heartbeatTimer = setInterval(() => { if (curR && !isEx && !isW) update(myPresRef, { lastActive: srvNow() }).catch(()=>{}); }, 60000);
   } else { saveSession({target, pass, name:"", trip:"", asW:true, lastMsgAt:srvNow()}); }
 
   D.lobby.style.display="none"; D.app.style.display="flex"; D.app.classList.add("visible"); D.fn.classList.add("visible"); D.rdsp.textContent=target;
@@ -1087,7 +1091,7 @@ async function doJoin({target, pass, name, trip, asW, isAutoRejoin=false}) {
     for(const[id, u] of entries){
       if(!u)continue;
       const isOfflineSet = u.offlineAt && (now - u.offlineAt > 30000); 
-      const isTimeout = now - (u.lastActive || 0) > 75000;             
+      const isTimeout = now - (u.lastActive || 0) > INACTIVITY; // 30分間更新がなければ確実に消去
       
       if (!isOfflineSet && !isTimeout) {
           activeUids.push(id);
@@ -1104,10 +1108,10 @@ async function doJoin({target, pass, name, trip, asW, isAutoRejoin=false}) {
       if (activeUids[0] === uid) {
         for(const[id, u] of entries){
           const isOfflineSet = u.offlineAt && (now - u.offlineAt > 30000);
-          const isTimeout = now - (u.lastActive || 0) > 75000;
+          const isTimeout = now - (u.lastActive || 0) > INACTIVITY;
           if (isOfflineSet || isTimeout) {
              const n = dec(u.nEnc)||"???", t = dec(u.tEnc)||"";
-             await push(ref(db, `chat/${curR}`), { type: "sys", text: enc(`${n}${t} が通信切断・タイムアウトにより退室しました`), time: now }).catch(()=>{});
+             await push(ref(db, `chat/${curR}`), { type: "sys", text: enc(`${n}${t} が退室・タイムアウトしました`), time: now }).catch(()=>{});
              await remove(ref(db, `presence/${curR}/${id}`)).catch(()=>{});
           }
         }
@@ -1141,7 +1145,7 @@ async function exitRoom(autoMsg="") {
         for (const [k, u] of Object.entries(ps.val())) {
           if (k !== myId) {
              const isOffSet = u.offlineAt && (now - u.offlineAt > 30000);
-             const isTo = now - (u.lastActive || 0) > 75000;
+             const isTo = now - (u.lastActive || 0) > INACTIVITY;
              if(!isOffSet && !isTo) activeCount++;
           }
         }
@@ -1183,7 +1187,7 @@ async function upgrade(name,trip){
   
   if(toT)clearInterval(toT);
   toT=setInterval(async()=>{ if(!curR||isEx||_exitLock)return; if(srvNow()-lastMsgAt>=INACTIVITY){ _exitLock=true; await exitRoom("30分間発言がなかったため自動退室しました"); } },CHECK_TICK);
-  heartbeatTimer = setInterval(() => { if (curR && !isEx && !isW) update(myPresRef, { lastActive: srvNow() }).catch(()=>{}); }, 15000);
+  heartbeatTimer = setInterval(() => { if (curR && !isEx && !isW) update(myPresRef, { lastActive: srvNow() }).catch(()=>{}); }, 60000);
 }
 
 let isCmp=false;
@@ -1238,17 +1242,48 @@ D.exBtn.onclick=async()=>{
   }
 };
 
-D.ivBtn.onclick=()=>{
-  if(!rawR||!curP)return; const u=`${location.protocol}//${location.host}${location.pathname}?r=${encodeURIComponent(rawR)}&p=${encodeURIComponent(curP)}`;
-  if(navigator.clipboard?.writeText) navigator.clipboard.writeText(u).then(()=>alert("招待リンクをコピーしました！")).catch(()=>copyFallback(u)); else copyFallback(u);
+// クリップボードAPIを確実に動作させる処理
+D.ivBtn.onclick = async () => {
+  if(!rawR||!curP) return; 
+  const u = `${location.protocol}//${location.host}${location.pathname}?r=${encodeURIComponent(rawR)}&p=${encodeURIComponent(curP)}`;
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(u);
+      alert("招待リンクをコピーしました！");
+    } else {
+      copyFallback(u);
+    }
+  } catch(e) {
+    copyFallback(u);
+  }
 };
-function copyFallback(text){ const ta=document.createElement("textarea");ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);alert("招待リンクをコピーしました！"); }
+
+function copyFallback(text){ 
+  const ta=document.createElement("textarea");
+  ta.value=text;
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand("copy");
+  document.body.removeChild(ta);
+  alert("招待リンクをコピーしました！"); 
+}
 
 D.gdBtn.onclick=()=>D.gmod.classList.add("show");
 D.gcBtn.onclick=()=>D.gmod.classList.remove("show");
 D.gmod.onclick=e=>{if(e.target===D.gmod)D.gmod.classList.remove("show");};
 
 (async()=>{
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && curR && !isEx && !isW) {
+        if (srvNow() - lastMsgAt >= INACTIVITY && !_exitLock) {
+            _exitLock = true;
+            exitRoom("30分間発言がなかったため自動退室しました");
+        } else if (myPresRef) {
+            update(myPresRef, { lastActive: srvNow() }).catch(()=>{});
+        }
+    }
+  });
+
   try {
     const sp=new URLSearchParams(location.search),sr=sp.get("r"),spp=sp.get("p");
     if(sr&&spp){

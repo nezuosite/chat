@@ -448,17 +448,6 @@ function generateShortID(uidStr) {
   return Math.abs(hash).toString(36).toUpperCase().slice(-6).padStart(6, '0');
 }
 
-signInAnonymously(auth).catch(e => alert("認証エラー: " + e.message));
-
-onAuthStateChanged(auth, user => {
-  if (user) {
-    myUid = user.uid;
-    myShortID = generateShortID(myUid);
-    setBtns(true);
-    hideSplash();
-  }
-});
-
 const saveSession = (data) => {
   let s = {};
   try { s = JSON.parse(localStorage.getItem("nz_sess") || "{}"); } catch{}
@@ -1146,21 +1135,11 @@ async function completeJoin(name, asW, isAutoRejoin) {
     D.pl.innerHTML = ""; D.pl.appendChild(fg); D.pcnt.textContent = `[${activeCnt}人]`;
   });
 
-  // DB側で最新100件に制限
   _cOff = onValue(query(ref(db, `chat/${curR}`), orderByChild("time"), limitToLast(100)), snap => {
     if(!curR) return;
     const newLogs = [];
     if(snap.exists()) snap.forEach(cs => { const m = cs.val(); if(m){ m.id = cs.key; newLogs.push(m); } });
     logArray = newLogs; 
-
-    // 古いログの実体削除 (ホストが担うと確実)
-    if (isHost && !isOff && !isW) {
-        if (logArray.length >= 100) {
-            // Because limitToLast(100) only reads the last 100, we periodically check real count if needed.
-            // But relying strictly on the 100 loaded is safer for bandwidth.
-            // If we want absolute DB cleanout, we would need to read all keys. Skip heavy writes for now.
-        }
-    }
     renderMessages(!isLiveMode); 
   });
 }
@@ -1304,52 +1283,75 @@ document.querySelectorAll(".mod-overlay").forEach(m => {
   m.onclick = e => { if(e.target === m) m.classList.remove("show"); };
 });
 
-(async () => {
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && curR && !isEx && !isW) {
-        if (srvNow() - lastActiveWrite >= INACTIVITY && !_exitLock) {
-            _exitLock = true;
-            exitRoom("タイムアウト(30分発言なし)により自動退室しました");
-        }
-    }
-  });
+let isAppInitialized = false;
 
-  const checkSession = async () => {
-    try {
-      const sp = new URLSearchParams(location.search), sr = sp.get("r"), spp = sp.get("p");
-      if(sr && spp) {
-        const n = localStorage.getItem("nz_ni") || "";
-        if(n) {
-          setBtns(false);
-          try { await doJoin({target: sr, pass: spp, name: n, asW: false, isAutoRejoin: true}); }
-          catch(e) { showLobby(e.message); }
-          setBtns(true);
-        } else {
-          D.ri.value = sr; D.pi.value = spp; showLobby();
-        }
-        return;
-      }
-      const sessStr = localStorage.getItem("nz_sess");
-      if(sessStr) {
-        try {
-          const s = JSON.parse(sessStr);
-          if(s && s.target && s.pass){
-            setBtns(false);
-            if(s.asW){ try{ await doJoin({target: s.target, pass: s.pass, name: "", asW: true, isAutoRejoin: true}); } catch(e){ showLobby(e.message); } }
-            else { try{ await doJoin({target: s.target, pass: s.pass, name: s.name, asW: false, isAutoRejoin: true}); } catch(e){ showLobby(e.message); } }
-            setBtns(true); return;
-          }
-        } catch { localStorage.removeItem("nz_sess"); }
-      }
-      // 通常のロビー待機（認証完了はonAuthStateChangedに委ねる）
-    } catch(err) {
-      showLobby("初期化エラーが発生しました: " + err.message);
+onAuthStateChanged(auth, async user => {
+  if (user) {
+    myUid = user.uid;
+    myShortID = generateShortID(myUid);
+    setBtns(true);
+    
+    // 認証が通った直後に1度だけセッションの確認をする
+    if (!isAppInitialized) {
+      isAppInitialized = true;
+      await checkSession();
     }
-  };
-  
-  // Wait slightly for auth to resolve before checking session
-  setTimeout(checkSession, 500);
-})();
+  } else {
+    // 未ログイン（ログアウト状態）なら匿名ログインを実行
+    signInAnonymously(auth).catch(e => {
+      alert("認証エラー: Firebaseの匿名認証が有効か確認してください。\n" + e.message);
+      D.lberr.textContent = "認証エラー: " + e.message;
+      D.lberr.style.display = "block";
+      hideSplash();
+      D.lobby.style.display = "block";
+    });
+  }
+});
+
+const checkSession = async () => {
+  try {
+    const sp = new URLSearchParams(location.search), sr = sp.get("r"), spp = sp.get("p");
+    if(sr && spp) {
+      const n = localStorage.getItem("nz_ni") || "";
+      if(n) {
+        setBtns(false);
+        try { await doJoin({target: sr, pass: spp, name: n, asW: false, isAutoRejoin: true}); }
+        catch(e) { showLobby(e.message); }
+        setBtns(true);
+      } else {
+        D.ri.value = sr; D.pi.value = spp; showLobby();
+      }
+      return;
+    }
+    const sessStr = localStorage.getItem("nz_sess");
+    if(sessStr) {
+      try {
+        const s = JSON.parse(sessStr);
+        if(s && s.target && s.pass){
+          setBtns(false);
+          if(s.asW){ try{ await doJoin({target: s.target, pass: s.pass, name: "", asW: true, isAutoRejoin: true}); } catch(e){ showLobby(e.message); } }
+          else { try{ await doJoin({target: s.target, pass: s.pass, name: s.name, asW: false, isAutoRejoin: true}); } catch(e){ showLobby(e.message); } }
+          setBtns(true); 
+          return;
+        }
+      } catch { localStorage.removeItem("nz_sess"); }
+    }
+    // セッション復帰対象がない場合は、確実にロビーを表示する
+    showLobby();
+  } catch(err) {
+    showLobby("初期化エラーが発生しました: " + err.message);
+  }
+};
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && curR && !isEx && !isW) {
+      if (srvNow() - lastActiveWrite >= INACTIVITY && !_exitLock) {
+          _exitLock = true;
+          exitRoom("タイムアウト(30分発言なし)により自動退室しました");
+      }
+  }
+});
+
 </script>
 </body>
 </html>

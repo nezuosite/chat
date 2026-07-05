@@ -37,7 +37,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .spt{font-size:10px;font-weight:800;color:var(--m2);letter-spacing:.2em}
 
 /* ロビーUI */
-#lobby{display:none;position:fixed;inset:0;background:var(--bg);z-index:100;overflow-y:auto;}
+#lobby{display:none;position:fixed;inset:0;background:var(--bg);z-index:100;overflow-y:auto;padding-bottom:80px;}
 .lbo{min-height:100%;display:flex;flex-direction:column;padding:20px 14px calc(20px + var(--safe));gap:6px;justify-content:center;max-width:380px;margin:0 auto}
 .lbt{font-size:14px;font-weight:900;color:#818cf8;text-align:center;letter-spacing:.05em}
 .lbsub{font-size:8px;font-weight:700;color:var(--m2);text-align:center;letter-spacing:.1em;margin-top:-4px}
@@ -62,6 +62,14 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .bp{background:var(--in);color:#fff}
 .bo{background:var(--e2);color:#fff}
 .glink{font-size:11px;color:#a5b4fc;text-align:center;margin-top:16px;padding:12px 0;text-decoration:underline;cursor:pointer;font-weight:bold}
+
+/* ロビー内の進行中セッション表示 */
+#activeSessionFloat{display:none;position:fixed;bottom:env(safe-area-inset-bottom, 16px);left:14px;right:14px;background:var(--sf);border:1px solid var(--in);border-radius:12px;padding:12px 16px;z-index:150;box-shadow:0 8px 24px rgba(0,0,0,0.5);align-items:center;justify-content:space-between;cursor:pointer;animation:slideUp 0.3s ease;}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.as-info{display:flex;flex-direction:column;gap:2px}
+.as-title{font-size:13px;font-weight:900;color:#fff;display:flex;align-items:center;gap:6px}
+.as-badge{background:var(--ro);color:#fff;font-size:9px;padding:2px 6px;border-radius:4px;}
+.as-desc{font-size:10px;color:var(--mu)}
 
 /* 待機画面UI */
 #waitScreen{display:none;position:fixed;inset:0;background:var(--bg);z-index:200;flex-direction:column;align-items:center;justify-content:center;padding:20px}
@@ -151,7 +159,6 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .gc,.clrmc{background:var(--sf);border:1px solid var(--bd);border-radius:12px;width:100%;max-width:440px;display:flex;flex-direction:column;gap:10px;padding:14px;max-height:85vh;overflow-y:auto}
 .gs{border-left:3px solid var(--in);padding:8px 10px;font-size:11.5px;color:var(--tx);line-height:1.4;background:rgba(255,255,255,0.02);border-radius:4px}
 .gs h4{font-size:12.5px;margin-bottom:3px;font-weight:800}
-.cx{position:absolute;top:16px;right:16px;width:36px;height:36px;border-radius:50%;background:rgba(15,23,42,.6);color:#fff;font-size:22px;display:flex;align-items:center;justify-content:center}
 .pend-item{display:flex;justify-content:space-between;align-items:center;background:var(--bg);border:1px solid var(--bd);padding:8px 10px;border-radius:6px}
 .pend-info{display:flex;flex-direction:column;gap:2px}
 .pend-name{font-size:12px;font-weight:700;color:var(--tx)}
@@ -169,7 +176,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <div class="lbi">
       <div class="ibox">
         🔑 <b>完全使い捨てセキュリティ空間</b><br>
-        UIDベースの固有IDでなりすましを防止。最新100件のログのみを保持し、参加者が0になると部屋ごと完全消去(Wipe)されます。
+        UIDベースの固有IDでなりすましを防止。参加者が0になると部屋ごと完全に消去(Wipe)されます。一度消えた一般部屋でも同じIDで再作成可能です。
       </div>
       <div id="lberr"></div>
       
@@ -225,6 +232,14 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   </div>
 </div>
 
+<div id="activeSessionFloat">
+  <div class="as-info">
+    <div class="as-title"><span class="as-badge">進行中</span> <span id="asRoomName"></span></div>
+    <div class="as-desc">タップしてセッション画面に戻る</div>
+  </div>
+  <div style="color:var(--in); font-weight:bold; font-size:18px;">❯</div>
+</div>
+
 <div id="waitScreen">
   <div class="spin" style="margin-bottom:16px; border-color:#a5b4fc; border-top-color:transparent;"></div>
   <h3 style="color:#a5b4fc; font-size:14px;">入室承認待ち</h3>
@@ -240,10 +255,11 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   <div id="cp">
     <div id="hdr">
       <div class="hr">
-        <span class="rn" id="rdsp" title="クリックしてIDをコピー"></span>
+        <button class="bi" id="minBtn" title="ロビーへ戻る" style="background:var(--s2); border:1px solid var(--bd); border-radius:4px; padding:4px 8px; color:var(--tx); font-size:11px;">🔽 最小化</button>
+        <span class="rn" id="rdsp" title="クリックしてIDをコピー" style="margin-left:8px;"></span>
         <span class="pcnt" id="pcnt"></span>
         <div class="hbs">
-          <button id="rmCopyBtn" class="bi" title="招待URLをコピー"><span>🔗</span> 招待</button>
+          <button id="rmCopyBtn" class="bi" title="招待URLをコピー"><span>🔗</span></button>
           <button id="modeBtn" style="display:none;" class="bi"><span id="modeIcon">🔓</span> <span id="modeText">OPEN</span></button>
           <button id="pendingBtn" style="display:none; position:relative;" class="bi">
             待機列 <span id="pendingBadge" style="display:none; position:absolute; top:-4px; right:-4px; background:var(--ro); color:#fff; font-size:8px; padding:2px 4px; border-radius:10px;">0</span>
@@ -314,13 +330,13 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <div class="gs" style="border-left-color: #60a5fa;">
       <h4>🔒 エンドツーエンド暗号化 & 匿名認証</h4>
       <p style="font-size:10.5px; color:var(--mu); margin-top:2px;">
-        バックグラウンドでFirebase匿名認証を行い、固有の6桁IDを生成します。パスワードを用いた<b>PBKDF2+AES-256-CBC</b>により、情報は完全に暗号化されます。
+        バックグラウンドでFirebase匿名認証を行い、固有の6桁IDを生成します。パスワードを用いた<b>PBKDF2+AES-256-CBC</b>により、情報は完全に暗号化されます。万一データベースやソースコードが漏洩しても、パスワードを知らなければ復号できません。
       </p>
     </div>
     <div class="gs" style="border-left-color: #f87171;">
       <h4>⏱ 個人の自動退室と自動Wipe</h4>
       <p style="font-size:10.5px; color:var(--mu); margin-top:2px;">
-        各自が設定した時間（5〜60分）が経過すると自動退室となります。全員が退室し入室者が0人になった瞬間、部屋全体が自動的に消去(Wipe)されます。
+        各自が設定した時間（5〜60分）が経過すると自動退室となります。全員が退室し入室者が0人になった瞬間、部屋全体が自動的に消去(Wipe)されます。一度消えた部屋IDは再利用可能です。
       </p>
     </div>
     <div class="gs" style="border-color:rgba(244,63,94,.3); background: rgba(244,63,94, 0.04);">
@@ -342,7 +358,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { getDatabase, ref, push, onValue, set, update, remove, query, orderByChild, limitToLast, get, serverTimestamp, onChildAdded }
+import { getDatabase, ref, push, onValue, set, update, remove, query, orderByChild, limitToLast, get, serverTimestamp, onChildAdded, onDisconnect }
   from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -363,7 +379,7 @@ const D = {
   enBtn:$("enBtn"), ofBtn:$("ofBtn"), gnBtn:$("gnBtn"), lbCopyBtn:$("lbCopyBtn"), rmCopyBtn:$("rmCopyBtn"),
   myIdDisplay:$("myIdDisplay"), myIdText:$("myIdText"),
   gdBtn:$("gdBtn"), gmod:$("gmod"), gcBtn:$("gcBtn"),
-  hdr:$("hdr"), rdsp:$("rdsp"), pcnt:$("pcnt"),
+  hdr:$("hdr"), rdsp:$("rdsp"), pcnt:$("pcnt"), minBtn:$("minBtn"), activeSessionFloat:$("activeSessionFloat"), asRoomName:$("asRoomName"),
   pl:$("pl"), exBtn:$("exBtn"), modeBtn:$("modeBtn"), modeIcon:$("modeIcon"), modeText:$("modeText"),
   pendingBtn:$("pendingBtn"), pendingBadge:$("pendingBadge"), pendMod:$("pendMod"), pendList:$("pendList"), closePendBtn:$("closePendBtn"),
   waitScreen:$("waitScreen"), waitIdDsp:$("waitIdDsp"), waitCancelBtn:$("waitCancelBtn"),
@@ -464,6 +480,7 @@ let isHost = false, roomMode = 'open', myJoinTime = 0, myExpireTime = 0;
 let _cOff = null, _pOff = null, _mOff = null, _pendOff = null, _waitOff = null;
 let isAutoFollow = true, myPresRef = null;
 let displayedMsgIds = new Set(); 
+let isActiveSessionMinimized = false;
 
 const hideSplash = () => { if(!D.splash || D.splash.style.display === "none") return; D.splash.style.opacity = "0"; setTimeout(() => { D.splash.style.display = "none"; }, 260); };
 
@@ -514,7 +531,8 @@ function clearAll() {
   symKey = null; isAutoFollow = true; updateAutoScrollIcon();
   myJoinTime = 0; myExpireTime = 0;
   D.tli.innerHTML = ""; displayedMsgIds.clear(); stopToBar();
-  isHost = false; roomMode = 'open';
+  isHost = false; roomMode = 'open'; isActiveSessionMinimized = false;
+  D.activeSessionFloat.style.display = "none";
 }
 
 let _toBarRaf = null;
@@ -547,17 +565,39 @@ setInterval(() => {
 }, 1000);
 
 function showLobby(msg = "") {
-  curR = null; clearAll();
   D.lberr.textContent = msg; D.lberr.style.display = msg ? "block" : "none";
   D.app.classList.remove("visible"); D.app.style.display = "none"; D.fn.classList.remove("visible");
   D.waitScreen.style.display = "none"; D.lobby.style.display = "block"; setBtns(true); hideSplash();
   
-  const ni = localStorage.getItem("nz_ni")||"", ri = localStorage.getItem("nz_ri")||"", pi = localStorage.getItem("nz_pi")||"";
-  if(ni){ D.ni.value = ni; D.wni.value = ni; }
-  if(ri && !D.ri.value) D.ri.value = ri;
-  if(pi && !D.pi.value) D.pi.value = pi;
-  syncPickers(curColor);
+  if (curR && !isEx) {
+    // セッションを最小化して維持している状態
+    isActiveSessionMinimized = true;
+    D.activeSessionFloat.style.display = "flex";
+    D.asRoomName.textContent = rawR;
+  } else {
+    // 完全に退出している状態
+    curR = null; clearAll();
+    const ni = localStorage.getItem("nz_ni")||"", ri = localStorage.getItem("nz_ri")||"", pi = localStorage.getItem("nz_pi")||"";
+    if(ni){ D.ni.value = ni; D.wni.value = ni; }
+    if(ri && !D.ri.value) D.ri.value = ri;
+    if(pi && !D.pi.value) D.pi.value = pi;
+    syncPickers(curColor);
+  }
 }
+
+// 最小化からの復帰
+D.activeSessionFloat.addEventListener("click", () => {
+  if(isActiveSessionMinimized && curR) {
+    isActiveSessionMinimized = false;
+    D.lobby.style.display = "none";
+    D.activeSessionFloat.style.display = "none";
+    D.app.style.display = "flex"; 
+    D.app.classList.add("visible"); 
+    D.fn.classList.add("visible");
+    if(isAutoFollow) scBottom(true);
+  }
+});
+D.minBtn.onclick = () => { showLobby(); };
 
 const setBtns = ok => { D.enBtn.disabled = !ok; D.enBtn.textContent = ok ? "入室する" : "接続中..."; D.ofBtn.disabled = !ok; };
 const updateModeBtnUI = () => { D.modeIcon.textContent = roomMode === 'open' ? '🔓' : '🔒'; D.modeText.textContent = roomMode === 'open' ? 'OPEN' : 'INVITE'; };
@@ -572,6 +612,7 @@ D.waitCancelBtn.onclick = () => {
 };
 
 async function doJoin({target, pass, name, asW, isAutoRejoin=false}) {
+  if(curR) await exitRoom(); // 既に別のセッションがある場合は退室する
   clearAll(); _exitLock = false; isEx = false;
   const hashId = (target === "公式部屋") ? OFF_H : CryptoJS.SHA256(target).toString();
   isOff = (hashId === OFF_H); isW = asW; curR = hashId; rawR = target; curP = pass; curN = asW ? "" : `${name} (ID: ${myShortID})`;
@@ -586,10 +627,16 @@ async function doJoin({target, pass, name, asW, isAutoRejoin=false}) {
   if(!isOff) {
       const roomRef = ref(db, `rooms/${curR}`);
       const snap = await get(roomRef);
-      if(!snap.exists()){
+      const pSnap = await get(ref(db, `presence/${curR}`));
+      const activeCnt = pSnap.exists() ? Object.keys(pSnap.val()).length : 0;
+
+      // 部屋が存在しない、または一般部屋で放置状態(誰もいない)場合は再作成(Wipe & Recreate)
+      if(!snap.exists() || (!isOff && activeCnt === 0)){
           if(isAutoRejoin){ localStorage.removeItem("nz_sess"); throw new Error("部屋が消去されたため復帰できませんでした。"); }
           isHost = true; roomMode = 'open';
           await set(roomRef, { created: serverTimestamp(), host: myUid, mode: 'open', allowedUsers: { [myUid]: true } });
+          // ゴミデータがあればWipe
+          if(snap.exists() && activeCnt === 0) { await set(ref(db, `chat/${curR}`), null); await set(ref(db, `pending/${curR}`), null); }
       } else {
           const rData = snap.val(); isHost = (rData.host === myUid); roomMode = rData.mode || 'open';
           
@@ -597,8 +644,10 @@ async function doJoin({target, pass, name, asW, isAutoRejoin=false}) {
               await set(ref(db, `pending/${curR}/${myUid}`), { name: name, time: serverTimestamp() });
               showWaitScreen();
               return new Promise((resolve, reject) => {
+                  let timeoutId = setTimeout(() => { if(_waitOff){_waitOff();_waitOff=null;} reject(new Error("承認タイムアウト")); }, 60000); // 60秒待機
                   _waitOff = onValue(ref(db, `rooms/${curR}/allowedUsers/${myUid}`), (s) => {
                       if (s.exists()) {
+                          clearTimeout(timeoutId);
                           if(_waitOff){ _waitOff(); _waitOff = null; }
                           resolve(completeJoin(name, asW, false));
                       }
@@ -614,6 +663,8 @@ async function completeJoin(name, asW, isAutoRejoin) {
   if(!asW){
       myPresRef = ref(db, `presence/${curR}/${myUid}`);
       await set(myPresRef, { nEnc: enc(curN), cEnc: enc(curColor) });
+      // ブラウザ切断時に自動でプレゼンスを削除
+      await onDisconnect(myPresRef).remove().catch(()=>{});
       
       if (!isAutoRejoin) {
           await push(ref(db, `chat/${curR}`), {type: "sys", text: enc(`${curN} が入室しました`), time: serverTimestamp()});
@@ -623,7 +674,8 @@ async function completeJoin(name, asW, isAutoRejoin) {
   } else { saveSession({target:rawR, pass:curP, name:"", asW:true}); }
 
   D.waitScreen.style.display = "none";
-  D.lobby.style.display = "none"; D.app.style.display = "flex"; D.app.classList.add("visible"); D.fn.classList.add("visible"); 
+  D.lobby.style.display = "none"; D.activeSessionFloat.style.display = "none";
+  D.app.style.display = "flex"; D.app.classList.add("visible"); D.fn.classList.add("visible"); 
   D.rdsp.textContent = rawR;
   
   if(asW){
@@ -669,7 +721,7 @@ async function completeJoin(name, asW, isAutoRejoin) {
     if (el) {
       D.tli.appendChild(el);
       displayedMsgIds.add(m.id);
-      if (isAutoFollow) requestAnimationFrame(() => scBottom(false));
+      if (isAutoFollow && !isActiveSessionMinimized) requestAnimationFrame(() => scBottom(false));
     }
   });
 
@@ -692,12 +744,17 @@ async function exitRoom(autoMsg = "") {
   const sR = curR, sN = curN, sO = isOff, sW = isW;
   try {
     if (!sW && sR && sN) {
-      if (myPresRef) await remove(myPresRef).catch(()=>{}); 
+      // プレゼンスを消し、オンドロップ設定もキャンセル
+      if (myPresRef) {
+          await onDisconnect(myPresRef).cancel().catch(()=>{});
+          await remove(myPresRef).catch(()=>{}); 
+      }
       
       const ps = await get(ref(db, `presence/${sR}`)); 
       let activeCount = 0;
       if (ps.exists()) { activeCount = Object.keys(ps.val()).length; }
       
+      // 誰もいなくなったら完全にWipe
       if (!sO && activeCount === 0) { 
           await wipe(sR); 
       } else if (!sO) { 

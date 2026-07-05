@@ -49,11 +49,11 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .fl{font-size:9.5px;font-weight:700;color:var(--mu)}
 .inp{width:100%;background:var(--sf);border:1px solid var(--bd);border-radius:5px;padding:4px 8px;color:var(--tx);outline:none;font-size:12px}
 .inp:focus{border-color:var(--in)}
-.clrbox{display:flex;flex-direction:column;gap:2px;background:var(--s2);padding:4px 8px;border-radius:5px;border:1px solid var(--bd)}
+.clrbox{display:flex;flex-direction:column;gap:4px;background:var(--s2);padding:6px 8px;border-radius:5px;border:1px solid var(--bd)}
 .clrlbl{font-size:9px;font-weight:700;color:var(--mu)}
-.clrpick-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:4px}
-.clrc,.wclrc,.clrc2{aspect-ratio:1;width:100%;max-width:18px;border-radius:50%;margin:0 auto;border:2px solid transparent;cursor:pointer}
-.clrc.sel,.wclrc.sel,.clrc2.sel{border-color:var(--tx);transform:scale(1.1)}
+.clrpick-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:5px}
+.clrc,.wclrc,.clrc2{aspect-ratio:1;width:100%;max-width:20px;border-radius:50%;margin:0 auto;border:2px solid transparent;cursor:pointer}
+.clrc.sel,.wclrc.sel,.clrc2.sel{border-color:var(--tx);transform:scale(1.15);box-shadow:0 0 6px rgba(255,255,255,0.2)}
 .brow{display:grid;grid-template-columns:1fr 1.6fr 1.3fr;gap:6px;margin-top:2px;margin-bottom:16px}
 .btn{padding:5px;border-radius:5px;font-size:11px;font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center;transition:background .2s}
 .btn:active{opacity:0.8}
@@ -101,7 +101,9 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 #tobar.show{display:flex}
 #tobar-track{flex:1;height:3px;background:rgba(244,63,94,.15);border-radius:2px;overflow:hidden}
 #tobar-fill{height:100%;background:var(--ro);border-radius:2px;transition:width .5s linear}
-#tobar-label{font-size:9.5px;font-weight:800;color:#fda4af;font-family:monospace;white-space:nowrap}
+#tobar-label{font-size:9.5px;font-weight:800;color:#fda4af;font-family:monospace;white-space:nowrap;min-width:30px;text-align:right}
+#tmEditBtn{background:none;border:none;color:var(--m2);font-size:13px;padding:2px 4px;cursor:pointer;border-radius:4px;}
+#tmEditBtn:hover{background:rgba(255,255,255,0.1);}
 
 /* 覗き見モードUI */
 #wb{display:none;background:rgba(79,70,229,.1);border-bottom:1px solid var(--in);flex-shrink:0}
@@ -133,6 +135,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .sm-join{background:rgba(79,70,229,.1);color:#a5b4fc;border:1px solid rgba(79,70,229,.25)}
 .sm-leave{background:rgba(148,163,184,.07);color:#94a3b8;border:1px solid rgba(148,163,184,.15)}
 .sm-auto{background:rgba(244,63,94,.12);color:#fb7185;border:1px solid rgba(244,63,94,.3)}
+.sm-host{background:rgba(234,179,8,.1);color:#facc15;border:1px solid rgba(234,179,8,.25)}
 .mm{display:flex;align-items:center;gap:6px;font-size:11px;margin-bottom:2px;padding-left:4px}
 .ts{color:var(--m2);font-size:9.5px;margin-left:auto}
 .mb{align-self:start;background:var(--sf);border:1px solid transparent;border-left:3px solid;border-radius:4px 12px 12px 12px;padding:8px 12px;font-size:14px;line-height:1.5;max-width:100%;word-break:break-all;white-space:pre-wrap}
@@ -194,18 +197,13 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       </div>
 
       <div class="clrbox" style="margin-top:6px;">
-        <div class="clrlbl">吹き出し・ネームカラー</div>
+        <div class="clrlbl">吹き出し・ネームカラー (32色)</div>
         <div class="clrpick-grid" id="lbClrPick"></div>
       </div>
       
       <div class="fg" id="timerGroup" style="margin-top:6px;">
-        <label class="fl">個人の自動退室タイマー</label>
-        <select id="tmSel" class="inp">
-          <option value="5">5分</option>
-          <option value="15">15分</option>
-          <option value="30" selected>30分</option>
-          <option value="60">60分</option>
-        </select>
+        <label class="fl">個人の自動退室タイマー (1〜60分)</label>
+        <input type="number" id="tmSel" class="inp" min="1" max="60" value="30">
       </div>
 
       <div class="fg" style="margin-top:6px;">
@@ -273,6 +271,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <div id="tobar">
       <div id="tobar-track"><div id="tobar-fill" style="width:100%"></div></div>
       <span id="tobar-label">--:--</span>
+      <button id="tmEditBtn" title="タイマー設定">⚙️</button>
     </div>
 
     <div id="wb">
@@ -336,7 +335,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <div class="gs" style="border-left-color: #f87171;">
       <h4>⏱ 個人の自動退室と自動Wipe</h4>
       <p style="font-size:10.5px; color:var(--mu); margin-top:2px;">
-        各自が設定した時間（5〜60分）が経過すると自動退室となります。全員が退室し入室者が0人になった瞬間、部屋全体が自動的に消去(Wipe)されます。一度消えた部屋IDは再利用可能です。
+        各自が設定した時間（1〜60分）が経過すると自動退室となります。全員が退室し入室者が0人になった瞬間、部屋全体が自動的に消去(Wipe)されます。一度消えた部屋IDは再利用可能です。<br>短時間の通信切断は許容されますが、長時間切断された場合は退出処理が行われます。
       </p>
     </div>
     <div class="gs" style="border-color:rgba(244,63,94,.3); background: rgba(244,63,94, 0.04);">
@@ -352,6 +351,16 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <h3 style="font-size:14px;color:#a5b4fc;">入室リクエスト (待機列)</h3>
     <div id="pendList" style="display:flex;flex-direction:column;gap:8px;margin-top:10px; max-height: 50vh; overflow-y:auto;">待機者はいません。</div>
     <button class="btn bq" id="closePendBtn" style="margin-top:10px;">閉じる</button>
+  </div>
+</div>
+
+<div id="tmMod" class="mod-overlay">
+  <div class="gc" style="max-width:320px;">
+    <h3 style="font-size:14px;font-weight:900;color:#a5b4fc;">⏳ 個人タイマー設定</h3>
+    <p style="font-size:11px;color:var(--mu);margin-bottom:4px;">発言時の回復時間・自動退室までの時間を変更します(1〜60分)。</p>
+    <input type="number" id="tmInputMod" class="inp" min="1" max="60" value="30" style="font-size:16px; padding:8px;">
+    <button class="btn bp" id="tmSaveBtn" style="margin-top:10px; padding:10px; font-size:13px;">保存して全回復</button>
+    <button class="btn bq" id="tmCloseBtn" style="margin-top:4px; padding:10px;">キャンセル</button>
   </div>
 </div>
 
@@ -383,7 +392,8 @@ const D = {
   pl:$("pl"), exBtn:$("exBtn"), modeBtn:$("modeBtn"), modeIcon:$("modeIcon"), modeText:$("modeText"),
   pendingBtn:$("pendingBtn"), pendingBadge:$("pendingBadge"), pendMod:$("pendMod"), pendList:$("pendList"), closePendBtn:$("closePendBtn"),
   waitScreen:$("waitScreen"), waitIdDsp:$("waitIdDsp"), waitCancelBtn:$("waitCancelBtn"),
-  tobar:$("tobar"), tobarFill:$("tobar-fill"), tobarLabel:$("tobar-label"),
+  tobar:$("tobar"), tobarFill:$("tobar-fill"), tobarLabel:$("tobar-label"), tmEditBtn:$("tmEditBtn"),
+  tmMod:$("tmMod"), tmInputMod:$("tmInputMod"), tmSaveBtn:$("tmSaveBtn"), tmCloseBtn:$("tmCloseBtn"),
   wb:$("wb"), wbToggle:$("wb-toggle"), wbBody:$("wb-body"), wbArrow:$("wb-arrow"), wbHint:$("wb-hint"),
   wni:$("wni"), wuBtn:$("wuBtn"), wClrPick:$("wClrPick"),
   tl:$("tl"), tli:$("tl-inner"), ib:$("ib"), mi:$("mi"), sdBtn:$("sdBtn"), clrMsgBtn:$("clrMsgBtn"),
@@ -437,8 +447,18 @@ D.wbToggle.addEventListener("click", () => {
   D.wbArrow.classList.toggle("open", wbOpen); D.wbHint.textContent = wbOpen ? "▲ 閉じる" : "▼ タップして設定";
 });
 
-const COLORS = [{v:"#94a3b8",n:"グレー"},{v:"#f1f5f9",n:"ホワイト"},{v:"#818cf8",n:"インディゴ"},{v:"#60a5fa",n:"ブルー"},{v:"#34d399",n:"エメラルド"},{v:"#f87171",n:"レッド"}];
-let curColor = localStorage.getItem("nz_color") || "#94a3b8"; let tmpColor = curColor;
+// 32色拡張
+const COLORS = [
+  {v:"#f87171",n:"赤1"}, {v:"#fb923c",n:"橙1"}, {v:"#fbbf24",n:"黄1"}, {v:"#facc15",n:"黄2"}, 
+  {v:"#a3e635",n:"黄緑"}, {v:"#4ade80",n:"緑1"}, {v:"#34d399",n:"緑2"}, {v:"#2dd4bf",n:"青緑"},
+  {v:"#22d3ee",n:"シアン"}, {v:"#38bdf8",n:"空色"}, {v:"#60a5fa",n:"青1"}, {v:"#818cf8",n:"青2"}, 
+  {v:"#a78bfa",n:"紫1"}, {v:"#c084fc",n:"紫2"}, {v:"#e879f9",n:"ピンク1"}, {v:"#f472b6",n:"ピンク2"},
+  {v:"#fb7185",n:"赤2"}, {v:"#f43f5e",n:"赤3"}, {v:"#ef4444",n:"赤4"}, {v:"#ea580c",n:"橙2"}, 
+  {v:"#d97706",n:"茶1"}, {v:"#ca8a04",n:"茶2"}, {v:"#65a30d",n:"深緑1"}, {v:"#16a34a",n:"深緑2"},
+  {v:"#059669",n:"深緑3"}, {v:"#0d9488",n:"深緑4"}, {v:"#0891b2",n:"深青1"}, {v:"#0284c7",n:"深青2"}, 
+  {v:"#2563eb",n:"深青3"}, {v:"#4f46e5",n:"深青4"}, {v:"#94a3b8",n:"灰"}, {v:"#f1f5f9",n:"白"}
+];
+let curColor = localStorage.getItem("nz_color") || "#94a3b8"; 
 const setGlobalColor = c => { document.documentElement.style.setProperty("--usr-color", c); };
 setGlobalColor(curColor);
 
@@ -447,11 +467,16 @@ function buildPicker(con, sel, cls, onChange) {
   if (!con) return; con.innerHTML = "";
   COLORS.forEach(({v,n}) => {
     const b = document.createElement("button"); b.className = cls + (v === sel ? " sel" : "");
-    b.style.background = v; b.dataset.color = v; b.addEventListener("click", () => onChange(v)); con.appendChild(b);
+    b.style.background = v; b.dataset.color = v; b.title = n; b.addEventListener("click", () => onChange(v)); con.appendChild(b);
   });
 }
 const onColorSelect = v => { curColor = v; setGlobalColor(v); localStorage.setItem("nz_color",v); syncPickers(v); };
 buildPicker(D.lbClrPick, curColor, "clrc", onColorSelect); buildPicker(D.wClrPick, curColor, "wclrc", onColorSelect);
+
+// 初期設定の復元 (タイマー)
+const savedTm = localStorage.getItem("nz_tm");
+if(savedTm) D.tmSel.value = savedTm;
+D.tmSel.addEventListener("input", () => { localStorage.setItem("nz_tm", D.tmSel.value); });
 
 const fDT = ts => {
   if(!ts) return ""; const d = new Date(ts);
@@ -476,11 +501,16 @@ D.myIdDisplay.onclick = () => { navigator.clipboard.writeText(myShortID).then(()
 const OFF_H = CryptoJS.SHA256("公式部屋").toString(), OFF_P = "official_public_pass";
 let curR = null, curP = null, curN = null, rawR = null;
 let isOff = false, isW = false, isEx = false, _exitLock = false, isActionLocked = false;
-let isHost = false, roomMode = 'open', myJoinTime = 0, myExpireTime = 0;
+let isHost = false, roomMode = 'open', myJoinTime = 0, myExpireTime = 0, currentTimerMin = 30;
 let _cOff = null, _pOff = null, _mOff = null, _pendOff = null, _waitOff = null;
-let isAutoFollow = true, myPresRef = null;
+let isAutoFollow = true, myPresRef = null, hbInterval = null;
 let displayedMsgIds = new Set(); 
 let isActiveSessionMinimized = false;
+
+// スパム対策用
+let lastMsgTime = 0;
+let lastMsgText = "";
+let isSending = false;
 
 const hideSplash = () => { if(!D.splash || D.splash.style.display === "none") return; D.splash.style.opacity = "0"; setTimeout(() => { D.splash.style.display = "none"; }, 260); };
 
@@ -489,7 +519,7 @@ function cMsg(m) {
   const d = document.createElement("div"); d.className = "mw"; d.dataset.ts = m.time||0; d.dataset.mid = m.id;
   if(m.type === "sys"){
     let cls = "sm sm-leave";
-    if(txt.includes("入室")) cls = "sm sm-join"; else if(txt.includes("消去") || txt.includes("解散") || txt.includes("満了")) cls = "sm sm-auto";
+    if(txt.includes("入室")) cls = "sm sm-join"; else if(txt.includes("消去") || txt.includes("解散") || txt.includes("満了") || txt.includes("切断")) cls = "sm sm-auto"; else if(txt.includes("ホスト")) cls = "sm sm-host";
     d.innerHTML = `<div class="${cls}">${esc(txt)}<span style="color:var(--m2);font-size:9px;margin-left:6px">${fDT(m.time)}</span></div>`;
   } else {
     const sN = dec(m.nEnc) || "???", sC = dec(m.cEnc) || "#94a3b8";
@@ -528,6 +558,8 @@ function clearAll() {
   if(typeof _mOff === "function"){ _mOff(); _mOff = null; }
   if(typeof _pendOff === "function"){ _pendOff(); _pendOff = null; }
   if(typeof _waitOff === "function"){ _waitOff(); _waitOff = null; }
+  if(hbInterval){ clearInterval(hbInterval); hbInterval = null; }
+  
   symKey = null; isAutoFollow = true; updateAutoScrollIcon();
   myJoinTime = 0; myExpireTime = 0;
   D.tli.innerHTML = ""; displayedMsgIds.clear(); stopToBar();
@@ -537,9 +569,9 @@ function clearAll() {
 
 let _toBarRaf = null;
 function startToBar() {
-  if (isW || isOff || !myExpireTime) return;
+  if (isW || !myExpireTime) return;
   D.tobar.classList.add("show");
-  const totalMs = myExpireTime - myJoinTime;
+  const totalMs = currentTimerMin * 60 * 1000;
   
   const tick = () => {
     if (!myExpireTime) { _toBarRaf = requestAnimationFrame(tick); return; }
@@ -553,9 +585,24 @@ function startToBar() {
 }
 function stopToBar() { D.tobar.classList.remove("show"); if (_toBarRaf) { cancelAnimationFrame(_toBarRaf); _toBarRaf = null; } }
 
-// 個人タイマー監視ルーチン
+// タイマー設定モーダル
+D.tmEditBtn.onclick = () => {
+    if(isOff) { alert("公式部屋は15分固定です。"); return; }
+    D.tmInputMod.value = currentTimerMin;
+    D.tmMod.classList.add("show");
+};
+D.tmCloseBtn.onclick = () => D.tmMod.classList.remove("show");
+D.tmSaveBtn.onclick = () => {
+    let v = parseInt(D.tmInputMod.value);
+    if(isNaN(v) || v < 1) v = 1; if(v > 60) v = 60;
+    currentTimerMin = v;
+    myExpireTime = srvNow() + (v * 60 * 1000);
+    D.tmMod.classList.remove("show");
+};
+
+// 個人タイマー監視ルーチン (満了処理)
 setInterval(() => {
-  if (curR && !isEx && !isW && !isOff && myExpireTime > 0) {
+  if (curR && !isEx && !isW && myExpireTime > 0) {
     const remain = Math.max(0, myExpireTime - srvNow());
     if (remain === 0 && !_exitLock) {
       _exitLock = true;
@@ -564,18 +611,72 @@ setInterval(() => {
   }
 }, 1000);
 
+// Heartbeat & ゴースト処理ルーチン
+function startHeartbeat() {
+    if(hbInterval) clearInterval(hbInterval);
+    hbInterval = setInterval(async () => {
+        if(!curR || isW || !myUid || isEx) return;
+        const now = srvNow();
+        
+        // 自分の lastActive を更新
+        if (myPresRef) {
+            await update(myPresRef, { lastActive: now }).catch(()=>{});
+        }
+
+        if(isOff) return; // 公式部屋はGC管理しない
+
+        try {
+            const snap = await get(ref(db, `presence/${curR}`));
+            if (!snap.exists()) return;
+            const presData = snap.val();
+            const pKeys = Object.keys(presData);
+            
+            const sortedUsers = pKeys.map(k => ({ uid: k, ...presData[k] })).sort((a,b) => (a.joinedAt||0) - (b.joinedAt||0));
+            const rSnap = await get(ref(db, `rooms/${curR}`));
+            let rData = rSnap.exists() ? rSnap.val() : null;
+            let currentHost = rData ? rData.host : null;
+            
+            const hostPres = sortedUsers.find(u => u.uid === currentHost);
+            const isHostDead = !hostPres || (now - (hostPres.lastActive||now) > 90000);
+            const aliveUsers = sortedUsers.filter(u => now - (u.lastActive||now) <= 90000);
+            const iAmOldestAlive = aliveUsers.length > 0 && aliveUsers[0].uid === myUid;
+
+            // ホスト移譲処理
+            if (isHostDead && iAmOldestAlive && currentHost !== myUid && rData) {
+                isHost = true;
+                await update(ref(db, `rooms/${curR}`), { host: myUid });
+                await push(ref(db, `chat/${curR}`), { type: "sys", text: enc(`${curN} が新しいホストになりました`), time: serverTimestamp() });
+                currentHost = myUid;
+            }
+
+            // ホストによるGC実行
+            if (currentHost === myUid) {
+                let activeCount = aliveUsers.length;
+                for (const u of sortedUsers) {
+                    if (now - (u.lastActive||now) > 90000) {
+                        await remove(ref(db, `presence/${curR}/${u.uid}`));
+                        const ghostN = dec(u.nEnc) || "不明なユーザー";
+                        await push(ref(db, `chat/${curR}`), { type: "sys", text: enc(`${ghostN} が通信切断により退室しました`), time: serverTimestamp() });
+                    }
+                }
+                if (activeCount === 0) {
+                    await wipe(curR);
+                }
+            }
+        } catch(e) {}
+    }, 20000);
+}
+
 function showLobby(msg = "") {
   D.lberr.textContent = msg; D.lberr.style.display = msg ? "block" : "none";
   D.app.classList.remove("visible"); D.app.style.display = "none"; D.fn.classList.remove("visible");
   D.waitScreen.style.display = "none"; D.lobby.style.display = "block"; setBtns(true); hideSplash();
   
   if (curR && !isEx) {
-    // セッションを最小化して維持している状態
     isActiveSessionMinimized = true;
     D.activeSessionFloat.style.display = "flex";
     D.asRoomName.textContent = rawR;
   } else {
-    // 完全に退出している状態
     curR = null; clearAll();
     const ni = localStorage.getItem("nz_ni")||"", ri = localStorage.getItem("nz_ri")||"", pi = localStorage.getItem("nz_pi")||"";
     if(ni){ D.ni.value = ni; D.wni.value = ni; }
@@ -585,7 +686,6 @@ function showLobby(msg = "") {
   }
 }
 
-// 最小化からの復帰
 D.activeSessionFloat.addEventListener("click", () => {
   if(isActiveSessionMinimized && curR) {
     isActiveSessionMinimized = false;
@@ -612,17 +712,16 @@ D.waitCancelBtn.onclick = () => {
 };
 
 async function doJoin({target, pass, name, asW, isAutoRejoin=false}) {
-  if(curR) await exitRoom(); // 既に別のセッションがある場合は退室する
+  if(curR) await exitRoom(); 
   clearAll(); _exitLock = false; isEx = false;
   const hashId = (target === "公式部屋") ? OFF_H : CryptoJS.SHA256(target).toString();
   isOff = (hashId === OFF_H); isW = asW; curR = hashId; rawR = target; curP = pass; curN = asW ? "" : `${name} (ID: ${myShortID})`;
   
-  // 共通鍵の生成 (メモリ保持)
   symKey = CryptoJS.PBKDF2(pass, "NEZU_ROOM_SALT_2026", {keySize:256/32, iterations:2000});
   
-  // 個人タイマーの初期化
+  currentTimerMin = isOff ? 15 : (parseInt(D.tmSel.value) || 30);
   myJoinTime = srvNow(); 
-  myExpireTime = myJoinTime + (parseInt(D.tmSel.value || 30) * 60 * 1000);
+  myExpireTime = myJoinTime + (currentTimerMin * 60 * 1000);
 
   if(!isOff) {
       const roomRef = ref(db, `rooms/${curR}`);
@@ -630,12 +729,10 @@ async function doJoin({target, pass, name, asW, isAutoRejoin=false}) {
       const pSnap = await get(ref(db, `presence/${curR}`));
       const activeCnt = pSnap.exists() ? Object.keys(pSnap.val()).length : 0;
 
-      // 部屋が存在しない、または一般部屋で放置状態(誰もいない)場合は再作成(Wipe & Recreate)
-      if(!snap.exists() || (!isOff && activeCnt === 0)){
+      if(!snap.exists() || activeCnt === 0){
           if(isAutoRejoin){ localStorage.removeItem("nz_sess"); throw new Error("部屋が消去されたため復帰できませんでした。"); }
           isHost = true; roomMode = 'open';
           await set(roomRef, { created: serverTimestamp(), host: myUid, mode: 'open', allowedUsers: { [myUid]: true } });
-          // ゴミデータがあればWipe
           if(snap.exists() && activeCnt === 0) { await set(ref(db, `chat/${curR}`), null); await set(ref(db, `pending/${curR}`), null); }
       } else {
           const rData = snap.val(); isHost = (rData.host === myUid); roomMode = rData.mode || 'open';
@@ -644,7 +741,7 @@ async function doJoin({target, pass, name, asW, isAutoRejoin=false}) {
               await set(ref(db, `pending/${curR}/${myUid}`), { name: name, time: serverTimestamp() });
               showWaitScreen();
               return new Promise((resolve, reject) => {
-                  let timeoutId = setTimeout(() => { if(_waitOff){_waitOff();_waitOff=null;} reject(new Error("承認タイムアウト")); }, 60000); // 60秒待機
+                  let timeoutId = setTimeout(() => { if(_waitOff){_waitOff();_waitOff=null;} reject(new Error("承認タイムアウト")); }, 60000); 
                   _waitOff = onValue(ref(db, `rooms/${curR}/allowedUsers/${myUid}`), (s) => {
                       if (s.exists()) {
                           clearTimeout(timeoutId);
@@ -662,15 +759,14 @@ async function doJoin({target, pass, name, asW, isAutoRejoin=false}) {
 async function completeJoin(name, asW, isAutoRejoin) {
   if(!asW){
       myPresRef = ref(db, `presence/${curR}/${myUid}`);
-      await set(myPresRef, { nEnc: enc(curN), cEnc: enc(curColor) });
-      // ブラウザ切断時に自動でプレゼンスを削除
-      await onDisconnect(myPresRef).remove().catch(()=>{});
+      await set(myPresRef, { nEnc: enc(curN), cEnc: enc(curColor), joinedAt: serverTimestamp(), lastActive: serverTimestamp() });
       
       if (!isAutoRejoin) {
           await push(ref(db, `chat/${curR}`), {type: "sys", text: enc(`${curN} が入室しました`), time: serverTimestamp()});
       }
       if(!isOff){ localStorage.setItem("nz_ni", name); localStorage.setItem("nz_ri", rawR); localStorage.setItem("nz_pi", curP); }
       saveSession({target:rawR, pass:curP, name, asW:false});
+      startHeartbeat();
   } else { saveSession({target:rawR, pass:curP, name:"", asW:true}); }
 
   D.waitScreen.style.display = "none";
@@ -690,11 +786,10 @@ async function completeJoin(name, asW, isAutoRejoin) {
             if(cnt > 0){ D.pendingBadge.textContent = cnt; D.pendingBadge.style.display = "block"; renderPendList(pends); } 
             else { D.pendingBadge.style.display = "none"; D.pendList.innerHTML = "待機者はいません。"; }
         });
-    }
+    } else { D.modeBtn.style.display = "none"; D.pendingBtn.style.display = "none"; }
   }
   updFnPos(); hideSplash(); if(!asW) startToBar();
 
-  // 部屋の生存監視 (Wipe検知)
   if(!isOff) {
       _mOff = onValue(ref(db, `rooms/${curR}`), s => {
           if (!s.exists()) {
@@ -710,8 +805,7 @@ async function completeJoin(name, asW, isAutoRejoin) {
       });
   }
 
-  // 公式部屋は500件、他は100件のログ取得
-  const msgLimit = isOff ? 500 : 100;
+  const msgLimit = 100;
   const q = query(ref(db, `chat/${curR}`), orderByChild("time"), limitToLast(msgLimit));
   _cOff = onChildAdded(q, (snap) => {
     if(!curR) return;
@@ -725,7 +819,6 @@ async function completeJoin(name, asW, isAutoRejoin) {
     }
   });
 
-  // リアルタイム入室者リスト監視
   _pOff = onValue(ref(db, `presence/${curR}`), s => {
     if(!curR) return;
     let activeCnt = 0; const fg = document.createDocumentFragment();
@@ -738,23 +831,17 @@ async function completeJoin(name, asW, isAutoRejoin) {
   });
 }
 
-// 明示的/タイマー満了での退出処理とWipe判定
 async function exitRoom(autoMsg = "") {
   if (isEx) return; isEx = true; _exitLock = true; 
   const sR = curR, sN = curN, sO = isOff, sW = isW;
   try {
     if (!sW && sR && sN) {
-      // プレゼンスを消し、オンドロップ設定もキャンセル
-      if (myPresRef) {
-          await onDisconnect(myPresRef).cancel().catch(()=>{});
-          await remove(myPresRef).catch(()=>{}); 
-      }
+      if (myPresRef) await remove(myPresRef).catch(()=>{}); 
       
       const ps = await get(ref(db, `presence/${sR}`)); 
       let activeCount = 0;
       if (ps.exists()) { activeCount = Object.keys(ps.val()).length; }
       
-      // 誰もいなくなったら完全にWipe
       if (!sO && activeCount === 0) { 
           await wipe(sR); 
       } else if (!sO) { 
@@ -765,9 +852,8 @@ async function exitRoom(autoMsg = "") {
   localStorage.removeItem("nz_sess"); stopToBar(); clearAll(); isEx = false; showLobby(autoMsg);
 }
 
-// ログの物理削除 (trimLogs)
 async function trimLogs(r) {
-  if (isOff || !r) return;
+  if (!r) return;
   try {
       const snap = await get(query(ref(db, `chat/${r}`), orderByChild("time")));
       if (!snap.exists()) return;
@@ -785,13 +871,26 @@ async function trimLogs(r) {
 }
 
 async function sendMsg(){
-  if(!curR || isW || isCmp) return; 
+  if(!curR || isW || isCmp || isSending) return; 
   const txt = D.mi.value.trim(); if(!txt) return;
+  
+  const now = Date.now();
+  if (now - lastMsgTime < 1500) { alert("連投制限中です。少し待ってから送信してください。"); return; }
+  if (txt === lastMsgText) { alert("同じ内容の連続投稿はできません。"); return; }
+  if (txt.length > 2000) { alert("文字数制限(2000文字)を超えています。"); return; }
+  
+  isSending = true;
   D.mi.value = ""; D.mi.style.height = "auto"; 
   try { 
       await push(ref(db, `chat/${curR}`), { type: "msg", nEnc: enc(curN), cEnc: enc(curColor), text: enc(txt), time: serverTimestamp() }); 
-      trimLogs(curR); // 送信ごとに100件超過分を物理削除
-  } catch(e) { alert("送信失敗"); }
+      trimLogs(curR); 
+      
+      lastMsgTime = now;
+      lastMsgText = txt;
+      myExpireTime = srvNow() + (currentTimerMin * 60 * 1000);
+      
+  } catch(e) { alert("送信失敗"); D.mi.value = txt; }
+  isSending = false; updFnPos();
 }
 
 let isCmp = false;

@@ -1291,13 +1291,11 @@ onAuthStateChanged(auth, async user => {
     myShortID = generateShortID(myUid);
     setBtns(true);
     
-    // 認証が通った直後に1度だけセッションの確認をする
     if (!isAppInitialized) {
       isAppInitialized = true;
       await checkSession();
     }
   } else {
-    // 未ログイン（ログアウト状態）なら匿名ログインを実行
     signInAnonymously(auth).catch(e => {
       alert("認証エラー: Firebaseの匿名認証が有効か確認してください。\n" + e.message);
       D.lberr.textContent = "認証エラー: " + e.message;
@@ -1336,7 +1334,6 @@ const checkSession = async () => {
         }
       } catch { localStorage.removeItem("nz_sess"); }
     }
-    // セッション復帰対象がない場合は、確実にロビーを表示する
     showLobby();
   } catch(err) {
     showLobby("初期化エラーが発生しました: " + err.message);

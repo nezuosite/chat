@@ -1,38 +1,44 @@
-<!DOCTYPE html>  <html lang="ja">    <head>    
-<meta charset="UTF-8">    
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">    
-<meta name="apple-mobile-web-app-capable" content="yes">    
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">    
-<meta name="theme-color" content="#0f172a">    
-<title>NEZU ONETIME CHAT★1.0</title>    
-<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>    
-<style>    
-/* 共通リセット＆変数 */    
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}    
-:root{    
-  --bg:#0f172a;--sf:#1e293b;--s2:#0a1628;--bd:#334155;    
-  --tx:#f1f5f9;--mu:#94a3b8;--m2:#64748b;    
-  --in:#4f46e5;--i2:#4338ca;    
-  --em:#00ff66;--e2:#10b981;    
-  --ro:#f43f5e;--rg:rgba(244,63,94,.12);    
-  --safe:env(safe-area-inset-bottom,0px);    
-  --usr-color:#94a3b8;    
-}    
-html,body{    
-  height:100%;width:100%;overflow:hidden;    
-  background:var(--bg);color:var(--tx);    
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Noto Sans JP",sans-serif;    
-  touch-action:pan-y;overscroll-behavior:none;-webkit-text-size-adjust:100%;    
-}    
-input,textarea,select{font-family:inherit;-webkit-user-select:text;user-select:text;font-size:16px!important}    
-button{cursor:pointer;font-family:inherit;border:none;background:none}    
-button:focus-visible{outline:2px solid var(--in);outline-offset:2px}  /* スプラッシュスクリーン */  
-#splash{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;transition:opacity .25s}  
-.spin{width:26px;height:26px;border:3px solid var(--in);border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite}  
-@keyframes spin{to{transform:rotate(360deg)}}  
-.spt{font-size:10px;font-weight:800;color:var(--m2);letter-spacing:.2em}  /* ロビーUI */
-#lobby{display:none;position:fixed;inset:0;background:var(--bg);z-index:100;overflow-y:auto;padding-bottom:80px;}
-.lbo{min-height:100%;display:flex;flex-direction:column;padding:20px 14px calc(20px + var(--safe));gap:6px;justify-content:center;max-width:380px;margin:0 auto}
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0f172a">
+<title>NEZU ONETIME CHAT 2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<style>
+/* 共通リセット＆変数 */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0f172a;--sf:#1e293b;--s2:#0a1628;--bd:#334155;
+  --tx:#f1f5f9;--mu:#94a3b8;--m2:#64748b;
+  --in:#4f46e5;--i2:#4338ca;
+  --em:#00ff66;--e2:#10b981;
+  --ro:#f43f5e;--rg:rgba(244,63,94,.12);
+  --safe:env(safe-area-inset-bottom,0px);
+  --usr-color:#94a3b8;
+}
+html,body{
+  height:100%;width:100%;overflow:hidden;
+  background:var(--bg);color:var(--tx);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Noto Sans JP",sans-serif;
+  touch-action:pan-y;overscroll-behavior:none;-webkit-text-size-adjust:100%;
+}
+input,textarea,select{font-family:inherit;-webkit-user-select:text;user-select:text;font-size:16px!important}
+button{cursor:pointer;font-family:inherit;border:none;background:none}
+button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
+
+/* スプラッシュスクリーン */
+#splash{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;transition:opacity .25s}
+.spin{width:26px;height:26px;border:3px solid var(--in);border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spt{font-size:10px;font-weight:800;color:var(--m2);letter-spacing:.2em}
+
+/* ロビーUI */
+#lobby{display:none;position:fixed;inset:0;background:var(--bg);z-index:100;overflow:hidden;}
+.lbo{height:100%;display:flex;flex-direction:column;padding:10px 14px calc(10px + var(--safe));gap:6px;justify-content:center;max-width:380px;margin:0 auto}
 .lbt{font-size:14px;font-weight:900;color:#818cf8;text-align:center;letter-spacing:.05em}
 .lbsub{font-size:8px;font-weight:700;color:var(--m2);text-align:center;letter-spacing:.1em;margin-top:-4px}
 .lbi{display:flex;flex-direction:column;gap:5px;width:100%}
@@ -43,27 +49,19 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}  /* スプ�
 .fl{font-size:9.5px;font-weight:700;color:var(--mu)}
 .inp{width:100%;background:var(--sf);border:1px solid var(--bd);border-radius:5px;padding:4px 8px;color:var(--tx);outline:none;font-size:12px}
 .inp:focus{border-color:var(--in)}
-.clrbox{display:flex;flex-direction:column;gap:4px;background:var(--s2);padding:6px 8px;border-radius:5px;border:1px solid var(--bd)}
+.clrbox{display:flex;flex-direction:column;gap:2px;background:var(--s2);padding:4px 8px;border-radius:5px;border:1px solid var(--bd)}
 .clrlbl{font-size:9px;font-weight:700;color:var(--mu)}
-.clrpick-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:5px}
-.clrc,.wclrc,.clrc2{aspect-ratio:1;width:100%;max-width:20px;border-radius:50%;margin:0 auto;border:2px solid transparent;cursor:pointer}
-.clrc.sel,.wclrc.sel,.clrc2.sel{border-color:var(--tx);transform:scale(1.15);box-shadow:0 0 6px rgba(255,255,255,0.2)}
-.brow{display:grid;grid-template-columns:1fr 1.6fr 1.3fr;gap:6px;margin-top:2px;margin-bottom:16px}
-.btn{padding:5px;border-radius:5px;font-size:11px;font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center;transition:background .2s}
+.clrpick-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:4px}
+.clrc,.wclrc,.clrc2{aspect-ratio:1;width:100%;max-width:18px;border-radius:50%;margin:0 auto;border:2px solid transparent;cursor:pointer}
+.clrc.sel,.wclrc.sel,.clrc2.sel{border-color:var(--tx);transform:scale(1.1)}
+.brow{display:grid;grid-template-columns:1fr 1.6fr 1.3fr;gap:4px;margin-top:2px}
+.btn{padding:5px;border-radius:5px;font-size:11px;font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center}
 .btn:active{opacity:0.8}
 .btn:disabled{opacity:0.5;cursor:not-allowed}
 .bq{background:var(--sf);color:var(--tx);border:1px solid var(--bd)}
 .bp{background:var(--in);color:#fff}
 .bo{background:var(--e2);color:#fff}
 .glink{font-size:11px;color:#a5b4fc;text-align:center;margin-top:16px;padding:12px 0;text-decoration:underline;cursor:pointer;font-weight:bold}
-
-/* ロビー内の進行中セッション表示 */
-#activeSessionFloat{display:none;position:fixed;bottom:env(safe-area-inset-bottom, 16px);left:14px;right:14px;background:var(--sf);border:1px solid var(--in);border-radius:12px;padding:12px 16px;z-index:150;box-shadow:0 8px 24px rgba(0,0,0,0.5);align-items:center;justify-content:space-between;cursor:pointer;animation:slideUp 0.3s ease;}
-@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
-.as-info{display:flex;flex-direction:column;gap:2px}
-.as-title{font-size:13px;font-weight:900;color:#fff;display:flex;align-items:center;gap:6px}
-.as-badge{background:var(--ro);color:#fff;font-size:9px;padding:2px 6px;border-radius:4px;}
-.as-desc{font-size:10px;color:var(--mu)}
 
 /* 待機画面UI */
 #waitScreen{display:none;position:fixed;inset:0;background:var(--bg);z-index:200;flex-direction:column;align-items:center;justify-content:center;padding:20px}
@@ -77,8 +75,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}  /* スプ�
 /* ヘッダー＆入室者リスト */
 #hdr{background:var(--sf);border-bottom:1px solid var(--bd);padding:6px 12px;flex-shrink:0}
 .hr{display:flex;align-items:center;gap:8px;height:32px}
-.rn{font-weight:800;font-size:13px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;cursor:pointer;transition:color .2s}
-.rn:hover{color:var(--in)}
+.rn{font-weight:800;font-size:13px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
 .pcnt{font-size:10.5px;font-weight:700;color:var(--mu);font-family:monospace}
 .hbs{display:flex;gap:4px;z-index:10}
 .hbs button{padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700;background:var(--bg);border:1px solid var(--bd);color:var(--tx);display:flex;align-items:center;gap:4px}
@@ -88,16 +85,14 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}  /* スプ�
 .bx{border-color:rgba(244,63,94,.4)!important;color:#fda4af!important}
 #pl{display:flex;gap:4px;overflow-x:auto;padding-top:4px;white-space:nowrap;scrollbar-width:none;}
 #pl::-webkit-scrollbar{display:none;}
-.chip{font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:var(--tx);transition:all 0.2s}
+.chip{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,.03);border:1px solid;transition:all 0.2s}
 
 /* タイマー */
 #tobar{display:none;background:rgba(244,63,94,.08);border-bottom:1px solid rgba(244,63,94,.2);padding:4px 12px;flex-shrink:0;align-items:center;gap:8px}
 #tobar.show{display:flex}
 #tobar-track{flex:1;height:3px;background:rgba(244,63,94,.15);border-radius:2px;overflow:hidden}
 #tobar-fill{height:100%;background:var(--ro);border-radius:2px;transition:width .5s linear}
-#tobar-label{font-size:9.5px;font-weight:800;color:#fda4af;font-family:monospace;white-space:nowrap;min-width:30px;text-align:right}
-#tmEditBtn{background:none;border:none;color:var(--m2);font-size:13px;padding:2px 4px;cursor:pointer;border-radius:4px;}
-#tmEditBtn:hover{background:rgba(255,255,255,0.1);}
+#tobar-label{font-size:9.5px;font-weight:800;color:#fda4af;font-family:monospace;white-space:nowrap}
 
 /* 覗き見モードUI */
 #wb{display:none;background:rgba(79,70,229,.1);border-bottom:1px solid var(--in);flex-shrink:0}
@@ -129,10 +124,52 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}  /* スプ�
 .sm-join{background:rgba(79,70,229,.1);color:#a5b4fc;border:1px solid rgba(79,70,229,.25)}
 .sm-leave{background:rgba(148,163,184,.07);color:#94a3b8;border:1px solid rgba(148,163,184,.15)}
 .sm-auto{background:rgba(244,63,94,.12);color:#fb7185;border:1px solid rgba(244,63,94,.3)}
-.sm-host{background:rgba(234,179,8,.1);color:#facc15;border:1px solid rgba(234,179,8,.25)}
 .mm{display:flex;align-items:center;gap:6px;font-size:11px;margin-bottom:2px;padding-left:4px}
 .ts{color:var(--m2);font-size:9.5px;margin-left:auto}
 .mb{align-self:start;background:var(--sf);border:1px solid transparent;border-left:3px solid;border-radius:4px 12px 12px 12px;padding:8px 12px;font-size:14px;line-height:1.5;max-width:100%;word-break:break-all;white-space:pre-wrap}
+
+/* メディア展開 UI */
+.media-wrap{margin-top:4px;width:100%;max-width:260px} 
+.media-collapse{border:1px solid var(--bd);border-radius:6px;overflow:hidden;background:var(--s2)}
+.media-collapse-hdr{display:flex;align-items:center;gap:4px;padding:5px 8px;cursor:pointer;user-select:none;background:rgba(255,255,255,.03)}
+.media-collapse-icon{font-size:10px;flex-shrink:0}
+.media-collapse-label{font-size:9.5px;font-weight:700;color:var(--mu);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.media-collapse-badge{font-size:8px;font-weight:800;padding:1px 4px;border-radius:3px;flex-shrink:0}
+.media-collapse-badge.yt{background:rgba(255,0,0,.15);color:#f87171}
+.media-collapse-badge.nc{background:rgba(79,70,229,.2);color:#a5b4fc}
+.media-collapse-badge.tk{background:rgba(0,0,0,.5);color:#fff;border:1px solid rgba(255,255,255,.15)}
+.media-collapse-badge.ig{background:rgba(225,48,108,.15);color:#e1306c}
+.media-collapse-badge.img{background:rgba(16,185,129,.15);color:#34d399}
+.media-collapse-badge.au{background:rgba(99,102,241,.2);color:#818cf8}
+.media-collapse-arrow{font-size:9px;color:var(--m2);transition:transform .2s;flex-shrink:0}
+.media-collapse-arrow.open{transform:rotate(180deg)}
+.media-collapse-body{display:none;padding:4px;background:#000}
+.media-collapse-body.open{display:block}
+.vc-wrap{width:100%;position:relative}
+.vc{width:100%;aspect-ratio:16/9;background:#000;border-radius:4px;overflow:hidden;position:relative;border:1px solid var(--bd);display:flex;align-items:center;justify-content:center}
+.vc.shorts { aspect-ratio: 9/16; width: 100%; max-width: 320px; margin: 0 auto; background: #000; position: relative; overflow: hidden; border-radius: 8px; border: 1px solid var(--bd); }
+.vc-frame {position:absolute; top:0; left:0; width:100%; height:100%; border:none; overflow:hidden;}
+.vc-badge{position:absolute;top:4px;left:4px;background:rgba(0,0,0,.75);color:#fff;font-size:8px;font-weight:800;padding:1px 3px;border-radius:3px;z-index:2;pointer-events:none}
+.tk-card{display:inline-flex;align-items:center;gap:6px;background:rgba(1,1,1,.6);border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:6px 10px;margin-top:4px;max-width:100%;text-decoration:none;color:var(--tx)}
+.tk-card-icon{width:22px;height:22px;border-radius:4px;background:#010101;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px}
+.tk-card-body{display:flex;flex-direction:column;min-width:0}
+.tk-card-label{font-size:8px;font-weight:800;color:rgba(255,255,255,.4);letter-spacing:.05em}
+.tk-card-url{font-size:10px;color:#a5b4fc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px}
+.tk-card-arrow{font-size:10px;color:rgba(255,255,255,.3);margin-left:auto;flex-shrink:0}
+.img-block{width:100%;max-width:100%;height:auto;max-height:160px;object-fit:contain;border-radius:4px;border:1px solid var(--bd);cursor:pointer;display:block}
+.aw{width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:4px;padding:6px;display:flex;gap:6px;align-items:center}
+.aw-left{flex-shrink:0}
+.apb{width:26px;height:26px;border-radius:50%;background:var(--in);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px}
+.aw-right{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.aw-info{display:flex;align-items:center;gap:4px;font-size:10px;flex-wrap:wrap}
+.aw-badge{background:var(--m2);color:#fff;font-size:8px;font-weight:800;padding:1px 3px;border-radius:2px}
+.aw-name{color:var(--tx);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.aw-seek-row{display:flex;align-items:center;gap:4px}
+.asktypetype{flex:1;height:3px;background:var(--bd);outline:none;border-radius:2px;-webkit-appearance:none}
+.asktypetype::-webkit-slider-thumb{-webkit-appearance:none;width:8px;height:8px;border-radius:50%;background:var(--tx)}
+.atm{font-size:9px;color:var(--mu);font-family:monospace}
+.aw-actions{display:flex;align-items:center;gap:6px}
+.aw-size-badge{font-size:9px;color:var(--em);font-family:monospace}
 
 /* 入力バー */
 #ib{display:none;padding:8px 12px calc(8px + var(--safe));background:var(--sf);border-top:1px solid var(--bd);align-items:flex-end;gap:8px;flex-shrink:0}
@@ -142,11 +179,12 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}  /* スプ�
 .bclrm{position:absolute;right:10px;color:var(--m2);font-size:18px;font-weight:700}
 .bsd{width:34px;height:34px;border-radius:50%;background:var(--in);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .bsd svg{width:16px;height:16px;transform:rotate(45deg);margin-top:-1px;margin-right:2px}
+#midisable{position:absolute;inset:0;background:rgba(15,23,42,.92);border-radius:20px;display:none;align-items:center;justify-content:center;font-size:11px;color:var(--ro);font-weight:700;z-index:5}
 
 /* フローティングナビゲーション */
 #fn{position:fixed;right:16px;bottom:80px;display:none;flex-direction:column;gap:10px;z-index:90;pointer-events:none}
 #fn.visible{display:flex}
-#fn button{width:40px;height:40px;border-radius:50%;background:rgba(30,41,59,.75);backdrop-filter:blur(4px);border:1px solid var(--bd);color:rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.3);pointer-events:auto;transition:transform .2s;font-size:16px}
+#fn button{width:40px;height:40px;border-radius:50%;background:rgba(30,41,59,.75);backdrop-filter:blur(4px);border:1px solid var(--bd);color:rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.3);pointer-events:auto;transition:transform .2s}
 #fn button:active{transform:scale(0.9)}
 #fn svg{width:20px;height:20px;stroke-width:2.5}
 
@@ -156,172 +194,203 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}  /* スプ�
 .gc,.clrmc{background:var(--sf);border:1px solid var(--bd);border-radius:12px;width:100%;max-width:440px;display:flex;flex-direction:column;gap:10px;padding:14px;max-height:85vh;overflow-y:auto}
 .gs{border-left:3px solid var(--in);padding:8px 10px;font-size:11.5px;color:var(--tx);line-height:1.4;background:rgba(255,255,255,0.02);border-radius:4px}
 .gs h4{font-size:12.5px;margin-bottom:3px;font-weight:800}
+.cx{position:absolute;top:16px;right:16px;width:36px;height:36px;border-radius:50%;background:rgba(15,23,42,.6);color:#fff;font-size:22px;display:flex;align-items:center;justify-content:center}
+.clr-prev{background:var(--bg);padding:10px;border-radius:8px;text-align:center;font-size:12px;font-weight:700}
+.clr-btns{display:flex;gap:8px;margin-top:4px}
+.clr-cancel,.clr-ok{flex:1;padding:10px;border-radius:8px;font-size:13px;font-weight:700;text-align:center}
+.clr-cancel{background:var(--bg);border:1px solid var(--bd);color:var(--tx)}
+.clr-ok{background:var(--in);color:#fff}
+#imod-wrap{width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+#imEl{max-width:100%;max-height:100%;object-fit:contain}
 .pend-item{display:flex;justify-content:space-between;align-items:center;background:var(--bg);border:1px solid var(--bd);padding:8px 10px;border-radius:6px}
 .pend-info{display:flex;flex-direction:column;gap:2px}
 .pend-name{font-size:12px;font-weight:700;color:var(--tx)}
 .pend-acts{display:flex;gap:6px}
 </style>
+</head>
+<body>
 
-</head>    
-<body>  <div id="splash"><div class="spin"></div><div class="spt">NEZU ONETIME CHAT</div></div>  <div id="lobby">    
-  <div class="lbo">    
-    <h2 class="lbt">⚡ NEZU ONETIME CHAT</h2>    
-    <div class="lbsub">P2P-LIKE ENCRYPTED DISPOSABLE CHAT</div>    
-    <div class="lbi">    
-      <div class="ibox">    
-        🔑 <b>完全使い捨てセキュリティ空間</b><br>    
-        UIDベースの固有IDでなりすましを防止。参加者が0になると部屋ごと完全に消去(Wipe)されます。一度消えた一般部屋でも同じIDで再作成可能です。    
-      </div>    
-      <div id="lberr"></div>  <div class="fg">    
-    <label class="fl">表示名 *</label>    
-    <input type="text" id="ni" class="inp" placeholder="ニックネーム（最大10文字）" maxlength="10" autocomplete="username">    
-  </div>      <div class="fg" style="margin-top: 2px;">    
-    <label class="fl">あなたの固有ID（タップでコピー）</label>    
-    <div id="myIdDisplay" class="inp" style="cursor: pointer; background: var(--s2); display: flex; justify-content: space-between; align-items: center;">    
-      <span id="myIdText" style="font-family:monospace; font-weight:bold; letter-spacing:0.1em;">------</span>    
-      <span style="font-size: 11px; color: var(--mu);">📋</span>    
-    </div>    
-  </div>      <div class="clrbox" style="margin-top:6px;">    
-    <div class="clrlbl">吹き出し・ネームカラー (32色)</div>    
-    <div class="clrpick-grid" id="lbClrPick"></div>    
-  </div>      <div class="fg" id="timerGroup" style="margin-top:6px;">    
-    <label class="fl">個人の自動退室タイマー (1〜60分)</label>    
-    <input type="number" id="tmSel" class="inp" min="1" max="60" value="30">    
-  </div>      <div class="fg" style="margin-top:6px;">    
-    <label class="fl">部屋ID *</label>    
-    <input type="text" id="ri" class="inp" placeholder="共有する部屋名" autocomplete="off" autocapitalize="off" spellcheck="false">    
-  </div>    
-  <div class="fg">    
-    <label class="fl">部屋パスワード *（エンドツーエンド暗号化キー）</label>    
-    <input type="text" id="pi" class="inp" placeholder="共通暗号化パスワード" autocomplete="off" autocapitalize="off" spellcheck="false">    
-  </div>      <div class="brow">    
-    <button class="btn bq" id="gnBtn">自動生成</button>    
-    <button class="btn bp" id="enBtn" disabled>接続中...</button>    
-    <button class="btn bo" id="ofBtn" disabled>常設公式部屋</button>    
-  </div>      <div style="border-top: 1px solid var(--bd); margin: 4px 0 12px 0; opacity: 0.5;"></div>    <button id="lbCopyBtn" class="btn bq" style="width: 100%; padding: 10px; font-size: 12px; background: rgba(79, 70, 229, 0.1); color: #a5b4fc; border: 1px solid var(--in);">📋 現在の入力で招待URLをコピー</button>
+<div id="splash"><div class="spin"></div><div class="spt">NEZU ONETIME CHAT</div></div>
 
-  <div class="glink" id="gdBtn">📖 ガイド / セキュリティ仕様</div>    
-</div>    </div>    
-</div>  <div id="activeSessionFloat">    
-  <div class="as-info">    
-    <div class="as-title"><span class="as-badge">進行中</span> <span id="asRoomName"></span></div>    
-    <div class="as-desc">タップしてセッション画面に戻る</div>    
-  </div>    
-  <div style="color:var(--in); font-weight:bold; font-size:18px;">❯</div>    
-</div>  <div id="waitScreen">    
-  <div class="spin" style="margin-bottom:16px; border-color:#a5b4fc; border-top-color:transparent;"></div>    
-  <h3 style="color:#a5b4fc; font-size:14px;">入室承認待ち</h3>    
-  <p style="color:var(--mu); font-size:11px; margin-top:8px; text-align:center; line-height:1.5;">この部屋は承認制(Invitation)です。<br>ホストが許可するまでお待ちください。</p>    
-  <div style="margin-top:20px; background:var(--sf); padding:10px 20px; border-radius:8px; border:1px solid var(--bd); text-align:center;">    
-    <div style="font-size:10px; color:var(--m2);">あなたのID（ホストにお伝えください）</div>    
-    <div id="waitIdDsp"></div>    
-  </div>    
-  <button class="btn bq" style="margin-top:32px; padding:8px 24px;" id="waitCancelBtn">キャンセル</button>    
-</div>  <div id="app">    
-  <div id="cp">    
-    <div id="hdr">    
-      <div class="hr">    
-        <button class="bi" id="minBtn" title="ロビーへ戻る" style="background:var(--s2); border:1px solid var(--bd); border-radius:4px; padding:4px 8px; color:var(--tx); font-size:11px;">🔽 最小化</button>    
-        <span class="rn" id="rdsp" title="クリックしてIDをコピー" style="margin-left:8px;"></span>    
-        <span class="pcnt" id="pcnt"></span>    
-        <div class="hbs">    
-          <button id="rmCopyBtn" class="bi" title="招待URLをコピー"><span>🔗</span></button>    
-          <button id="modeBtn" style="display:none;" class="bi"><span id="modeIcon">🔓</span> <span id="modeText">OPEN</span></button>    
-          <button id="pendingBtn" style="display:none; position:relative;" class="bi">    
-            待機列 <span id="pendingBadge" style="display:none; position:absolute; top:-4px; right:-4px; background:var(--ro); color:#fff; font-size:8px; padding:2px 4px; border-radius:10px;">0</span>    
-          </button>    
-          <button class="bx" id="exBtn">退出</button>    
-        </div>    
-      </div>    
-      <div id="pl"></div>    
-    </div>  <div id="tobar">    
-  <div id="tobar-track"><div id="tobar-fill" style="width:100%"></div></div>    
-  <span id="tobar-label">--:--</span>    
-  <button id="tmEditBtn" title="タイマー設定">⚙️</button>    
-</div>    <div id="wb">    
-  <div id="wb-toggle">    
-    <div class="wb-toggle-left">    
-      <span class="wb-badge">覗き見モード</span>    
-      <span class="wb-toggle-title">参加するには名前を設定</span>    
-    </div>    
-    <div style="display:flex;align-items:center;gap:6px">    
-      <span class="wb-toggle-hint" id="wb-hint">▼ タップして設定</span>    
-      <span id="wb-arrow">▾</span>    
-    </div>    
-  </div>    
-  <div id="wb-body">    
-    <div class="wbf">    
-      <div class="wbr"><input type="text" id="wni" class="wbi" placeholder="表示名（最大10文字）" maxlength="10"></div>    
-      <div class="wclrbox">    
-        <div class="clrlbl" style="margin-bottom:4px">名前・吹き出し枠のカラー</div>    
-        <div class="clrpick-grid" id="wClrPick"></div>    
-      </div>    
-      <button class="bwb" id="wuBtn">✅ この名前でチャットに参加する</button>    
-    </div>    
-  </div>    
-</div>    <div id="tl" role="log" aria-live="polite">    
-  <div id="tl-inner"></div>    
-</div>    <div id="ib">    
-  <div class="mi-container">    
-    <textarea id="mi" rows="1" placeholder="メッセージを入力... (Enterで送信)"></textarea>    
-    <button class="bclrm" id="clrMsgBtn" title="クリア">×</button>    
-  </div>    
-  <button class="bsd" id="sdBtn" aria-label="送信">    
-    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">    
-      <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>    
-    </svg>    
-  </button>    
-</div>    </div>    
-</div>  <div id="fn">    
-  <button id="autoScrollBtn" title="自動追従切替">    
-    <span id="autoScrollIcon">⬇️</span>    
-  </button>    
-  <button id="tBBtn" title="最上部へ"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg></button>    
-  <button id="tTBtn" title="最下部へ"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></button>    
-</div>  <div id="gmod" class="mod-overlay">    
-  <div class="gc" style="max-width: 500px;">    
-    <h3 style="font-size:14px;font-weight:900;color:#a5b4fc;border-bottom:1px solid var(--bd);padding-bottom:6px">📖 ガイド ＆ セキュリティ仕様</h3>    
-    <div class="gs" style="border-left-color: #60a5fa;">    
-      <h4>🔒 エンドツーエンド暗号化 & 匿名認証</h4>    
-      <p style="font-size:10.5px; color:var(--mu); margin-top:2px;">    
-        バックグラウンドでFirebase匿名認証を行い、固有の6桁IDを生成します。パスワードを用いた<b>PBKDF2+AES-256-CBC</b>により、情報は完全に暗号化されます。万一データベースやソースコードが漏洩しても、パスワードを知らなければ復号できません。    
-      </p>    
-    </div>    
-    <div class="gs" style="border-left-color: #f87171;">    
-      <h4>⏱ 個人の自動退室と自動Wipe</h4>    
-      <p style="font-size:10.5px; color:var(--mu); margin-top:2px;">    
-        各自が設定した時間（1〜60分）が経過すると自動退室となります。全員が退室し入室者が0人になった瞬間、部屋全体が自動的に消去(Wipe)されます。一度消えた部屋IDは再利用可能です。<br>短時間の通信切断は許容されますが、長時間切断された場合は退出処理が行われます。    
-      </p>    
-    </div>    
-    <div class="gs" style="border-color:rgba(244,63,94,.3); background: rgba(244,63,94, 0.04);">    
-      <h4>⛔ 利用規約・同意事項</h4>    
-      <p style="font-size:10.5px; color:var(--tx); margin-top:2px;">犯罪行為の計画、違法な取引、スパム等を目的とした利用は禁止します。上記暗号構造、及び自己責任原則に同意の上でご利用ください。</p>    
-    </div>    
-    <button class="btn bp" id="gcBtn" style="font-size:12px;padding:8px;margin-top:4px">規約に同意して閉じる</button>    
-  </div>    
-</div>  <div id="pendMod" class="mod-overlay">    
-  <div class="gc" style="max-width:400px;">    
-    <h3 style="font-size:14px;color:#a5b4fc;">入室リクエスト (待機列)</h3>    
-    <div id="pendList" style="display:flex;flex-direction:column;gap:8px;margin-top:10px; max-height: 50vh; overflow-y:auto;">待機者はいません。</div>    
-    <button class="btn bq" id="closePendBtn" style="margin-top:10px;">閉じる</button>    
-  </div>    
-</div>  <div id="tmMod" class="mod-overlay">    
-  <div class="gc" style="max-width:320px;">    
-    <h3 style="font-size:14px;font-weight:900;color:#a5b4fc;">⏳ 個人タイマー設定</h3>    
-    <p style="font-size:11px;color:var(--mu);margin-bottom:4px;">発言時の回復時間・自動退室までの時間を変更します(1〜60分)。</p>    
-    <input type="number" id="tmInputMod" class="inp" min="1" max="60" value="30" style="font-size:16px; padding:8px;">    
-    <button class="btn bp" id="tmSaveBtn" style="margin-top:10px; padding:10px; font-size:13px;">保存して全回復</button>    
-    <button class="btn bq" id="tmCloseBtn" style="margin-top:4px; padding:10px;">キャンセル</button>    
-  </div>    
-</div>  <script type="module">    
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";    
-import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";    
-import { getDatabase, ref, push, onValue, set, update, remove, query, orderByChild, limitToLast, get, serverTimestamp, onChildAdded, onDisconnect }    
-  from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";    const firebaseConfig = {
-apiKey: "AIzaSyCsRidc0smUQDaBwq-oki5NzxSHx6-ljiw",
-authDomain: "nezuochat.firebaseapp.com",
-databaseURL: "https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app",
-projectId: "nezuochat"
+<div id="lobby">
+  <div class="lbo">
+    <h2 class="lbt">⚡ NEZU ONETIME CHAT</h2>
+    <div class="lbsub">P2P-LIKE ENCRYPTED DISPOSABLE CHAT</div>
+    <div class="lbi">
+      <div class="ibox">
+        🔑 <b>完全使い捨てセキュリティ空間</b><br>
+        UIDベースの固有IDでなりすましを防止。ホストは入室を<b>承認制(Invitation)</b>に切り替え可能です。最新100件のログのみを保持し、参加者が0になると部屋ごと完全消去(Wipe)されます。
+      </div>
+      <div id="lberr"></div>
+      <div class="fg">
+        <label class="fl">表示名 *</label>
+        <input type="text" id="ni" class="inp" placeholder="ニックネーム（最大10文字）" maxlength="10" autocomplete="username">
+      </div>
+      <div class="clrbox">
+        <div class="clrlbl">吹き出し・ネームカラー</div>
+        <div class="clrpick-grid" id="lbClrPick"></div>
+      </div>
+      <div class="fg">
+        <label class="fl">部屋ID *</label>
+        <input type="text" id="ri" class="inp" placeholder="共有する部屋名" autocomplete="off" autocapitalize="off" spellcheck="false">
+      </div>
+      <div class="fg">
+        <label class="fl">部屋パスワード *（エンドツーエンド暗号化キー）</label>
+        <input type="text" id="pi" class="inp" placeholder="共通暗号化パスワード" autocomplete="off" autocapitalize="off" spellcheck="false">
+      </div>
+      <div class="brow">
+        <button class="btn bq" id="gnBtn">自動生成</button>
+        <button class="btn bp" id="enBtn" disabled>接続中...</button>
+        <button class="btn bo" id="ofBtn" disabled>常設公式部屋</button>
+      </div>
+      <div class="glink" id="gdBtn">📖 ガイド / セキュリティ仕様</div>
+    </div>
+  </div>
+</div>
+
+<div id="waitScreen">
+  <div class="spin" style="margin-bottom:16px; border-color:#a5b4fc; border-top-color:transparent;"></div>
+  <h3 style="color:#a5b4fc; font-size:14px;">入室承認待ち</h3>
+  <p style="color:var(--mu); font-size:11px; margin-top:8px; text-align:center; line-height:1.5;">この部屋は承認制(Invitation)です。<br>ホストが許可するまでお待ちください。</p>
+  <div style="margin-top:20px; background:var(--sf); padding:10px 20px; border-radius:8px; border:1px solid var(--bd); text-align:center;">
+    <div style="font-size:10px; color:var(--m2);">あなたのID（ホストにお伝えください）</div>
+    <div id="waitIdDsp"></div>
+  </div>
+  <button class="btn bq" style="margin-top:32px; padding:8px 24px;" id="waitCancelBtn">キャンセル</button>
+</div>
+
+<div id="app">
+  <div id="cp">
+    <div id="hdr">
+      <div class="hr">
+        <span class="rn" id="rdsp"></span>
+        <span class="pcnt" id="pcnt"></span>
+        <div class="hbs">
+          <button id="modeBtn" style="display:none;" class="bi"><span id="modeIcon">🔓</span> <span id="modeText">OPEN</span></button>
+          <button id="pendingBtn" style="display:none; position:relative;" class="bi">
+            待機列 <span id="pendingBadge" style="display:none; position:absolute; top:-4px; right:-4px; background:var(--ro); color:#fff; font-size:8px; padding:2px 4px; border-radius:10px;">0</span>
+          </button>
+          <button class="bclr" id="clrBtn" style="display:none"><span class="bclr-dot" id="clrDot"></span>色</button>
+          <button class="bx" id="exBtn">退出</button>
+        </div>
+      </div>
+      <div id="pl"></div>
+    </div>
+    
+    <div id="tobar">
+      <div id="tobar-track"><div id="tobar-fill" style="width:100%"></div></div>
+      <span id="tobar-label">30:00</span>
+    </div>
+
+    <div id="wb">
+      <div id="wb-toggle">
+        <div class="wb-toggle-left">
+          <span class="wb-badge">覗き見モード</span>
+          <span class="wb-toggle-title">参加するには名前を設定</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="wb-toggle-hint" id="wb-hint">▼ タップして設定</span>
+          <span id="wb-arrow">▾</span>
+        </div>
+      </div>
+      <div id="wb-body">
+        <div class="wbf">
+          <div class="wbr"><input type="text" id="wni" class="wbi" placeholder="表示名（最大10文字）" maxlength="10"></div>
+          <div class="wclrbox">
+            <div class="clrlbl" style="margin-bottom:4px">名前・吹き出し枠のカラー</div>
+            <div class="clrpick-grid" id="wClrPick"></div>
+          </div>
+          <button class="bwb" id="wuBtn">✅ この名前でチャットに参加する</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="tl" role="log" aria-live="polite">
+      <div id="tl-inner"></div>
+    </div>
+
+    <div id="ib">
+      <div class="mi-container">
+        <div id="midisable">最新までスクロールすると書き込めます</div>
+        <textarea id="mi" rows="1" placeholder="メッセージを入力... (Enterで送信)"></textarea>
+        <button class="bclrm" id="clrMsgBtn" title="クリア">×</button>
+      </div>
+      <button class="bsd" id="sdBtn" aria-label="送信">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="fn">
+  <button id="tBBtn" title="最上部へ"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg></button>
+  <button id="tTBtn" title="最下部へ"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></button>
+</div>
+
+<div id="gmod" class="mod-overlay">
+  <div class="gc" style="max-width: 500px;">
+    <h3 style="font-size:14px;font-weight:900;color:#a5b4fc;border-bottom:1px solid var(--bd);padding-bottom:6px">📖 ガイド ＆ セキュリティ仕様</h3>
+    <div class="gs" style="border-left-color: #60a5fa;">
+      <h4>🔒 エンドツーエンド暗号化 & 匿名認証</h4>
+      <p style="font-size:10.5px; color:var(--mu); margin-top:2px;">
+        バックグラウンドでFirebase匿名認証を行い、固有の6桁IDを生成します。パスワードを用いた<b>PBKDF2+AES-256-CBC</b>により、テキストや情報は通信経路に乗る前に完全に暗号化されます。
+      </p>
+    </div>
+    <div class="gs" style="border-left-color: #f87171;">
+      <h4>⏱ 100件制限 ＆ 30分バニッシュ</h4>
+      <p style="font-size:10.5px; color:var(--mu); margin-top:2px;">
+        会話は常に<b>「最新100件」</b>のみを保持し、古いものは自動破棄されます。さらに30分無通信で自動退出となり、全員が退室した瞬間に部屋ごと<b>即時完全消去(Wipe)</b>されます。
+      </p>
+    </div>
+    <div class="gs" style="border-color:rgba(244,63,94,.3); background: rgba(244,63,94, 0.04);">
+      <h4>⛔ 利用規約・同意事項</h4>
+      <p style="font-size:10.5px; color:var(--tx); margin-top:2px;">犯罪行為の計画、違法な取引、スパム等を目的とした利用は禁止します。上記暗号構造、及び自己責任原則に同意の上でご利用ください。</p>
+    </div>
+    <button class="btn bp" id="gcBtn" style="font-size:12px;padding:8px;margin-top:4px">規約に同意して閉じる</button>
+  </div>
+</div>
+
+<div id="imod" class="mod-overlay">
+  <div id="imod-wrap"><img id="imEl" src="" alt=""></div>
+  <button class="cx" id="icBtn">×</button>
+</div>
+
+<div id="clrmod" class="mod-overlay">
+  <div class="clrmc">
+    <h3>カラーを変更</h3>
+    <div class="clrpick-grid" id="clrPick2" style="margin:6px 0"></div>
+    <div class="clr-prev" id="clrPrev"><span style="color:var(--usr-color)">■ この色で名前と吹き出し枠が表示されます</span></div>
+    <div class="clr-btns">
+      <button class="clr-cancel" id="clrCancel">キャンセル</button>
+      <button class="clr-ok" id="clrOk">適用</button>
+    </div>
+  </div>
+</div>
+
+<div id="pendMod" class="mod-overlay">
+  <div class="gc" style="max-width:400px;">
+    <h3 style="font-size:14px;color:#a5b4fc;">入室リクエスト (待機列)</h3>
+    <div id="pendList" style="display:flex;flex-direction:column;gap:8px;margin-top:10px; max-height: 50vh; overflow-y:auto;"></div>
+    <button class="btn bq" id="closePendBtn" style="margin-top:10px;">閉じる</button>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import { getDatabase, ref, push, onValue, set, update, remove, query, orderByChild, limitToLast, get, serverTimestamp, onDisconnect }
+  from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCsRidc0smUQDaBwq-oki5NzxSHx6-ljiw",
+  authDomain: "nezuochat.firebaseapp.com",
+  databaseURL: "https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "nezuochat",
+  storageBucket: "nezuochat.appspot.com",
+  messagingSenderId: "154725381397",
+  appId: "1:154725381397:web:8742ccd957e20cee8ce51c"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -329,610 +398,1158 @@ const auth = getAuth(app);
 const db  = getDatabase(app);
 const $   = id => document.getElementById(id);
 
+// --- DOM キャッシュ ---
 const D = {
-splash:$("splash"), lobby:$("lobby"), lberr:$("lberr"), app:$("app"),
-ni:$("ni"), ri:$("ri"), pi:$("pi"), tmSel:$("tmSel"), timerGroup:$("timerGroup"),
-enBtn:$("enBtn"), ofBtn:$("ofBtn"), gnBtn:$("gnBtn"), lbCopyBtn:$("lbCopyBtn"), rmCopyBtn:$("rmCopyBtn"),
-myIdDisplay:$("myIdDisplay"), myIdText:$("myIdText"),
-gdBtn:$("gdBtn"), gmod:$("gmod"), gcBtn:$("gcBtn"),
-hdr:$("hdr"), rdsp:$("rdsp"), pcnt:$("pcnt"), minBtn:$("minBtn"), activeSessionFloat:$("activeSessionFloat"), asRoomName:$("asRoomName"),
-pl:$("pl"), exBtn:$("exBtn"), modeBtn:$("modeBtn"), modeIcon:$("modeIcon"), modeText:$("modeText"),
-pendingBtn:$("pendingBtn"), pendingBadge:$("pendingBadge"), pendMod:$("pendMod"), pendList:$("pendList"), closePendBtn:$("closePendBtn"),
-waitScreen:$("waitScreen"), waitIdDsp:$("waitIdDsp"), waitCancelBtn:$("waitCancelBtn"),
-tobar:$("tobar"), tobarFill:$("tobar-fill"), tobarLabel:$("tobar-label"), tmEditBtn:$("tmEditBtn"),
-tmMod:$("tmMod"), tmInputMod:$("tmInputMod"), tmSaveBtn:$("tmSaveBtn"), tmCloseBtn:$("tmCloseBtn"),
-wb:$("wb"), wbToggle:$("wb-toggle"), wbBody:$("wb-body"), wbArrow:$("wb-arrow"), wbHint:$("wb-hint"),
-wni:$("wni"), wuBtn:$("wuBtn"), wClrPick:$("wClrPick"),
-tl:$("tl"), tli:$("tl-inner"), ib:$("ib"), mi:$("mi"), sdBtn:$("sdBtn"), clrMsgBtn:$("clrMsgBtn"),
-fn:$("fn"), tTBtn:$("tTBtn"), tBBtn:$("tBBtn"), autoScrollBtn:$("autoScrollBtn"), autoScrollIcon:$("autoScrollIcon"), lbClrPick:$("lbClrPick")
+  splash:$("splash"), lobby:$("lobby"), lberr:$("lberr"), app:$("app"),
+  ni:$("ni"), ri:$("ri"), pi:$("pi"),
+  enBtn:$("enBtn"), ofBtn:$("ofBtn"), gnBtn:$("gnBtn"),
+  gdBtn:$("gdBtn"), gmod:$("gmod"), gcBtn:$("gcBtn"),
+  imod:$("imod"), imEl:$("imEl"), icBtn:$("icBtn"), imodWrap:$("imod-wrap"),
+  clrmod:$("clrmod"), clrPick2:$("clrPick2"), clrPrev:$("clrPrev"),
+  clrOk:$("clrOk"), clrCancel:$("clrCancel"), clrBtn:$("clrBtn"), clrDot:$("clrDot"),
+  hdr:$("hdr"), rdsp:$("rdsp"), pcnt:$("pcnt"),
+  pl:$("pl"), exBtn:$("exBtn"), modeBtn:$("modeBtn"), modeIcon:$("modeIcon"), modeText:$("modeText"),
+  pendingBtn:$("pendingBtn"), pendingBadge:$("pendingBadge"), pendMod:$("pendMod"), pendList:$("pendList"), closePendBtn:$("closePendBtn"),
+  waitScreen:$("waitScreen"), waitIdDsp:$("waitIdDsp"), waitCancelBtn:$("waitCancelBtn"),
+  tobar:$("tobar"), tobarFill:$("tobar-fill"), tobarLabel:$("tobar-label"),
+  wb:$("wb"), wbToggle:$("wb-toggle"), wbBody:$("wb-body"), wbArrow:$("wb-arrow"), wbHint:$("wb-hint"),
+  wni:$("wni"), wuBtn:$("wuBtn"), wClrPick:$("wClrPick"),
+  tl:$("tl"), tli:$("tl-inner"), ib:$("ib"), mi:$("mi"), sdBtn:$("sdBtn"), clrMsgBtn:$("clrMsgBtn"),
+  fn:$("fn"), tTBtn:$("tTBtn"), tBBtn:$("tBBtn"), lbClrPick:$("lbClrPick"),
+  midisable:$("midisable")
+};
+
+D.updateInputBarState = (enabled) => {
+  if (enabled && !isW) {
+    D.midisable.style.display = "none";
+    D.mi.disabled = false;
+    D.sdBtn.disabled = false;
+  } else {
+    D.midisable.style.display = "flex";
+    D.mi.disabled = true;
+    D.sdBtn.disabled = true;
+  }
 };
 
 let _srvOff = 0;
 onValue(ref(db, ".info/serverTimeOffset"), s => { _srvOff = s.val() || 0; });
 const srvNow = () => Date.now() + _srvOff;
 
+// --- Auth & UID 生成 ---
 let myUid = null;
 let myShortID = "";
+
 function generateShortID(uidStr) {
-let hash = 0;
-for (let i = 0; i < uidStr.length; i++) { hash = ((hash << 5) - hash) + uidStr.charCodeAt(i); hash |= 0; }
-return Math.abs(hash).toString(36).toUpperCase().slice(-6).padStart(6, '0');
+  let hash = 0;
+  for (let i = 0; i < uidStr.length; i++) {
+    hash = ((hash << 5) - hash) + uidStr.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash).toString(36).toUpperCase().slice(-6).padStart(6, '0');
 }
 
-// セッション管理
 const saveSession = (data) => {
-let s = {}; try { s = JSON.parse(localStorage.getItem("nz_sess") || "{}"); } catch{}
-Object.assign(s, data, {timestamp: Date.now()}); localStorage.setItem("nz_sess", JSON.stringify(s));
+  let s = {};
+  try { s = JSON.parse(localStorage.getItem("nz_sess") || "{}"); } catch{}
+  Object.assign(s, data);
+  localStorage.setItem("nz_sess", JSON.stringify(s));
 };
 
+// --- 暗号化ロジック ---
 let symKey = null;
 const enc = t => {
-if (!t || !symKey) return "";
-const iv = CryptoJS.lib.WordArray.random(16);
-const ct = CryptoJS.AES.encrypt(t, symKey, { iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 });
-return iv.toString(CryptoJS.enc.Hex) + ":" + ct.toString();
+  if (!t || !symKey) return "";
+  const iv = CryptoJS.lib.WordArray.random(16);
+  const ct = CryptoJS.AES.encrypt(t, symKey, { iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 });
+  return iv.toString(CryptoJS.enc.Hex) + ":" + ct.toString();
 };
-const dec = c => {
-if (!c || !symKey) return null;
-try {
-if (c.includes(":")) {
-const [h, ct] = c.split(":");
-const iv = CryptoJS.enc.Hex.parse(h);
-return CryptoJS.AES.decrypt(ct, symKey, { iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }).toString(CryptoJS.enc.Utf8) || null;
-}
-return CryptoJS.AES.decrypt(c, symKey, { mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }).toString(CryptoJS.enc.Utf8) || null;
-} catch { return null; }
-};
-const esc = t => (t||"").replace(/[&<>"']/g, c=>({'&':'&','<':'<','>':'>','"':'"',"'":'''}[c]));
 
-D.ni.addEventListener("input", ()=>{ D.wni.value = D.ni.value; localStorage.setItem("nz_ni", D.ni.value); });
+const dec = c => {
+  if (!c || !symKey) return null;
+  try {
+    if (c.includes(":")) {
+      const [h, ct] = c.split(":");
+      const iv = CryptoJS.enc.Hex.parse(h);
+      return CryptoJS.AES.decrypt(ct, symKey, { iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }).toString(CryptoJS.enc.Utf8) || null;
+    }
+    return CryptoJS.AES.decrypt(c, symKey, { mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }).toString(CryptoJS.enc.Utf8) || null;
+  } catch { return null; }
+};
+
+const esc = t => (t||"").replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+D.ni.addEventListener("input",  ()=>{ D.wni.value = D.ni.value; localStorage.setItem("nz_ni", D.ni.value); });
 D.wni.addEventListener("input", ()=>{ D.ni.value = D.wni.value; localStorage.setItem("nz_ni", D.wni.value); });
 
+// --- カラー設定 ---
 let wbOpen = false;
 D.wbToggle.addEventListener("click", () => {
-wbOpen = !wbOpen; D.wbBody.classList.toggle("open", wbOpen);
-D.wbArrow.classList.toggle("open", wbOpen); D.wbHint.textContent = wbOpen ? "▲ 閉じる" : "▼ タップして設定";
+  wbOpen = !wbOpen;
+  D.wbBody.classList.toggle("open", wbOpen);
+  D.wbArrow.classList.toggle("open", wbOpen);
+  D.wbHint.textContent = wbOpen ? "▲ 閉じる" : "▼ タップして設定";
 });
 
-// 32色拡張
 const COLORS = [
-{v:"#f87171",n:"赤1"}, {v:"#fb923c",n:"橙1"}, {v:"#fbbf24",n:"黄1"}, {v:"#facc15",n:"黄2"},
-{v:"#a3e635",n:"黄緑"}, {v:"#4ade80",n:"緑1"}, {v:"#34d399",n:"緑2"}, {v:"#2dd4bf",n:"青緑"},
-{v:"#22d3ee",n:"シアン"}, {v:"#38bdf8",n:"空色"}, {v:"#60a5fa",n:"青1"}, {v:"#818cf8",n:"青2"},
-{v:"#a78bfa",n:"紫1"}, {v:"#c084fc",n:"紫2"}, {v:"#e879f9",n:"ピンク1"}, {v:"#f472b6",n:"ピンク2"},
-{v:"#fb7185",n:"赤2"}, {v:"#f43f5e",n:"赤3"}, {v:"#ef4444",n:"赤4"}, {v:"#ea580c",n:"橙2"},
-{v:"#d97706",n:"茶1"}, {v:"#ca8a04",n:"茶2"}, {v:"#65a30d",n:"深緑1"}, {v:"#16a34a",n:"深緑2"},
-{v:"#059669",n:"深緑3"}, {v:"#0d9488",n:"深緑4"}, {v:"#0891b2",n:"深青1"}, {v:"#0284c7",n:"深青2"},
-{v:"#2563eb",n:"深青3"}, {v:"#4f46e5",n:"深青4"}, {v:"#94a3b8",n:"灰"}, {v:"#f1f5f9",n:"白"}
+  {v:"#94a3b8",n:"グレー"},{v:"#f1f5f9",n:"ホワイト"},{v:"#818cf8",n:"インディゴ"},{v:"#60a5fa",n:"ブルー"},
+  {v:"#34d399",n:"エメラルド"},{v:"#a3e635",n:"ライム"},{v:"#fbbf24",n:"アンバー"},{v:"#fb923c",n:"オレンジ"},
+  {v:"#f87171",n:"レッド"},{v:"#f472b6",n:"ピンク"},{v:"#c084fc",n:"パープル"},{v:"#67e8f9",n:"シアン"},
+  {v:"#4ade80",n:"グリーン"},{v:"#fde68a",n:"イエロー"},{v:"#fca5a5",n:"ライトレッド"},{v:"#a5b4fc",n:"ライトインディゴ"},
 ];
 let curColor = localStorage.getItem("nz_color") || "#94a3b8";
-const setGlobalColor = c => { document.documentElement.style.setProperty("--usr-color", c); };
+let tmpColor = curColor;
+
+const setGlobalColor = c => {
+  document.documentElement.style.setProperty("--usr-color", c);
+  if(D.clrDot) D.clrDot.style.background = c;
+};
 setGlobalColor(curColor);
 
-const syncPickers = v => { [D.lbClrPick, D.wClrPick].forEach(con => { if(con) con.querySelectorAll("button").forEach(b => b.classList.toggle("sel", b.dataset.color === v)); }); };
-function buildPicker(con, sel, cls, onChange) {
-if (!con) return; con.innerHTML = "";
-COLORS.forEach(({v,n}) => {
-const b = document.createElement("button"); b.className = cls + (v === sel ? " sel" : "");
-b.style.background = v; b.dataset.color = v; b.title = n; b.addEventListener("click", () => onChange(v)); con.appendChild(b);
-});
-}
-const onColorSelect = v => { curColor = v; setGlobalColor(v); localStorage.setItem("nz_color",v); syncPickers(v); };
-buildPicker(D.lbClrPick, curColor, "clrc", onColorSelect); buildPicker(D.wClrPick, curColor, "wclrc", onColorSelect);
+const syncPickers = v => {
+  [D.lbClrPick, D.wClrPick].forEach(con => {
+    if(!con) return;
+    con.querySelectorAll("button").forEach(b => b.classList.toggle("sel", b.dataset.color === v));
+  });
+};
 
-// 初期設定の復元 (タイマー)
-const savedTm = localStorage.getItem("nz_tm");
-if(savedTm) D.tmSel.value = savedTm;
-D.tmSel.addEventListener("input", () => { localStorage.setItem("nz_tm", D.tmSel.value); });
+function buildPicker(con, sel, cls, onChange) {
+  if (!con) return; con.innerHTML = "";
+  COLORS.forEach(({v,n}) => {
+    const b = document.createElement("button");
+    b.className = cls + (v === sel ? " sel" : "");
+    b.style.background = v;
+    b.title = n;
+    b.dataset.color = v;
+    b.addEventListener("click", () => onChange(v));
+    con.appendChild(b);
+  });
+}
+
+const onColorSelect = v => { curColor = v; setGlobalColor(v); localStorage.setItem("nz_color",v); syncPickers(v); };
+buildPicker(D.lbClrPick, curColor, "clrc",  onColorSelect);
+buildPicker(D.wClrPick,  curColor, "wclrc", onColorSelect);
+
+D.clrBtn.addEventListener("click", () => {
+  tmpColor = curColor;
+  buildPicker(D.clrPick2, curColor, "clrc2", v => { tmpColor = v; D.clrPrev.innerHTML = `<span style="color:${v}">■ この色で名前と吹き出し枠が表示されます</span>`; });
+  D.clrmod.classList.add("show");
+});
+D.clrOk.addEventListener("click", async () => {
+  curColor = tmpColor; setGlobalColor(curColor); localStorage.setItem("nz_color",curColor); syncPickers(curColor);
+  if (curR && !isW) {
+    try { await update(ref(db,`presence/${curR}/${myUid}`),{cEnc:enc(curColor)}); } catch {}
+  }
+  D.clrmod.classList.remove("show");
+});
+D.clrCancel.addEventListener("click", () => D.clrmod.classList.remove("show"));
 
 const fDT = ts => {
-if(!ts) return ""; const d = new Date(ts);
-return ${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")};
+  if(!ts) return "";
+  const d = new Date(ts);
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}`;
+};
+const fmtSz = b => {
+  if(!b || b <= 0) return "";
+  if(b < 1024) return b + "B";
+  if(b < 1048576) return (b/1024).toFixed(1) + "KB";
+  return (b/1048576).toFixed(1) + "MB";
 };
 
-// URL/IDコピー
-const copyInviteUrl = (btnEl, rId) => {
-if (!rId) return;
-const url = ${location.origin}${location.pathname}?r=${encodeURIComponent(rId)};
-navigator.clipboard.writeText(url).then(() => {
-const orig = btnEl.innerHTML;
-btnEl.innerHTML = "<span>✅</span> コピー済";
-setTimeout(() => { btnEl.innerHTML = orig; }, 1500);
-});
-};
-D.lbCopyBtn.onclick = () => { if(D.ri.value.trim()) copyInviteUrl(D.lbCopyBtn, D.ri.value.trim()); else alert("部屋IDを入力してください"); };
-D.rmCopyBtn.onclick = () => { copyInviteUrl(D.rmCopyBtn, rawR); };
-D.rdsp.onclick = () => { copyInviteUrl(D.rdsp, rawR); };
-D.myIdDisplay.onclick = () => { navigator.clipboard.writeText(myShortID).then(() => alert("固有IDをコピーしました: " + myShortID)); };
+// --- グローバル状態管理 ---
+const OFF_H      = CryptoJS.SHA256("公式部屋").toString();
+const OFF_P      = "official_public_pass";
+const INACTIVITY = 30 * 60 * 1000;
+const LOAD_SIZE  = 50;
 
-const OFF_H = CryptoJS.SHA256("公式部屋").toString(), OFF_P = "official_public_pass";
 let curR = null, curP = null, curN = null, rawR = null;
-let isOff = false, isW = false, isEx = false, _exitLock = false, isActionLocked = false;
-let isHost = false, roomMode = 'open', myJoinTime = 0, myExpireTime = 0, currentTimerMin = 30;
+let isOff = false, isW = false, isEx = false, _exitLock = false;
+let isActionLocked = false;
+let isHost = false;
+let roomMode = 'open';
 let _cOff = null, _pOff = null, _mOff = null, _pendOff = null, _waitOff = null;
-let isAutoFollow = true, myPresRef = null, hbInterval = null;
-let displayedMsgIds = new Set();
-let isActiveSessionMinimized = false;
+let logArray = [], isLiveMode = true, displayCount = LOAD_SIZE;
+let myPresRef = null, myDisconnectRef = null;
+let lastActiveWrite = 0;
 
-// スパム対策用
-let lastMsgTime = 0;
-let lastMsgText = "";
-let isSending = false;
+const hideSplash = () => {
+  if(!D.splash || D.splash.style.display === "none") return;
+  D.splash.style.opacity = "0";
+  setTimeout(() => { D.splash.style.display = "none"; }, 260);
+};
 
-const hideSplash = () => { if(!D.splash || D.splash.style.display === "none") return; D.splash.style.opacity = "0"; setTimeout(() => { D.splash.style.display = "none"; }, 260); };
+// --- 画像モーダル ---
+let imgScale=1, imgX=0, imgY=0, imgDragging=false, imgDragSx=0, imgDragSy=0, imgDragIx=0, imgDragIy=0;
+const resetImgTransform = () => { imgScale=1; imgX=0; imgY=0; applyImgTransform(); };
+const applyImgTransform = () => { D.imEl.style.transform = `translate(${imgX}px,${imgY}px) scale(${imgScale})`; };
+const clampImg = () => {
+  if(imgScale<=1){ imgX=0; imgY=0; return; }
+  const sw = D.imEl.offsetWidth*imgScale, sh = D.imEl.offsetHeight*imgScale;
+  const mx = Math.max(0, (sw-window.innerWidth)/2), my = Math.max(0, (sh-window.innerHeight)/2);
+  imgX = Math.max(-mx, Math.min(mx, imgX)); imgY = Math.max(-my, Math.min(my, imgY));
+};
 
+window.openImg = src => { D.imEl.src=src; resetImgTransform(); D.imod.classList.add("show"); };
+D.icBtn.onclick = () => { D.imod.classList.remove("show"); setTimeout(() => { D.imEl.src=""; resetImgTransform(); }, 200); };
+D.imod.addEventListener("wheel", e => { e.preventDefault(); imgScale = Math.min(8, Math.max(1, imgScale*(e.deltaY>0?.85:1.18))); clampImg(); applyImgTransform(); }, {passive:false});
+D.imod.addEventListener("mousedown", e => {
+  if(e.target===D.icBtn) return;
+  imgDragging = true; imgDragSx = e.clientX; imgDragSy = e.clientY; imgDragIx = imgX; imgDragIy = imgY;
+  D.imod.style.cursor = imgScale>1 ? "grabbing" : "default"; e.preventDefault();
+});
+document.addEventListener("mousemove", e => {
+  if(!imgDragging) return;
+  if(imgScale>1){ imgX = imgDragIx+(e.clientX-imgDragSx); imgY = imgDragIy+(e.clientY-imgDragSy); clampImg(); applyImgTransform(); }
+});
+document.addEventListener("mouseup", e => {
+  if(!imgDragging) return;
+  imgDragging = false; D.imod.style.cursor = "default";
+  if(Math.abs(e.clientX-imgDragSx)+Math.abs(e.clientY-imgDragSy)<5 && imgScale<=1 && (e.target===D.imod||e.target===D.imodWrap)) D.icBtn.click();
+});
+
+// --- メディアパーサー ---
+let activeAudio = null;
+const stopActiveAudio = () => { if(activeAudio){ try{ activeAudio.pause(); }catch{} activeAudio=null; } };
+
+const YR  = /(?:https?:\/\/)?(?:(?:www\.|m\.|music\.)?youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|v\/|shorts\/|live\/)([A-Za-z0-9_-]{11})|youtu\.be\/([A-Za-z0-9_-]{11}))/i;
+const NR  = /(?:https?:\/\/)?(?:(?:sp\.|www\.)?nicovideo\.jp\/(?:watch|user\/[0-9]+\/video)\/|nico\.ms\/)((?:sm|nm|so|lv|co|ch)?\d+)/i;
+const TKR = /(?:https?:\/\/)?(?:(?:[a-z0-9-]+\.)?tiktok\.com\/|vt\.tiktok\.com\/|vm\.tiktok\.com\/)([^\s?#]+)/i;
+const IGR = /(?:https?:\/\/)?(?:www\.)?instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/i;
+const AR  = /\.(mp3|wav|aac|m4a|ogg|flac)(\?.*)?$/i;
+const IR  = /\.(jpe?g|gif|png|webp|bmp|svg)(\?.*)?$/i;
+const UR  = /(https?:\/\/[^\s\n<>"]+)/gi;
+
+let _colCnt = 0;
+function makeCollapse(badgeCls, badgeText, icon, labelText, bodyHtml) {
+  const id = "mc" + (++_colCnt);
+  return `<div class="media-collapse">
+    <div class="media-collapse-hdr" onclick="toggleCollapse('${id}')">
+      <span class="media-collapse-icon">${icon}</span>
+      <span class="media-collapse-label">${esc(labelText)}</span>
+      <span class="media-collapse-badge ${badgeCls}">${badgeText}</span>
+      <span class="media-collapse-arrow" id="arr-${id}">▾</span>
+    </div>
+    <div class="media-collapse-body" id="body-${id}">${bodyHtml}</div>
+  </div>`;
+}
+window.toggleCollapse = (id) => {
+  const body = $("body-" + id), arr = $("arr-" + id);
+  if (!body || !arr) return;
+  const open = body.classList.toggle("open"); arr.classList.toggle("open", open);
+};
+
+let vcCnt = 0;
+const bVideoCard = (type, embedSrc, label) => {
+  const id = "vc" + (++vcCnt);
+  return `<div class="vc-wrap"><div class="vc ${type}" id="${id}"><span class="vc-badge">${esc(label)}</span><iframe class="vc-frame" src="${esc(embedSrc)}" allow="autoplay;encrypted-media;fullscreen" allowfullscreen loading="lazy"></iframe></div></div>`;
+};
+
+function bTikTokEmbed(url) {
+  const su = esc(url), shortLabel = url.length > 30 ? url.slice(0,30)+"…" : url;
+  const placeholderId = "tkph" + (++_colCnt);
+  let innerHtml = `<div id="${placeholderId}" style="width:100%; max-width:340px; aspect-ratio:9/16; margin:0 auto; background:#000; border-radius:8px; overflow:hidden; border:1px solid var(--bd);"></div>`;
+  
+  setTimeout(async () => {
+    const el = $(placeholderId); if(!el) return;
+    const iframeHtml = (id) => `<iframe src="https://www.tiktok.com/embed/v2/${id}" style="width:100%; height:100%; border:none; display:block;" frameborder="0" scrolling="no" allow="autoplay;encrypted-media" allowfullscreen></iframe>`;
+    
+    let vidMatch = url.match(/\/video\/(\d+)/i);
+    if (vidMatch) { el.innerHTML = iframeHtml(vidMatch[1]); return; }
+    try {
+      const res = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`);
+      const json = await res.json();
+      if(json && json.embed_product_id) { el.innerHTML = iframeHtml(json.embed_product_id); } 
+      else { el.style.background="transparent"; el.innerHTML = `<a class="tk-card" href="${su}" target="_blank"><div class="tk-card-icon">🎵</div><div class="tk-card-body"><span class="tk-card-label">TikTok</span><span class="tk-card-url">${su}</span></div><span class="tk-card-arrow">↗</span></a>`; }
+    } catch(e) {
+      el.style.background="transparent"; el.innerHTML = `<a class="tk-card" href="${su}" target="_blank"><div class="tk-card-icon">🎵</div><div class="tk-card-body"><span class="tk-card-label">TikTok</span><span class="tk-card-url">${su}</span></div><span class="tk-card-arrow">↗</span></a>`;
+    }
+  }, 100);
+  return makeCollapse("tk","TikTok","🎵", shortLabel, innerHtml);
+}
+
+let aCnt = 0;
+function bAudio(url) {
+  const id="au"+(++aCnt), wid="aw"+id, su=esc(url), fname=decodeURIComponent(url.split("/").pop().split("?")[0]||"audio");
+  const inner = `<div class="aw" id="${wid}"><audio id="${id}" src="${su}" preload="metadata"></audio><div class="aw-left"><div class="apb">▶</div></div><div class="aw-right"><div class="aw-info"><span class="aw-badge">AUDIO</span><span class="aw-name" title="${su}">${esc(fname)}</span></div><div class="aw-seek-row"><input type="range" class="asktypetype" value="0" min="0" max="100"><span class="atm">--:--</span></div><div class="aw-actions"></div></div></div>`;
+  requestAnimationFrame(() => setTimeout(async () => {
+    const aw=$(wid), au=$(id); if(!aw||!au) return;
+    const pb = aw.querySelector(".apb"), sk = aw.querySelector(".asktypetype"), tm = aw.querySelector(".atm"), actA = aw.querySelector(".aw-actions");
+    const fA = s => isNaN(s) || !isFinite(s) ? "--:--" : `${String(Math.floor(s/60)).padStart(2,"0")}:${String(Math.floor(s%60)).padStart(2,"0")}`;
+    try {
+      const h = await fetch(url, {method:"HEAD"}); const cl = h.headers.get("content-length");
+      if(cl && parseInt(cl)>0 && actA){ const sz = document.createElement("span"); sz.className = "aw-size-badge"; sz.textContent = fmtSz(parseInt(cl)); actA.appendChild(sz); }
+    } catch {}
+    au.onplay = () => { stopActiveAudio(); activeAudio = au; if(pb) pb.innerHTML = "⏸"; };
+    au.onpause = au.onended = () => { if(pb) pb.innerHTML = "▶"; if(activeAudio === au) activeAudio = null; };
+    au.ontimeupdate = () => { if(!au.duration || !sk || !tm) return; sk.value = (au.currentTime/au.duration)*100; tm.textContent = `${fA(au.currentTime)}`; };
+    au.onloadedmetadata = () => { if(tm) tm.textContent = `${fA(au.duration)}`; };
+    if(pb) pb.onclick = () => { if(au.paused) au.play().catch(()=>{}); else au.pause(); };
+    if(sk) sk.oninput = () => { if(au.duration) au.currentTime = (sk.value/100)*au.duration; };
+  }, 50));
+  return makeCollapse("au","AUDIO","🎵", fname, inner);
+}
+
+function _parseSegs(txt) {
+  const norm = txt.replace(/[\u3000]/g," "); const parts = []; let last = 0, m; UR.lastIndex = 0;
+  while((m = UR.exec(norm)) !== null){
+    if(m.index > last) parts.push({t:"t", v:norm.slice(last, m.index)});
+    parts.push({t:"u", v:m[0]});
+    last = m.index + m[0].length;
+  }
+  if(last < norm.length) parts.push({t:"t", v:norm.slice(last)});
+  
+  const segs = [];
+  for(let i=0; i<parts.length; i++){
+    const p = parts[i];
+    if(p.t === "t"){
+      let v = p.v;
+      if(i < parts.length-1 && parts[i+1].t === "u") v = v.replace(/[ \t]+$/, "");
+      if(i > 0 && parts[i-1].t === "u") v = v.replace(/^[ \t]+/, "");
+      const h = esc(v).replace(/\n/g,"<br>").replace(/(<br>){3,}/g,"<br><br>");
+      if(h) segs.push({type:"text", html:h});
+    } else {
+      const url = p.v, su = esc(url), cl = url.replace(/[?#].*$/,"");
+      const ym = url.match(YR);
+      if(ym){
+        const isShorts = url.includes('/shorts/');
+        const cls = isShorts ? "yt shorts" : "yt";
+        const inner = bVideoCard(cls, `https://www.youtube.com/embed/${ym[1]||ym[2]}?playsinline=1`, "YouTube");
+        const label = url.length>30 ? url.slice(0,30)+"…" : url;
+        segs.push({type:"media", html:makeCollapse("yt","YouTube","▶", label, inner)});
+        continue;
+      }
+      const nm = url.match(NR);
+      if(nm){
+        const inner = bVideoCard("nc", `https://embed.nicovideo.jp/watch/${nm[1]}?noscript=1`, "ニコニコ動画");
+        const label = url.length>30 ? url.slice(0,30)+"…" : url;
+        segs.push({type:"media", html:makeCollapse("nc","ニコニコ","▶", label, inner)});
+        continue;
+      }
+      if(TKR.test(url)){ segs.push({type:"media", html:bTikTokEmbed(url)}); continue; }
+      const igm = url.match(IGR);
+      if(igm){
+        const isReel = url.includes('/reel/');
+        const embedSrc = `https://www.instagram.com/${isReel ? 'reel' : 'p'}/${igm[1]}/embed/`;
+        const inner = `<div class="vc-wrap" style="display:flex; justify-content:center; padding: 4px 0;">
+          <iframe src="${embedSrc}" style="width:100%; max-width:340px; aspect-ratio:9/16; min-height:480px; background:#fff; border-radius:8px; border:1px solid var(--bd);" frameborder="0" scrolling="no" allowtransparency="true" allow="autoplay;encrypted-media" allowfullscreen></iframe>
+        </div>`;
+        const label = url.length>30 ? url.slice(0,30)+"…" : url;
+        segs.push({type:"media", html:makeCollapse("ig","Instagram","📷", label, inner)});
+        continue;
+      }
+      if(AR.test(cl)){ segs.push({type:"media", html:bAudio(url)}); continue; }
+      if(IR.test(cl) || /^data:image\//i.test(url)){
+        const label = cl.split("/").pop().split("?")[0] || "画像";
+        const inner = `<img class="img-block" src="${su}" alt="" loading="lazy" onclick="window.openImg('${su}')">`;
+        segs.push({type:"media", html:makeCollapse("img","画像","🖼", label, inner)});
+        continue;
+      }
+      segs.push({type:"text", html:`<a href="${su}" target="_blank" rel="noopener noreferrer">${su}</a>`});
+    }
+  }
+  return segs;
+}
+
+function parseTxtSplit(txt) {
+  const segs = _parseSegs(txt), textParts = [], mediaParts = [];
+  for(const s of segs){
+    if(s.type === "media") mediaParts.push(`<div class="media-wrap">${s.html}</div>`);
+    else textParts.push(s.html);
+  }
+  return { textHtml: textParts.join("<br>").replace(/^(<br>)+|(<br>)+$/g,""), mediaHtml: mediaParts.join("") };
+}
+
+// --- メッセージレンダリング ---
 function cMsg(m) {
-const txt = dec(m.text); if(!txt) return null;
-const d = document.createElement("div"); d.className = "mw"; d.dataset.ts = m.time||0; d.dataset.mid = m.id;
-if(m.type === "sys"){
-let cls = "sm sm-leave";
-if(txt.includes("入室")) cls = "sm sm-join"; else if(txt.includes("消去") || txt.includes("解散") || txt.includes("満了") || txt.includes("切断")) cls = "sm sm-auto"; else if(txt.includes("ホスト")) cls = "sm sm-host";
-d.innerHTML = <div class="${cls}">${esc(txt)}<span style="color:var(--m2);font-size:9px;margin-left:6px">${fDT(m.time)}</span></div>;
-} else {
-const sN = dec(m.nEnc) || "???", sC = dec(m.cEnc) || "#94a3b8";
-d.innerHTML = <div class="mm"><span style="color:${esc(sC)};font-weight:700">${esc(sN)}</span><span class="ts">${fDT(m.time)}</span></div><div class="mb" style="border-color:${esc(sC)}">${esc(txt)}</div>;
-}
-return d;
+  const txt = dec(m.text); if(!txt) return null;
+  const d = document.createElement("div"); d.className = "mw"; d.dataset.ts = m.time||0; d.dataset.mid = m.id;
+  
+  if(m.type === "sys"){
+    d.style.alignItems = "center";
+    let cls = "sm sm-leave";
+    if(txt.includes("入室")) cls = "sm sm-join";
+    else if(txt.includes("退室") || txt.includes("タイムアウト")) cls = "sm sm-auto";
+    d.innerHTML = `<div class="${cls}">${esc(txt)}<span style="color:var(--m2);font-size:9px;margin-left:6px">${fDT(m.time)}</span></div>`;
+  } else {
+    const sN = dec(m.nEnc) || "???", sC = dec(m.cEnc) || "#94a3b8";
+    const {textHtml, mediaHtml} = parseTxtSplit(txt);
+    let inner = `<div class="mm"><span style="color:${esc(sC)};font-weight:700">${esc(sN)}</span><span class="ts">${fDT(m.time)}</span></div>`;
+    if(textHtml) inner += `<div class="mb" style="border-color:${esc(sC)}">${textHtml}</div>`;
+    if(mediaHtml) inner += mediaHtml;
+    d.innerHTML = inner;
+  }
+  return d;
 }
 
-const scBottom = (instant=false) => { if(instant) { D.tl.style.scrollBehavior = "auto"; D.tl.scrollTop = D.tl.scrollHeight; } else { D.tl.style.scrollBehavior = "smooth"; D.tl.scrollTop = D.tl.scrollHeight; } };
+let displayedMsgIds = new Set();
+
+function renderMessages(preserveScroll = false) {
+  stopActiveAudio();
+  const total = logArray.length;
+  const currentSlice = logArray.slice(Math.max(0, total - displayCount));
+  const currentSliceIds = new Set(currentSlice.map(m => m.id));
+
+  const oldScrollHeight = D.tl.scrollHeight;
+  const oldScrollTop = D.tl.scrollTop;
+
+  Array.from(D.tli.children).forEach(child => {
+     const mid = child.dataset.mid;
+     if(mid && !currentSliceIds.has(mid)) {
+         child.remove();
+         displayedMsgIds.delete(mid);
+     }
+  });
+
+  currentSlice.forEach(m => {
+      let el = D.tli.querySelector(`[data-mid="${m.id}"]`);
+      if (!el) {
+          el = cMsg(m);
+          if (el) displayedMsgIds.add(m.id);
+      }
+      if (el) {
+          if (D.tli.lastElementChild !== el) D.tli.appendChild(el); 
+      }
+  });
+
+  if (preserveScroll && oldScrollHeight > 0) {
+      const newScrollHeight = D.tl.scrollHeight;
+      D.tl.scrollTop = oldScrollTop + (newScrollHeight - oldScrollHeight);
+  } else if (isLiveMode && !preserveScroll) {
+      requestAnimationFrame(() => setTimeout(() => scBottom(false), 50));
+  }
+  
+  updFnPos();
+}
+
+const scBottom = (instant=false) => { 
+  if(instant) { D.tl.style.scrollBehavior = "auto"; D.tl.scrollTop = D.tl.scrollHeight; }
+  else { D.tl.style.scrollBehavior = "smooth"; D.tl.scrollTop = D.tl.scrollHeight; }
+};
 const scTop = () => { D.tl.style.scrollBehavior = "smooth"; D.tl.scrollTop = 0; };
+
 D.tBBtn.onclick = () => scTop();
-D.tTBtn.onclick = () => { isAutoFollow = true; updateAutoScrollIcon(); scBottom(); };
+D.tTBtn.onclick = () => scBottom();
 D.mi.addEventListener("focus", () => setTimeout(() => scBottom(true), 150));
 
-function updFnPos() { const ibH = D.ib.classList.contains("show") ? D.ib.offsetHeight : 0; D.fn.style.bottom = (ibH + 16) + "px"; }
-
-const updateAutoScrollIcon = () => { D.autoScrollIcon.textContent = isAutoFollow ? "⬇️" : "⏸️"; };
-D.autoScrollBtn.onclick = () => { isAutoFollow = !isAutoFollow; updateAutoScrollIcon(); if (isAutoFollow) scBottom(true); };
+function updFnPos() {
+  const ibH = D.ib.classList.contains("show") ? D.ib.offsetHeight : 0;
+  D.fn.style.bottom = (ibH + 16) + "px";
+}
 
 D.tl.addEventListener("scroll", () => {
-updFnPos();
-if (D.tl.scrollHeight - D.tl.scrollTop - D.tl.clientHeight > 100) {
-if (isAutoFollow) { isAutoFollow = false; updateAutoScrollIcon(); }
-}
+  updFnPos();
+  const distFromBottom = D.tl.scrollHeight - D.tl.scrollTop - D.tl.clientHeight;
+  const isAtBottom = distFromBottom < 50;
+
+  if (isAtBottom) {
+      isLiveMode = true;
+      D.updateInputBarState(true);
+  } else {
+      isLiveMode = false;
+      D.updateInputBarState(false);
+  }
+
+  if (D.tl.scrollTop <= 10 && displayCount < logArray.length) {
+      displayCount += LOAD_SIZE;
+      renderMessages(true);
+  }
 }, {passive:true});
+
 window.addEventListener("resize", updFnPos, {passive:true});
 
+// --- Firebase 制御 ---
 async function wipe(r) {
-if(!r) return;
-try { await set(ref(db, rooms/${r}), null); await set(ref(db, chat/${r}), null); await set(ref(db, presence/${r}), null); await set(ref(db, pending/${r}), null); } catch(e){}
+  if(!r) return;
+  try {
+    await set(ref(db, `rooms/${r}`), null);
+    await set(ref(db, `chat/${r}`), null);
+    await set(ref(db, `presence/${r}`), null);
+  } catch(e){}
 }
 
 function clearAll() {
-if(typeof _cOff === "function"){ _cOff(); _cOff = null; }
-if(typeof _pOff === "function"){ _pOff(); _pOff = null; }
-if(typeof _mOff === "function"){ _mOff(); _mOff = null; }
-if(typeof _pendOff === "function"){ _pendOff(); _pendOff = null; }
-if(typeof _waitOff === "function"){ _waitOff(); _waitOff = null; }
-if(hbInterval){ clearInterval(hbInterval); hbInterval = null; }
-
-symKey = null; isAutoFollow = true; updateAutoScrollIcon();
-myJoinTime = 0; myExpireTime = 0;
-D.tli.innerHTML = ""; displayedMsgIds.clear(); stopToBar();
-isHost = false; roomMode = 'open'; isActiveSessionMinimized = false;
-D.activeSessionFloat.style.display = "none";
+  if(typeof _cOff === "function"){ _cOff(); _cOff = null; }
+  if(typeof _pOff === "function"){ _pOff(); _pOff = null; }
+  if(typeof _mOff === "function"){ _mOff(); _mOff = null; }
+  if(typeof _pendOff === "function"){ _pendOff(); _pendOff = null; }
+  if(typeof _waitOff === "function"){ _waitOff(); _waitOff = null; }
+  
+  symKey = null; logArray = []; isLiveMode = true; lastActiveWrite = 0; displayCount = LOAD_SIZE;
+  stopActiveAudio(); D.tli.innerHTML = ""; displayedMsgIds.clear(); stopToBar();
+  isHost = false; roomMode = 'open';
+  if (myDisconnectRef) { myDisconnectRef.cancel(); myDisconnectRef = null; }
 }
 
 let _toBarRaf = null;
+let _lastTimerSec = -1;
+
 function startToBar() {
-if (isW || !myExpireTime) return;
-D.tobar.classList.add("show");
-const totalMs = currentTimerMin * 60 * 1000;
+  if (isW) return;
+  D.tobar.classList.add("show");
+  
+  const tick = () => {
+    if (!lastActiveWrite) { _toBarRaf = requestAnimationFrame(tick); return; }
+    
+    const remain = Math.max(0, INACTIVITY - (srvNow() - lastActiveWrite));
+    D.tobarFill.style.width = (remain / INACTIVITY) * 100 + "%";
+    
+    const sec = Math.floor(remain / 1000);
+    if (sec !== _lastTimerSec) {
+        D.tobarLabel.textContent = Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0");
+        _lastTimerSec = sec;
+    }
 
-const tick = () => {
-if (!myExpireTime) { _toBarRaf = requestAnimationFrame(tick); return; }
-const remain = Math.max(0, myExpireTime - srvNow());
-D.tobarFill.style.width = (remain / totalMs) * 100 + "%";
-const sec = Math.floor(remain / 1000);
-D.tobarLabel.textContent = Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0");
-_toBarRaf = requestAnimationFrame(tick);
-};
-_toBarRaf = requestAnimationFrame(tick);
+    if (remain === 0 && !_exitLock) {
+      _exitLock = true;
+      exitRoom("タイムアウト(30分発言なし)により自動退室しました");
+      return;
+    }
+    _toBarRaf = requestAnimationFrame(tick);
+  };
+  _toBarRaf = requestAnimationFrame(tick);
 }
-function stopToBar() { D.tobar.classList.remove("show"); if (_toBarRaf) { cancelAnimationFrame(_toBarRaf); _toBarRaf = null; } }
 
-// タイマー設定モーダル
-D.tmEditBtn.onclick = () => {
-if(isOff) { alert("公式部屋は15分固定です。"); return; }
-D.tmInputMod.value = currentTimerMin;
-D.tmMod.classList.add("show");
-};
-D.tmCloseBtn.onclick = () => D.tmMod.classList.remove("show");
-D.tmSaveBtn.onclick = () => {
-let v = parseInt(D.tmInputMod.value);
-if(isNaN(v) || v < 1) v = 1; if(v > 60) v = 60;
-currentTimerMin = v;
-myExpireTime = srvNow() + (v * 60 * 1000);
-D.tmMod.classList.remove("show");
-};
-
-// 個人タイマー監視ルーチン (満了処理)
-setInterval(() => {
-if (curR && !isEx && !isW && myExpireTime > 0) {
-const remain = Math.max(0, myExpireTime - srvNow());
-if (remain === 0 && !_exitLock) {
-_exitLock = true;
-exitRoom("タイマー満了により自動退室しました。");
-}
-}
-}, 1000);
-
-// Heartbeat & ゴースト処理ルーチン
-function startHeartbeat() {
-if(hbInterval) clearInterval(hbInterval);
-hbInterval = setInterval(async () => {
-if(!curR || isW || !myUid || isEx) return;
-const now = srvNow();
-
-// 自分の lastActive を更新    
-    if (myPresRef) {    
-        await update(myPresRef, { lastActive: now }).catch(()=>{});    
-    }    
-
-    if(isOff) return; // 公式部屋はGC管理しない    
-
-    try {    
-        const snap = await get(ref(db, `presence/${curR}`));    
-        if (!snap.exists()) return;    
-        const presData = snap.val();    
-        const pKeys = Object.keys(presData);    
-            
-        const sortedUsers = pKeys.map(k => ({ uid: k, ...presData[k] })).sort((a,b) => (a.joinedAt||0) - (b.joinedAt||0));    
-        const rSnap = await get(ref(db, `rooms/${curR}`));    
-        let rData = rSnap.exists() ? rSnap.val() : null;    
-        let currentHost = rData ? rData.host : null;    
-            
-        const hostPres = sortedUsers.find(u => u.uid === currentHost);    
-        const isHostDead = !hostPres || (now - (hostPres.lastActive||now) > 90000);    
-        const aliveUsers = sortedUsers.filter(u => now - (u.lastActive||now) <= 90000);    
-        const iAmOldestAlive = aliveUsers.length > 0 && aliveUsers[0].uid === myUid;    
-
-        // ホスト移譲処理    
-        if (isHostDead && iAmOldestAlive && currentHost !== myUid && rData) {    
-            isHost = true;    
-            await update(ref(db, `rooms/${curR}`), { host: myUid });    
-            await push(ref(db, `chat/${curR}`), { type: "sys", text: enc(`${curN} が新しいホストになりました`), time: serverTimestamp() });    
-            currentHost = myUid;    
-        }    
-
-        // ホストによるGC実行    
-        if (currentHost === myUid) {    
-            let activeCount = aliveUsers.length;    
-            for (const u of sortedUsers) {    
-                if (now - (u.lastActive||now) > 90000) {    
-                    await remove(ref(db, `presence/${curR}/${u.uid}`));    
-                    const ghostN = dec(u.nEnc) || "不明なユーザー";    
-                    await push(ref(db, `chat/${curR}`), { type: "sys", text: enc(`${ghostN} が通信切断により退室しました`), time: serverTimestamp() });    
-                }    
-            }    
-            if (activeCount === 0) {    
-                await wipe(curR);    
-            }    
-        }    
-    } catch(e) {}    
-}, 20000);
-
+function stopToBar() {
+  D.tobar.classList.remove("show");
+  if (_toBarRaf) { cancelAnimationFrame(_toBarRaf); _toBarRaf = null; }
 }
 
 function showLobby(msg = "") {
-D.lberr.textContent = msg; D.lberr.style.display = msg ? "block" : "none";
-D.app.classList.remove("visible"); D.app.style.display = "none"; D.fn.classList.remove("visible");
-D.waitScreen.style.display = "none"; D.lobby.style.display = "block"; setBtns(true); hideSplash();
-
-if (curR && !isEx) {
-isActiveSessionMinimized = true;
-D.activeSessionFloat.style.display = "flex";
-D.asRoomName.textContent = rawR;
-} else {
-curR = null; clearAll();
-const ni = localStorage.getItem("nz_ni")||"", ri = localStorage.getItem("nz_ri")||"", pi = localStorage.getItem("nz_pi")||"";
-if(ni){ D.ni.value = ni; D.wni.value = ni; }
-if(ri && !D.ri.value) D.ri.value = ri;
-if(pi && !D.pi.value) D.pi.value = pi;
-syncPickers(curColor);
-}
+  curR = null; clearAll();
+  D.lberr.textContent = msg; D.lberr.style.display = msg ? "block" : "none";
+  D.app.classList.remove("visible"); D.app.style.display = "none"; D.fn.classList.remove("visible");
+  D.waitScreen.style.display = "none";
+  D.lobby.style.display = "block"; setBtns(true); hideSplash();
+  
+  const ni = localStorage.getItem("nz_ni")||"", ri = localStorage.getItem("nz_ri")||"", pi = localStorage.getItem("nz_pi")||"";
+  if(ni){ D.ni.value = ni; D.wni.value = ni; }
+  if(ri && !D.ri.value) D.ri.value = ri;
+  if(pi && !D.pi.value) D.pi.value = pi;
+  
+  syncPickers(curColor);
 }
 
-D.activeSessionFloat.addEventListener("click", () => {
-if(isActiveSessionMinimized && curR) {
-isActiveSessionMinimized = false;
-D.lobby.style.display = "none";
-D.activeSessionFloat.style.display = "none";
-D.app.style.display = "flex";
-D.app.classList.add("visible");
-D.fn.classList.add("visible");
-if(isAutoFollow) scBottom(true);
-}
-});
-D.minBtn.onclick = () => { showLobby(); };
-
-const setBtns = ok => { D.enBtn.disabled = !ok; D.enBtn.textContent = ok ? "入室する" : "接続中..."; D.ofBtn.disabled = !ok; };
-const updateModeBtnUI = () => { D.modeIcon.textContent = roomMode === 'open' ? '🔓' : '🔒'; D.modeText.textContent = roomMode === 'open' ? 'OPEN' : 'INVITE'; };
-
-function showWaitScreen() {
-D.lobby.style.display = "none"; D.waitScreen.style.display = "flex"; D.waitIdDsp.textContent = myShortID;
-}
-D.waitCancelBtn.onclick = () => {
-if(curR && myUid) remove(ref(db, pending/${curR}/${myUid}));
-if(_waitOff){ _waitOff(); _waitOff = null; }
-showLobby();
+const setBtns = ok => {
+  D.enBtn.disabled = !ok; D.enBtn.textContent = ok ? "入室する" : "接続中...";
+  D.ofBtn.disabled = !ok; D.ofBtn.textContent = ok ? "常設公式部屋" : "接続中...";
 };
 
-async function doJoin({target, pass, name, asW, isAutoRejoin=false}) {
-if(curR) await exitRoom();
-clearAll(); _exitLock = false; isEx = false;
-const hashId = (target === "公式部屋") ? OFF_H : CryptoJS.SHA256(target).toString();
-isOff = (hashId === OFF_H); isW = asW; curR = hashId; rawR = target; curP = pass; curN = asW ? "" : ${name} (ID: ${myShortID});
+// Host UI updates
+const updateModeBtnUI = () => {
+  D.modeIcon.textContent = roomMode === 'open' ? '🔓' : '🔒';
+  D.modeText.textContent = roomMode === 'open' ? 'OPEN' : 'INVITE';
+  if(roomMode === 'open') D.modeBtn.classList.remove('active-host');
+  else D.modeBtn.classList.add('active-host');
+};
 
-symKey = CryptoJS.PBKDF2(pass, "NEZU_ROOM_SALT_2026", {keySize:256/32, iterations:2000});
-
-currentTimerMin = isOff ? 15 : (parseInt(D.tmSel.value) || 30);
-myJoinTime = srvNow();
-myExpireTime = myJoinTime + (currentTimerMin * 60 * 1000);
-
-if(!isOff) {
-const roomRef = ref(db, rooms/${curR});
-const snap = await get(roomRef);
-const pSnap = await get(ref(db, presence/${curR}));
-const activeCnt = pSnap.exists() ? Object.keys(pSnap.val()).length : 0;
-
-if(!snap.exists() || activeCnt === 0){    
-      if(isAutoRejoin){ localStorage.removeItem("nz_sess"); throw new Error("部屋が消去されたため復帰できませんでした。"); }    
-      isHost = true; roomMode = 'open';    
-      await set(roomRef, { created: serverTimestamp(), host: myUid, mode: 'open', allowedUsers: { [myUid]: true } });    
-      if(snap.exists() && activeCnt === 0) { await set(ref(db, `chat/${curR}`), null); await set(ref(db, `pending/${curR}`), null); }    
-  } else {    
-      const rData = snap.val(); isHost = (rData.host === myUid); roomMode = rData.mode || 'open';    
-          
-      if (roomMode === 'invite' && !isHost && !isAutoRejoin && !rData.allowedUsers?.[myUid]) {    
-          await set(ref(db, `pending/${curR}/${myUid}`), { name: name, time: serverTimestamp() });    
-          showWaitScreen();    
-          return new Promise((resolve, reject) => {    
-              let timeoutId = setTimeout(() => { if(_waitOff){_waitOff();_waitOff=null;} reject(new Error("承認タイムアウト")); }, 60000);     
-              _waitOff = onValue(ref(db, `rooms/${curR}/allowedUsers/${myUid}`), (s) => {    
-                  if (s.exists()) {    
-                      clearTimeout(timeoutId);    
-                      if(_waitOff){ _waitOff(); _waitOff = null; }    
-                      resolve(completeJoin(name, asW, false));    
-                  }    
-              });    
-          });    
-      }    
+const renderPendingList = (pendingObj) => {
+  const entries = Object.entries(pendingObj);
+  D.pendingBadge.textContent = entries.length;
+  D.pendingBadge.style.display = entries.length > 0 ? "block" : "none";
+  
+  D.pendList.innerHTML = "";
+  if(entries.length === 0) {
+    D.pendList.innerHTML = "<div style='color:var(--mu);font-size:11px;text-align:center;'>待機中のユーザーはいません</div>";
+    return;
   }
-
-}
-return completeJoin(name, asW, isAutoRejoin);
-}
-
-async function completeJoin(name, asW, isAutoRejoin) {
-if(!asW){
-myPresRef = ref(db, presence/${curR}/${myUid});
-await set(myPresRef, { nEnc: enc(curN), cEnc: enc(curColor), joinedAt: serverTimestamp(), lastActive: serverTimestamp() });
-
-if (!isAutoRejoin) {    
-      await push(ref(db, `chat/${curR}`), {type: "sys", text: enc(`${curN} が入室しました`), time: serverTimestamp()});    
-  }    
-  if(!isOff){ localStorage.setItem("nz_ni", name); localStorage.setItem("nz_ri", rawR); localStorage.setItem("nz_pi", curP); }    
-  saveSession({target:rawR, pass:curP, name, asW:false});    
-  startHeartbeat();
-
-} else { saveSession({target:rawR, pass:curP, name:"", asW:true}); }
-
-D.waitScreen.style.display = "none";
-D.lobby.style.display = "none"; D.activeSessionFloat.style.display = "none";
-D.app.style.display = "flex"; D.app.classList.add("visible"); D.fn.classList.add("visible");
-D.rdsp.textContent = rawR;
-
-if(asW){
-D.ib.classList.remove("show"); D.wb.classList.add("show"); D.exBtn.textContent = "ロビーへ戻る";
-} else {
-D.ib.classList.add("show"); D.wb.classList.remove("show"); D.exBtn.textContent = "退出";
-if (isHost && !isOff) {
-D.modeBtn.style.display = "flex"; D.pendingBtn.style.display = "flex"; updateModeBtnUI();
-
-_pendOff = onValue(ref(db, `pending/${curR}`), snap => {    
-        const pends = snap.val() || {}; const cnt = Object.keys(pends).length;    
-        if(cnt > 0){ D.pendingBadge.textContent = cnt; D.pendingBadge.style.display = "block"; renderPendList(pends); }     
-        else { D.pendingBadge.style.display = "none"; D.pendList.innerHTML = "待機者はいません。"; }    
-    });    
-} else { D.modeBtn.style.display = "none"; D.pendingBtn.style.display = "none"; }
-
-}
-updFnPos(); hideSplash(); if(!asW) startToBar();
-
-if(!isOff) {
-_mOff = onValue(ref(db, rooms/${curR}), s => {
-if (!s.exists()) {
-if (!isEx && !_exitLock) {
-_exitLock = true;
-exitRoom("部屋が消去されたため、自動退室しました。");
-}
-return;
-}
-const rData = s.val();
-roomMode = rData.mode || 'open';
-if(isHost) updateModeBtnUI();
-});
-}
-
-const msgLimit = 100;
-const q = query(ref(db, chat/${curR}), orderByChild("time"), limitToLast(msgLimit));
-_cOff = onChildAdded(q, (snap) => {
-if(!curR) return;
-const m = snap.val(); m.id = snap.key;
-if (displayedMsgIds.has(m.id)) return;
-const el = cMsg(m);
-if (el) {
-D.tli.appendChild(el);
-displayedMsgIds.add(m.id);
-if (isAutoFollow && !isActiveSessionMinimized) requestAnimationFrame(() => scBottom(false));
-}
-});
-
-_pOff = onValue(ref(db, presence/${curR}), s => {
-if(!curR) return;
-let activeCnt = 0; const fg = document.createDocumentFragment();
-for(const [id, u] of Object.entries(s.val() || {})){
-if(!u) continue;
-const n = dec(u.nEnc); if(!n) continue;
-activeCnt++; const sp = document.createElement("span"); sp.className = "chip"; sp.textContent = n; fg.appendChild(sp);
-}
-D.pl.innerHTML = ""; D.pl.appendChild(fg); D.pcnt.textContent = [${activeCnt}人];
-});
-}
-
-async function exitRoom(autoMsg = "") {
-if (isEx) return; isEx = true; _exitLock = true;
-const sR = curR, sN = curN, sO = isOff, sW = isW;
-try {
-if (!sW && sR && sN) {
-if (myPresRef) await remove(myPresRef).catch(()=>{});
-
-const ps = await get(ref(db, `presence/${sR}`));     
-  let activeCount = 0;    
-  if (ps.exists()) { activeCount = Object.keys(ps.val()).length; }    
-      
-  if (!sO && activeCount === 0) {     
-      await wipe(sR);     
-  } else if (!sO) {     
-      await push(ref(db, `chat/${sR}`), { type: "sys", text: enc(autoMsg || `${sN} が退室しました`), time: serverTimestamp() }).catch(()=>{});     
-  }    
-}
-
-} catch (e) { console.error(e); }
-localStorage.removeItem("nz_sess"); stopToBar(); clearAll(); isEx = false; showLobby(autoMsg);
-}
-
-async function trimLogs(r) {
-if (!r) return;
-try {
-const snap = await get(query(ref(db, chat/${r}), orderByChild("time")));
-if (!snap.exists()) return;
-const total = snap.size;
-if (total <= 100) return;
-let count = 0; const updates = {};
-snap.forEach(c => {
-if (count < total - 100) updates[c.key] = null;
-count++;
-});
-if (Object.keys(updates).length > 0) {
-await update(ref(db, chat/${r}), updates);
-}
-} catch(e) {}
-}
-
-async function sendMsg(){
-if(!curR || isW || isCmp || isSending) return;
-const txt = D.mi.value.trim(); if(!txt) return;
-
-const now = Date.now();
-if (now - lastMsgTime < 1500) { alert("連投制限中です。少し待ってから送信してください。"); return; }
-if (txt === lastMsgText) { alert("同じ内容の連続投稿はできません。"); return; }
-if (txt.length > 2000) { alert("文字数制限(2000文字)を超えています。"); return; }
-
-isSending = true;
-D.mi.value = ""; D.mi.style.height = "auto";
-try {
-await push(ref(db, chat/${curR}), { type: "msg", nEnc: enc(curN), cEnc: enc(curColor), text: enc(txt), time: serverTimestamp() });
-trimLogs(curR);
-
-lastMsgTime = now;    
-  lastMsgText = txt;    
-  myExpireTime = srvNow() + (currentTimerMin * 60 * 1000);
-
-} catch(e) { alert("送信失敗"); D.mi.value = txt; }
-isSending = false; updFnPos();
-}
-
-let isCmp = false;
-D.mi.addEventListener("compositionstart", () => { isCmp = true; }); D.mi.addEventListener("compositionend", () => { isCmp = false; });
-D.mi.addEventListener("keydown", e => { if(e.key === "Enter" && !e.shiftKey && !isCmp) { e.preventDefault(); sendMsg(); } });
-D.mi.addEventListener("input", () => { D.mi.style.height = "auto"; D.mi.style.height = Math.min(D.mi.scrollHeight, 80) + "px"; updFnPos(); });
-D.sdBtn.onclick = () => sendMsg();
-D.clrMsgBtn.onclick = () => { D.mi.value = ""; D.mi.style.height = "auto"; updFnPos(); };
-
-D.enBtn.onclick = async () => {
-if(isActionLocked || !myUid) return;
-const n = D.ni.value.replace(/[\s\u3000]+/g,"").trim(), r = D.ri.value.replace(/[\s\u3000]+/g,"").trim(), p = D.pi.value.trim();
-if(!n || !r || !p) { alert("必須項目を入力してください"); return; }
-isActionLocked = true; setBtns(false);
-try { await doJoin({target: r, pass: p, name: n, asW: false}); } catch(e) { showLobby(e.message); }
-setBtns(true); isActionLocked = false;
+  
+  entries.forEach(([uidKey, data]) => {
+    const nameStr = dec(data.nEnc) || "Unknown";
+    const d = document.createElement("div");
+    d.className = "pend-item";
+    d.innerHTML = `
+      <div class="pend-info">
+        <span class="pend-name">${esc(nameStr)}</span>
+      </div>
+      <div class="pend-acts">
+        <button class="btn bo" style="padding:4px 10px; font-size:10px;" onclick="approveUser('${uidKey}')">承認</button>
+        <button class="btn bq" style="padding:4px 10px; font-size:10px; border-color:rgba(244,63,94,.4); color:#fda4af;" onclick="rejectUser('${uidKey}')">拒否</button>
+      </div>
+    `;
+    D.pendList.appendChild(d);
+  });
 };
 
-D.ofBtn.onclick = async () => {
-if(isActionLocked || !myUid) return;
-const n = D.ni.value.replace(/[\s\u3000]+/g,"").trim();
-if(!n) { alert("表示名を入力してください"); return; }
-isActionLocked = true; setBtns(false);
-try { await doJoin({target: "公式部屋", pass: OFF_P, name: n, asW: false}); } catch(e) { showLobby(e.message); }
-setBtns(true); isActionLocked = false;
+window.approveUser = async (uidKey) => {
+  await update(ref(db, `rooms/${curR}`), {
+    [`allowedUsers/${uidKey}`]: true,
+    [`pendingUsers/${uidKey}`]: null
+  });
 };
-
-D.exBtn.onclick = async () => { if(isActionLocked) return; isActionLocked = true; D.exBtn.disabled = true; await exitRoom(""); D.exBtn.disabled = false; isActionLocked = false; };
-D.gnBtn.onclick = () => { const c = "abcdefghijklmnopqrstuvwxyz0123456789"; let r = "", p = ""; for(let i=0; i<10; i++) r += c[Math.floor(Math.random()*c.length)]; for(let i=0; i<12; i++) p += c[Math.floor(Math.random()*c.length)]; D.ri.value = r; D.pi.value = p; };
-D.gdBtn.onclick = () => D.gmod.classList.add("show");
-D.gcBtn.onclick = () => D.gmod.classList.remove("show");
+window.rejectUser = async (uidKey) => {
+  await remove(ref(db, `rooms/${curR}/pendingUsers/${uidKey}`));
+};
 
 D.modeBtn.onclick = async () => {
-if (!isHost || isOff) return;
-const newMode = roomMode === 'open' ? 'invite' : 'open';
-await update(ref(db, rooms/${curR}), { mode: newMode });
+  const newMode = roomMode === 'open' ? 'invitation' : 'open';
+  await update(ref(db, `rooms/${curR}`), { mode: newMode });
 };
+
 D.pendingBtn.onclick = () => D.pendMod.classList.add("show");
 D.closePendBtn.onclick = () => D.pendMod.classList.remove("show");
 
-function renderPendList(pends) {
-D.pendList.innerHTML = "";
-Object.entries(pends).forEach(([uid, data]) => {
-const div = document.createElement("div"); div.className = "pend-item";
-div.innerHTML = <div class="pend-info"><div class="pend-name">${esc(data.name)}</div><div style="font-size:10px;color:var(--mu)">ID: ${generateShortID(uid)}</div></div><div class="pend-acts"><button class="btn bo" onclick="window.approveUser('${uid}')">承認</button><button class="btn bq" onclick="window.rejectUser('${uid}')">拒否</button></div>;
-D.pendList.appendChild(div);
-});
+D.waitCancelBtn.onclick = () => {
+  if (_waitOff) { _waitOff(); _waitOff = null; }
+  remove(ref(db, `rooms/${curR}/pendingUsers/${myUid}`)).catch(()=>{});
+  showLobby("入室をキャンセルしました");
+};
+
+async function doJoin({target, pass, name, asW, isAutoRejoin=false}) {
+  clearAll(); _exitLock = false; isEx = false;
+  
+  const hashId = (target === "公式部屋") ? OFF_H : CryptoJS.SHA256(target).toString();
+  isOff = (hashId === OFF_H); isW = asW; curR = hashId; rawR = target; curP = pass; curN = asW ? "" : `${name} (ID: ${myShortID})`;
+  symKey = CryptoJS.PBKDF2(pass, "NEZU_ROOM_SALT_2026", {keySize:256/32, iterations:2000});
+
+  const nowSrv = srvNow();
+
+  if(!isOff) {
+      const roomRef = ref(db, `rooms/${curR}`);
+      const snap = await get(roomRef);
+      const ps = await get(ref(db, `presence/${curR}`));
+      
+      let hasAlive = false;
+      const updates = {};
+      let needsCleanup = false;
+
+      if (ps.exists()) {
+          for (const [id, u] of Object.entries(ps.val() || {})) {
+              if (u.expireAt && nowSrv > u.expireAt) {
+                  updates[`presence/${curR}/${id}`] = null;
+                  needsCleanup = true;
+              } else if (u.expireAt && nowSrv <= u.expireAt) {
+                  hasAlive = true;
+              }
+          }
+      }
+      if (needsCleanup) await update(ref(db), updates).catch(()=>{});
+
+      if (snap.exists() && ps.exists() && !hasAlive) {
+          await wipe(curR); 
+          if (isAutoRejoin) { localStorage.removeItem("nz_sess"); throw new Error("部屋が消去されたため復帰できませんでした。"); } 
+      }
+
+      const freshSnap = await get(roomRef);
+      if(!freshSnap.exists()){
+          if(isAutoRejoin){ localStorage.removeItem("nz_sess"); throw new Error("部屋が消去されたため復帰できませんでした。"); }
+          isHost = true;
+          roomMode = 'open';
+          await set(roomRef, { created: serverTimestamp(), host: myUid, mode: 'open', allowedUsers: { [myUid]: true } });
+      } else {
+          const rData = freshSnap.val();
+          isHost = (rData.host === myUid);
+          roomMode = rData.mode || 'open';
+          
+          if (!isHost && !asW && roomMode === 'invitation' && !rData.allowedUsers?.[myUid]) {
+              D.lobby.style.display = "none";
+              D.waitIdDsp.textContent = myShortID;
+              D.waitScreen.style.display = "flex";
+              
+              await set(ref(db, `rooms/${curR}/pendingUsers/${myUid}`), {
+                  nEnc: enc(`${name} (ID: ${myShortID})`),
+                  t: serverTimestamp()
+              });
+              
+              return new Promise((resolve, reject) => {
+                  _waitOff = onValue(ref(db, `rooms/${curR}/allowedUsers/${myUid}`), s => {
+                      if (s.val() === true) {
+                          if(_waitOff) { _waitOff(); _waitOff = null; }
+                          D.waitScreen.style.display = "none";
+                          resolve(completeJoin(name, asW, isAutoRejoin));
+                      }
+                  });
+              });
+          } else if (!asW && !rData.allowedUsers?.[myUid]) {
+              await update(ref(db, `rooms/${curR}`), { [`allowedUsers/${myUid}`]: true });
+          }
+      }
+  }
+
+  return completeJoin(name, asW, isAutoRejoin);
 }
-window.approveUser = async (uid) => { await update(ref(db, rooms/${curR}/allowedUsers), { [uid]: true }); await remove(ref(db, pending/${curR}/${uid})); };
-window.rejectUser = async (uid) => { await remove(ref(db, pending/${curR}/${uid})); };
+
+async function completeJoin(name, asW, isAutoRejoin) {
+  const nowSrv = srvNow();
+
+  if(!asW){
+      myPresRef = ref(db, `presence/${curR}/${myUid}`);
+      myDisconnectRef = onDisconnect(myPresRef);
+      myDisconnectRef.remove(); 
+      
+      lastActiveWrite = nowSrv;
+      
+      await set(myPresRef, { nEnc: enc(curN), cEnc: enc(curColor), expireAt: nowSrv + INACTIVITY });
+      if (!isAutoRejoin) await push(ref(db, `chat/${curR}`), {type: "sys", text: enc(`${curN} が入室しました`), time: serverTimestamp()});
+      
+      if(!isOff){ localStorage.setItem("nz_ni", name); localStorage.setItem("nz_ri", rawR); localStorage.setItem("nz_pi", curP); }
+      saveSession({target:rawR, pass:curP, name, asW:false});
+  } else { saveSession({target:rawR, pass:curP, name:"", asW:true}); }
+
+  D.lobby.style.display = "none"; D.app.style.display = "flex"; D.app.classList.add("visible"); D.fn.classList.add("visible"); D.rdsp.textContent = rawR;
+  
+  if(asW){
+    D.ib.classList.remove("show"); D.wb.classList.add("show"); D.exBtn.textContent = "ロビーへ戻る"; D.clrBtn.style.display = "none";
+    D.wni.value = localStorage.getItem("nz_ni") || ""; syncPickers(curColor);
+    wbOpen = false; D.wbBody.classList.remove("open"); D.wbArrow.classList.remove("open"); D.wbHint.textContent = "▼ タップして設定";
+    D.modeBtn.style.display = "none"; D.pendingBtn.style.display = "none";
+  } else {
+    D.ib.classList.add("show"); D.wb.classList.remove("show"); D.exBtn.textContent = "退出"; D.clrBtn.style.display = "block";
+    if (isHost && !isOff) {
+        D.modeBtn.style.display = "flex"; D.pendingBtn.style.display = "flex";
+        updateModeBtnUI();
+        _mOff = onValue(ref(db, `rooms/${curR}/mode`), s => { roomMode = s.val() || 'open'; updateModeBtnUI(); });
+        _pendOff = onValue(ref(db, `rooms/${curR}/pendingUsers`), s => { renderPendingList(s.val() || {}); });
+    } else {
+        D.modeBtn.style.display = "none"; D.pendingBtn.style.display = "none";
+    }
+  }
+  
+  D.updateInputBarState(!asW); updFnPos(); hideSplash();
+  if(!asW) startToBar();
+
+  _pOff = onValue(ref(db, `presence/${curR}`), s => {
+    if(!curR) return;
+    const entries = Object.entries(s.val() || {}), fg = document.createDocumentFragment(), now = srvNow();
+    let activeCnt = 0;
+    
+    for(const [id, u] of entries){
+      if(!u) continue;
+      const isExpired = u.expireAt && (now > u.expireAt);
+      
+      if (id === myUid && isExpired && !_exitLock && !isW) {
+          _exitLock = true;
+          exitRoom("タイムアウト(30分発言なし)により自動退室しました");
+          continue;
+      }
+      
+      if (!isExpired) {
+          const n = dec(u.nEnc); if(!n) continue;
+          activeCnt++; 
+          const sp = document.createElement("span"); 
+          sp.className = "chip"; 
+          sp.style.color = dec(u.cEnc) || "#94a3b8"; 
+          sp.style.borderColor = (dec(u.cEnc) || "#94a3b8") + "44"; 
+          sp.textContent = n; 
+          fg.appendChild(sp);
+      }
+    }
+    D.pl.innerHTML = ""; D.pl.appendChild(fg); D.pcnt.textContent = `[${activeCnt}人]`;
+  });
+
+  _cOff = onValue(query(ref(db, `chat/${curR}`), orderByChild("time"), limitToLast(100)), snap => {
+    if(!curR) return;
+    const newLogs = [];
+    if(snap.exists()) snap.forEach(cs => { const m = cs.val(); if(m){ m.id = cs.key; newLogs.push(m); } });
+    logArray = newLogs; 
+    renderMessages(!isLiveMode); 
+  });
+}
+
+async function exitRoom(autoMsg = "") {
+  if (isEx) return; 
+  isEx = true; 
+  _exitLock = true; 
+  
+  const sR = curR, sN = curN, sO = isOff, sW = isW;
+  try {
+    if (!sW && sR && sN) {
+      const ps = await get(ref(db, `presence/${sR}`)); 
+      let activeCount = 0;
+      if (ps.exists()) { 
+        const now = srvNow(); 
+        for (const [k, u] of Object.entries(ps.val())) {
+          if (k !== myUid) {
+             const isExpired = u.expireAt && now > u.expireAt;
+             if(!isExpired) activeCount++;
+          }
+        }
+      }
+      
+      if (!sO && activeCount === 0) {
+        await new Promise(r => setTimeout(r, 300));
+        await wipe(sR);
+      } else {
+        const msgStr = autoMsg ? autoMsg : `${sN} が退室しました`;
+        await push(ref(db, `chat/${sR}`), { type: "sys", text: enc(msgStr), time: serverTimestamp() }).catch(()=>{});
+        await new Promise(r => setTimeout(r, 600)); 
+        
+        if (myDisconnectRef) { myDisconnectRef.cancel(); myDisconnectRef = null; }
+        if (myPresRef) await remove(myPresRef).catch(()=>{});
+      }
+    }
+  } catch (e) { console.error(e); }
+
+  localStorage.removeItem("nz_sess"); 
+  if (window.history?.replaceState) window.history.replaceState({}, document.title, location.pathname);
+  stopToBar(); clearAll(); isEx = false; showLobby(autoMsg);
+}
+
+async function sendMsg(){
+  if(!curR || isW || isCmp || !isLiveMode) return;
+  const txt = D.mi.value.trim(); if(!txt) return;
+  D.mi.value = ""; D.mi.style.height = "auto"; 
+  
+  const now = srvNow();
+  lastActiveWrite = now;
+  if (myPresRef) update(myPresRef, { expireAt: now + INACTIVITY }).catch(()=>{});
+
+  try {
+    await push(ref(db, `chat/${curR}`), { type: "msg", nEnc: enc(curN), cEnc: enc(curColor), text: enc(txt), time: serverTimestamp() });
+  } catch(e) { alert("送信失敗: "+e.message); }
+}
+
+async function upgrade(name){
+  if(!curR) return; isW = false; curN = `${name} (ID: ${myShortID})`; 
+  
+  const now = srvNow();
+  lastActiveWrite = now;
+  myPresRef = ref(db, `presence/${curR}/${myUid}`);
+  myDisconnectRef = onDisconnect(myPresRef);
+  myDisconnectRef.remove();
+  
+  await set(myPresRef, {nEnc: enc(curN), cEnc: enc(curColor), expireAt: now + INACTIVITY});
+  
+  await push(ref(db, `chat/${curR}`), {type: "sys", text: enc(`${curN} が入室しました`), time: serverTimestamp()});
+  localStorage.setItem("nz_ni", name); saveSession({target:rawR, pass:curP, name, asW:false});
+  
+  D.wb.classList.remove("show"); D.ib.classList.add("show"); D.exBtn.textContent = "退出"; D.clrBtn.style.display = "block";
+  if(isHost && !isOff) { D.modeBtn.style.display = "flex"; D.pendingBtn.style.display = "flex"; }
+  D.updateInputBarState(true); updFnPos(); startToBar();
+}
+
+let isCmp = false;
+D.mi.addEventListener("compositionstart", () => { isCmp = true; });
+D.mi.addEventListener("compositionend", () => { isCmp = false; });
+D.mi.addEventListener("keydown", e => { if(e.key === "Enter" && !e.shiftKey && !isCmp) { e.preventDefault(); sendMsg(); } });
+D.mi.addEventListener("input", () => { D.mi.style.height = "auto"; D.mi.style.height = Math.min(D.mi.scrollHeight, 80) + "px"; updFnPos(); });
+D.sdBtn.onclick = () => sendMsg();
+D.clrMsgBtn.onclick = () => { D.mi.value = ""; D.mi.style.height = "auto"; D.mi.focus(); updFnPos(); };
+
+D.enBtn.onclick = async () => {
+  if(isActionLocked || !myUid) return;
+  const n = D.ni.value.replace(/[\s\u3000]+/g,"").trim(), r = D.ri.value.replace(/[\s\u3000]+/g,"").trim(), p = D.pi.value.trim();
+  if(!n || !r || !p) { alert("必須項目を入力してください"); return; }
+  
+  isActionLocked = true;
+  setBtns(false); 
+  try { await doJoin({target: r, pass: p, name: n, asW: false}); } catch(e) { showLobby(e.message); } 
+  setBtns(true);
+  isActionLocked = false;
+};
+
+D.ofBtn.onclick = async () => { 
+  if(isActionLocked || !myUid) return;
+  isActionLocked = true;
+  setBtns(false); 
+  try { await doJoin({target: "公式部屋", pass: OFF_P, name: "", asW: true}); } catch(e) { showLobby(e.message); } 
+  setBtns(true); 
+  isActionLocked = false;
+};
+
+D.gnBtn.onclick = () => {
+  const c = "abcdefghijklmnopqrstuvwxyz0123456789"; let r = "", p = "";
+  for(let i=0; i<10; i++) r += c[Math.floor(Math.random()*c.length)];
+  for(let i=0; i<12; i++) p += c[Math.floor(Math.random()*c.length)];
+  D.ri.value = r; D.pi.value = p;
+};
+
+D.wuBtn.onclick = async () => { 
+  if(isActionLocked || !myUid) return;
+  const n = D.wni.value.replace(/[\s\u3000]+/g,"").trim();
+  if(!n){ alert("名前を入力してください"); return; }
+  
+  isActionLocked = true;
+  D.wuBtn.disabled = true;
+  await upgrade(n); 
+  D.wuBtn.disabled = false;
+  isActionLocked = false;
+};
+
+D.exBtn.onclick = async () => {
+  if(isActionLocked) return;
+  if(isOff || isW) {
+    isActionLocked = true; D.exBtn.disabled = true;
+    await exitRoom("");
+    D.exBtn.disabled = false; isActionLocked = false;
+  } else if(confirm("退出しますか？あなたが最後の1人の場合、履歴は完全消去されます。")) {
+    isActionLocked = true; D.exBtn.disabled = true;
+    await exitRoom("");
+    D.exBtn.disabled = false; isActionLocked = false;
+  }
+};
+
+D.gdBtn.onclick = () => D.gmod.classList.add("show");
+D.gcBtn.onclick = () => D.gmod.classList.remove("show");
+document.querySelectorAll(".mod-overlay").forEach(m => {
+  m.onclick = e => { if(e.target === m) m.classList.remove("show"); };
+});
 
 let isAppInitialized = false;
+
 onAuthStateChanged(auth, async user => {
-if (user) {
-myUid = user.uid; myShortID = generateShortID(myUid);
-if(D.myIdText) D.myIdText.textContent = myShortID;
-setBtns(true);
-if (!isAppInitialized) { isAppInitialized = true; await checkSession(); }
-} else {
-signInAnonymously(auth).catch(e => { D.lberr.textContent = "認証エラー"; D.lberr.style.display = "block"; hideSplash(); D.lobby.style.display = "block"; });
-}
+  if (user) {
+    myUid = user.uid;
+    myShortID = generateShortID(myUid);
+    setBtns(true);
+    
+    // 認証が通った直後に1度だけセッションの確認をする
+    if (!isAppInitialized) {
+      isAppInitialized = true;
+      await checkSession();
+    }
+  } else {
+    // 未ログイン（ログアウト状態）なら匿名ログインを実行
+    signInAnonymously(auth).catch(e => {
+      alert("認証エラー: Firebaseの匿名認証が有効か確認してください。\n" + e.message);
+      D.lberr.textContent = "認証エラー: " + e.message;
+      D.lberr.style.display = "block";
+      hideSplash();
+      D.lobby.style.display = "block";
+    });
+  }
 });
 
 const checkSession = async () => {
-try {
-const sp = new URLSearchParams(location.search);
-const sr = sp.get("r");
-if(sr) {
-D.ri.value = sr;
-showLobby("招待URLからアクセスしました。パスワードを入力して入室してください。");
-return;
-}
-
-const sessStr = localStorage.getItem("nz_sess");    
-if (sessStr) {    
-  const s = JSON.parse(sessStr);    
-  if (s.target && s.pass && (s.name || s.asW)) {    
-    if(s.name) D.ni.value = s.name; D.ri.value = s.target; D.pi.value = s.pass;    
-    try {    
-      await doJoin({target: s.target, pass: s.pass, name: s.name, asW: s.asW, isAutoRejoin: true});    
-      return;    
-    } catch(e) {    
-      localStorage.removeItem("nz_sess");    
-    }    
-  }    
-}    
-showLobby();
-
-} catch(err) { showLobby("初期化エラー: " + err.message); }
+  try {
+    const sp = new URLSearchParams(location.search), sr = sp.get("r"), spp = sp.get("p");
+    if(sr && spp) {
+      const n = localStorage.getItem("nz_ni") || "";
+      if(n) {
+        setBtns(false);
+        try { await doJoin({target: sr, pass: spp, name: n, asW: false, isAutoRejoin: true}); }
+        catch(e) { showLobby(e.message); }
+        setBtns(true);
+      } else {
+        D.ri.value = sr; D.pi.value = spp; showLobby();
+      }
+      return;
+    }
+    const sessStr = localStorage.getItem("nz_sess");
+    if(sessStr) {
+      try {
+        const s = JSON.parse(sessStr);
+        if(s && s.target && s.pass){
+          setBtns(false);
+          if(s.asW){ try{ await doJoin({target: s.target, pass: s.pass, name: "", asW: true, isAutoRejoin: true}); } catch(e){ showLobby(e.message); } }
+          else { try{ await doJoin({target: s.target, pass: s.pass, name: s.name, asW: false, isAutoRejoin: true}); } catch(e){ showLobby(e.message); } }
+          setBtns(true); 
+          return;
+        }
+      } catch { localStorage.removeItem("nz_sess"); }
+    }
+    // セッション復帰対象がない場合は、確実にロビーを表示する
+    showLobby();
+  } catch(err) {
+    showLobby("初期化エラーが発生しました: " + err.message);
+  }
 };
-</script>  </body>
 
-</html>  
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && curR && !isEx && !isW) {
+      if (srvNow() - lastActiveWrite >= INACTIVITY && !_exitLock) {
+          _exitLock = true;
+          exitRoom("タイムアウト(30分発言なし)により自動退室しました");
+      }
+  }
+});
+
+</script>
+</body>
+</html>
+
+あなたはFirebase Realtime DatabaseとWebリアルタイムアプリ設計に精通した上級フロントエンドエンジニアです。
+
+以下仕様をすべて満たす「NEZU ONETIME CHAT」を単一HTMLファイルで実装してください。
+
+━━━━━━━━━━━━━━━━━━
+■目的（最重要）
+━━━━━━━━━━━━━━━━━━
+- Firebase Realtime Databaseベースのリアルタイムチャット
+- 誤退室ゼロに近い安定設計（特にバックグラウンド・スリープ耐性）
+- UIは必ずDB状態から再構築（ローカル状態依存を最小化）
+- ロビー必須（URL即入室禁止）
+- presence / pending / logs の完全同期
+- Cloud Functions禁止
+
+━━━━━━━━━━━━━━━━━━
+■技術スタック
+━━━━━━━━━━━━━━━━━━
+- HTML + JavaScript（単一ファイル）
+- Firebase Realtime Database
+- Firebase Auth（anonymous）
+- CryptoJS
+  - PBKDF2（キー導出）
+  - AES-256-CBC（暗号化）
+  - HMAC-SHA256（改ざん検知）
+- Cloud Functions禁止
+
+━━━━━━━━━━━━━━━━━━
+■データ構造（固定）
+━━━━━━━━━━━━━━━━━━
+rooms/{roomId}
+chat/{roomId}/{msgId}
+presence/{roomId}/{uid}
+pending/{roomId}/{requestId}
+logs/{roomId}/events
+users/{roomId}/{uid}/state
+
+━━━━━━━━━━━━━━━━━━
+■コア設計原則（必須）
+━━━━━━━━━━━━━━━━━━
+1. Firebaseを唯一の正とする（single source of truth）
+2. UIは常にDB状態から再構築
+3. ローカル状態は補助のみ（永続真実にしない）
+4. presenceは遅延整合（即時削除禁止）
+5. 差分依存のUIは禁止（必ずonValueで再構築）
+
+━━━━━━━━━━━━━━━━━━
+■ロビー必須フロー（重要制約）
+━━━━━━━━━━━━━━━━━━
+URLアクセス → token解析 → ロビー表示 → ユーザー操作で入室確定
+
+禁止：
+- URL即自動入室
+- 認証後の自動join
+- session復元による即入室（必ずロビー経由）
+
+━━━━━━━━━━━━━━━━━━
+■モード設計
+━━━━━━━━━━━━━━━━━━
+OPEN:
+- 誰でも参加可能（ただしロビー操作必須）
+
+APPROVAL:
+- pending → ホスト承認 → ユーザーがロビーから手動入室
+
+重要：
+- 承認されても自動入室しない（必ずユーザー操作）
+
+━━━━━━━━━━━━━━━━━━
+■presence設計（安定化最重要）
+━━━━━━━━━━━━━━━━━━
+presence/{roomId}/{uid}
+
+- onValueで全再構築
+- 差分更新禁止
+- lastHeartbeat方式
+
+状態：
+active / idle / timeout / removed
+
+生存判定：
+alive = now - lastHeartbeat < 15〜60秒（グレースあり）
+
+ルール：
+- heartbeat停止＝即削除しない
+- 30〜60秒程度の猶予を必ず持つ
+- スリープ復帰を考慮
+
+━━━━━━━━━━━━━━━━━━
+■heartbeat設計
+━━━━━━━━━━━━━━━━━━
+- 5〜10秒間隔更新
+- 復帰時即再送
+- lastActive更新のみ（presence削除禁止）
+
+━━━━━━━━━━━━━━━━━━
+■自動退室タイマー（ユーザー単位）
+━━━━━━━━━━━━━━━━━━
+- 1〜60分で設定可能
+- 発言でリセット可能
+- タイマー満了時：
+  1. logsへ記録（必須）
+  2. chatにシステムメッセージ
+  3. presence削除
+  4. 退室処理
+
+logs/events:
+- autoLeave
+- manualLeave
+- timeoutLeave
+
+━━━━━━━━━━━━━━━━━━
+■pending設計（完全再構築）
+━━━━━━━━━━━━━━━━━━
+pending/{roomId}/{requestId}
+
+- onValueで全件再構築
+- 承認/拒否即反映
+- 承認後も「自動入室禁止」
+- ユーザー操作でのみ入室確定
+
+━━━━━━━━━━━━━━━━━━
+■スクロールUX要件
+━━━━━━━━━━━━━━━━━━
+- isAtBottom判定必須
+- ユーザー閲覧中は自動スクロール禁止
+- 新着時のみ自動追従
+- DOM更新はバッチ処理
+
+━━━━━━━━━━━━━━━━━━
+■セキュリティ設計
+━━━━━━━━━━━━━━━━━━
+- PBKDF2 + AES-256-CBCで暗号化
+- HMAC-SHA256で改ざん検知
+- roomごとsalt生成
+- message / name / color は必ず暗号化
+- Firebaseには平文を保存しない
+
+━━━━━━━━━━━━━━━━━━
+■スパム対策
+━━━━━━━━━━━━━━━━━━
+- 0〜300msクールダウン
+- 同一メッセージ3秒制限
+- 2000〜4000文字制限
+- 連投制御はクライアント側 + 軽量サーバ側ロジック併用
+
+━━━━━━━━━━━━━━━━━━
+■UI要件（既存踏襲）
+━━━━━━━━━━━━━━━━━━
+- 32色パレット必須
+- pending UI必須
+- タイマーUI必須
+- ホスト移譲機能必須
+- OPEN / APPROVALモード切替UI必須
+
+━━━━━━━━━━━━━━━━━━
+■リアルタイム制約
+━━━━━━━━━━━━━━━━━━
+必須API：
+- onValue
+- onChildAdded
+
+禁止：
+- get()による疑似同期ロジック依存（極力禁止）
+- ポーリング設計
+
+━━━━━━━━━━━━━━━━━━
+■重要追加仕様（IDカラー）
+━━━━━━━━━━━━━━━━━━
+- 名前横のIDカラーはメッセージ送信時刻ベースで生成
+  例：time → HSL変換
+- 全ユーザーで一貫した色生成ロジックにすること
+
+━━━━━━━━━━━━━━━━━━
+■ログ設計（必須）
+━━━━━━━━━━━━━━━━━━
+logs/{roomId}/events に必ず記録：
+
+- autoLeave（タイマー）
+- manualLeave（ユーザー退出）
+- timeoutLeave（切断・非アクティブ）
+
+━━━━━━━━━━━━━━━━━━
+■ゴール（評価基準）
+━━━━━━━━━━━━━━━━━━
+- スリープ・バックグラウンドでも誤退室しない
+- ロビー経由以外で入室できない
+- presenceが不安定でもチャットが破綻しない
+- Firebaseのみで状態整合が成立する
+- logsにより退室履歴が完全追跡可能
+
+━━━━━━━━━━━━━━━━━━
+■出力形式
+━━━━━━━━━━━━━━━━━━
+- 単一HTMLファイルで出力
+- 外部サーバ不要
+- Firebaseのみ使用
+- 即動作可能コード

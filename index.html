@@ -187,9 +187,11 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 /* フローティングナビゲーション */
 #fn{position:fixed;right:16px;bottom:80px;display:none;flex-direction:column;gap:10px;z-index:90;pointer-events:none}
 #fn.visible{display:flex}
-#fn button{width:40px;height:40px;border-radius:50%;background:rgba(30,41,59,.75);backdrop-filter:blur(4px);border:1px solid var(--bd);color:rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.3);pointer-events:auto;transition:transform .2s}
+#fn button{width:40px;height:40px;border-radius:50%;background:rgba(30,41,59,.75);backdrop-filter:blur(4px);border:1px solid var(--bd);color:rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.3);pointer-events:none;transition:transform .2s, opacity 0.3s; opacity:0;}
+#fn button.show{opacity:1; pointer-events:auto;}
 #fn button:active{transform:scale(0.9)}
 #fn svg{width:20px;height:20px;stroke-width:2.5}
+#tTBtn{background:var(--in) !important; color:#fff !important; border-color:var(--i2) !important;} /* 最新へ戻るボタンを強調 */
 
 /* モーダル */
 .mod-overlay{position:fixed;inset:0;background:rgba(15,23,42,.8);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:10000;padding:16px}
@@ -353,7 +355,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 
 <div id="fn">
   <button id="tBBtn" title="最上部へ"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg></button>
-  <button id="tTBtn" title="最下部へ"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></button>
+  <button id="tTBtn" title="最新へ戻る"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></button>
 </div>
 
 <div id="gmod" class="mod-overlay">
@@ -877,7 +879,7 @@ const scBottom = (instant=false) => {
 const scTop = () => { D.tl.style.scrollBehavior = "smooth"; D.tl.scrollTop = 0; };
 
 D.tBBtn.onclick = () => scTop();
-D.tTBtn.onclick = () => scBottom();
+D.tTBtn.onclick = () => { isLiveMode = true; scBottom(); };
 D.mi.addEventListener("focus", () => setTimeout(() => scBottom(true), 150));
 
 function updFnPos() {
@@ -887,15 +889,19 @@ function updFnPos() {
 
 D.tl.addEventListener("scroll", () => {
   updFnPos();
-  const distFromBottom = D.tl.scrollHeight - D.tl.scrollTop - D.tl.clientHeight;
-  const isAtBottom = distFromBottom < 50;
+  const distFromBottom = Math.ceil(D.tl.scrollHeight - D.tl.scrollTop - D.tl.clientHeight);
+  const isAtBottom = distFromBottom <= 50;
 
   if (isAtBottom) {
       isLiveMode = true;
       D.updateInputBarState(true);
+      D.tTBtn.classList.remove("show");
+      D.tBBtn.classList.remove("show");
   } else {
       isLiveMode = false;
       D.updateInputBarState(false);
+      D.tTBtn.classList.add("show");
+      D.tBBtn.classList.add("show");
   }
 
   if (D.tl.scrollTop <= 10 && displayCount < logArray.length) {

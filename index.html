@@ -631,7 +631,8 @@ async function checkCurrentRoomStatus() {
   try {
     const hashId = CryptoJS.SHA256(lastRi).toString();
     const snap = await get(ref(db, `rooms/${hashId}`));
-    if (snap.exists() && snap.val().created === parseInt(lastCreated)) {
+    // ★ サーバー上で仮の数字が入っている、または一致する場合のみアクティブとする
+    if (snap.exists() && (!snap.val().created || snap.val().created === parseInt(lastCreated))) {
       D.roomResumeArea.style.display = "flex";
       D.resumeBtn.onclick = () => {
         D.ri.value = lastRi;
@@ -678,16 +679,14 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
       expireAt: _roomExpireAt
     };
     await set(roomRef, roomData);
-    const freshSnap = await get(roomRef);
-    if(freshSnap.exists()) {
-      localStorage.setItem("nz_active_ri", roomId);
-      localStorage.setItem("nz_active_created", freshSnap.val().created);
-    }
+    // ★ ローカルの記録用には現在時刻を仮のシードとして保存し、serverTimestamp の反映遅延による誤作動を防ぐ
+    localStorage.setItem("nz_active_ri", roomId);
+    localStorage.setItem("nz_active_created", String(srvNow()));
   } else {
     roomData = snap.val();
     _roomExpireAt = roomData.expireAt;
     localStorage.setItem("nz_active_ri", roomId);
-    localStorage.setItem("nz_active_created", roomData.created);
+    localStorage.setItem("nz_active_created", String(roomData.created || srvNow()));
   }
 
   const isHost = (roomData.host === myUid);
@@ -720,7 +719,6 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
 
   startTimerLoop();
 
-  // リアルタイム接続状態の監視を追加
   _connOff = onValue(ref(db, ".info/connected"), snap => {
     if (snap.val() === false) {
       console.warn("Firebaseサーバーから切断されました。再接続を待機中...");
@@ -732,9 +730,12 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
       if(!_exitLock) { _exitLock = true; showLobby("部屋の有効期限が切れたか、ホストにより消滅されました。"); }
       return;
     }
-    _roomExpireAt = s.val().expireAt;
+    // ★ サーバー側データの expireAt が確定している場合のみ同期する（不確定な状態での即時キックを防止）
+    const serverExpire = s.val().expireAt;
+    if (serverExpire) {
+      _roomExpireAt = serverExpire;
+    }
   }, e => {
-    // 権限エラー(Permission Denied)時などの自己修復トリガー
     console.error("Room監視中にエラーが発生しました:", e);
     if (e.message.indexOf("permission_denied") !== -1) {
       signOut(auth).then(() => window.location.reload());
@@ -830,11 +831,10 @@ D.clrMsgBtn.onclick = () => { D.mi.value = ""; D.mi.style.height = "auto"; D.mi.
 
 // ロビー接続ボタン
 D.enBtn.onclick = async () => {
-  // ★ 全角スペース、半角スペース、前後の空白を適切にトリムするように修正
   const n = D.ni.value.replace(/^[\s\u3000]+|[\s\u3000]+$/g, "").trim();
   const r = D.ri.value.replace(/^[\s\u3000]+|[\s\u3000]+$/g, "").trim();
-  const p = D.pi.value.replace(/^[\s\u3000]+|[\s\u3000]+$/g, ""); // パスワードは内部の空白を残す
-  const tk = D.tripi.value.replace(/^[\s\u3000]+|[\s\u3000]+$/g, "");
+  const p = D.pi.value.replace(/^[\s\u3000]+|[\s\u3000]+$/g, "");
+  const tk = D.tripi.value.replace(/^[\s\u3000]+|[\s\u3000]+$/g, "").trim();
   const tm = parseInt(D.timeri.value) || 30;
 
   if (!n || !r || !p || !tk) { alert("必須項目（表示名・トリップキー・部屋ID・パスワード）をすべて入力してください。"); return; }
@@ -867,7 +867,6 @@ let isInit = false;
 onAuthStateChanged(auth, async user => {
   if (user) {
     try {
-      // データベースへの接続死活監視。トークン不整合や権限エラーがあればここでcatchに飛ぶ
       await get(ref(db, ".info/connected"));
       myUid = user.uid;
 
@@ -889,7 +888,7 @@ onAuthStateChanged(auth, async user => {
           try {
             const hashId = CryptoJS.SHA256(savedActiveRi).toString();
             const snap = await get(ref(db, `rooms/${hashId}`));
-            if (snap.exists() && snap.val().created === parseInt(savedActiveCreated)) {
+            if (snap.exists() && (!snap.val().created || snap.val().created === parseInt(savedActiveCreated))) {
               const tripStyled = makeTrip(savedTripKey);
               localStorage.setItem("nz_mytrip_styled", tripStyled);
               await doJoin(savedActiveRi, savedPi, savedNi, tripStyled, 30);
@@ -900,7 +899,6 @@ onAuthStateChanged(auth, async user => {
         showLobby();
       }
     } catch(e) {
-      // 古いトークン等による異常を検知した場合はサインアウトしてページをクリーンリロード（自己修復）
       console.warn("セッション不整合を検知しました。自動修復を行います...", e);
       await signOut(auth).catch(()=>{});
       window.location.reload();

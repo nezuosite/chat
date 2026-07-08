@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0f172a">
-<title>NEZU ONETIME CHAT</title>
+<title>NEZU ONETIME CHAT - PRO</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 <style>
 /* 共通リセット＆変数 */
@@ -110,7 +110,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   100% { opacity: 1; transform: translateY(0); }
 }
 .mw{display:flex;flex-direction:column;width:100%;opacity:0;animation:slideInUp 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;}
-.mw.grouped { margin-top: -6px; } /* 連続投稿時の間隔詰め */
+.mw.grouped { margin-top: -6px; } 
 .mw.grouped .mb { border-top-left-radius: 4px; }
 .mm{display:flex;align-items:center;gap:6px;font-size:11px;margin-bottom:2px;padding-left:4px}
 .ts{color:var(--m2);font-size:9.5px;margin-left:auto}
@@ -288,7 +288,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <div class="gs" style="border-left-color: #60a5fa;">
       <h4>🔒 エンドツーエンド暗号化</h4>
       <p style="font-size:10.5px; color:var(--mu); margin-top:2px;">
-        パスワードを用いた<b>PBKDF2+AES-256-CBC+HMAC-SHA256</b>により、テキストと画像は通信経路に乗る前に完全に暗号化されます。
+        パスワードを用いた<b>PBKDF2(10000回)+AES-256-CBC+HMAC-SHA256</b>により、テキストと画像は通信経路に乗る前に完全に暗号化されます。
       </p>
     </div>
     <div class="gs" style="border-left-color: #f87171;">
@@ -386,21 +386,18 @@ const dec = c => {
 
 const esc = t => (t||"").replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-// 表示名・トリップ・部屋情報の記憶
 D.ni.addEventListener("input",  ()=>{ localStorage.setItem("nz_ni", D.ni.value); });
 D.tripi.addEventListener("input", ()=>{ localStorage.setItem("nz_tripi", D.tripi.value); });
 D.ri.addEventListener("input",  ()=>{ localStorage.setItem("nz_ri_val", D.ri.value); });
 D.pi.addEventListener("input",  ()=>{ localStorage.setItem("nz_pi_val", D.pi.value); });
 D.timeri.addEventListener("input", ()=>{ localStorage.setItem("nz_timer_val", D.timeri.value); });
 
-// ロビーUIのアコーディオンイベント
 D.accHeader.onclick = () => {
   const isOpen = D.accBody.style.display === "flex";
   D.accBody.style.display = isOpen ? "none" : "flex";
   D.accHeader.textContent = isOpen ? "⚙️ 詳細設定を開く (カラー・時間調整など)" : "⚙️ 詳細設定を閉じる";
 };
 
-// 32色カラーパレット（視認性最適化順）
 const COLORS = [
   {v:"#f87171",n:"レッド1"},{v:"#fca5a5",n:"パステルレッド"},{v:"#ef4444",n:"レッド2"},{v:"#fb923c",n:"オレンジ1"},
   {v:"#fdba74",n:"パステルオレンジ"},{v:"#f97316",n:"オレンジ2"},{v:"#fbbf24",n:"アンバー"},{v:"#fde68a",n:"パステルイエロー"},
@@ -422,19 +419,14 @@ const setGlobalColor = c => {
 setGlobalColor(curColor);
 
 const syncPickers = v => {
-  if(D.lbClrPick) {
-    D.lbClrPick.querySelectorAll("button").forEach(b => b.classList.toggle("sel", b.dataset.color === v));
-  }
+  if(D.lbClrPick) D.lbClrPick.querySelectorAll("button").forEach(b => b.classList.toggle("sel", b.dataset.color === v));
 };
 
 function buildPicker(con, sel, cls, onChange) {
   if (!con) return; con.innerHTML = "";
   COLORS.forEach(({v,n}) => {
     const b = document.createElement("button");
-    b.className = cls + (v === sel ? " sel" : "");
-    b.style.background = v;
-    b.title = n;
-    b.dataset.color = v;
+    b.className = cls + (v === sel ? " sel" : ""); b.style.background = v; b.title = n; b.dataset.color = v;
     b.addEventListener("click", () => onChange(v));
     con.appendChild(b);
   });
@@ -450,9 +442,7 @@ D.clrBtn.addEventListener("click", () => {
 });
 D.clrOk.addEventListener("click", async () => {
   curColor = tmpColor; setGlobalColor(curColor); localStorage.setItem("nz_color",curColor); syncPickers(curColor);
-  if (curR && myPresRef) {
-    try { await update(myPresRef, {cEnc:enc(curColor)}); } catch {}
-  }
+  if (curR && myPresRef) { try { await update(myPresRef, {c:enc(curColor)}); } catch {} }
   D.clrmod.classList.remove("show");
 });
 D.clrCancel.addEventListener("click", () => D.clrmod.classList.remove("show"));
@@ -468,11 +458,9 @@ const UR = /(https?:\/\/[^\s\n<>"]+)/gi;
 function parseMediaEmbed(url) {
   let innerHtml = ""; let label = "📎 添付メディア";
   const ytMatch = url.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i);
-  
   if (ytMatch && ytMatch[1]) {
-    const id = ytMatch[1];
     label = "📺 YouTube"; 
-    innerHtml = `<div class="media-wrapper"><iframe src="https://www.youtube.com/embed/${id}" allowfullscreen></iframe></div>`;
+    innerHtml = `<div class="media-wrapper"><iframe src="https://www.youtube.com/embed/${ytMatch[1]}" allowfullscreen></iframe></div>`;
   } else if (/\.(jpg|jpeg|png|gif|webp)(?:\?.*)?$/i.test(url)) {
     label = "🖼 画像"; 
     innerHtml = `<img src="${url}" class="media-direct" loading="lazy" alt="Image">`;
@@ -480,7 +468,6 @@ function parseMediaEmbed(url) {
     label = "📹 動画"; 
     innerHtml = `<video controls src="${url}" class="media-direct"></video>`;
   }
-  
   if (!innerHtml) return "";
   return `<div class="media-accordion"><div class="media-header" onclick="this.parentElement.classList.toggle('open')"><span>${label}</span><span class="media-icon">▾</span></div><div class="media-body">${innerHtml}</div></div>`;
 }
@@ -507,35 +494,30 @@ function parseTxtSplit(txt) {
   return { textHtml: textParts.join("<br>") };
 }
 
-function cMsg(m, shouldGroup = false) {
-  const txt = dec(m.text); if(!txt) return null;
+function cMsg(msg, shouldGroup = false) {
+  const txt = dec(msg.m); if(!txt) return null;
   const d = document.createElement("div"); 
   d.className = "mw" + (shouldGroup ? " grouped" : ""); 
-  d.dataset.mid = m.id;
-  const sN = dec(m.nEnc) || "???", sC = dec(m.cEnc) || "#94a3b8", sT = m.trip ? esc(m.trip) : "";
+  d.dataset.mid = msg.id;
+  
+  // ペイロード短縮化(m: text, n: name, c: color, p: trip, t: time)
+  const sN = dec(msg.n) || "???", sC = dec(msg.c) || "#94a3b8", sT = msg.p ? esc(msg.p) : "";
   
   let contentHtml = "";
   if (txt.startsWith("IMG::data:image/")) {
     const b64 = txt.substring(5);
     if (b64.match(/^data:image\/(jpeg|png|gif|webp);base64,[a-zA-Z0-9+/=]+$/)) {
        contentHtml = `<div class="media-accordion"><div class="media-header" onclick="this.parentElement.classList.toggle('open')"><span>🖼 画像 (自動最適化済)</span><span class="media-icon">▾</span></div><div class="media-body"><img src="${b64}" class="media-direct" loading="lazy" alt="Image"></div></div>`;
-    } else {
-       contentHtml = "<span style='color:red'>[不正な画像データ]</span>";
-    }
-  } else {
-    contentHtml = parseTxtSplit(txt).textHtml;
-  }
+    } else { contentHtml = "<span style='color:red'>[不正な画像データ]</span>"; }
+  } else { contentHtml = parseTxtSplit(txt).textHtml; }
   
   let nameSpan = `<span style="color:${esc(sC)};font-weight:700">${esc(sN)}</span>`;
   if(sT) nameSpan += ` <span style="color:${esc(sC)}; font-size:10px; font-weight:bold;">${sT}</span>`;
-  let timeSpan = `<span class="ts" style="color:${esc(sC)}; opacity:0.8">${fDT(m.time)}</span>`;
+  let timeSpan = `<span class="ts" style="color:${esc(sC)}; opacity:0.8">${fDT(msg.t)}</span>`;
 
-  if (shouldGroup) {
-    // 連続投稿時は名前と時刻を省略し、バブルのデザインを隣接させる
-    d.innerHTML = `<div class="mb" style="border-color:${esc(sC)}">${contentHtml}</div>`;
-  } else {
-    d.innerHTML = `<div class="mm">${nameSpan}${timeSpan}</div><div class="mb" style="border-color:${esc(sC)}">${contentHtml}</div>`;
-  }
+  if (shouldGroup) d.innerHTML = `<div class="mb" style="border-color:${esc(sC)}">${contentHtml}</div>`;
+  else d.innerHTML = `<div class="mm">${nameSpan}${timeSpan}</div><div class="mb" style="border-color:${esc(sC)}">${contentHtml}</div>`;
+  
   return d;
 }
 
@@ -545,65 +527,30 @@ let logArray = [], displayedMsgIds = new Set();
 let myPresRef = null, _roomExpireAt = null, _cOff = null, _pOff = null, _rOff = null, _hbInterval = null;
 
 function updateScrollBtnUI() {
-  const scrollTop = D.tl.scrollTop;
-  const scrollHeight = D.tl.scrollHeight;
-  const clientHeight = D.tl.clientHeight;
-  const isAtTop = scrollTop <= 6;
-  const isAtBottom = (scrollTop + clientHeight) >= (scrollHeight - 10);
-
-  D.tBBtn.disabled = isAtTop;
-  D.tBBtn.style.opacity = isAtTop ? "0.15" : "1";
-  D.tTBtn.disabled = isAtBottom && isLiveMode;
-  D.tTBtn.style.opacity = (isAtBottom && isLiveMode) ? "0.3" : "1";
-
-  if (isLiveMode) {
-    D.tTBtn.classList.add("track-active");
-    D.trackStatusText.textContent = "追従中";
-  } else {
-    D.tTBtn.classList.remove("track-active");
-    D.trackStatusText.textContent = "追従OFF";
-  }
+  const isAtTop = D.tl.scrollTop <= 6;
+  const isAtBottom = (D.tl.scrollTop + D.tl.clientHeight) >= (D.tl.scrollHeight - 10);
+  D.tBBtn.disabled = isAtTop; D.tBBtn.style.opacity = isAtTop ? "0.15" : "1";
+  D.tTBtn.disabled = isAtBottom && isLiveMode; D.tTBtn.style.opacity = (isAtBottom && isLiveMode) ? "0.3" : "1";
+  if (isLiveMode) { D.tTBtn.classList.add("track-active"); D.trackStatusText.textContent = "追従中"; }
+  else { D.tTBtn.classList.remove("track-active"); D.trackStatusText.textContent = "追従OFF"; }
 }
 
 const scBottom = (force = false) => {
-  if (isLiveMode || force) {
-    D.tl.style.scrollBehavior = force ? "auto" : "smooth";
-    D.tl.scrollTop = D.tl.scrollHeight;
-  }
+  if (isLiveMode || force) { D.tl.style.scrollBehavior = force ? "auto" : "smooth"; D.tl.scrollTop = D.tl.scrollHeight; }
 };
 
 D.tl.addEventListener("scroll", () => {
-  const distFromBottom = D.tl.scrollHeight - D.tl.scrollTop - D.tl.clientHeight;
-  isLiveMode = distFromBottom <= 60;
+  isLiveMode = (D.tl.scrollHeight - D.tl.scrollTop - D.tl.clientHeight) <= 60;
   updateScrollBtnUI();
 }, {passive:true});
 
-D.tBBtn.onclick = () => {
-  isLiveMode = false;
-  D.tl.style.scrollBehavior = "smooth";
-  D.tl.scrollTop = 0;
-  updateScrollBtnUI();
-};
-
-D.tTBtn.onclick = () => {
-  isLiveMode = true;
-  scBottom(true);
-  updateScrollBtnUI();
-};
-
-document.onclick = (e) => {
-  if (D.app.style.display === "flex" && !D.ib.contains(e.target) && !D.hdr.contains(e.target) && !D.fn.contains(e.target) && !D.clrmod.contains(e.target)) {
-    D.mi.focus();
-  }
-};
-D.mi.addEventListener("focus", () => {
-  isLiveMode = true;
-  setTimeout(() => scBottom(true), 60);
-});
+D.tBBtn.onclick = () => { isLiveMode = false; D.tl.style.scrollBehavior = "smooth"; D.tl.scrollTop = 0; updateScrollBtnUI(); };
+D.tTBtn.onclick = () => { isLiveMode = true; scBottom(true); updateScrollBtnUI(); };
+document.onclick = (e) => { if (D.app.style.display === "flex" && !D.ib.contains(e.target) && !D.hdr.contains(e.target) && !D.fn.contains(e.target) && !D.clrmod.contains(e.target)) D.mi.focus(); };
+D.mi.addEventListener("focus", () => { isLiveMode = true; setTimeout(() => scBottom(true), 60); });
 
 function renderMessages(preserveScroll = false) {
-  const total = logArray.length;
-  const currentSlice = logArray.slice(Math.max(0, total - displayCount));
+  const currentSlice = logArray.slice(Math.max(0, logArray.length - displayCount));
   const currentSliceIds = new Set(currentSlice.map(m => m.id));
   const oldH = D.tl.scrollHeight, oldT = D.tl.scrollTop;
 
@@ -611,28 +558,25 @@ function renderMessages(preserveScroll = false) {
     if(c.dataset.mid && !currentSliceIds.has(c.dataset.mid)) { c.remove(); displayedMsgIds.delete(c.dataset.mid); }
   });
 
+  let hasNewMsg = false;
   currentSlice.forEach((m, i) => {
-    let shouldGroup = false;
-    if (i > 0) {
-      const prev = currentSlice[i - 1];
-      // 同一発言者かつ1分以内ならグループ化
-      if (prev.nEnc === m.nEnc && prev.trip === m.trip && (m.time - prev.time < 60000)) {
-        shouldGroup = true;
-      }
-    }
-    
+    let shouldGroup = (i > 0 && currentSlice[i - 1].n === m.n && currentSlice[i - 1].p === m.p && (m.t - currentSlice[i - 1].t < 60000));
     if (!displayedMsgIds.has(m.id)) {
       const el = cMsg(m, shouldGroup);
-      if (el) { D.tli.appendChild(el); displayedMsgIds.add(m.id); }
+      if (el) { D.tli.appendChild(el); displayedMsgIds.add(m.id); hasNewMsg = true; }
     }
   });
 
-  if (preserveScroll && oldH > 0) { D.tl.scrollTop = oldT + (D.tl.scrollHeight - oldH); }
-  else { requestAnimationFrame(() => setTimeout(() => scBottom(false), 30)); }
+  // 非アクティブ時の新着通知
+  if (hasNewMsg && document.visibilityState === "hidden" && "Notification" in window && Notification.permission === "granted") {
+    new Notification("新着メッセージ", { body: "チャットに新しいメッセージが届きました", icon: "/favicon.ico" });
+  }
+
+  if (preserveScroll && oldH > 0) D.tl.scrollTop = oldT + (D.tl.scrollHeight - oldH);
+  else requestAnimationFrame(() => setTimeout(() => scBottom(false), 30));
   updateScrollBtnUI();
 }
 
-// 物理的な部屋データ抹消(Wipe)ロジック
 async function wipe(r) {
   if(!r) return;
   await set(ref(db, `rooms/${r}`), null);
@@ -640,21 +584,16 @@ async function wipe(r) {
   await set(ref(db, `presence/${r}`), null);
 }
 
-// ハートビートタイマー(20秒周期で生存更新)
 function startHeartbeatLoop(hashId) {
   if (_hbInterval) clearInterval(_hbInterval);
   const hbRef = ref(db, `presence/${hashId}/${myUid}`);
   _hbInterval = setInterval(async () => {
     if (!curR) return;
-    await update(hbRef, { lastSeen: serverTimestamp() }).catch(()=>{});
+    await update(hbRef, { ls: serverTimestamp() }).catch(()=>{});
   }, 20000);
 }
+function stopHeartbeatLoop() { if (_hbInterval) { clearInterval(_hbInterval); _hbInterval = null; } }
 
-function stopHeartbeatLoop() {
-  if (_hbInterval) { clearInterval(_hbInterval); _hbInterval = null; }
-}
-
-// 分散クリーンアップ（3分以上全入室者が沈黙しているなら、アクセス者がその場で一括Wipe）
 async function checkAndWipeOldRoom(hashId) {
   try {
     const pSnap = await get(ref(db, `presence/${hashId}`));
@@ -662,17 +601,11 @@ async function checkAndWipeOldRoom(hashId) {
     const pData = pSnap.val() || {};
     const now = Date.now() + _srvOff;
     let hasLiveUser = false;
-    
     for (const u of Object.values(pData)) {
-      if (u && u.lastSeen && (now - u.lastSeen < 180000)) { // 3分(180秒)以内
-        hasLiveUser = true;
-        break;
-      }
+      if (u && u.ls && (now - u.ls < 180000)) { hasLiveUser = true; break; }
     }
-    if (!hasLiveUser) {
-      await wipe(hashId);
-    }
-  } catch(e) { console.error("Wipe Check Failure:", e); }
+    if (!hasLiveUser) await wipe(hashId);
+  } catch(e) {}
 }
 
 function clearAll() {
@@ -692,11 +625,7 @@ function startTimerLoop() {
     const remain = Math.max(0, _roomExpireAt - srvNow());
     const m = Math.floor(remain / 60000), s = Math.floor((remain % 60000) / 1000);
     D.timerDsp.textContent = `${m}:${String(s).padStart(2,"0")}`;
-    
-    if (remain <= 0 && !_exitLock) {
-      _exitLock = true;
-      exitRoom(); return;
-    }
+    if (remain <= 0 && !_exitLock) { _exitLock = true; exitRoom(); return; }
     _timerRaf = requestAnimationFrame(tick);
   };
   _timerRaf = requestAnimationFrame(tick);
@@ -706,17 +635,15 @@ function stopTimerLoop() { if(_timerRaf) cancelAnimationFrame(_timerRaf); D.time
 let isSplashHidden = false;
 const hideSplash = () => {
   if(isSplashHidden || !D.splash) return;
-  isSplashHidden = true;
-  D.splash.style.opacity = "0";
+  isSplashHidden = true; D.splash.style.opacity = "0";
   setTimeout(() => { D.splash.style.display = "none"; }, 250);
 };
 
 function showLobby(msg = "") {
   clearAll();
-  localStorage.setItem("nz_is_in_room", "false"); // ロビーに戻る際はセッションを明示的に解放
+  localStorage.setItem("nz_is_in_room", "false"); 
   D.lberr.textContent = msg; D.lberr.style.display = msg ? "block" : "none";
-  D.app.style.display = "none"; D.fn.classList.remove("visible"); D.lobby.style.display = "block";
-  D.ib.classList.remove("show");
+  D.app.style.display = "none"; D.fn.classList.remove("visible"); D.lobby.style.display = "block"; D.ib.classList.remove("show");
   D.enBtn.disabled = false; D.enBtn.textContent = "入室する";
   
   D.ni.value = localStorage.getItem("nz_ni") || "";
@@ -725,36 +652,23 @@ function showLobby(msg = "") {
   D.pi.value = localStorage.getItem("nz_pi_val") || "";
   D.timeri.value = localStorage.getItem("nz_timer_val") || "30";
   syncPickers(curColor);
-  
-  hideSplash();
-  checkCurrentRoomStatus();
+  hideSplash(); checkCurrentRoomStatus();
 }
 
 async function checkCurrentRoomStatus() {
-  const lastRi = localStorage.getItem("nz_active_ri");
-  const lastCreated = localStorage.getItem("nz_active_created");
+  const lastRi = localStorage.getItem("nz_active_ri"), lastCreated = localStorage.getItem("nz_active_created");
   if (!lastRi || !lastCreated) { D.roomResumeArea.style.display = "none"; return; }
-
   try {
-    // 復帰用ハッシュ。前回使用したパスワードをローカルから拾って連結
     const lastPi = localStorage.getItem("nz_pi_val") || "";
     const hashId = CryptoJS.SHA256(lastRi + lastPi).toString();
     const snap = await get(ref(db, `rooms/${hashId}`));
     if (snap.exists() && snap.val().created === parseInt(lastCreated)) {
       D.roomResumeArea.style.display = "flex";
-      D.resumeBtn.onclick = () => {
-        D.ri.value = lastRi;
-        D.pi.value = lastPi;
-        D.enBtn.click();
-      };
+      D.resumeBtn.onclick = () => { D.ri.value = lastRi; D.pi.value = lastPi; D.enBtn.click(); };
     } else {
-      localStorage.removeItem("nz_active_ri");
-      localStorage.removeItem("nz_active_created");
-      D.roomResumeArea.style.display = "none";
+      localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created"); D.roomResumeArea.style.display = "none";
     }
-  } catch {
-    D.roomResumeArea.style.display = "none";
-  }
+  } catch { D.roomResumeArea.style.display = "none"; }
 }
 
 D.copyUrlBtn.onclick = () => {
@@ -769,231 +683,142 @@ D.copyUrlBtn.onclick = () => {
 async function doJoin(roomId, pass, name, trip, initTimer) {
   try {
     clearAll(); _exitLock = false;
-    // 【仕様】パスワードによる隔離（同じ部屋IDでもパスワードが異なれば別空間）
+    // 通知権限リクエスト
+    if("Notification" in window && Notification.permission !== "granted") Notification.requestPermission();
+    
     const hashId = CryptoJS.SHA256(roomId + pass).toString();
     const roomSalt = CryptoJS.SHA256(hashId).toString();
-    
-    // 入室試行の直前に、3分不通によるタイマー切れチェックを噛ませて自動Wipe駆動
     await checkAndWipeOldRoom(hashId);
     
     curR = hashId; rawR = roomId; curP = pass; curN = name;
-    symKey = CryptoJS.PBKDF2(pass, roomSalt, {keySize:256/32, iterations:2000});
+    // 最強セキュリティ: 1万回イテレーションへ昇格
+    symKey = CryptoJS.PBKDF2(pass, roomSalt, {keySize:256/32, iterations:10000});
 
     const roomRef = ref(db, `rooms/${hashId}`);
     let snap = await get(roomRef);
-    
     let roomData = null;
+    
     if (!snap.exists()) {
       _roomExpireAt = srvNow() + (initTimer * 60000);
-      roomData = {
-        created: serverTimestamp(),
-        host: myUid,
-        expireAt: _roomExpireAt
-      };
+      roomData = { created: serverTimestamp(), host: myUid, expireAt: _roomExpireAt };
       await set(roomRef, roomData);
       const freshSnap = await get(roomRef);
-      if(freshSnap.exists()) {
-        localStorage.setItem("nz_active_ri", roomId);
-        localStorage.setItem("nz_active_created", freshSnap.val().created);
-      }
+      if(freshSnap.exists()) { localStorage.setItem("nz_active_ri", roomId); localStorage.setItem("nz_active_created", freshSnap.val().created); }
     } else {
-      roomData = snap.val();
-      _roomExpireAt = roomData.expireAt;
-      localStorage.setItem("nz_active_ri", roomId);
-      localStorage.setItem("nz_active_created", roomData.created);
+      roomData = snap.val(); _roomExpireAt = roomData.expireAt;
+      localStorage.setItem("nz_active_ri", roomId); localStorage.setItem("nz_active_created", roomData.created);
     }
 
-    const isHost = (roomData.host === myUid);
-
     myPresRef = ref(db, `presence/${hashId}/${myUid}`);
-    // ハートビート用に初期lastSeenをセット
-    await set(myPresRef, { nEnc: enc(name), cEnc: enc(curColor), trip: trip || "", lastSeen: serverTimestamp() });
-    
-    // タブ閉じ・回線不通でもリストに残したいため、onDisconnect().remove()は排除
+    // ペイロード短縮化
+    await set(myPresRef, { n: enc(name), c: enc(curColor), p: trip || "", ls: serverTimestamp() });
     startHeartbeatLoop(hashId);
 
     D.lobby.style.display = "none";
     D.app.style.display = "flex"; D.app.classList.add("visible"); D.fn.classList.add("visible");
-    D.ib.classList.add("show");
-    D.rdsp.textContent = rawR;
+    D.ib.classList.add("show"); D.rdsp.textContent = rawR;
 
-    if (isHost) {
+    if (roomData.host === myUid) {
       D.hostTimerCtrl.style.display = "flex";
       const currentRemainMin = Math.max(1, Math.round((_roomExpireAt - srvNow()) / 60000));
       D.timerSlider.value = currentRemainMin; D.timerInput.value = currentRemainMin;
       D.timerSlider.oninput = () => { D.timerInput.value = D.timerSlider.value; };
       D.timerInput.oninput = () => { D.timerSlider.value = D.timerInput.value; };
-      
-      D.timerApplyBtn.onclick = async () => {
-        const targetMin = parseInt(D.timerInput.value) || 30;
-        const newExpire = srvNow() + (targetMin * 60000);
-        await update(roomRef, { expireAt: newExpire });
-      };
-    } else {
-      D.hostTimerCtrl.style.display = "none";
-    }
+      D.timerApplyBtn.onclick = async () => { await update(roomRef, { expireAt: srvNow() + (parseInt(D.timerInput.value) || 30) * 60000 }); };
+    } else { D.hostTimerCtrl.style.display = "none"; }
 
     startTimerLoop();
 
     _rOff = onValue(roomRef, s => {
-      if (!s.exists()) {
-        if(!_exitLock) { _exitLock = true; showLobby("部屋の有効期限が切れたか、自動分散システムにより消滅されました。"); }
-        return;
-      }
+      if (!s.exists()) { if(!_exitLock) { _exitLock = true; showLobby("部屋の有効期限が切れたか、自動分散システムにより消滅されました。"); } return; }
       _roomExpireAt = s.val().expireAt;
     });
 
     _pOff = onValue(ref(db, `presence/${hashId}`), s => {
       if (!curR) return;
-      const pData = s.val() || {};
-      const fg = document.createDocumentFragment();
-      let count = 0;
-      
-      for (const [id, u] of Object.entries(pData)) {
+      const fg = document.createDocumentFragment(); let count = 0;
+      for (const [id, u] of Object.entries(s.val() || {})) {
         if (!u) continue;
-        const n = dec(u.nEnc); if (!n) continue;
-        
-        // 【仕様】オフラインになってもリストから消さずに偽装オンラインを継続
+        const n = dec(u.n); if (!n) continue;
         count++;
         const sp = document.createElement("span"); sp.className = "chip";
-        const uCol = dec(u.cEnc) || "#94a3b8";
+        const uCol = dec(u.c) || "#94a3b8";
         sp.style.color = uCol; sp.style.borderColor = uCol + "44";
-        sp.textContent = u.trip ? `${n} ${u.trip}` : n;
+        sp.textContent = u.p ? `${n} ${u.p}` : n;
         fg.appendChild(sp);
       }
-      D.pl.innerHTML = ""; D.pl.appendChild(fg);
-      D.pcnt.textContent = `[${count}人オンライン]`;
+      D.pl.innerHTML = ""; D.pl.appendChild(fg); D.pcnt.textContent = `[${count}人オンライン]`;
     });
 
-    _cOff = onValue(query(ref(db, `chat/${hashId}`), orderByChild("time"), limitToLast(100)), snap => {
+    _cOff = onValue(query(ref(db, `chat/${hashId}`), orderByChild("t"), limitToLast(100)), snap => {
       if(!curR) return;
       const newLogs = [];
       if(snap.exists()) snap.forEach(cs => { const m = cs.val(); if(m){ m.id = cs.key; newLogs.push(m); } });
-      
-      // 【仕様】サーバー時間で確実にソートし、時系列の狂いを防止
-      newLogs.sort((a, b) => (a.time || 0) - (b.time || 0));
-      
-      logArray = newLogs;
-      renderMessages(!isLiveMode);
+      newLogs.sort((a, b) => (a.t || 0) - (b.t || 0));
+      logArray = newLogs; renderMessages(!isLiveMode);
     });
-
     hideSplash();
-
-  } catch (e) {
-    console.error("Join Error:", e);
-    showLobby("入室エラー: " + e.message);
-  }
+  } catch (e) { showLobby("入室エラー: " + e.message); }
 }
 
 async function exitRoom() {
-  _exitLock = true;
-  stopHeartbeatLoop();
-  
-  const targetRoom = curR;
-  if (targetRoom) {
-    // 【仕様】意図的な退室でのみ自データを物理削除
+  _exitLock = true; stopHeartbeatLoop();
+  if (curR) {
     if(myPresRef) await remove(myPresRef).catch(()=>{});
-    const pSnap = await get(ref(db, `presence/${targetRoom}`));
-    const pData = pSnap.val() || {};
-    
-    // 生きている（回線落ち含む）メンバーのカウント
-    let activeCount = 0;
-    const now = Date.now() + _srvOff;
-    for(const u of Object.values(pData)) {
-      if (u && u.lastSeen && (now - u.lastSeen < 180000)) activeCount++;
-    }
-    
-    // 生きている人が0人になった場合のみ即時クリーンアップを実行
-    if (activeCount === 0) {
-      await wipe(targetRoom).catch(()=>{});
-    }
+    const pSnap = await get(ref(db, `presence/${curR}`));
+    let activeCount = 0; const now = Date.now() + _srvOff;
+    for(const u of Object.values(pSnap.val() || {})) { if (u && u.ls && (now - u.ls < 180000)) activeCount++; }
+    if (activeCount === 0) await wipe(curR).catch(()=>{});
   }
-
-  localStorage.removeItem("nz_active_ri");
-  localStorage.removeItem("nz_active_created");
-  localStorage.setItem("nz_is_in_room", "false"); // セッションロック解除
-
+  localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created"); localStorage.setItem("nz_is_in_room", "false");
   if (window.history?.replaceState) window.history.replaceState({}, document.title, location.pathname);
-  clearAll();
-  showLobby();
+  clearAll(); showLobby();
 }
 
-D.exBtn.onclick = () => {
-  if (confirm("退室しますか？あなたが最後のオンラインメンバーの場合、部屋内の全データは即座に完全消去されます。")) {
-    exitRoom();
-  }
-};
+D.exBtn.onclick = () => { if (confirm("退室しますか？あなたが最後のオンラインメンバーの場合、部屋内の全データは即座に完全消去されます。")) exitRoom(); };
 
 let lastSendTime = 0;
 async function sendMsg(overrideText = null, imgData = null) {
   if (!curR || isCmp) return;
   const txt = overrideText !== null ? overrideText : D.mi.value.trim();
   if (!txt && !imgData) return;
-  
-  const now = Date.now();
-  if (now - lastSendTime < 350) return;
+  const now = Date.now(); if (now - lastSendTime < 350) return;
   lastSendTime = now;
-  
   D.mi.value = ""; D.mi.style.height = "auto";
-  
-  // 送信直後に強制追従させる（オプティミスティックUIの代替）
-  isLiveMode = true; 
-  scBottom(true);
+  isLiveMode = true; scBottom(true);
 
-  let payload = txt;
-  if (imgData) {
-    payload = "IMG::" + imgData;
-  }
-
+  // ペイロード1文字化
   await push(ref(db, `chat/${curR}`), {
-    type: "msg",
-    nEnc: enc(curN),
-    cEnc: enc(curColor),
-    trip: localStorage.getItem("nz_mytrip_styled") || "",
-    text: enc(payload),
-    time: serverTimestamp()
+    n: enc(curN),
+    c: enc(curColor),
+    p: localStorage.getItem("nz_mytrip_styled") || "",
+    m: enc(imgData ? "IMG::" + imgData : txt),
+    t: serverTimestamp()
   });
 }
 
 D.imgBtn.onclick = () => D.fileInput.click();
 D.fileInput.onchange = (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  
+  const file = e.target.files[0]; if (!file) return;
   const origIcon = D.imgBtn.innerHTML;
-  D.imgBtn.innerHTML = `<div class="spin" style="width:14px;height:14px;border-width:2px;border-top-color:transparent"></div>`;
-  D.imgBtn.disabled = true;
-
+  D.imgBtn.innerHTML = `<div class="spin" style="width:14px;height:14px;border-width:2px;border-top-color:transparent"></div>`; D.imgBtn.disabled = true;
   const reader = new FileReader();
-  reader.onload = (event) => {
+  reader.onload = (ev) => {
     const img = new Image();
     img.onload = () => {
-      const canvas = document.createElement("canvas");
-      const MAX_WIDTH = 800;
-      let w = img.width;
-      let h = img.height;
-      if (w > MAX_WIDTH) {
-        h = Math.round((h * MAX_WIDTH) / w);
-        w = MAX_WIDTH;
-      }
-      canvas.width = w; canvas.height = h;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0, w, h);
-      
-      const base64Data = canvas.toDataURL("image/jpeg", 0.8);
-      
-      sendMsg(null, base64Data).then(() => {
+      const cvs = document.createElement("canvas");
+      let w = img.width, h = img.height;
+      if (w > 800) { h = Math.round((h * 800) / w); w = 800; }
+      cvs.width = w; cvs.height = h;
+      cvs.getContext("2d").drawImage(img, 0, 0, w, h);
+      sendMsg(null, cvs.toDataURL("image/jpeg", 0.8)).then(() => {
         D.imgBtn.innerHTML = origIcon; D.imgBtn.disabled = false; D.fileInput.value = "";
-      }).catch((err) => {
-        alert("送信に失敗しました");
-        D.imgBtn.innerHTML = origIcon; D.imgBtn.disabled = false; D.fileInput.value = "";
+      }).catch(() => {
+        alert("送信失敗"); D.imgBtn.innerHTML = origIcon; D.imgBtn.disabled = false; D.fileInput.value = "";
       });
     };
-    img.onerror = () => {
-      alert("画像の読み込みに失敗しました。");
-      D.imgBtn.innerHTML = origIcon; D.imgBtn.disabled = false; D.fileInput.value = "";
-    };
-    img.src = event.target.result;
+    img.onerror = () => { alert("読込失敗"); D.imgBtn.innerHTML = origIcon; D.imgBtn.disabled = false; D.fileInput.value = ""; };
+    img.src = ev.target.result;
   };
   reader.readAsDataURL(file);
 };
@@ -1007,26 +832,13 @@ D.sdBtn.onclick = () => sendMsg();
 D.clrMsgBtn.onclick = () => { D.mi.value = ""; D.mi.style.height = "auto"; D.mi.focus(); };
 
 D.enBtn.onclick = async () => {
-  // 複窓・重複ウィンドウのブロック確認
-  if (localStorage.getItem("nz_is_in_room") === "true") {
-    alert("既に他のウィンドウまたはタブでチャットに入室しています。");
-    return;
-  }
-
-  const n = D.ni.value.replace(/^[\s\u3000]+|[\s\u3000]+$/g, "");
-  const r = D.ri.value.replace(/^[\s\u3000]+|[\s\u3000]+$/g, "");
-  const p = D.pi.value.replace(/^[\s\u3000]+|[\s\u3000]+$/g, "");
-  const tk = D.tripi.value.replace(/^[\s\u3000]+|[\s\u3000]+$/g, "");
-  const tm = parseInt(D.timeri.value) || 30;
-
-  if (!n || !r || !p || !tk) { alert("必須項目（表示名・トリップキー・部屋ID・パスワード）をすべて入力してください。"); return; }
+  if (localStorage.getItem("nz_is_in_room") === "true") { alert("既に他のタブで入室しています。"); return; }
+  const n = D.ni.value.trim(), r = D.ri.value.trim(), p = D.pi.value.trim(), tk = D.tripi.value.trim(), tm = parseInt(D.timeri.value) || 30;
+  if (!n || !r || !p || !tk) { alert("必須項目をすべて入力してください。"); return; }
   
-  // 入室が確定した段階で排他セッションフラグをセット
   localStorage.setItem("nz_is_in_room", "true");
   D.enBtn.disabled = true; D.enBtn.textContent = "入室中...";
-  const tripStyled = makeTrip(tk);
-  localStorage.setItem("nz_mytrip_styled", tripStyled);
-  
+  const tripStyled = makeTrip(tk); localStorage.setItem("nz_mytrip_styled", tripStyled);
   await doJoin(r, p, n, tripStyled, tm);
 };
 
@@ -1042,57 +854,35 @@ D.gdBtn.onclick = () => D.gmod.classList.add("show");
 D.gcBtn.onclick = () => D.gmod.classList.remove("show");
 document.querySelectorAll(".mod-overlay").forEach(m => { m.onclick = e => { if(e.target === m) m.classList.remove("show"); }; });
 
-// ウィンドウが閉じられる・リロードされる際に排他フラグをクリア
-window.addEventListener("beforeunload", () => {
-  localStorage.setItem("nz_is_in_room", "false");
-});
+window.addEventListener("beforeunload", () => { localStorage.setItem("nz_is_in_room", "false"); });
 
 let isInit = false;
 onAuthStateChanged(auth, async user => {
   if (!user) {
-    signInAnonymously(auth).catch(e => {
-      D.lberr.textContent = "Firebase接続エラー: " + e.message; 
-      D.lberr.style.display = "block";
-      hideSplash();
-    });
+    signInAnonymously(auth).catch(e => { D.lberr.textContent = "接続エラー: " + e.message; D.lberr.style.display = "block"; hideSplash(); });
     return;
   }
-  
-  myUid = user.uid;
-  if (isInit) return;
-  isInit = true;
+  myUid = user.uid; if (isInit) return; isInit = true;
 
   const sp = new URLSearchParams(location.search), urlR = sp.get("r"), urlP = sp.get("p");
-  if (urlR && urlP) {
-    D.ri.value = urlR; D.pi.value = urlP;
-    localStorage.setItem("nz_ri_val", urlR); localStorage.setItem("nz_pi_val", urlP);
-  }
+  if (urlR && urlP) { D.ri.value = urlR; D.pi.value = urlP; localStorage.setItem("nz_ri_val", urlR); localStorage.setItem("nz_pi_val", urlP); }
   
-  const savedActiveRi = localStorage.getItem("nz_active_ri");
-  const savedActiveCreated = localStorage.getItem("nz_active_created");
-  const savedNi = localStorage.getItem("nz_ni");
-  const savedPi = localStorage.getItem("nz_pi_val");
-  const savedTripKey = localStorage.getItem("nz_tripi");
-  const savedTimer = parseInt(localStorage.getItem("nz_timer_val")) || 30;
+  const savedActiveRi = localStorage.getItem("nz_active_ri"), savedActiveCreated = localStorage.getItem("nz_active_created"), savedNi = localStorage.getItem("nz_ni"), savedPi = localStorage.getItem("nz_pi_val"), savedTripKey = localStorage.getItem("nz_tripi"), savedTimer = parseInt(localStorage.getItem("nz_timer_val")) || 30;
   
-  // 自動再入室フロー
   if (savedActiveRi && savedActiveCreated && savedNi && savedPi && savedTripKey) {
     try {
       const hashId = CryptoJS.SHA256(savedActiveRi + savedPi).toString();
       const snap = await get(ref(db, `rooms/${hashId}`));
       if (snap.exists() && snap.val().created === parseInt(savedActiveCreated)) {
-        // 自動再入室時にも複窓チェックを適用
         if (localStorage.getItem("nz_is_in_room") !== "true") {
           localStorage.setItem("nz_is_in_room", "true");
-          const tripStyled = makeTrip(savedTripKey);
-          localStorage.setItem("nz_mytrip_styled", tripStyled);
+          const tripStyled = makeTrip(savedTripKey); localStorage.setItem("nz_mytrip_styled", tripStyled);
           await doJoin(savedActiveRi, savedPi, savedNi, tripStyled, savedTimer);
           return; 
         }
       }
-    } catch(e) { console.error("Auto-join failed:", e); }
+    } catch(e) { }
   }
-  
   showLobby();
 });
 </script>

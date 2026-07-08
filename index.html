@@ -55,6 +55,12 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .fl{font-size:9.5px;font-weight:700;color:var(--mu)}
 .inp{width:100%;background:var(--sf);border:1px solid var(--bd);border-radius:5px;padding:6px 8px;color:var(--tx);outline:none;font-size:12px}
 .inp:focus{border-color:var(--in)}
+
+/* アコーディオン設定用 */
+.accordion-header{background:var(--sf);border:1px solid var(--bd);border-radius:5px;padding:8px 10px;font-size:11px;font-weight:bold;color:#a5b4fc;cursor:pointer;display:flex;align-items:center;justify-content:between;user-select:none;margin-top:2px}
+.accordion-header:hover{background:rgba(255,255,255,0.03)}
+.accordion-body{display:none;flex-direction:column;gap:8px;border:1px dashed var(--bd);padding:10px;border-radius:5px;background:rgba(0,0,0,0.15)}
+
 .clrbox{display:flex;flex-direction:column;gap:4px;background:var(--s2);padding:6px 8px;border-radius:5px;border:1px solid var(--bd)}
 .clrlbl{font-size:9px;font-weight:700;color:var(--mu)}
 .clrpick-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
@@ -163,8 +169,8 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <div class="lbsub">DISPOSABLE REALTIME CHAT</div>
     <div class="lbi">
       <div class="ibox">
-        🔑 <b>完全使い捨て ＆ 共有タイマー</b><br>
-        退室するか、有効期限を過ぎると全データが強制消去(Wipe)されます。<b>トリップの入力が必須</b>です。
+        🔑 <b>完全使い捨て ＆ 自動分散クリーンアップ</b><br>
+        全員が退室、または不通から3分以上経過するとデータは自動で完全物理破壊(Wipe)されます。
       </div>
       <div id="lberr"></div>
 
@@ -183,10 +189,18 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         <input type="text" id="tripi" class="inp" placeholder="本人証明用キー（日本語・全角対応）" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
       </div>
 
-      <div class="clrbox">
-        <div class="clrlbl">ネーム＆吹き出しカラー</div>
-        <div class="clrpick-grid" id="lbClrPick"></div>
+      <div class="accordion-header" id="accHeader">⚙️ 詳細設定を開く (カラー・時間調整など)</div>
+      <div class="accordion-body" id="accBody">
+        <div class="clrbox">
+          <div class="clrlbl">ネーム＆吹き出しカラー</div>
+          <div class="clrpick-grid" id="lbClrPick"></div>
+        </div>
+        <div class="fg">
+          <label class="fl">部屋の有効時間 (1〜60分) ※作成時初期値</label>
+          <input type="number" id="timeri" class="inp" min="1" max="60" value="30">
+        </div>
       </div>
+
       <div class="fg">
         <label class="fl">部屋ID *</label>
         <input type="text" id="ri" class="inp" placeholder="共有する部屋名" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
@@ -194,11 +208,6 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       <div class="fg">
         <label class="fl">部屋パスワード *</label>
         <input type="text" id="pi" class="inp" placeholder="共通暗号化パスワード（日本語・全角対応）" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
-      </div>
-      
-      <div class="fg">
-        <label class="fl">部屋の有効時間 (1〜60分) ※作成時初期値</label>
-        <input type="number" id="timeri" class="inp" min="1" max="60" value="30">
       </div>
 
       <div class="brow">
@@ -278,9 +287,9 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       </p>
     </div>
     <div class="gs" style="border-left-color: #f87171;">
-      <h4>⏱ 部屋の完全共有タイマー</h4>
+      <h4>⏱ ハートビート ＆ 3分猶予自動Wipe</h4>
       <p style="font-size:10.5px; color:var(--mu); margin-top:2px;">
-        部屋の寿命を迎えるか、全員が退室した瞬間に全データは<b>即時物理消去(Wipe)</b>されます。ホストは部屋内部からタイマー時間をいつでもリアルタイムに増減調整可能です。
+        通信切断やタブ閉じが起きても、3分間は入室者リストに維持されます。全員が完全に離脱し、3分間誰も心拍（ハートビート）を打たなくなった瞬間、次に部屋を覗いたアクセス者によってすべてのデータが<b>物理削除(Wipe)</b>されます。
       </p>
     </div>
     <button class="btn bp" id="gcBtn" style="font-size:12px;padding:8px;margin-top:4px">閉じる</button>
@@ -291,7 +300,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   <div class="clrmc">
     <h3>カラーを変更</h3>
     <div class="clrpick-grid" id="clrPick2" style="margin:6px 0"></div>
-    <div class="clr-prev" id="clrPrev"><span style="color:var(--usr-color)">■ この色で名前と吹き出し枠が表示されます</span></div>
+    <div class="clr-prev" id="clrPrev"><span style="color:var(--usr-color)">■ この色で名前、トリップ、発言時刻が同期表示されます</span></div>
     <div class="clr-btns">
       <button class="clr-cancel" id="clrCancel">キャンセル</button>
       <button class="clr-ok" id="clrOk">適用</button>
@@ -302,7 +311,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { getDatabase, ref, push, onValue, set, update, remove, query, orderByChild, limitToLast, get, serverTimestamp, onDisconnect }
+import { getDatabase, ref, push, onValue, set, update, remove, query, orderByChild, limitToLast, get, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -330,7 +339,8 @@ const D = {
   fn:$("fn"), tTBtn:$("tTBtn"), tBBtn:$("tBBtn"), lbClrPick:$("lbClrPick"), trackStatusText:$("trackStatusText"),
   roomResumeArea:$("roomResumeArea"), resumeBtn:$("resumeBtn"),
   hostTimerCtrl:$("hostTimerCtrl"), timerSlider:$("timerSlider"), timerInput:$("timerInput"), timerApplyBtn:$("timerApplyBtn"),
-  imgBtn:$("imgBtn"), fileInput:$("fileInput")
+  imgBtn:$("imgBtn"), fileInput:$("fileInput"),
+  accHeader:$("accHeader"), accBody:$("accBody")
 };
 
 let _srvOff = 0;
@@ -371,19 +381,32 @@ const dec = c => {
 
 const esc = t => (t||"").replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-// 表示名・トリップ・部屋・タイマー情報のローカル記憶
+// 表示名・トリップ・部屋情報の記憶
 D.ni.addEventListener("input",  ()=>{ localStorage.setItem("nz_ni", D.ni.value); });
 D.tripi.addEventListener("input", ()=>{ localStorage.setItem("nz_tripi", D.tripi.value); });
 D.ri.addEventListener("input",  ()=>{ localStorage.setItem("nz_ri_val", D.ri.value); });
 D.pi.addEventListener("input",  ()=>{ localStorage.setItem("nz_pi_val", D.pi.value); });
 D.timeri.addEventListener("input", ()=>{ localStorage.setItem("nz_timer_val", D.timeri.value); });
 
+// ロビーUIのアコーディオンイベント
+D.accHeader.onclick = () => {
+  const isOpen = D.accBody.style.display === "flex";
+  D.accBody.style.display = isOpen ? "none" : "flex";
+  D.accHeader.textContent = isOpen ? "⚙️ 詳細設定を開く (カラー・時間調整など)" : "⚙️ 詳細設定を閉じる";
+};
+
+// 32色カラーパレット（視認性最適化順）
 const COLORS = [
-  {v:"#94a3b8",n:"グレー"},{v:"#f1f5f9",n:"ホワイト"},{v:"#818cf8",n:"インディゴ"},{v:"#60a5fa",n:"ブルー"},
-  {v:"#34d399",n:"エメラルド"},{v:"#a3e635",n:"ライム"},{v:"#fbbf24",n:"アンバー"},{v:"#fb923c",n:"オレンジ"},
-  {v:"#f87171",n:"レッド"},{v:"#f472b6",n:"ピンク"},{v:"#c084fc",n:"パープル"},{v:"#67e8f9",n:"シアン"},
-  {v:"#4ade80",n:"グリーン"},{v:"#fde68a",n:"イエロー"}
+  {v:"#f87171",n:"レッド1"},{v:"#fca5a5",n:"パステルレッド"},{v:"#ef4444",n:"レッド2"},{v:"#fb923c",n:"オレンジ1"},
+  {v:"#fdba74",n:"パステルオレンジ"},{v:"#f97316",n:"オレンジ2"},{v:"#fbbf24",n:"アンバー"},{v:"#fde68a",n:"パステルイエロー"},
+  {v:"#f59e0b",n:"イエロー"},{v:"#a3e635",n:"ライム1"},{v:"#bef264",n:"パステルライム"},{v:"#84cc16",n:"ライム2"},
+  {v:"#10b981",n:"エメラルド"},{v:"#a7f3d0",n:"パステルミント"},{v:"#34d399",n:"ミント"},{v:"#2dd4bf",n:"ティール"},
+  {v:"#99f6e4",n:"パステルティール"},{v:"#14b8a6",n:"アクア"},{v:"#06b6d4",n:"シアン"},{v:"#7dd3fc",n:"パステルスカイ"},
+  {v:"#38bdf8",n:"スカイ"},{v:"#6366f1",n:"インディゴ"},{v:"#818cf8",n:"パステルインディゴ"},{v:"#c4b5fd",n:"パステルパープル"},
+  {v:"#a855f7",n:"パープル"},{v:"#c084fc",n:"ライトパープル"},{v:"#f472b6",n:"ピンク"},{v:"#fda4af",n:"パステルローズ"},
+  {v:"#f9a8d4",n:"ライトピンク"},{v:"#db2777",n:"ローズ"},{v:"#e2e8f0",n:"スレート"},{v:"#94a3b8",n:"グレー"}
 ];
+
 let curColor = localStorage.getItem("nz_color") || "#94a3b8";
 let tmpColor = curColor;
 
@@ -417,7 +440,7 @@ buildPicker(D.lbClrPick, curColor, "clrc",  onColorSelect);
 
 D.clrBtn.addEventListener("click", () => {
   tmpColor = curColor;
-  buildPicker(D.clrPick2, curColor, "clrc2", v => { tmpColor = v; D.clrPrev.innerHTML = `<span style="color:${v}">■ この色で名前と吹き出し枠が表示されます</span>`; });
+  buildPicker(D.clrPick2, curColor, "clrc2", v => { tmpColor = v; D.clrPrev.innerHTML = `<span style="color:${v}">■ この色で名前、トリップ、時刻が同期表示されます</span>`; });
   D.clrmod.classList.add("show");
 });
 D.clrOk.addEventListener("click", async () => {
@@ -437,10 +460,8 @@ const fDT = ts => {
 
 const UR = /(https?:\/\/[^\s\n<>"]+)/gi;
 
-// YouTube(Shorts対応)およびメディアの展開処理
 function parseMediaEmbed(url) {
   let innerHtml = ""; let label = "📎 添付メディア";
-  
   const ytMatch = url.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i);
   
   if (ytMatch && ytMatch[1]) {
@@ -487,11 +508,11 @@ function cMsg(m) {
   const sN = dec(m.nEnc) || "???", sC = dec(m.cEnc) || "#94a3b8", sT = m.trip ? esc(m.trip) : "";
   
   let contentHtml = "";
-  // Base64画像判定
   if (txt.startsWith("IMG::data:image/")) {
     const b64 = txt.substring(5);
     if (b64.match(/^data:image\/(jpeg|png|gif|webp);base64,[a-zA-Z0-9+/=]+$/)) {
-       contentHtml = `<div class="media-accordion open"><div class="media-header" onclick="this.parentElement.classList.toggle('open')"><span>🖼 画像 (自動最適化済)</span><span class="media-icon">▾</span></div><div class="media-body"><img src="${b64}" class="media-direct" loading="lazy" alt="Image"></div></div>`;
+       // 要望通り画像アコーディオンのデフォルトは「閉じ(折りたたみ)」状態に
+       contentHtml = `<div class="media-accordion"><div class="media-header" onclick="this.parentElement.classList.toggle('open')"><span>🖼 画像 (自動最適化済)</span><span class="media-icon">▾</span></div><div class="media-body"><img src="${b64}" class="media-direct" loading="lazy" alt="Image"></div></div>`;
     } else {
        contentHtml = "<span style='color:red'>[不正な画像データ]</span>";
     }
@@ -499,29 +520,29 @@ function cMsg(m) {
     contentHtml = parseTxtSplit(txt).textHtml;
   }
   
+  // 名前・トリップ・発言時刻すべてをユーザーの選択カラーに完全に同期
   let nameSpan = `<span style="color:${esc(sC)};font-weight:700">${esc(sN)}</span>`;
-  if(sT) nameSpan += ` <span style="color:var(--em); font-size:10px; font-weight:bold;">${sT}</span>`;
+  if(sT) nameSpan += ` <span style="color:${esc(sC)}; font-size:10px; font-weight:bold;">${sT}</span>`;
+  let timeSpan = `<span class="ts" style="color:${esc(sC)}; opacity:0.8">${fDT(m.time)}</span>`;
 
-  d.innerHTML = `<div class="mm">${nameSpan}<span class="ts">${fDT(m.time)}</span></div><div class="mb" style="border-color:${esc(sC)}">${contentHtml}</div>`;
+  d.innerHTML = `<div class="mm">${nameSpan}${timeSpan}</div><div class="mb" style="border-color:${esc(sC)}">${contentHtml}</div>`;
   return d;
 }
 
 let curR = null, curP = null, curN = null, rawR = null, myUid = null;
 let isW = false, _exitLock = false, isLiveMode = true, displayCount = 50;
 let logArray = [], displayedMsgIds = new Set();
-let myPresRef = null, _roomExpireAt = null, _cOff = null, _pOff = null, _rOff = null;
+let myPresRef = null, _roomExpireAt = null, _cOff = null, _pOff = null, _rOff = null, _hbInterval = null;
 
 function updateScrollBtnUI() {
   const scrollTop = D.tl.scrollTop;
   const scrollHeight = D.tl.scrollHeight;
   const clientHeight = D.tl.clientHeight;
-
   const isAtTop = scrollTop <= 6;
   const isAtBottom = (scrollTop + clientHeight) >= (scrollHeight - 10);
 
   D.tBBtn.disabled = isAtTop;
   D.tBBtn.style.opacity = isAtTop ? "0.15" : "1";
-
   D.tTBtn.disabled = isAtBottom && isLiveMode;
   D.tTBtn.style.opacity = (isAtBottom && isLiveMode) ? "0.3" : "1";
 
@@ -543,11 +564,7 @@ const scBottom = (force = false) => {
 
 D.tl.addEventListener("scroll", () => {
   const distFromBottom = D.tl.scrollHeight - D.tl.scrollTop - D.tl.clientHeight;
-  if (distFromBottom > 60) {
-    isLiveMode = false;
-  } else {
-    isLiveMode = true;
-  }
+  isLiveMode = distFromBottom <= 60;
   updateScrollBtnUI();
 }, {passive:true});
 
@@ -596,6 +613,7 @@ function renderMessages(preserveScroll = false) {
   updateScrollBtnUI();
 }
 
+// 物理的な部屋データ抹消(Wipe)ロジック
 async function wipe(r) {
   if(!r) return;
   await set(ref(db, `rooms/${r}`), null);
@@ -603,7 +621,43 @@ async function wipe(r) {
   await set(ref(db, `presence/${r}`), null);
 }
 
+// ハートビートタイマー(20秒周期で生存更新)
+function startHeartbeatLoop(hashId) {
+  if (_hbInterval) clearInterval(_hbInterval);
+  const hbRef = ref(db, `presence/${hashId}/${myUid}`);
+  _hbInterval = setInterval(async () => {
+    if (!curR) return;
+    await update(hbRef, { lastSeen: serverTimestamp() }).catch(()=>{});
+  }, 20000);
+}
+
+function stopHeartbeatLoop() {
+  if (_hbInterval) { clearInterval(_hbInterval); _hbInterval = null; }
+}
+
+// 分散クリーンアップ（3分以上全入室者が沈黙しているなら、アクセス者がその場で一括Wipe）
+async function checkAndWipeOldRoom(hashId) {
+  try {
+    const pSnap = await get(ref(db, `presence/${hashId}`));
+    if (!pSnap.exists()) return;
+    const pData = pSnap.val() || {};
+    const now = Date.now() + _srvOff;
+    let hasLiveUser = false;
+    
+    for (const u of Object.values(pData)) {
+      if (u && u.lastSeen && (now - u.lastSeen < 180000)) { // 3分(180秒)以内
+        hasLiveUser = true;
+        break;
+      }
+    }
+    if (!hasLiveUser) {
+      await wipe(hashId);
+    }
+  } catch(e) { console.error("Wipe Check Failure:", e); }
+}
+
 function clearAll() {
+  stopHeartbeatLoop();
   if(typeof _cOff === "function"){ _cOff(); _cOff = null; }
   if(typeof _pOff === "function"){ _pOff(); _pOff = null; }
   if(typeof _rOff === "function"){ _rOff(); _rOff = null; }
@@ -630,7 +684,6 @@ function startTimerLoop() {
 }
 function stopTimerLoop() { if(_timerRaf) cancelAnimationFrame(_timerRaf); D.timerDsp.textContent = "--:--"; }
 
-// スプラッシュ制御の確実化
 let isSplashHidden = false;
 const hideSplash = () => {
   if(isSplashHidden || !D.splash) return;
@@ -641,6 +694,7 @@ const hideSplash = () => {
 
 function showLobby(msg = "") {
   clearAll();
+  localStorage.setItem("nz_is_in_room", "false"); // ロビーに戻る際はセッションを明示的に解放
   D.lberr.textContent = msg; D.lberr.style.display = msg ? "block" : "none";
   D.app.style.display = "none"; D.fn.classList.remove("visible"); D.lobby.style.display = "block";
   D.ib.classList.remove("show");
@@ -686,7 +740,7 @@ D.copyUrlBtn.onclick = () => {
   if(!rawR || !curP) return;
   const url = `${location.origin}${location.pathname}?r=${encodeURIComponent(rawR)}&p=${encodeURIComponent(curP)}`;
   navigator.clipboard.writeText(url).then(() => {
-    const orig = D.copyUrlBtn.textContent; D.copyUrlBtn.textContent = "✅ クリップボードにコピーしました";
+    const orig = D.copyUrlBtn.textContent; D.copyUrlBtn.textContent = "✅ コピー完了";
     setTimeout(() => D.copyUrlBtn.textContent = orig, 1500);
   });
 };
@@ -697,11 +751,14 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
     const hashId = CryptoJS.SHA256(roomId).toString();
     const roomSalt = CryptoJS.SHA256(hashId).toString();
     
+    // 入室試行の直前に、3分不通によるタイマー切れチェックを噛ませて自動Wipe駆動
+    await checkAndWipeOldRoom(hashId);
+    
     curR = hashId; rawR = roomId; curP = pass; curN = name;
     symKey = CryptoJS.PBKDF2(pass, roomSalt, {keySize:256/32, iterations:2000});
 
     const roomRef = ref(db, `rooms/${hashId}`);
-    const snap = await get(roomRef);
+    let snap = await get(roomRef);
     
     let roomData = null;
     if (!snap.exists()) {
@@ -727,8 +784,11 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
     const isHost = (roomData.host === myUid);
 
     myPresRef = ref(db, `presence/${hashId}/${myUid}`);
-    await set(myPresRef, { nEnc: enc(name), cEnc: enc(curColor), trip: trip || "" });
-    onDisconnect(myPresRef).remove();
+    // ハートビート用に初期lastSeenをセット
+    await set(myPresRef, { nEnc: enc(name), cEnc: enc(curColor), trip: trip || "", lastSeen: serverTimestamp() });
+    
+    // タブ閉じ・回線不通でもリストに残したいため、従来のonDisconnect().remove()は排除
+    startHeartbeatLoop(hashId);
 
     D.lobby.style.display = "none";
     D.app.style.display = "flex"; D.app.classList.add("visible"); D.fn.classList.add("visible");
@@ -739,7 +799,6 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
       D.hostTimerCtrl.style.display = "flex";
       const currentRemainMin = Math.max(1, Math.round((_roomExpireAt - srvNow()) / 60000));
       D.timerSlider.value = currentRemainMin; D.timerInput.value = currentRemainMin;
-      
       D.timerSlider.oninput = () => { D.timerInput.value = D.timerSlider.value; };
       D.timerInput.oninput = () => { D.timerSlider.value = D.timerInput.value; };
       
@@ -756,7 +815,7 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
 
     _rOff = onValue(roomRef, s => {
       if (!s.exists()) {
-        if(!_exitLock) { _exitLock = true; showLobby("部屋の有効期限が切れたか、ホストにより消滅されました。"); }
+        if(!_exitLock) { _exitLock = true; showLobby("部屋の有効期限が切れたか、自動分散システムにより消滅されました。"); }
         return;
       }
       _roomExpireAt = s.val().expireAt;
@@ -767,10 +826,15 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
       const pData = s.val() || {};
       const fg = document.createDocumentFragment();
       let count = 0;
+      const now = Date.now() + _srvOff;
       
       for (const [id, u] of Object.entries(pData)) {
         if (!u) continue;
         const n = dec(u.nEnc); if (!n) continue;
+        
+        // 3分(180秒)以上心拍が途絶えているユーザーは、表示上のリストから除外
+        if (u.lastSeen && (now - u.lastSeen > 180000)) continue;
+        
         count++;
         const sp = document.createElement("span"); sp.className = "chip";
         const uCol = dec(u.cEnc) || "#94a3b8";
@@ -790,7 +854,6 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
       renderMessages(!isLiveMode);
     });
 
-    // 成功したら必ずスプラッシュを消す
     hideSplash();
 
   } catch (e) {
@@ -801,26 +864,38 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
 
 async function exitRoom() {
   _exitLock = true;
-  clearAll();
+  stopHeartbeatLoop();
   
   const targetRoom = curR;
   if (targetRoom) {
     if(myPresRef) await remove(myPresRef).catch(()=>{});
     const pSnap = await get(ref(db, `presence/${targetRoom}`));
-    if (!pSnap.exists() || Object.keys(pSnap.val() || {}).length === 0) {
+    const pData = pSnap.val() || {};
+    
+    // 表示中、かつ生きているメンバーのカウント
+    let activeCount = 0;
+    const now = Date.now() + _srvOff;
+    for(const u of Object.values(pData)) {
+      if (u && u.lastSeen && (now - u.lastSeen < 180000)) activeCount++;
+    }
+    
+    // 生きている人が0人の場合のみ即時クリーンアップを実行
+    if (activeCount === 0) {
       await wipe(targetRoom).catch(()=>{});
     }
   }
 
   localStorage.removeItem("nz_active_ri");
   localStorage.removeItem("nz_active_created");
+  localStorage.setItem("nz_is_in_room", "false"); // セッションロック解除
 
   if (window.history?.replaceState) window.history.replaceState({}, document.title, location.pathname);
+  clearAll();
   showLobby();
 }
 
 D.exBtn.onclick = () => {
-  if (confirm("退室しますか？あなたが最後のオンラインメンバーの場合、部屋内のログとデータは即座に完全消去されます。")) {
+  if (confirm("退室しますか？あなたが最後のオンラインメンバーの場合、部屋内の全データは即座に完全消去されます。")) {
     exitRoom();
   }
 };
@@ -854,7 +929,6 @@ async function sendMsg(overrideText = null, imgData = null) {
   });
 }
 
-// 画像アップロード処理 (Canvas自動リサイズ + Base64化)
 D.imgBtn.onclick = () => D.fileInput.click();
 D.fileInput.onchange = (e) => {
   const file = e.target.files[0];
@@ -872,12 +946,10 @@ D.fileInput.onchange = (e) => {
       const MAX_WIDTH = 800;
       let w = img.width;
       let h = img.height;
-      
       if (w > MAX_WIDTH) {
         h = Math.round((h * MAX_WIDTH) / w);
         w = MAX_WIDTH;
       }
-      
       canvas.width = w; canvas.height = h;
       const ctx = canvas.getContext("2d");
       ctx.drawImage(img, 0, 0, w, h);
@@ -885,14 +957,10 @@ D.fileInput.onchange = (e) => {
       const base64Data = canvas.toDataURL("image/jpeg", 0.8);
       
       sendMsg(null, base64Data).then(() => {
-        D.imgBtn.innerHTML = origIcon;
-        D.imgBtn.disabled = false;
-        D.fileInput.value = "";
+        D.imgBtn.innerHTML = origIcon; D.imgBtn.disabled = false; D.fileInput.value = "";
       }).catch((err) => {
         alert("送信に失敗しました");
-        D.imgBtn.innerHTML = origIcon;
-        D.imgBtn.disabled = false;
-        D.fileInput.value = "";
+        D.imgBtn.innerHTML = origIcon; D.imgBtn.disabled = false; D.fileInput.value = "";
       });
     };
     img.onerror = () => {
@@ -913,6 +981,12 @@ D.sdBtn.onclick = () => sendMsg();
 D.clrMsgBtn.onclick = () => { D.mi.value = ""; D.mi.style.height = "auto"; D.mi.focus(); };
 
 D.enBtn.onclick = async () => {
+  // 複窓・重複ウィンドウのブロック確認
+  if (localStorage.getItem("nz_is_in_room") === "true") {
+    alert("既に他のウィンドウまたはタブでチャットに入室しています。");
+    return;
+  }
+
   const n = D.ni.value.replace(/^[\s\u3000]+|[\s\u3000]+$/g, "");
   const r = D.ri.value.replace(/^[\s\u3000]+|[\s\u3000]+$/g, "");
   const p = D.pi.value.replace(/^[\s\u3000]+|[\s\u3000]+$/g, "");
@@ -921,6 +995,8 @@ D.enBtn.onclick = async () => {
 
   if (!n || !r || !p || !tk) { alert("必須項目（表示名・トリップキー・部屋ID・パスワード）をすべて入力してください。"); return; }
   
+  // 入室が確定した段階で排他セッションフラグをセット
+  localStorage.setItem("nz_is_in_room", "true");
   D.enBtn.disabled = true; D.enBtn.textContent = "入室中...";
   const tripStyled = makeTrip(tk);
   localStorage.setItem("nz_mytrip_styled", tripStyled);
@@ -940,7 +1016,11 @@ D.gdBtn.onclick = () => D.gmod.classList.add("show");
 D.gcBtn.onclick = () => D.gmod.classList.remove("show");
 document.querySelectorAll(".mod-overlay").forEach(m => { m.onclick = e => { if(e.target === m) m.classList.remove("show"); }; });
 
-// 認証・初期化のフロー
+// ウィンドウが閉じられる・リロードされる際に排他フラグをクリア
+window.addEventListener("beforeunload", () => {
+  localStorage.setItem("nz_is_in_room", "false");
+});
+
 let isInit = false;
 onAuthStateChanged(auth, async user => {
   if (!user) {
@@ -969,15 +1049,20 @@ onAuthStateChanged(auth, async user => {
   const savedTripKey = localStorage.getItem("nz_tripi");
   const savedTimer = parseInt(localStorage.getItem("nz_timer_val")) || 30;
   
+  // 自動再入室フロー
   if (savedActiveRi && savedActiveCreated && savedNi && savedPi && savedTripKey) {
     try {
       const hashId = CryptoJS.SHA256(savedActiveRi).toString();
       const snap = await get(ref(db, `rooms/${hashId}`));
       if (snap.exists() && snap.val().created === parseInt(savedActiveCreated)) {
-        const tripStyled = makeTrip(savedTripKey);
-        localStorage.setItem("nz_mytrip_styled", tripStyled);
-        await doJoin(savedActiveRi, savedPi, savedNi, tripStyled, savedTimer);
-        return; 
+        // 自動再入室時にも複窓チェックを適用
+        if (localStorage.getItem("nz_is_in_room") !== "true") {
+          localStorage.setItem("nz_is_in_room", "true");
+          const tripStyled = makeTrip(savedTripKey);
+          localStorage.setItem("nz_mytrip_styled", tripStyled);
+          await doJoin(savedActiveRi, savedPi, savedNi, tripStyled, savedTimer);
+          return; 
+        }
       }
     } catch(e) { console.error("Auto-join failed:", e); }
   }

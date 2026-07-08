@@ -179,7 +179,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       
       <div class="fg">
         <label class="fl">トリップキー * (必須項目)</label>
-        <input type="password" id="tripi" class="inp" placeholder="本人証明用キー（名前の横にトリップが表示されます）" autocomplete="off">
+        <input type="text" id="tripi" class="inp" placeholder="本人証明用キー（日本語・全角対応）" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
       </div>
 
       <div class="clrbox">
@@ -188,11 +188,11 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       </div>
       <div class="fg">
         <label class="fl">部屋ID *</label>
-        <input type="text" id="ri" class="inp" placeholder="共有する部屋名" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <input type="text" id="ri" class="inp" placeholder="共有する部屋名" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
       </div>
       <div class="fg">
         <label class="fl">部屋パスワード *</label>
-        <input type="password" id="pi" class="inp" placeholder="共通暗号化パスワード" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <input type="text" id="pi" class="inp" placeholder="共通暗号化パスワード（日本語・全角対応）" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
       </div>
       
       <div class="fg">
@@ -492,11 +492,9 @@ function updateScrollBtnUI() {
   const isAtTop = scrollTop <= 6;
   const isAtBottom = (scrollTop + clientHeight) >= (scrollHeight - 10);
 
-  // 上ボタン制御
   D.tBBtn.disabled = isAtTop;
   D.tBBtn.style.opacity = isAtTop ? "0.15" : "1";
 
-  // 下ボタン・追従モード制御
   D.tTBtn.disabled = isAtBottom && isLiveMode;
   D.tTBtn.style.opacity = (isAtBottom && isLiveMode) ? "0.3" : "1";
 
@@ -518,7 +516,6 @@ const scBottom = (force = false) => {
 
 D.tl.addEventListener("scroll", () => {
   const distFromBottom = D.tl.scrollHeight - D.tl.scrollTop - D.tl.clientHeight;
-  // ユーザーが手動で上にあげた場合は追従をOFF
   if (distFromBottom > 60) {
     isLiveMode = false;
   } else {
@@ -612,6 +609,7 @@ function showLobby(msg = "") {
   clearAll();
   D.lberr.textContent = msg; D.lberr.style.display = msg ? "block" : "none";
   D.app.style.display = "none"; D.fn.classList.remove("visible"); D.lobby.style.display = "block";
+  D.ib.classList.remove("show");
   D.enBtn.disabled = false; D.enBtn.textContent = "入室する";
   
   D.ni.value = localStorage.getItem("nz_ni") || "";
@@ -620,7 +618,7 @@ function showLobby(msg = "") {
   D.pi.value = localStorage.getItem("nz_pi_val") || "";
   syncPickers(curColor);
   hideSplash();
-  checkCurrentRoomStatus(); // 戻ってきた際に継続中部屋があるか再精査
+  checkCurrentRoomStatus();
 }
 
 // ロビーでの「前回の部屋が存在するか」の厳密なアクティブチェック
@@ -633,7 +631,6 @@ async function checkCurrentRoomStatus() {
     const hashId = CryptoJS.SHA256(lastRi).toString();
     const snap = await get(ref(db, `rooms/${hashId}`));
     if (snap.exists() && snap.val().created === parseInt(lastCreated)) {
-      // 部屋が存在し、作成時刻も完全に一致＝継続生存中の同一部屋
       D.roomResumeArea.style.display = "flex";
       D.resumeBtn.onclick = () => {
         D.ri.value = lastRi;
@@ -641,7 +638,6 @@ async function checkCurrentRoomStatus() {
         D.enBtn.click();
       };
     } else {
-      // 消失しているか、別の部屋に作り直されているため、古い生存セッション履歴を破棄
       localStorage.removeItem("nz_active_ri");
       localStorage.removeItem("nz_active_created");
       D.roomResumeArea.style.display = "none";
@@ -660,7 +656,7 @@ D.copyUrlBtn.onclick = () => {
   });
 };
 
-// 入室ロジック（退室を押すか部屋が消えるまで「とにかく常時生存」させる）
+// 入室ロジック
 async function doJoin(roomId, pass, name, trip, initTimer) {
   clearAll(); _exitLock = false;
   const hashId = CryptoJS.SHA256(roomId).toString();
@@ -674,7 +670,6 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
   
   let roomData = null;
   if (!snap.exists()) {
-    // 新規作成
     _roomExpireAt = srvNow() + (initTimer * 60000);
     roomData = {
       created: serverTimestamp(),
@@ -682,14 +677,12 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
       expireAt: _roomExpireAt
     };
     await set(roomRef, roomData);
-    // 作成完了した時間付きデータを再取得してローカル保存
     const freshSnap = await get(roomRef);
     if(freshSnap.exists()) {
       localStorage.setItem("nz_active_ri", roomId);
       localStorage.setItem("nz_active_created", freshSnap.val().created);
     }
   } else {
-    // 既存の部屋へ入室
     roomData = snap.val();
     _roomExpireAt = roomData.expireAt;
     localStorage.setItem("nz_active_ri", roomId);
@@ -698,21 +691,15 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
 
   const isHost = (roomData.host === myUid);
 
-  // プレゼンス（オンライン状態）の登録
   myPresRef = ref(db, `presence/${hashId}/${myUid}`);
   await set(myPresRef, { nEnc: enc(name), cEnc: enc(curColor), trip: trip || "" });
-  
-  // ブラウザ更新・ネットワーク瞬断対策
-  // Firebaseの仕様上onDisconnectは切断時に作動するが、明示的退室以外はページ再ロード時に認証完了後即座に
-  // このdoJoinが自動再接続処理(onAuthStateChanged)を走らせるため、外からは「常時生存状態」に見える
   onDisconnect(myPresRef).remove();
 
-  // 画面遷移
   D.lobby.style.display = "none";
   D.app.style.display = "flex"; D.app.classList.add("visible"); D.fn.classList.add("visible");
+  D.ib.classList.add("show");
   D.rdsp.textContent = rawR;
 
-  // ホスト機能（タイマー動的変更）の初期化
   if (isHost) {
     D.hostTimerCtrl.style.display = "flex";
     const currentRemainMin = Math.max(1, Math.round((_roomExpireAt - srvNow()) / 60000));
@@ -732,7 +719,6 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
 
   startTimerLoop();
 
-  // 部屋のメタデータ・生存状態をリアルタイム監視
   _rOff = onValue(roomRef, s => {
     if (!s.exists()) {
       if(!_exitLock) { _exitLock = true; showLobby("部屋の有効期限が切れたか、ホストにより消滅されました。"); }
@@ -741,7 +727,6 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
     _roomExpireAt = s.val().expireAt;
   });
 
-  // オンライン入室者リスト監視
   _pOff = onValue(ref(db, `presence/${hashId}`), s => {
     if (!curR) return;
     const pData = s.val() || {};
@@ -762,7 +747,6 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
     D.pcnt.textContent = `[${count}人オンライン]`;
   });
 
-  // チャットログ購読
   _cOff = onValue(query(ref(db, `chat/${hashId}`), orderByChild("time"), limitToLast(100)), snap => {
     if(!curR) return;
     const newLogs = [];
@@ -772,7 +756,7 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
   });
 }
 
-// 退室ボタン押下時のみ明示的に生存を終わらせる
+// 退室
 async function exitRoom() {
   _exitLock = true;
   clearAll();
@@ -780,15 +764,12 @@ async function exitRoom() {
   const targetRoom = curR;
   if (targetRoom) {
     if(myPresRef) await remove(myPresRef).catch(()=>{});
-    
-    // 生存中のメンバーがいるか最終確認
     const pSnap = await get(ref(db, `presence/${targetRoom}`));
     if (!pSnap.exists() || Object.keys(pSnap.val() || {}).length === 0) {
       await wipe(targetRoom).catch(()=>{});
     }
   }
 
-  // 退室ボタンを押したのでロビーでの自動再入室アナウンスの元データを削除
   localStorage.removeItem("nz_active_ri");
   localStorage.removeItem("nz_active_created");
 
@@ -812,7 +793,7 @@ async function sendMsg() {
   lastSendTime = now;
   
   D.mi.value = ""; D.mi.style.height = "auto";
-  isLiveMode = true; // 自分の発言時は強制的に最新スクロール追従モードへ
+  isLiveMode = true; 
   scBottom(true);
 
   await push(ref(db, `chat/${curR}`), {
@@ -835,17 +816,15 @@ D.clrMsgBtn.onclick = () => { D.mi.value = ""; D.mi.style.height = "auto"; D.mi.
 
 // ロビー接続ボタン
 D.enBtn.onclick = async () => {
-  const n = D.ni.value.replace(/[\s\u3000]+/g,"").trim();
-  const r = D.ri.value.replace(/[\s\u3000]+/g,"").trim();
-  const p = D.pi.value.trim();
-  const tk = D.tripi.value.trim();
-  const tm = parseInt(D.timeri.value) || 30;
+  // ★【全角対応】半角スペースに加え、全角スペースや前後の空白も適切にトリムするように修正
+  const n = D.ni.value.replace(/^[\s\u3000]+|[\s\u3000]+$/g, "").trim();
+  const r = D.ri.value.replace(/^[\s\u3000]+|[\s\u3000]+$/g, "").trim();
+  const p = D.pi.value.replace(/^[\s\u3000]+|[\s\u3000]+$/g, ""); // パスワードは内部の空白を残す
+  const tk = D.tripi.value.replace(/^[\s\u3000]+|[\s\u3000]+$/g, "");
 
   if (!n || !r || !p || !tk) { alert("必須項目（表示名・トリップキー・部屋ID・パスワード）をすべて入力してください。"); return; }
   
   D.enBtn.disabled = true; D.enBtn.textContent = "入室中...";
-  
-  // トリップを生成してストレージへ保存
   const tripStyled = makeTrip(tk);
   localStorage.setItem("nz_mytrip_styled", tripStyled);
   
@@ -868,21 +847,19 @@ D.gdBtn.onclick = () => D.gmod.classList.add("show");
 D.gcBtn.onclick = () => D.gmod.classList.remove("show");
 document.querySelectorAll(".mod-overlay").forEach(m => { m.onclick = e => { if(e.target === m) m.classList.remove("show"); }; });
 
-// 認証＆初期セッション（URLパラメータ引継ぎなど）のハンドリング
+// 認証＆初期セッションハンドリング
 let isInit = false;
 onAuthStateChanged(auth, async user => {
   if (user) {
     myUid = user.uid;
     if (!isInit) {
       isInit = true;
-      // 招待URLパラメータ判定（?r=部屋ID&p=パスワード）
       const sp = new URLSearchParams(location.search), urlR = sp.get("r"), urlP = sp.get("p");
       if (urlR && urlP) {
         D.ri.value = urlR; D.pi.value = urlP;
         localStorage.setItem("nz_ri_val", urlR); localStorage.setItem("nz_pi_val", urlP);
       }
       
-      // 明示的に退出していない生存部屋履歴が存在する場合、自動で再入室
       const savedActiveRi = localStorage.getItem("nz_active_ri");
       const savedActiveCreated = localStorage.getItem("nz_active_created");
       const savedNi = localStorage.getItem("nz_ni");
@@ -894,7 +871,6 @@ onAuthStateChanged(auth, async user => {
           const hashId = CryptoJS.SHA256(savedActiveRi).toString();
           const snap = await get(ref(db, `rooms/${hashId}`));
           if (snap.exists() && snap.val().created === parseInt(savedActiveCreated)) {
-            // 前回の生存セッションがまだ稼働中なので即座にサイレント再接続(自動復帰)
             const tripStyled = makeTrip(savedTripKey);
             localStorage.setItem("nz_mytrip_styled", tripStyled);
             await doJoin(savedActiveRi, savedPi, savedNi, tripStyled, 30);

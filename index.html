@@ -203,7 +203,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 
       <div class="brow">
         <button class="btn bq" id="gnBtn">自動生成</button>
-        <button class="btn bp" id="enBtn" disabled>接続中...</button>
+        <button class="btn bp" id="enBtn">入室する</button>
       </div>
       <div class="glink" id="gdBtn">📖 ガイド / セキュリティ仕様</div>
     </div>
@@ -436,16 +436,25 @@ const fDT = ts => {
 };
 
 const UR = /(https?:\/\/[^\s\n<>"]+)/gi;
+
+// YouTube(Shorts対応)およびメディアの展開処理
 function parseMediaEmbed(url) {
   let innerHtml = ""; let label = "📎 添付メディア";
-  if (url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/)) {
-    const id = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/)[1];
-    label = "📺 YouTube"; innerHtml = `<div class="media-wrapper"><iframe src="https://www.youtube.com/embed/${id}" allowfullscreen></iframe></div>`;
+  
+  const ytMatch = url.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i);
+  
+  if (ytMatch && ytMatch[1]) {
+    const id = ytMatch[1];
+    label = "📺 YouTube"; 
+    innerHtml = `<div class="media-wrapper"><iframe src="https://www.youtube.com/embed/${id}" allowfullscreen></iframe></div>`;
   } else if (/\.(jpg|jpeg|png|gif|webp)(?:\?.*)?$/i.test(url)) {
-    label = "🖼 画像"; innerHtml = `<img src="${url}" class="media-direct" loading="lazy" alt="Image">`;
+    label = "🖼 画像"; 
+    innerHtml = `<img src="${url}" class="media-direct" loading="lazy" alt="Image">`;
   } else if (/\.(mp4|webm)(?:\?.*)?$/i.test(url)) {
-    label = "📹 動画"; innerHtml = `<video controls src="${url}" class="media-direct"></video>`;
+    label = "📹 動画"; 
+    innerHtml = `<video controls src="${url}" class="media-direct"></video>`;
   }
+  
   if (!innerHtml) return "";
   return `<div class="media-accordion"><div class="media-header" onclick="this.parentElement.classList.toggle('open')"><span>${label}</span><span class="media-icon">▾</span></div><div class="media-body">${innerHtml}</div></div>`;
 }
@@ -621,6 +630,15 @@ function startTimerLoop() {
 }
 function stopTimerLoop() { if(_timerRaf) cancelAnimationFrame(_timerRaf); D.timerDsp.textContent = "--:--"; }
 
+// スプラッシュ制御の確実化
+let isSplashHidden = false;
+const hideSplash = () => {
+  if(isSplashHidden || !D.splash) return;
+  isSplashHidden = true;
+  D.splash.style.opacity = "0";
+  setTimeout(() => { D.splash.style.display = "none"; }, 250);
+};
+
 function showLobby(msg = "") {
   clearAll();
   D.lberr.textContent = msg; D.lberr.style.display = msg ? "block" : "none";
@@ -634,6 +652,7 @@ function showLobby(msg = "") {
   D.pi.value = localStorage.getItem("nz_pi_val") || "";
   D.timeri.value = localStorage.getItem("nz_timer_val") || "30";
   syncPickers(curColor);
+  
   hideSplash();
   checkCurrentRoomStatus();
 }
@@ -673,102 +692,111 @@ D.copyUrlBtn.onclick = () => {
 };
 
 async function doJoin(roomId, pass, name, trip, initTimer) {
-  clearAll(); _exitLock = false;
-  const hashId = CryptoJS.SHA256(roomId).toString();
-  const roomSalt = CryptoJS.SHA256(hashId).toString();
-  
-  curR = hashId; rawR = roomId; curP = pass; curN = name;
-  symKey = CryptoJS.PBKDF2(pass, roomSalt, {keySize:256/32, iterations:2000});
+  try {
+    clearAll(); _exitLock = false;
+    const hashId = CryptoJS.SHA256(roomId).toString();
+    const roomSalt = CryptoJS.SHA256(hashId).toString();
+    
+    curR = hashId; rawR = roomId; curP = pass; curN = name;
+    symKey = CryptoJS.PBKDF2(pass, roomSalt, {keySize:256/32, iterations:2000});
 
-  const roomRef = ref(db, `rooms/${hashId}`);
-  const snap = await get(roomRef);
-  
-  let roomData = null;
-  if (!snap.exists()) {
-    _roomExpireAt = srvNow() + (initTimer * 60000);
-    roomData = {
-      created: serverTimestamp(),
-      host: myUid,
-      expireAt: _roomExpireAt
-    };
-    await set(roomRef, roomData);
-    const freshSnap = await get(roomRef);
-    if(freshSnap.exists()) {
+    const roomRef = ref(db, `rooms/${hashId}`);
+    const snap = await get(roomRef);
+    
+    let roomData = null;
+    if (!snap.exists()) {
+      _roomExpireAt = srvNow() + (initTimer * 60000);
+      roomData = {
+        created: serverTimestamp(),
+        host: myUid,
+        expireAt: _roomExpireAt
+      };
+      await set(roomRef, roomData);
+      const freshSnap = await get(roomRef);
+      if(freshSnap.exists()) {
+        localStorage.setItem("nz_active_ri", roomId);
+        localStorage.setItem("nz_active_created", freshSnap.val().created);
+      }
+    } else {
+      roomData = snap.val();
+      _roomExpireAt = roomData.expireAt;
       localStorage.setItem("nz_active_ri", roomId);
-      localStorage.setItem("nz_active_created", freshSnap.val().created);
+      localStorage.setItem("nz_active_created", roomData.created);
     }
-  } else {
-    roomData = snap.val();
-    _roomExpireAt = roomData.expireAt;
-    localStorage.setItem("nz_active_ri", roomId);
-    localStorage.setItem("nz_active_created", roomData.created);
+
+    const isHost = (roomData.host === myUid);
+
+    myPresRef = ref(db, `presence/${hashId}/${myUid}`);
+    await set(myPresRef, { nEnc: enc(name), cEnc: enc(curColor), trip: trip || "" });
+    onDisconnect(myPresRef).remove();
+
+    D.lobby.style.display = "none";
+    D.app.style.display = "flex"; D.app.classList.add("visible"); D.fn.classList.add("visible");
+    D.ib.classList.add("show");
+    D.rdsp.textContent = rawR;
+
+    if (isHost) {
+      D.hostTimerCtrl.style.display = "flex";
+      const currentRemainMin = Math.max(1, Math.round((_roomExpireAt - srvNow()) / 60000));
+      D.timerSlider.value = currentRemainMin; D.timerInput.value = currentRemainMin;
+      
+      D.timerSlider.oninput = () => { D.timerInput.value = D.timerSlider.value; };
+      D.timerInput.oninput = () => { D.timerSlider.value = D.timerInput.value; };
+      
+      D.timerApplyBtn.onclick = async () => {
+        const targetMin = parseInt(D.timerInput.value) || 30;
+        const newExpire = srvNow() + (targetMin * 60000);
+        await update(roomRef, { expireAt: newExpire });
+      };
+    } else {
+      D.hostTimerCtrl.style.display = "none";
+    }
+
+    startTimerLoop();
+
+    _rOff = onValue(roomRef, s => {
+      if (!s.exists()) {
+        if(!_exitLock) { _exitLock = true; showLobby("部屋の有効期限が切れたか、ホストにより消滅されました。"); }
+        return;
+      }
+      _roomExpireAt = s.val().expireAt;
+    });
+
+    _pOff = onValue(ref(db, `presence/${hashId}`), s => {
+      if (!curR) return;
+      const pData = s.val() || {};
+      const fg = document.createDocumentFragment();
+      let count = 0;
+      
+      for (const [id, u] of Object.entries(pData)) {
+        if (!u) continue;
+        const n = dec(u.nEnc); if (!n) continue;
+        count++;
+        const sp = document.createElement("span"); sp.className = "chip";
+        const uCol = dec(u.cEnc) || "#94a3b8";
+        sp.style.color = uCol; sp.style.borderColor = uCol + "44";
+        sp.textContent = u.trip ? `${n} ${u.trip}` : n;
+        fg.appendChild(sp);
+      }
+      D.pl.innerHTML = ""; D.pl.appendChild(fg);
+      D.pcnt.textContent = `[${count}人オンライン]`;
+    });
+
+    _cOff = onValue(query(ref(db, `chat/${hashId}`), orderByChild("time"), limitToLast(100)), snap => {
+      if(!curR) return;
+      const newLogs = [];
+      if(snap.exists()) snap.forEach(cs => { const m = cs.val(); if(m){ m.id = cs.key; newLogs.push(m); } });
+      logArray = newLogs;
+      renderMessages(!isLiveMode);
+    });
+
+    // 成功したら必ずスプラッシュを消す
+    hideSplash();
+
+  } catch (e) {
+    console.error("Join Error:", e);
+    showLobby("入室エラー: " + e.message);
   }
-
-  const isHost = (roomData.host === myUid);
-
-  myPresRef = ref(db, `presence/${hashId}/${myUid}`);
-  await set(myPresRef, { nEnc: enc(name), cEnc: enc(curColor), trip: trip || "" });
-  onDisconnect(myPresRef).remove();
-
-  D.lobby.style.display = "none";
-  D.app.style.display = "flex"; D.app.classList.add("visible"); D.fn.classList.add("visible");
-  D.ib.classList.add("show");
-  D.rdsp.textContent = rawR;
-
-  if (isHost) {
-    D.hostTimerCtrl.style.display = "flex";
-    const currentRemainMin = Math.max(1, Math.round((_roomExpireAt - srvNow()) / 60000));
-    D.timerSlider.value = currentRemainMin; D.timerInput.value = currentRemainMin;
-    
-    D.timerSlider.oninput = () => { D.timerInput.value = D.timerSlider.value; };
-    D.timerInput.oninput = () => { D.timerSlider.value = D.timerInput.value; };
-    
-    D.timerApplyBtn.onclick = async () => {
-      const targetMin = parseInt(D.timerInput.value) || 30;
-      const newExpire = srvNow() + (targetMin * 60000);
-      await update(roomRef, { expireAt: newExpire });
-    };
-  } else {
-    D.hostTimerCtrl.style.display = "none";
-  }
-
-  startTimerLoop();
-
-  _rOff = onValue(roomRef, s => {
-    if (!s.exists()) {
-      if(!_exitLock) { _exitLock = true; showLobby("部屋の有効期限が切れたか、ホストにより消滅されました。"); }
-      return;
-    }
-    _roomExpireAt = s.val().expireAt;
-  });
-
-  _pOff = onValue(ref(db, `presence/${hashId}`), s => {
-    if (!curR) return;
-    const pData = s.val() || {};
-    const fg = document.createDocumentFragment();
-    let count = 0;
-    
-    for (const [id, u] of Object.entries(pData)) {
-      if (!u) continue;
-      const n = dec(u.nEnc); if (!n) continue;
-      count++;
-      const sp = document.createElement("span"); sp.className = "chip";
-      const uCol = dec(u.cEnc) || "#94a3b8";
-      sp.style.color = uCol; sp.style.borderColor = uCol + "44";
-      sp.textContent = u.trip ? `${n} ${u.trip}` : n;
-      fg.appendChild(sp);
-    }
-    D.pl.innerHTML = ""; D.pl.appendChild(fg);
-    D.pcnt.textContent = `[${count}人オンライン]`;
-  });
-
-  _cOff = onValue(query(ref(db, `chat/${hashId}`), orderByChild("time"), limitToLast(100)), snap => {
-    if(!curR) return;
-    const newLogs = [];
-    if(snap.exists()) snap.forEach(cs => { const m = cs.val(); if(m){ m.id = cs.key; newLogs.push(m); } });
-    logArray = newLogs;
-    renderMessages(!isLiveMode);
-  });
 }
 
 async function exitRoom() {
@@ -832,7 +860,6 @@ D.fileInput.onchange = (e) => {
   const file = e.target.files[0];
   if (!file) return;
   
-  // 処理中のUI変更
   const origIcon = D.imgBtn.innerHTML;
   D.imgBtn.innerHTML = `<div class="spin" style="width:14px;height:14px;border-width:2px;border-top-color:transparent"></div>`;
   D.imgBtn.disabled = true;
@@ -842,7 +869,7 @@ D.fileInput.onchange = (e) => {
     const img = new Image();
     img.onload = () => {
       const canvas = document.createElement("canvas");
-      const MAX_WIDTH = 800; // 最大横幅
+      const MAX_WIDTH = 800;
       let w = img.width;
       let h = img.height;
       
@@ -855,7 +882,7 @@ D.fileInput.onchange = (e) => {
       const ctx = canvas.getContext("2d");
       ctx.drawImage(img, 0, 0, w, h);
       
-      const base64Data = canvas.toDataURL("image/jpeg", 0.8); // 圧縮品質 0.8
+      const base64Data = canvas.toDataURL("image/jpeg", 0.8);
       
       sendMsg(null, base64Data).then(() => {
         D.imgBtn.innerHTML = origIcon;
@@ -898,11 +925,7 @@ D.enBtn.onclick = async () => {
   const tripStyled = makeTrip(tk);
   localStorage.setItem("nz_mytrip_styled", tripStyled);
   
-  try {
-    await doJoin(r, p, n, tripStyled, tm);
-  } catch (e) {
-    showLobby("入室エラー: " + e.message);
-  }
+  await doJoin(r, p, n, tripStyled, tm);
 };
 
 D.gnBtn.onclick = () => {
@@ -917,52 +940,50 @@ D.gdBtn.onclick = () => D.gmod.classList.add("show");
 D.gcBtn.onclick = () => D.gmod.classList.remove("show");
 document.querySelectorAll(".mod-overlay").forEach(m => { m.onclick = e => { if(e.target === m) m.classList.remove("show"); }; });
 
+// 認証・初期化のフロー
 let isInit = false;
 onAuthStateChanged(auth, async user => {
-  if (user) {
-    myUid = user.uid;
-    if (!isInit) {
-      isInit = true;
-      const sp = new URLSearchParams(location.search), urlR = sp.get("r"), urlP = sp.get("p");
-      if (urlR && urlP) {
-        D.ri.value = urlR; D.pi.value = urlP;
-        localStorage.setItem("nz_ri_val", urlR); localStorage.setItem("nz_pi_val", urlP);
-      }
-      
-      const savedActiveRi = localStorage.getItem("nz_active_ri");
-      const savedActiveCreated = localStorage.getItem("nz_active_created");
-      const savedNi = localStorage.getItem("nz_ni");
-      const savedPi = localStorage.getItem("nz_pi_val");
-      const savedTripKey = localStorage.getItem("nz_tripi");
-      const savedTimer = parseInt(localStorage.getItem("nz_timer_val")) || 30;
-      
-      if (savedActiveRi && savedActiveCreated && savedNi && savedPi && savedTripKey) {
-        try {
-          const hashId = CryptoJS.SHA256(savedActiveRi).toString();
-          const snap = await get(ref(db, `rooms/${hashId}`));
-          if (snap.exists() && snap.val().created === parseInt(savedActiveCreated)) {
-            const tripStyled = makeTrip(savedTripKey);
-            localStorage.setItem("nz_mytrip_styled", tripStyled);
-            await doJoin(savedActiveRi, savedPi, savedNi, tripStyled, savedTimer);
-            return;
-          }
-        } catch(e){}
-      }
-      showLobby();
-    }
-  } else {
+  if (!user) {
     signInAnonymously(auth).catch(e => {
-      D.lberr.textContent = "Firebase接続エラー: " + e.message; D.lberr.style.display = "block";
+      D.lberr.textContent = "Firebase接続エラー: " + e.message; 
+      D.lberr.style.display = "block";
       hideSplash();
     });
+    return;
   }
-});
+  
+  myUid = user.uid;
+  if (isInit) return;
+  isInit = true;
 
-const hideSplash = () => {
-  if(!D.splash) return;
-  D.splash.style.opacity = "0";
-  setTimeout(() => { D.splash.style.display = "none"; }, 250);
-};
+  const sp = new URLSearchParams(location.search), urlR = sp.get("r"), urlP = sp.get("p");
+  if (urlR && urlP) {
+    D.ri.value = urlR; D.pi.value = urlP;
+    localStorage.setItem("nz_ri_val", urlR); localStorage.setItem("nz_pi_val", urlP);
+  }
+  
+  const savedActiveRi = localStorage.getItem("nz_active_ri");
+  const savedActiveCreated = localStorage.getItem("nz_active_created");
+  const savedNi = localStorage.getItem("nz_ni");
+  const savedPi = localStorage.getItem("nz_pi_val");
+  const savedTripKey = localStorage.getItem("nz_tripi");
+  const savedTimer = parseInt(localStorage.getItem("nz_timer_val")) || 30;
+  
+  if (savedActiveRi && savedActiveCreated && savedNi && savedPi && savedTripKey) {
+    try {
+      const hashId = CryptoJS.SHA256(savedActiveRi).toString();
+      const snap = await get(ref(db, `rooms/${hashId}`));
+      if (snap.exists() && snap.val().created === parseInt(savedActiveCreated)) {
+        const tripStyled = makeTrip(savedTripKey);
+        localStorage.setItem("nz_mytrip_styled", tripStyled);
+        await doJoin(savedActiveRi, savedPi, savedNi, tripStyled, savedTimer);
+        return; 
+      }
+    } catch(e) { console.error("Auto-join failed:", e); }
+  }
+  
+  showLobby();
+});
 </script>
 </body>
 </html>

@@ -113,21 +113,22 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .media-accordion.open .media-icon {transform: rotate(180deg);}
 .media-body {display: none; padding: 8px; background: #000; border-top: 1px solid var(--bd); justify-content: center; align-items: center;}
 .media-accordion.open .media-body {display: flex; flex-direction: column;}
-
-/* メディア要素 */
 .media-wrapper {position: relative; width: 100%; padding-top: 56.25%;}
 .media-wrapper iframe {position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;}
-.media-direct {max-width: 100%; max-height: 240px; border-radius: 4px;}
+.media-direct {max-width: 100%; max-height: 240px; border-radius: 4px; object-fit: contain;}
 
 /* 入力バー */
 #ib{display:none;padding:8px 12px calc(8px + var(--safe));background:var(--sf);border-top:1px solid var(--bd);align-items:flex-end;gap:8px;flex-shrink:0}
 #ib.show{display:flex}
-.mi-container{position:relative;flex:1;display:flex;align-items:center;background:var(--bg);border:1px solid var(--bd);border-radius:20px;padding:4px 34px 4px 12px}
-#mi{width:100%;background:none;border:none;color:var(--tx);outline:none;resize:none;font-size:14px;max-height:80px;line-height:1.4;padding:4px 0}
-.bclrm{position:absolute;right:10px;color:var(--m2);font-size:18px;font-weight:700}
-.bsd{width:34px;height:34px;border-radius:50%;background:var(--in);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity 0.2s}
+.mi-container{position:relative;flex:1;display:flex;align-items:flex-end;background:var(--bg);border:1px solid var(--bd);border-radius:20px;padding:6px 34px 6px 36px}
+.battach{position:absolute;left:6px;bottom:4px;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--m2);transition:color 0.2s, background 0.2s}
+.battach:active{background:rgba(255,255,255,0.1);color:var(--tx)}
+.battach svg{width:20px;height:20px}
+#mi{width:100%;background:none;border:none;color:var(--tx);outline:none;resize:none;font-size:14px;max-height:120px;line-height:1.4;padding:2px 0}
+.bclrm{position:absolute;right:10px;bottom:7px;color:var(--m2);font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.bsd{width:36px;height:36px;border-radius:50%;background:var(--in);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity 0.2s;margin-bottom:2px}
 .bsd:active{opacity:0.8}
-.bsd svg{width:16px;height:16px;transform:rotate(45deg);margin-top:-1px;margin-right:2px}
+.bsd svg{width:18px;height:18px;transform:rotate(45deg);margin-top:-1px;margin-right:2px}
 
 /* 常時表示フローティングナビゲーション */
 #fn{position:fixed;right:16px;bottom:80px;display:none;flex-direction:column;gap:10px;z-index:90}
@@ -237,7 +238,13 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     </div>
 
     <div id="ib">
+      <input type="file" id="fileInput" accept="image/jpeg, image/png, image/gif, image/webp" style="display:none;">
       <div class="mi-container">
+        <button class="battach" id="imgBtn" aria-label="画像添付" title="画像添付">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+          </svg>
+        </button>
         <textarea id="mi" rows="1" placeholder="メッセージを入力... (フォーカスで最新へ)" maxlength="4000"></textarea>
         <button class="bclrm" id="clrMsgBtn" title="クリア">×</button>
       </div>
@@ -267,7 +274,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <div class="gs" style="border-left-color: #60a5fa;">
       <h4>🔒 エンドツーエンド暗号化</h4>
       <p style="font-size:10.5px; color:var(--mu); margin-top:2px;">
-        パスワードを用いた<b>PBKDF2+AES-256-CBC+HMAC-SHA256</b>により、テキストは通信経路に乗る前に完全に暗号化されます。
+        パスワードを用いた<b>PBKDF2+AES-256-CBC+HMAC-SHA256</b>により、テキストと画像は通信経路に乗る前に完全に暗号化されます。
       </p>
     </div>
     <div class="gs" style="border-left-color: #f87171;">
@@ -298,7 +305,6 @@ import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gsta
 import { getDatabase, ref, push, onValue, set, update, remove, query, orderByChild, limitToLast, get, serverTimestamp, onDisconnect }
   from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
-// Firebase設定
 const firebaseConfig = {
   apiKey: "AIzaSyCsRidc0smUQDaBwq-oki5NzxSHx6-ljiw",
   authDomain: "nezuochat.firebaseapp.com",
@@ -323,7 +329,8 @@ const D = {
   tl:$("tl"), tli:$("tl-inner"), ib:$("ib"), mi:$("mi"), sdBtn:$("sdBtn"), clrMsgBtn:$("clrMsgBtn"),
   fn:$("fn"), tTBtn:$("tTBtn"), tBBtn:$("tBBtn"), lbClrPick:$("lbClrPick"), trackStatusText:$("trackStatusText"),
   roomResumeArea:$("roomResumeArea"), resumeBtn:$("resumeBtn"),
-  hostTimerCtrl:$("hostTimerCtrl"), timerSlider:$("timerSlider"), timerInput:$("timerInput"), timerApplyBtn:$("timerApplyBtn")
+  hostTimerCtrl:$("hostTimerCtrl"), timerSlider:$("timerSlider"), timerInput:$("timerInput"), timerApplyBtn:$("timerApplyBtn"),
+  imgBtn:$("imgBtn"), fileInput:$("fileInput")
 };
 
 let _srvOff = 0;
@@ -364,13 +371,13 @@ const dec = c => {
 
 const esc = t => (t||"").replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-// 表示名・トリップ・部屋情報のローカル記憶
+// 表示名・トリップ・部屋・タイマー情報のローカル記憶
 D.ni.addEventListener("input",  ()=>{ localStorage.setItem("nz_ni", D.ni.value); });
 D.tripi.addEventListener("input", ()=>{ localStorage.setItem("nz_tripi", D.tripi.value); });
 D.ri.addEventListener("input",  ()=>{ localStorage.setItem("nz_ri_val", D.ri.value); });
 D.pi.addEventListener("input",  ()=>{ localStorage.setItem("nz_pi_val", D.pi.value); });
+D.timeri.addEventListener("input", ()=>{ localStorage.setItem("nz_timer_val", D.timeri.value); });
 
-// カラーピッカー定義
 const COLORS = [
   {v:"#94a3b8",n:"グレー"},{v:"#f1f5f9",n:"ホワイト"},{v:"#818cf8",n:"インディゴ"},{v:"#60a5fa",n:"ブルー"},
   {v:"#34d399",n:"エメラルド"},{v:"#a3e635",n:"ライム"},{v:"#fbbf24",n:"アンバー"},{v:"#fb923c",n:"オレンジ"},
@@ -469,12 +476,24 @@ function cMsg(m) {
   const txt = dec(m.text); if(!txt) return null;
   const d = document.createElement("div"); d.className = "mw"; d.dataset.mid = m.id;
   const sN = dec(m.nEnc) || "???", sC = dec(m.cEnc) || "#94a3b8", sT = m.trip ? esc(m.trip) : "";
-  const {textHtml} = parseTxtSplit(txt);
+  
+  let contentHtml = "";
+  // Base64画像判定
+  if (txt.startsWith("IMG::data:image/")) {
+    const b64 = txt.substring(5);
+    if (b64.match(/^data:image\/(jpeg|png|gif|webp);base64,[a-zA-Z0-9+/=]+$/)) {
+       contentHtml = `<div class="media-accordion open"><div class="media-header" onclick="this.parentElement.classList.toggle('open')"><span>🖼 画像 (自動最適化済)</span><span class="media-icon">▾</span></div><div class="media-body"><img src="${b64}" class="media-direct" loading="lazy" alt="Image"></div></div>`;
+    } else {
+       contentHtml = "<span style='color:red'>[不正な画像データ]</span>";
+    }
+  } else {
+    contentHtml = parseTxtSplit(txt).textHtml;
+  }
   
   let nameSpan = `<span style="color:${esc(sC)};font-weight:700">${esc(sN)}</span>`;
   if(sT) nameSpan += ` <span style="color:var(--em); font-size:10px; font-weight:bold;">${sT}</span>`;
 
-  d.innerHTML = `<div class="mm">${nameSpan}<span class="ts">${fDT(m.time)}</span></div><div class="mb" style="border-color:${esc(sC)}">${textHtml}</div>`;
+  d.innerHTML = `<div class="mm">${nameSpan}<span class="ts">${fDT(m.time)}</span></div><div class="mb" style="border-color:${esc(sC)}">${contentHtml}</div>`;
   return d;
 }
 
@@ -483,7 +502,6 @@ let isW = false, _exitLock = false, isLiveMode = true, displayCount = 50;
 let logArray = [], displayedMsgIds = new Set();
 let myPresRef = null, _roomExpireAt = null, _cOff = null, _pOff = null, _rOff = null;
 
-// スクロール追従＆上下ボタン最適化制御（常時表示、端でDisabled化）
 function updateScrollBtnUI() {
   const scrollTop = D.tl.scrollTop;
   const scrollHeight = D.tl.scrollHeight;
@@ -537,7 +555,6 @@ D.tTBtn.onclick = () => {
   updateScrollBtnUI();
 };
 
-// 入力欄クリック時に強制的にフォーカス＆最新へ追従
 document.onclick = (e) => {
   if (D.app.style.display === "flex" && !D.ib.contains(e.target) && !D.hdr.contains(e.target) && !D.fn.contains(e.target) && !D.clrmod.contains(e.target)) {
     D.mi.focus();
@@ -604,7 +621,6 @@ function startTimerLoop() {
 }
 function stopTimerLoop() { if(_timerRaf) cancelAnimationFrame(_timerRaf); D.timerDsp.textContent = "--:--"; }
 
-// ロビー状態化
 function showLobby(msg = "") {
   clearAll();
   D.lberr.textContent = msg; D.lberr.style.display = msg ? "block" : "none";
@@ -616,12 +632,12 @@ function showLobby(msg = "") {
   D.tripi.value = localStorage.getItem("nz_tripi") || "";
   D.ri.value = localStorage.getItem("nz_ri_val") || "";
   D.pi.value = localStorage.getItem("nz_pi_val") || "";
+  D.timeri.value = localStorage.getItem("nz_timer_val") || "30";
   syncPickers(curColor);
   hideSplash();
   checkCurrentRoomStatus();
 }
 
-// ロビーでの「前回の部屋が存在するか」の厳密なアクティブチェック
 async function checkCurrentRoomStatus() {
   const lastRi = localStorage.getItem("nz_active_ri");
   const lastCreated = localStorage.getItem("nz_active_created");
@@ -656,7 +672,6 @@ D.copyUrlBtn.onclick = () => {
   });
 };
 
-// 入室ロジック
 async function doJoin(roomId, pass, name, trip, initTimer) {
   clearAll(); _exitLock = false;
   const hashId = CryptoJS.SHA256(roomId).toString();
@@ -756,7 +771,6 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
   });
 }
 
-// 退室
 async function exitRoom() {
   _exitLock = true;
   clearAll();
@@ -784,9 +798,10 @@ D.exBtn.onclick = () => {
 };
 
 let lastSendTime = 0;
-async function sendMsg() {
+async function sendMsg(overrideText = null, imgData = null) {
   if (!curR || isCmp) return;
-  const txt = D.mi.value.trim(); if (!txt) return;
+  const txt = overrideText !== null ? overrideText : D.mi.value.trim();
+  if (!txt && !imgData) return;
   
   const now = Date.now();
   if (now - lastSendTime < 350) return;
@@ -796,31 +811,86 @@ async function sendMsg() {
   isLiveMode = true; 
   scBottom(true);
 
+  let payload = txt;
+  if (imgData) {
+    payload = "IMG::" + imgData;
+  }
+
   await push(ref(db, `chat/${curR}`), {
     type: "msg",
     nEnc: enc(curN),
     cEnc: enc(curColor),
     trip: localStorage.getItem("nz_mytrip_styled") || "",
-    text: enc(txt),
+    text: enc(payload),
     time: serverTimestamp()
   });
 }
+
+// 画像アップロード処理 (Canvas自動リサイズ + Base64化)
+D.imgBtn.onclick = () => D.fileInput.click();
+D.fileInput.onchange = (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  // 処理中のUI変更
+  const origIcon = D.imgBtn.innerHTML;
+  D.imgBtn.innerHTML = `<div class="spin" style="width:14px;height:14px;border-width:2px;border-top-color:transparent"></div>`;
+  D.imgBtn.disabled = true;
+
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const MAX_WIDTH = 800; // 最大横幅
+      let w = img.width;
+      let h = img.height;
+      
+      if (w > MAX_WIDTH) {
+        h = Math.round((h * MAX_WIDTH) / w);
+        w = MAX_WIDTH;
+      }
+      
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
+      
+      const base64Data = canvas.toDataURL("image/jpeg", 0.8); // 圧縮品質 0.8
+      
+      sendMsg(null, base64Data).then(() => {
+        D.imgBtn.innerHTML = origIcon;
+        D.imgBtn.disabled = false;
+        D.fileInput.value = "";
+      }).catch((err) => {
+        alert("送信に失敗しました");
+        D.imgBtn.innerHTML = origIcon;
+        D.imgBtn.disabled = false;
+        D.fileInput.value = "";
+      });
+    };
+    img.onerror = () => {
+      alert("画像の読み込みに失敗しました。");
+      D.imgBtn.innerHTML = origIcon; D.imgBtn.disabled = false; D.fileInput.value = "";
+    };
+    img.src = event.target.result;
+  };
+  reader.readAsDataURL(file);
+};
 
 let isCmp = false;
 D.mi.addEventListener("compositionstart", () => { isCmp = true; });
 D.mi.addEventListener("compositionend", () => { isCmp = false; });
 D.mi.addEventListener("keydown", e => { if(e.key === "Enter" && !e.shiftKey && !isCmp) { e.preventDefault(); sendMsg(); } });
-D.mi.addEventListener("input", () => { D.mi.style.height = "auto"; D.mi.style.height = Math.min(D.mi.scrollHeight, 80) + "px"; });
+D.mi.addEventListener("input", () => { D.mi.style.height = "auto"; D.mi.style.height = Math.min(D.mi.scrollHeight, 120) + "px"; });
 D.sdBtn.onclick = () => sendMsg();
 D.clrMsgBtn.onclick = () => { D.mi.value = ""; D.mi.style.height = "auto"; D.mi.focus(); };
 
-// ロビー接続ボタン
 D.enBtn.onclick = async () => {
-  // ★【全角対応】半角スペースに加え、全角スペースや前後の空白も適切にトリムするように修正
-  const n = D.ni.value.replace(/^[\s\u3000]+|[\s\u3000]+$/g, "").trim();
-  const r = D.ri.value.replace(/^[\s\u3000]+|[\s\u3000]+$/g, "").trim();
-  const p = D.pi.value.replace(/^[\s\u3000]+|[\s\u3000]+$/g, ""); // パスワードは内部の空白を残す
+  const n = D.ni.value.replace(/^[\s\u3000]+|[\s\u3000]+$/g, "");
+  const r = D.ri.value.replace(/^[\s\u3000]+|[\s\u3000]+$/g, "");
+  const p = D.pi.value.replace(/^[\s\u3000]+|[\s\u3000]+$/g, "");
   const tk = D.tripi.value.replace(/^[\s\u3000]+|[\s\u3000]+$/g, "");
+  const tm = parseInt(D.timeri.value) || 30;
 
   if (!n || !r || !p || !tk) { alert("必須項目（表示名・トリップキー・部屋ID・パスワード）をすべて入力してください。"); return; }
   
@@ -847,7 +917,6 @@ D.gdBtn.onclick = () => D.gmod.classList.add("show");
 D.gcBtn.onclick = () => D.gmod.classList.remove("show");
 document.querySelectorAll(".mod-overlay").forEach(m => { m.onclick = e => { if(e.target === m) m.classList.remove("show"); }; });
 
-// 認証＆初期セッションハンドリング
 let isInit = false;
 onAuthStateChanged(auth, async user => {
   if (user) {
@@ -865,6 +934,7 @@ onAuthStateChanged(auth, async user => {
       const savedNi = localStorage.getItem("nz_ni");
       const savedPi = localStorage.getItem("nz_pi_val");
       const savedTripKey = localStorage.getItem("nz_tripi");
+      const savedTimer = parseInt(localStorage.getItem("nz_timer_val")) || 30;
       
       if (savedActiveRi && savedActiveCreated && savedNi && savedPi && savedTripKey) {
         try {
@@ -873,7 +943,7 @@ onAuthStateChanged(auth, async user => {
           if (snap.exists() && snap.val().created === parseInt(savedActiveCreated)) {
             const tripStyled = makeTrip(savedTripKey);
             localStorage.setItem("nz_mytrip_styled", tripStyled);
-            await doJoin(savedActiveRi, savedPi, savedNi, tripStyled, 30);
+            await doJoin(savedActiveRi, savedPi, savedNi, tripStyled, savedTimer);
             return;
           }
         } catch(e){}

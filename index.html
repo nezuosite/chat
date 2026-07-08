@@ -104,9 +104,14 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 #tl{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px 14px;background-color:#0d1117;-webkit-overflow-scrolling:touch;touch-action:pan-y!important;overscroll-behavior-y:contain;scroll-behavior:smooth;}
 #tl-inner{display:flex;flex-direction:column;justify-content:flex-end;gap:10px;width:100%;max-width:600px;margin:0 auto;min-height:100%}
 
-/* メッセージ描画 */
-.mw{display:flex;flex-direction:column;width:100%;opacity:0;animation:fadeIn 0.3s ease-out forwards;}
-@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+/* メッセージ描画（自然なアニメーション） */
+@keyframes slideInUp {
+  0% { opacity: 0; transform: translateY(15px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.mw{display:flex;flex-direction:column;width:100%;opacity:0;animation:slideInUp 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;}
+.mw.grouped { margin-top: -6px; } /* 連続投稿時の間隔詰め */
+.mw.grouped .mb { border-top-left-radius: 4px; }
 .mm{display:flex;align-items:center;gap:6px;font-size:11px;margin-bottom:2px;padding-left:4px}
 .ts{color:var(--m2);font-size:9.5px;margin-left:auto}
 .mb{align-self:start;background:var(--sf);border:1px solid transparent;border-left:3px solid;border-radius:4px 12px 12px 12px;padding:8px 12px;font-size:14px;line-height:1.5;max-width:100%;word-break:break-all;white-space:pre-wrap}
@@ -502,16 +507,17 @@ function parseTxtSplit(txt) {
   return { textHtml: textParts.join("<br>") };
 }
 
-function cMsg(m) {
+function cMsg(m, shouldGroup = false) {
   const txt = dec(m.text); if(!txt) return null;
-  const d = document.createElement("div"); d.className = "mw"; d.dataset.mid = m.id;
+  const d = document.createElement("div"); 
+  d.className = "mw" + (shouldGroup ? " grouped" : ""); 
+  d.dataset.mid = m.id;
   const sN = dec(m.nEnc) || "???", sC = dec(m.cEnc) || "#94a3b8", sT = m.trip ? esc(m.trip) : "";
   
   let contentHtml = "";
   if (txt.startsWith("IMG::data:image/")) {
     const b64 = txt.substring(5);
     if (b64.match(/^data:image\/(jpeg|png|gif|webp);base64,[a-zA-Z0-9+/=]+$/)) {
-       // 要望通り画像アコーディオンのデフォルトは「閉じ(折りたたみ)」状態に
        contentHtml = `<div class="media-accordion"><div class="media-header" onclick="this.parentElement.classList.toggle('open')"><span>🖼 画像 (自動最適化済)</span><span class="media-icon">▾</span></div><div class="media-body"><img src="${b64}" class="media-direct" loading="lazy" alt="Image"></div></div>`;
     } else {
        contentHtml = "<span style='color:red'>[不正な画像データ]</span>";
@@ -520,17 +526,21 @@ function cMsg(m) {
     contentHtml = parseTxtSplit(txt).textHtml;
   }
   
-  // 名前・トリップ・発言時刻すべてをユーザーの選択カラーに完全に同期
   let nameSpan = `<span style="color:${esc(sC)};font-weight:700">${esc(sN)}</span>`;
   if(sT) nameSpan += ` <span style="color:${esc(sC)}; font-size:10px; font-weight:bold;">${sT}</span>`;
   let timeSpan = `<span class="ts" style="color:${esc(sC)}; opacity:0.8">${fDT(m.time)}</span>`;
 
-  d.innerHTML = `<div class="mm">${nameSpan}${timeSpan}</div><div class="mb" style="border-color:${esc(sC)}">${contentHtml}</div>`;
+  if (shouldGroup) {
+    // 連続投稿時は名前と時刻を省略し、バブルのデザインを隣接させる
+    d.innerHTML = `<div class="mb" style="border-color:${esc(sC)}">${contentHtml}</div>`;
+  } else {
+    d.innerHTML = `<div class="mm">${nameSpan}${timeSpan}</div><div class="mb" style="border-color:${esc(sC)}">${contentHtml}</div>`;
+  }
   return d;
 }
 
 let curR = null, curP = null, curN = null, rawR = null, myUid = null;
-let isW = false, _exitLock = false, isLiveMode = true, displayCount = 50;
+let isW = false, _exitLock = false, isLiveMode = true, displayCount = 100;
 let logArray = [], displayedMsgIds = new Set();
 let myPresRef = null, _roomExpireAt = null, _cOff = null, _pOff = null, _rOff = null, _hbInterval = null;
 
@@ -601,9 +611,18 @@ function renderMessages(preserveScroll = false) {
     if(c.dataset.mid && !currentSliceIds.has(c.dataset.mid)) { c.remove(); displayedMsgIds.delete(c.dataset.mid); }
   });
 
-  currentSlice.forEach(m => {
+  currentSlice.forEach((m, i) => {
+    let shouldGroup = false;
+    if (i > 0) {
+      const prev = currentSlice[i - 1];
+      // 同一発言者かつ1分以内ならグループ化
+      if (prev.nEnc === m.nEnc && prev.trip === m.trip && (m.time - prev.time < 60000)) {
+        shouldGroup = true;
+      }
+    }
+    
     if (!displayedMsgIds.has(m.id)) {
-      const el = cMsg(m);
+      const el = cMsg(m, shouldGroup);
       if (el) { D.tli.appendChild(el); displayedMsgIds.add(m.id); }
     }
   });
@@ -717,13 +736,15 @@ async function checkCurrentRoomStatus() {
   if (!lastRi || !lastCreated) { D.roomResumeArea.style.display = "none"; return; }
 
   try {
-    const hashId = CryptoJS.SHA256(lastRi).toString();
+    // 復帰用ハッシュ。前回使用したパスワードをローカルから拾って連結
+    const lastPi = localStorage.getItem("nz_pi_val") || "";
+    const hashId = CryptoJS.SHA256(lastRi + lastPi).toString();
     const snap = await get(ref(db, `rooms/${hashId}`));
     if (snap.exists() && snap.val().created === parseInt(lastCreated)) {
       D.roomResumeArea.style.display = "flex";
       D.resumeBtn.onclick = () => {
         D.ri.value = lastRi;
-        D.pi.value = localStorage.getItem("nz_pi_val") || "";
+        D.pi.value = lastPi;
         D.enBtn.click();
       };
     } else {
@@ -748,7 +769,8 @@ D.copyUrlBtn.onclick = () => {
 async function doJoin(roomId, pass, name, trip, initTimer) {
   try {
     clearAll(); _exitLock = false;
-    const hashId = CryptoJS.SHA256(roomId).toString();
+    // 【仕様】パスワードによる隔離（同じ部屋IDでもパスワードが異なれば別空間）
+    const hashId = CryptoJS.SHA256(roomId + pass).toString();
     const roomSalt = CryptoJS.SHA256(hashId).toString();
     
     // 入室試行の直前に、3分不通によるタイマー切れチェックを噛ませて自動Wipe駆動
@@ -787,7 +809,7 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
     // ハートビート用に初期lastSeenをセット
     await set(myPresRef, { nEnc: enc(name), cEnc: enc(curColor), trip: trip || "", lastSeen: serverTimestamp() });
     
-    // タブ閉じ・回線不通でもリストに残したいため、従来のonDisconnect().remove()は排除
+    // タブ閉じ・回線不通でもリストに残したいため、onDisconnect().remove()は排除
     startHeartbeatLoop(hashId);
 
     D.lobby.style.display = "none";
@@ -826,15 +848,12 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
       const pData = s.val() || {};
       const fg = document.createDocumentFragment();
       let count = 0;
-      const now = Date.now() + _srvOff;
       
       for (const [id, u] of Object.entries(pData)) {
         if (!u) continue;
         const n = dec(u.nEnc); if (!n) continue;
         
-        // 3分(180秒)以上心拍が途絶えているユーザーは、表示上のリストから除外
-        if (u.lastSeen && (now - u.lastSeen > 180000)) continue;
-        
+        // 【仕様】オフラインになってもリストから消さずに偽装オンラインを継続
         count++;
         const sp = document.createElement("span"); sp.className = "chip";
         const uCol = dec(u.cEnc) || "#94a3b8";
@@ -850,6 +869,10 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
       if(!curR) return;
       const newLogs = [];
       if(snap.exists()) snap.forEach(cs => { const m = cs.val(); if(m){ m.id = cs.key; newLogs.push(m); } });
+      
+      // 【仕様】サーバー時間で確実にソートし、時系列の狂いを防止
+      newLogs.sort((a, b) => (a.time || 0) - (b.time || 0));
+      
       logArray = newLogs;
       renderMessages(!isLiveMode);
     });
@@ -868,18 +891,19 @@ async function exitRoom() {
   
   const targetRoom = curR;
   if (targetRoom) {
+    // 【仕様】意図的な退室でのみ自データを物理削除
     if(myPresRef) await remove(myPresRef).catch(()=>{});
     const pSnap = await get(ref(db, `presence/${targetRoom}`));
     const pData = pSnap.val() || {};
     
-    // 表示中、かつ生きているメンバーのカウント
+    // 生きている（回線落ち含む）メンバーのカウント
     let activeCount = 0;
     const now = Date.now() + _srvOff;
     for(const u of Object.values(pData)) {
       if (u && u.lastSeen && (now - u.lastSeen < 180000)) activeCount++;
     }
     
-    // 生きている人が0人の場合のみ即時クリーンアップを実行
+    // 生きている人が0人になった場合のみ即時クリーンアップを実行
     if (activeCount === 0) {
       await wipe(targetRoom).catch(()=>{});
     }
@@ -911,6 +935,8 @@ async function sendMsg(overrideText = null, imgData = null) {
   lastSendTime = now;
   
   D.mi.value = ""; D.mi.style.height = "auto";
+  
+  // 送信直後に強制追従させる（オプティミスティックUIの代替）
   isLiveMode = true; 
   scBottom(true);
 
@@ -1052,7 +1078,7 @@ onAuthStateChanged(auth, async user => {
   // 自動再入室フロー
   if (savedActiveRi && savedActiveCreated && savedNi && savedPi && savedTripKey) {
     try {
-      const hashId = CryptoJS.SHA256(savedActiveRi).toString();
+      const hashId = CryptoJS.SHA256(savedActiveRi + savedPi).toString();
       const snap = await get(ref(db, `rooms/${hashId}`));
       if (snap.exists() && snap.val().created === parseInt(savedActiveCreated)) {
         // 自動再入室時にも複窓チェックを適用

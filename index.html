@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0f172a">
-<title>NEZU ONETIME CHAT 2026</title>
+<title>NEZU ONETIME CHAT</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 <style>
 /* 共通リセット＆変数 */
@@ -124,6 +124,20 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .mm{display:flex;align-items:center;gap:6px;font-size:11px;margin-bottom:2px;padding-left:4px}
 .ts{color:var(--m2);font-size:9.5px;margin-left:auto}
 .mb{align-self:start;background:var(--sf);border:1px solid transparent;border-left:3px solid;border-radius:4px 12px 12px 12px;padding:8px 12px;font-size:14px;line-height:1.5;max-width:100%;word-break:break-all;white-space:pre-wrap}
+
+/* メディアアコーディオンコンテナ */
+.media-accordion {margin-top: 8px; border: 1px solid var(--bd); border-radius: 6px; overflow: hidden; background: var(--s2); max-width: 100%;}
+.media-header {display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: rgba(255,255,255,0.03); cursor: pointer; user-select: none; font-size: 11px; color: var(--mu); font-weight: bold;}
+.media-header:hover {background: rgba(255,255,255,0.06);}
+.media-icon {font-size: 12px; transition: transform 0.2s;}
+.media-accordion.open .media-icon {transform: rotate(180deg);}
+.media-body {display: none; padding: 8px; background: #000; border-top: 1px solid var(--bd); justify-content: center; align-items: center;}
+.media-accordion.open .media-body {display: flex; flex-direction: column;}
+
+/* 埋め込みプレイヤー・メディア要素レスポンシブ対応 */
+.media-wrapper {position: relative; width: 100%; padding-top: 56.25%; /* 16:9 Aspect Ratio */}
+.media-wrapper iframe {position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;}
+.media-direct {max-width: 100%; max-height: 240px; border-radius: 4px;}
 
 /* 入力バー */
 #ib{display:none;padding:8px 12px calc(8px + var(--safe));background:var(--sf);border-top:1px solid var(--bd);align-items:flex-end;gap:8px;flex-shrink:0}
@@ -409,7 +423,7 @@ if (!myShortID) {
 
 const makeTrip = (tripKey) => {
   if (!tripKey) return "";
-  const hash = CryptoJS.SHA256(tripKey + "NEZU_SALT_2026").toString();
+  const hash = CryptoJS.SHA256(tripKey).toString();
   return "◆" + hash.substring(0, 10);
 };
 
@@ -544,6 +558,56 @@ const hideSplash = () => {
 };
 
 const UR = /(https?:\/\/[^\s\n<>"]+)/gi;
+
+// 高度なメディア解析及びアコーディオンHTML生成（画質変更対応、初期状態クローズ）
+function parseMediaEmbed(url) {
+  let innerHtml = "";
+  let label = "📎 添付メディア";
+
+  const ytMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/);
+  const nicoMatch = url.match(/nicovideo\.jp\/watch\/([a-z0-9]+)/);
+  const tiktokMatch = url.match(/tiktok\.com\/(?:@[\w.-]+\/video\/|v\/)(\d+)/);
+  const instaMatch = url.match(/instagram\.com\/(?:p|reel)\/([^/?#&]+)/);
+
+  if (ytMatch) {
+    label = "📺 YouTube プレイヤー (画質変更可)";
+    innerHtml = `<div class="media-wrapper"><iframe src="https://www.youtube.com/embed/${ytMatch[1]}" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe></div>`;
+  } else if (nicoMatch) {
+    label = "📺 ニコニコ動画 プレイヤー";
+    innerHtml = `<div class="media-wrapper"><iframe src="https://embed.nicovideo.jp/watch/${nicoMatch[1]}" allowfullscreen></iframe></div>`;
+  } else if (tiktokMatch) {
+    label = "🎵 TikTok 動画";
+    innerHtml = `<div class="media-wrapper"><iframe src="https://www.tiktok.com/embed/v2/${tiktokMatch[1]}" allowfullscreen></iframe></div>`;
+  } else if (instaMatch) {
+    label = "📸 Instagram 投稿";
+    innerHtml = `<div class="media-wrapper"><iframe src="https://www.instagram.com/p/${instaMatch[1]}/embed/" allowfullscreen></iframe></div>`;
+  } else if (/\.(jpg|jpeg|png|gif|webp)(?:\?.*)?$/i.test(url)) {
+    label = "🖼 画像を表示";
+    innerHtml = `<img src="${url}" class="media-direct" loading="lazy" alt="Image">`;
+  } else if (/\.(mp4|webm)(?:\?.*)?$/i.test(url)) {
+    label = "📹 配信動画プレイヤー";
+    innerHtml = `<video controls src="${url}" class="media-direct"></video>`;
+  } else if (/\.(mp3|wav|ogg)(?:\?.*)?$/i.test(url)) {
+    label = "🎵 オーディオプレイヤー";
+    innerHtml = `<audio controls src="${url}"></audio>`;
+  }
+
+  if (!innerHtml) return "";
+
+  // アコーディオン構造（初期状態非表示）
+  return `
+    <div class="media-accordion">
+      <div class="media-header" onclick="this.parentElement.classList.toggle('open')">
+        <span>${label}</span>
+        <span class="media-icon">▾</span>
+      </div>
+      <div class="media-body">
+        ${innerHtml}
+      </div>
+    </div>
+  `;
+}
+
 function _parseSegs(txt) {
   const norm = txt.replace(/[\u3000]/g," "); const parts = []; let last = 0, m; UR.lastIndex = 0;
   while((m = UR.exec(norm)) !== null){
@@ -564,7 +628,8 @@ function _parseSegs(txt) {
       if(h) segs.push({type:"text", html:h});
     } else {
       const su = esc(p.v);
-      segs.push({type:"text", html:`<a href="${su}" target="_blank" rel="noopener noreferrer">${su}</a>`});
+      const mediaHtml = parseMediaEmbed(p.v);
+      segs.push({type:"text", html:`<a href="${su}" target="_blank" rel="noopener noreferrer">${su}</a>${mediaHtml}`});
     }
   }
   return segs;
@@ -577,7 +642,7 @@ function parseTxtSplit(txt) {
 }
 
 function cMsg(m) {
-  if(m.type === "sys") return null; // システムログは描画しない
+  if(m.type === "sys") return null; 
   const txt = dec(m.text); if(!txt) return null;
   const d = document.createElement("div"); d.className = "mw"; d.dataset.ts = m.time||0; d.dataset.mid = m.id;
   
@@ -728,11 +793,18 @@ function stopPresenceLoop() {
 D.myTimerRange.addEventListener("input", (e) => {
   D.myTimerDisp.textContent = e.target.value + "分";
 });
+
 D.updateTimerBtn.onclick = async () => {
   if(isW || !curR) return;
   const v = parseInt(D.myTimerRange.value) || 30;
   currentTimerMax = v;
   localStorage.setItem("nz_timer", v);
+  
+  // 自分がホストであれば部屋設定のデフォルトタイマーも更新
+  if(isHost && !isOff) {
+    await update(ref(db, `rooms/${curR}`), { defaultTimer: v });
+  }
+
   if(myPresRef) {
     await update(myPresRef, { timerMax: v, expireAt: srvNow() + (v * 60000) });
     saveSession({r: rawR, p: curP, n: D.ni.value, timer: v, asW: false});
@@ -855,11 +927,12 @@ async function doJoin({target, pass, name, trip, timer, asW}) {
       const freshSnap = await get(roomRef);
       if(!freshSnap.exists()){
           isHost = true; roomMode = 'open';
-          await set(roomRef, { created: serverTimestamp(), host: myUid, mode: 'open', allowedUsers: { [myUid]: true } });
+          await set(roomRef, { created: serverTimestamp(), host: myUid, mode: 'open', defaultTimer: currentTimerMax, allowedUsers: { [myUid]: true } });
       } else {
           const rData = freshSnap.val();
           isHost = (rData.host === myUid);
           roomMode = rData.mode || 'open';
+          if(rData.defaultTimer) currentTimerMax = rData.defaultTimer;
           
           if (!isHost && !asW && roomMode === 'approval' && !rData.allowedUsers?.[myUid]) {
               D.lobby.style.display = "none";
@@ -875,7 +948,6 @@ async function doJoin({target, pass, name, trip, timer, asW}) {
                   _waitOff = onValue(ref(db, `rooms/${curR}/allowedUsers/${myUid}`), s => {
                       if (s.val() === true) {
                           if(_waitOff) { _waitOff(); _waitOff = null; }
-                          // 自動入室へ遷移
                           resolve(completeJoin(name, trip, asW));
                       }
                   });
@@ -927,6 +999,16 @@ async function completeJoin(name, trip, asW) {
         const rData = s.val();
         isHost = (rData.host === myUid);
         roomMode = rData.mode || 'open';
+        
+        // ホスト側タイマー設定の変更をゲストに同期させる
+        if(rData.defaultTimer && currentTimerMax !== rData.defaultTimer) {
+          currentTimerMax = rData.defaultTimer;
+          D.myTimerRange.value = currentTimerMax;
+          D.myTimerDisp.textContent = currentTimerMax + "分";
+          if (myPresRef) {
+            update(myPresRef, { timerMax: currentTimerMax, expireAt: srvNow() + (currentTimerMax * 60000) }).catch(()=>{});
+          }
+        }
         
         if (isHost && !isOff) {
             D.modeBtn.style.display = "flex"; D.pendingBtn.style.display = "flex"; updateModeBtnUI();

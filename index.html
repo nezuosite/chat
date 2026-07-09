@@ -98,9 +98,13 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .chip{font-size:10px;font-weight:700;padding:4px 8px;border-radius:6px;background:rgba(255,255,255,.03);border:1px solid;display:inline-flex;align-items:center;}
 
 /* ホスト用パネル */
-#hostTimerCtrl, #hostApprovePanel{display:none; background:var(--s2); border-bottom:1px solid var(--bd); padding:6px 12px; align-items:center; gap:10px; flex-shrink:0; overflow-x:auto;}
+#hostTimerCtrl, #hostApprovePanel, #hostModeCtrl{display:none; background:var(--s2); border-bottom:1px solid var(--bd); padding:6px 12px; align-items:center; gap:10px; flex-shrink:0; overflow-x:auto;}
 .htc-lbl{font-size:10px; font-weight:bold; color:var(--mu); white-space:nowrap}
-.htc-slider{flex:1; accent-color:var(--in); height:6px; cursor:pointer}
+.htc-slider-container {position: relative; flex: 1; display: flex; align-items: center;}
+.htc-slider{width: 100%; accent-color:var(--in); height:6px; cursor:pointer}
+.slider-tooltip {position: absolute; top: -20px; left: 50%; transform: translateX(-50%); background: var(--tx); color: var(--bg); font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px; display: none; white-space: nowrap; pointer-events: none;}
+.htc-slider:active + .slider-tooltip, .htc-slider:hover + .slider-tooltip {display: block;}
+
 .htc-num{width:45px; background:var(--sf); border:1px solid var(--bd); color:var(--tx); border-radius:4px; padding:2px 4px; text-align:center; font-size:11px; font-family:monospace}
 .htc-btn{background:var(--in); color:#fff; font-size:10px; font-weight:bold; padding:4px 10px; border-radius:4px; white-space:nowrap;}
 .wait-user-card {background:var(--sf); border:1px solid var(--em); padding:4px 8px; border-radius:4px; display:flex; align-items:center; gap:6px; font-size:10px;}
@@ -122,16 +126,16 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .mw:hover .del-btn{display:block;}
 @media (hover: none){ .del-btn{display:block;opacity:0.5;position:static;margin-top:4px;align-self:flex-end;} }
 
-/* メディアアコーディオンコンテナ */
-.media-accordion {margin-top: 8px; border: 1px solid var(--bd); border-radius: 6px; overflow: hidden; background: var(--s2); max-width: 100%;}
-.media-header {display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: rgba(255,255,255,0.03); cursor: pointer; user-select: none; font-size: 11px; color: var(--mu); font-weight: bold;}
-.media-header:hover {background: rgba(255,255,255,0.06);}
-.media-icon {font-size: 12px; transition: transform 0.2s;}
-.media-accordion.open .media-icon {transform: rotate(180deg);}
-.media-body {display: none; padding: 8px; background: #000; border-top: 1px solid var(--bd); justify-content: center; align-items: center;}
-.media-accordion.open .media-body {display: flex; flex-direction: column; gap: 6px;}
-.media-wrapper {position: relative; width: 100%; padding-top: 56.25%;}
-.media-wrapper iframe {position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;}
+/* 動画・メディアUI (新仕様) */
+.media-embed-box {margin-top: 8px; border: 1px solid var(--bd); border-radius: 6px; background: var(--s2); overflow: hidden; max-width: 100%;}
+.media-meta {display: flex; align-items: center; gap: 8px; padding: 8px 10px; font-size: 11px; color: #a5b4fc; background: rgba(255,255,255,0.02);}
+.media-meta a {color: inherit; text-decoration: underline; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+.media-play-btn {width: 100%; padding: 12px; background: var(--sf); color: var(--tx); border: none; border-top: 1px solid var(--bd); font-size: 12px; font-weight: bold; cursor: pointer; transition: background 0.2s;}
+.media-play-btn:hover {background: var(--in); color: #fff;}
+.media-player-container {display: none; opacity: 0; transition: opacity 0.3s ease; position: relative; width: 100%; background: #000; text-align: center;}
+.media-player-container iframe, .media-player-container video {width: 100%; height: auto; max-height: 80vh; aspect-ratio: auto; object-fit: contain; display: block; border: none;}
+/* 横長・縦長自動追従のためのラッパー調整。iframeはアスペクト比を維持させる設定が必要な場合があるため、基本はautoとする */
+.close-player-btn {display: block; width: 100%; padding: 8px; background: var(--ro); color: #fff; font-size: 11px; font-weight: bold; border: none; cursor: pointer;}
 .media-direct {max-width: 100%; max-height: 240px; border-radius: 4px; object-fit: contain; cursor: zoom-in;}
 
 /* 入力バー */
@@ -154,11 +158,11 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 #fn button.circle-btn:active{transform:scale(0.92)}
 #fn svg{width:18px;height:18px;stroke-width:2.5;margin-bottom:2px}
 
-.switch-btn {position:relative; width:60px!important; height:30px!important; border-radius:15px!important; background:var(--sf)!important; border:1px solid var(--bd)!important; padding:0 8px!important; overflow:hidden; transition:all 0.3s ease; box-shadow:0 4px 12px rgba(0,0,0,.4);}
+.switch-btn {position:relative; width:60px!important; height:30px!important; border-radius:15px!important; background:var(--sf)!important; border:1px solid var(--bd)!important; padding:0 8px!important; overflow:hidden; transition:all 0.3s ease; box-shadow:0 4px 12px rgba(0,0,0,.4); cursor:pointer;}
 .switch-btn::after {content:""; position:absolute; top:3px; left:3px; width:22px; height:22px; background:#fff; border-radius:50%; transition:transform 0.3s ease;}
 .switch-btn.active {background:var(--in)!important; border-color:var(--i2)!important;}
 .switch-btn.active::after {transform:translateX(30px);}
-.switch-text {font-size:10px; font-weight:bold; pointer-events:none; color:var(--tx);}
+.switch-text {font-size:10px; font-weight:bold; pointer-events:none; color:var(--tx); position:relative; z-index:2;}
 
 @keyframes pulseGlow { 0% { box-shadow:0 0 0 0 rgba(244,63,94,0.6); } 70% { box-shadow:0 0 0 8px rgba(244,63,94,0); } 100% { box-shadow:0 0 0 0 rgba(244,63,94,0); } }
 #unreadChip {width:auto!important; padding:0 14px; border-radius:22px!important; background:var(--ro)!important; border-color:#f43f5e!important; color:#fff!important; flex-direction:row!important; gap:6px; font-size:12px!important; font-weight:800; animation:pulseGlow 2s infinite;}
@@ -277,10 +281,17 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 
     <div id="hostTimerCtrl">
       <span class="htc-lbl">⏱ 寿命:</span>
-      <input type="range" id="timerSlider" class="htc-slider" min="1" max="60" value="30">
-      <input type="number" id="timerInput" class="htc-num" min="1" max="60" value="30">
-      <button class="htc-btn" id="timerApplyBtn">更新</button>
+      <div class="htc-slider-container">
+        <input type="range" id="timerSlider" class="htc-slider" min="1" max="60" value="30">
+        <div id="timerTooltip" class="slider-tooltip">30分</div>
+      </div>
+      </div>
+    
+    <div id="hostModeCtrl">
+      <span class="htc-lbl">🚪 入室モード:</span>
+      <button id="roomModeToggleBtn" class="switch-btn"><span id="roomModeStatusText" class="switch-text">承認制</span></button>
     </div>
+
     <div id="hostApprovePanel">
       <span class="htc-lbl">🔔 承認待ち:</span>
       <div id="waitList" style="display:flex; gap:6px; overflow-x:auto;"></div>
@@ -328,12 +339,6 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   </button>
 </div>
 
-<div id="videoFloat" style="display:none; position:fixed; top:80px; left:10px; z-index:20000; width:320px; background:#000; border:2px solid var(--in); border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,0.5); overflow:hidden;">
-  <div id="videoHeader" style="padding:6px; background:var(--in); color:#fff; font-size:11px; cursor:move; text-align:center; font-weight:bold; user-select:none;">ドラッグで移動</div>
-  <div id="videoContainer" style="width:100%; padding-top:56.25%; position:relative;"></div>
-  <button id="closeVideoBtn" style="width:100%; padding:8px; background:#333; color:#fff; border:none; font-size:12px; font-weight:bold;">閉じる</button>
-</div>
-
 <div id="waitMod" class="mod-overlay">
   <div class="gc" style="max-width:320px;">
     <h3>⏳ ホストの承認待ち...</h3>
@@ -344,8 +349,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     </div>
     <div class="wait-btns">
       <button class="btn bq" id="waitCopyIdBtn" style="flex:1;">IDコピー</button>
-      <button class="btn bp" id="waitCopyUrlBtn" style="flex:1;">招待URLコピー</button>
-    </div>
+      </div>
     <button class="btn bq" id="waitCancelBtn" style="width:100%; margin-top:8px; border-color:var(--ro); color:#fda4af;">キャンセル（退室）</button>
   </div>
 </div>
@@ -424,13 +428,13 @@ const D = {
   upBtn:$("upBtn"), downBtn:$("downBtn"), kbToggleBtn:$("kbToggleBtn"), kbStatusText:$("kbStatusText"),
   lbClrPick:$("lbClrPick"), trackStatusText:$("trackStatusText"),
   roomResumeArea:$("roomResumeArea"), resumeBtn:$("resumeBtn"),
-  hostTimerCtrl:$("hostTimerCtrl"), timerSlider:$("timerSlider"), timerInput:$("timerInput"), timerApplyBtn:$("timerApplyBtn"),
+  hostTimerCtrl:$("hostTimerCtrl"), timerSlider:$("timerSlider"), timerTooltip:$("timerTooltip"),
   hostApprovePanel:$("hostApprovePanel"), waitList:$("waitList"),
+  hostModeCtrl:$("hostModeCtrl"), roomModeToggleBtn:$("roomModeToggleBtn"), roomModeStatusText:$("roomModeStatusText"),
   imgBtn:$("imgBtn"), fileInput:$("fileInput"),
   accHeader:$("accHeader"), accBody:$("accBody"),
   imgViewMod:$("imgViewMod"), imgViewSrc:$("imgViewSrc"),
-  videoFloat:$("videoFloat"), videoContainer:$("videoContainer"), closeVideoBtn:$("closeVideoBtn"),
-  waitMod:$("waitMod"), waitModTrip:$("waitModTrip"), waitCopyIdBtn:$("waitCopyIdBtn"), waitCopyUrlBtn:$("waitCopyUrlBtn"), waitCancelBtn:$("waitCancelBtn")
+  waitMod:$("waitMod"), waitModTrip:$("waitModTrip"), waitCopyIdBtn:$("waitCopyIdBtn"), waitCancelBtn:$("waitCancelBtn")
 };
 
 // --- 暗号化とハッシュの基盤（PRO仕様） ---
@@ -438,18 +442,14 @@ const SYSTEM_SALT = "NEZU_PRO_SYS_SALT_2026_V1";
 
 const makeTrip = (name, tripKey) => {
   if (!tripKey) return "";
-  // 部屋を跨いでも同じトリップになるようにシステムソルトを使用
   const hash = CryptoJS.SHA256(SYSTEM_SALT + name + tripKey).toString();
   return "◆" + hash.substring(0, 10);
 };
 
-// 部屋IDを特定するためのハッシュ
 const getRoomHash = (roomId) => CryptoJS.SHA256(SYSTEM_SALT + roomId).toString();
-
-// 部屋のマスター鍵（PBKDF2でストレッチング）
 const getMasterKey = (roomId, pass) => CryptoJS.PBKDF2(pass + roomId, SYSTEM_SALT, {keySize: 256/32, iterations: 10000}).toString();
 
-let masterKey = null; // メッセージの暗号・復号に使用するマスター鍵
+let masterKey = null; 
 let isHost = false;
 let myGuestKey = null;
 
@@ -469,8 +469,7 @@ const dec = (c, key = masterKey) => {
     const parts = c.split(":");
     if (parts.length >= 3) {
       const ivHex = parts[0], ct = parts[1], mac = parts[2];
-      const verifyMac = CryptoJS.HmacSHA256(ivHex + ":" + ct, key).toString();
-      if (verifyMac !== mac) return null;
+      if (CryptoJS.HmacSHA256(ivHex + ":" + ct, key).toString() !== mac) return null;
       const iv = CryptoJS.enc.Hex.parse(ivHex);
       return CryptoJS.AES.decrypt(ct, key, { iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }).toString(CryptoJS.enc.Utf8) || null;
     }
@@ -501,14 +500,7 @@ D.pi.addEventListener("input",  ()=>{ localStorage.setItem("nz_pi_val", D.pi.val
 const copyToClip = (text) => { navigator.clipboard.writeText(text).then(() => showToast("✅ コピーしました")); };
 D.lbCopyTripBtn.onclick = () => copyToClip(`${D.ni.value || "名無し"} ${localStorage.getItem("nz_mytrip_styled")||""}`);
 D.waitCopyIdBtn.onclick = () => copyToClip(`${localStorage.getItem("nz_myname")} ${localStorage.getItem("nz_mytrip_styled")||""}`);
-D.waitCopyUrlBtn.onclick = () => {
-  const url = `${location.origin}${location.pathname}?r=${encodeURIComponent(rawR)}`;
-  copyToClip(url);
-};
-D.copyUrlBtn.onclick = () => {
-  const url = `${location.origin}${location.pathname}?r=${encodeURIComponent(rawR)}`;
-  copyToClip(url);
-};
+D.copyUrlBtn.onclick = () => copyToClip(`${location.origin}${location.pathname}?r=${encodeURIComponent(rawR)}`);
 
 const clampTimer = (val) => { let v = parseInt(val); if (isNaN(v)) return 30; return Math.max(1, Math.min(60, v)); };
 D.timeri.addEventListener("input", (e) => {
@@ -518,11 +510,44 @@ D.timeri.addEventListener("input", (e) => {
   localStorage.setItem("nz_timer_val", e.target.value);
 });
 D.timeri.addEventListener("blur", (e) => { e.target.value = clampTimer(e.target.value); });
-D.timerInput.oninput = (e) => { 
-  let val = parseInt(e.target.value);
-  if (val > 60) e.target.value = 60;
-  if (val < 1) e.target.value = 1;
-  D.timerSlider.value = e.target.value; 
+
+// ホストタイマー スライダー操作（ツールチップと値確定の分離）
+const updateTimerTooltip = () => {
+  const val = D.timerSlider.value;
+  D.timerTooltip.textContent = `${val}分`;
+  // つまみの位置に合わせてツールチップを移動
+  const min = D.timerSlider.min || 1;
+  const max = D.timerSlider.max || 60;
+  const percent = ((val - min) / (max - min)) * 100;
+  D.timerTooltip.style.left = `calc(${percent}% + (${8 - percent * 0.15}px))`; 
+};
+
+D.timerSlider.addEventListener("input", () => {
+  updateTimerTooltip();
+});
+D.timerSlider.addEventListener("change", async () => {
+  const val = parseInt(D.timerSlider.value) || 30;
+  if (curR && isHost) {
+    await update(ref(db, `rooms/${curR}`), { expireAt: srvNow() + (val * 60000) });
+    showToast("✅ 部屋の寿命を更新しました");
+  }
+});
+
+// ホスト 入室モード切替
+let isRoomApproveMode = true;
+const updateRoomModeBtnUI = () => {
+  D.roomModeToggleBtn.classList.toggle("active", !isRoomApproveMode); // ON=オープンとする視覚表現
+  D.roomModeStatusText.textContent = isRoomApproveMode ? "承認制" : "ｵｰﾌﾟﾝ";
+  D.roomModeStatusText.style.color = isRoomApproveMode ? "var(--tx)" : "#fff";
+  D.hostApprovePanel.style.display = isRoomApproveMode ? "flex" : "none";
+};
+D.roomModeToggleBtn.onclick = async () => {
+  if (!curR || !isHost) return;
+  isRoomApproveMode = !isRoomApproveMode;
+  updateRoomModeBtnUI();
+  await update(ref(db, `rooms/${curR}`), { requireApproval: isRoomApproveMode });
+  await sendSysMsg(`[システム] 入室モードを「${isRoomApproveMode ? "承認制" : "オープン（制限なし）"}」に変更しました`);
+  showToast(`✅ ${isRoomApproveMode ? "承認制" : "オープンモード"}に変更しました`);
 };
 
 D.accHeader.onclick = () => {
@@ -545,26 +570,18 @@ const COLORS = [
 let curColor = localStorage.getItem("nz_color") || "#94a3b8";
 let tmpColor = curColor;
 
-const setGlobalColor = c => {
-  document.documentElement.style.setProperty("--usr-color", c);
-  if(D.clrDot) D.clrDot.style.background = c;
-};
+const setGlobalColor = c => { document.documentElement.style.setProperty("--usr-color", c); if(D.clrDot) D.clrDot.style.background = c; };
 setGlobalColor(curColor);
 
-const syncPickers = v => {
-  if(D.lbClrPick) D.lbClrPick.querySelectorAll("button").forEach(b => b.classList.toggle("sel", b.dataset.color === v));
-};
-
+const syncPickers = v => { if(D.lbClrPick) D.lbClrPick.querySelectorAll("button").forEach(b => b.classList.toggle("sel", b.dataset.color === v)); };
 function buildPicker(con, sel, cls, onChange) {
   if (!con) return; con.innerHTML = "";
   COLORS.forEach(({v,n}) => {
     const b = document.createElement("button");
     b.className = cls + (v === sel ? " sel" : ""); b.style.background = v; b.title = n; b.dataset.color = v;
-    b.addEventListener("click", () => onChange(v));
-    con.appendChild(b);
+    b.addEventListener("click", () => onChange(v)); con.appendChild(b);
   });
 }
-
 const onColorSelect = v => { curColor = v; setGlobalColor(v); localStorage.setItem("nz_color",v); syncPickers(v); };
 buildPicker(D.lbClrPick, curColor, "clrc",  onColorSelect);
 
@@ -576,10 +593,7 @@ D.clrBtn.addEventListener("click", () => {
 D.clrOk.addEventListener("click", async () => {
   curColor = tmpColor; setGlobalColor(curColor); localStorage.setItem("nz_color",curColor); syncPickers(curColor);
   if (curR && myPresRef && masterKey) { 
-    try { 
-      const metaStr = JSON.stringify({n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor});
-      await update(myPresRef, {meta: enc(metaStr, masterKey)}); 
-    } catch {} 
+    try { const metaStr = JSON.stringify({n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor}); await update(myPresRef, {meta: enc(metaStr, masterKey)}); } catch {} 
   }
   D.clrmod.classList.remove("show");
 });
@@ -587,67 +601,101 @@ D.clrCancel.addEventListener("click", () => D.clrmod.classList.remove("show"));
 
 function showToast(msg) {
   const t = document.createElement("div"); t.className = "toast"; t.textContent = msg;
-  document.body.appendChild(t);
-  requestAnimationFrame(() => t.classList.add("show"));
+  document.body.appendChild(t); requestAnimationFrame(() => t.classList.add("show"));
   setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.remove(), 300); }, 2000);
 }
 
 const fDT = ts => {
-  if(!ts) return "";
-  const d = new Date(ts);
+  if(!ts) return ""; const d = new Date(ts);
   return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}`;
 };
 
 const UR = /(https?:\/\/[^\s\n<>"]+)/gi;
 
-// フローティング再生
-window.popVideo = (iframeHtml) => {
-  const isVertical = iframeHtml.includes("tiktok") || iframeHtml.includes("shorts") || iframeHtml.includes("reel");
-  if(isVertical) { D.videoFloat.style.width = "200px"; D.videoContainer.style.paddingTop = "177.7%"; } 
-  else { D.videoFloat.style.width = "320px"; D.videoContainer.style.paddingTop = "56.25%"; }
-  D.videoContainer.innerHTML = iframeHtml;
-  D.videoFloat.style.display = "block";
-  showToast("🎥 フローティング再生を開始しました");
-};
-D.closeVideoBtn.onclick = () => { D.videoFloat.style.display = "none"; D.videoContainer.innerHTML = ""; document.querySelectorAll('.media-accordion.open').forEach(el => el.classList.remove('open')); showToast("動画を終了しました"); };
+// 新しい動画UIロジック（ボタン展開＆クロスフェード）
+window.toggleVideoPlay = (btnElement, iframeHtml) => {
+  const containerId = btnElement.getAttribute('data-target-id');
+  const container = document.getElementById(containerId);
+  if(!container) return;
 
-// ドラッグロジック
-let isDraggingVideo = false;
-D.videoFloat.onmousedown = (e) => { if(e.target.id === "videoHeader") isDraggingVideo = true; };
-document.addEventListener("mousemove", (e) => {
-  if(!isDraggingVideo) return;
-  D.videoFloat.style.top = Math.max(0, e.clientY - 10) + "px"; D.videoFloat.style.left = (e.clientX - 100) + "px";
-});
-document.addEventListener("mouseup", () => { isDraggingVideo = false; });
-D.videoFloat.addEventListener("touchstart", (e) => { if(e.target.id === "videoHeader") isDraggingVideo = true; }, {passive:true});
-document.addEventListener("touchmove", (e) => {
-  if(!isDraggingVideo) return; const touch = e.touches[0];
-  D.videoFloat.style.top = Math.max(0, touch.clientY - 10) + "px"; D.videoFloat.style.left = (touch.clientX - 100) + "px";
-}, {passive:true});
-document.addEventListener("touchend", () => { isDraggingVideo = false; });
+  if (container.style.display === "none" || container.style.display === "") {
+    // 再生開始（クロスフェード展開）
+    btnElement.style.display = "none";
+    container.style.display = "block";
+    container.innerHTML = iframeHtml + `<button class="close-player-btn" onclick="closeVideoPlayer('${containerId}', this.parentElement.previousElementSibling)">■ 閉じる</button>`;
+    // わずかに遅らせてopacityを1にし、クロスフェードさせる
+    requestAnimationFrame(() => {
+      container.style.opacity = "1";
+    });
+  }
+};
+
+window.closeVideoPlayer = (containerId, playBtnElement) => {
+  const container = document.getElementById(containerId);
+  if(container) {
+    container.style.opacity = "0";
+    setTimeout(() => {
+      container.style.display = "none";
+      container.innerHTML = "";
+      if(playBtnElement) playBtnElement.style.display = "block";
+    }, 300); // transition時間と合わせる
+  }
+};
+
+// 一意のID生成用
+const generateId = () => 'vid_' + Math.random().toString(36).substr(2, 9);
 
 function parseMediaEmbed(url) {
-  let innerHtml = ""; let label = "📎 添付メディア";
+  let innerHtml = ""; let icon = "📎"; let title = "添付リンク";
   const yt = url.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i);
   const tt = url.match(/tiktok\.com\/.*video\/(\d+)/i);
   const nc = url.match(/nicovideo\.jp\/watch\/(sm\d+)/i);
   const ig = url.match(/instagram\.com\/(?:p|reel)\/([a-zA-Z0-9_-]+)/i);
   let isImage = false;
 
-  if (yt && yt[1]) { label = "📺 YouTube"; innerHtml = `<div class="media-wrapper"><iframe src="https://www.youtube.com/embed/${yt[1]}" allowfullscreen allow="picture-in-picture" loading="lazy"></iframe></div>`; } 
-  else if (tt && tt[1]) { label = "🎵 TikTok"; innerHtml = `<div class="media-wrapper" style="padding-top:175%;"><iframe src="https://www.tiktok.com/embed/v2/${tt[1]}" allowfullscreen allow="picture-in-picture" loading="lazy"></iframe></div>`; } 
-  else if (nc && nc[1]) { label = "📺 ニコニコ動画"; innerHtml = `<div class="media-wrapper"><iframe src="https://embed.nicovideo.jp/watch/${nc[1]}" allowfullscreen allow="picture-in-picture" loading="lazy"></iframe></div>`; } 
-  else if (ig && ig[1]) { label = "📷 Instagram"; innerHtml = `<div class="media-wrapper" style="padding-top:120%;"><iframe src="https://www.instagram.com/p/${ig[1]}/embed" allowfullscreen loading="lazy"></iframe></div>`; } 
-  else if (/\.(jpg|jpeg|png|gif|webp)(?:\?.*)?$/i.test(url)) { label = "🖼 画像"; isImage = true; innerHtml = `<img src="${url}" class="media-direct" loading="lazy" alt="Image">`; } 
-  else if (/\.(mp4|webm)(?:\?.*)?$/i.test(url)) { label = "📹 動画"; innerHtml = `<video controls src="${url}" class="media-direct" playsinline></video>`; }
+  // 縦横のアスペクト比自動追従を実現するため、iframeには width:100%; height:100%; は指定せず、CSSでaspect-ratio:auto、object-fit:containを適用させる
+  if (yt && yt[1]) { 
+    icon = "📺"; title = "YouTube 動画"; 
+    innerHtml = `<iframe src="https://www.youtube.com/embed/${yt[1]}?autoplay=1&mute=1" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen loading="lazy" style="aspect-ratio: 16/9;"></iframe>`; 
+  } 
+  else if (tt && tt[1]) { 
+    icon = "🎵"; title = "TikTok 動画"; 
+    innerHtml = `<iframe src="https://www.tiktok.com/embed/v2/${tt[1]}" allow="autoplay; encrypted-media" allowfullscreen loading="lazy" style="aspect-ratio: 9/16;"></iframe>`; 
+  } 
+  else if (nc && nc[1]) { 
+    icon = "📺"; title = "ニコニコ動画"; 
+    innerHtml = `<iframe src="https://embed.nicovideo.jp/watch/${nc[1]}?autoplay=1&muted=1" allow="autoplay; encrypted-media" allowfullscreen loading="lazy" style="aspect-ratio: 16/9;"></iframe>`; 
+  } 
+  else if (ig && ig[1]) { 
+    icon = "📷"; title = "Instagram 投稿"; 
+    innerHtml = `<iframe src="https://www.instagram.com/p/${ig[1]}/embed" allowfullscreen loading="lazy" style="aspect-ratio: 1/1;"></iframe>`; 
+  } 
+  else if (/\.(jpg|jpeg|png|gif|webp)(?:\?.*)?$/i.test(url)) { 
+    icon = "🖼"; title = "画像"; isImage = true; 
+    innerHtml = `<img src="${url}" class="media-direct" loading="lazy" alt="Image">`; 
+  } 
+  else if (/\.(mp4|webm)(?:\?.*)?$/i.test(url)) { 
+    icon = "📹"; title = "動画ファイル"; 
+    innerHtml = `<video controls src="${url}" style="width:100%; aspect-ratio:auto; max-height:80vh;" playsinline></video>`; 
+  }
   
   if (!innerHtml) return "";
 
-  if (!isImage) {
-    const floatBtnHtml = `<button onclick='popVideo(\`${innerHtml.replace(/"/g, '\\"')}\`)' style="width:100%; padding:10px; background:var(--in); color:white; border:none; border-radius:4px; font-size:12px; font-weight:bold; cursor:pointer;">▶ フローティング再生を開始</button>`;
-    return `<div class="media-accordion"><div class="media-header" onclick="this.parentElement.classList.toggle('open')"><span>${label}</span><span class="media-icon">▾</span></div><div class="media-body">${floatBtnHtml}</div></div>`;
+  if (isImage) {
+    // 画像は直接表示（アコーディオン廃止に伴いそのまま返す）
+    return `<div class="media-embed-box" style="padding:4px;"><div style="font-size:10px; color:var(--mu); margin-bottom:4px;">${icon} 画像</div>${innerHtml}</div>`;
   }
-  return `<div class="media-accordion"><div class="media-header" onclick="this.parentElement.classList.toggle('open')"><span>${label}</span><span class="media-icon">▾</span></div><div class="media-body">${innerHtml}</div></div>`;
+
+  const cid = generateId();
+  const safeHtml = innerHtml.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+  return `
+    <div class="media-embed-box">
+      <div class="media-meta"><span>${icon}</span> <a href="${url}" target="_blank" rel="noopener noreferrer">${title}</a></div>
+      <button class="media-play-btn" data-target-id="${cid}" onclick="toggleVideoPlay(this, '${safeHtml}')">▶ 再生する</button>
+      <div id="${cid}" class="media-player-container"></div>
+    </div>
+  `;
 }
 
 function parseTxtSplit(txt) {
@@ -679,10 +727,9 @@ function cMsg(msg, shouldGroup = false) {
     return d;
   }
 
-  // 二重暗号化の復号
   const metaStr = dec(msg.meta, masterKey);
   const txt = dec(msg.m, masterKey);
-  if (!metaStr || !txt) return null; // 復号失敗は非表示
+  if (!metaStr || !txt) return null; 
   
   let meta; try { meta = JSON.parse(metaStr); } catch { return null; }
 
@@ -695,7 +742,7 @@ function cMsg(msg, shouldGroup = false) {
   if (txt.startsWith("IMG::data:image/")) {
     const b64 = txt.substring(5);
     if (b64.match(/^data:image\/(jpeg|png|gif|webp);base64,[a-zA-Z0-9+/=]+$/)) {
-       contentHtml = `<div class="media-accordion"><div class="media-header" onclick="this.parentElement.classList.toggle('open')"><span>🖼 画像 (自動最適化済)</span><span class="media-icon">▾</span></div><div class="media-body"><img src="${b64}" class="media-direct" loading="lazy" alt="Image"></div></div>`;
+       contentHtml = `<div class="media-embed-box" style="padding:4px;"><div style="font-size:10px; color:var(--mu); margin-bottom:4px;">🖼 画像 (自動最適化済)</div><img src="${b64}" class="media-direct" loading="lazy" alt="Image"></div>`;
     } else { contentHtml = "<span style='color:red'>[不正な画像データ]</span>"; }
   } else { contentHtml = parseTxtSplit(txt).textHtml; }
   
@@ -713,7 +760,6 @@ function cMsg(msg, shouldGroup = false) {
     d.appendChild(dbn);
   }
 
-  // グループ化判定用に復号したメタデータを一時的に付与（表示には影響しない）
   d._meta = meta;
   return d;
 }
@@ -723,7 +769,6 @@ let isW = false, _exitLock = false, isLiveMode = false, displayCount = 100, unre
 let logArray = [], displayedMsgIds = new Set();
 let myPresRef = null, _roomExpireAt = null, _cOff = null, _pOff = null, _rOff = null;
 
-// キーボード維持設定
 let keepKbOpen = localStorage.getItem("nz_keep_kb") === "true";
 const updateKbBtnUI = () => {
   D.kbToggleBtn.classList.toggle("active", keepKbOpen);
@@ -782,13 +827,12 @@ function renderMessages() {
   let hasNewMsg = false;
   currentSlice.forEach((m, i) => {
     if (!displayedMsgIds.has(m.id)) {
-      const el = cMsg(m, false); // まず生成
+      const el = cMsg(m, false); 
       if (el) {
-        // グループ化判定（直前のメッセージと同じユーザーか）
         const prevNode = D.tli.lastElementChild;
         if (prevNode && prevNode._meta && el._meta && prevNode._meta.n === el._meta.n && prevNode._meta.p === el._meta.p && !m.sys) {
            el.classList.add("grouped");
-           el.querySelector('.mm')?.remove(); // ヘッダーを消す
+           el.querySelector('.mm')?.remove(); 
         }
         D.tli.appendChild(el); 
         displayedMsgIds.add(m.id); 
@@ -817,7 +861,7 @@ function clearAll() {
   if(typeof _pOff === "function"){ _pOff(); _pOff = null; }
   if(typeof _rOff === "function"){ _rOff(); _rOff = null; }
   masterKey = null; logArray = []; isLiveMode = false; displayedMsgIds.clear(); D.tli.innerHTML = "";
-  stopTimerLoop(); D.hostTimerCtrl.style.display = "none"; D.hostApprovePanel.style.display = "none";
+  stopTimerLoop(); D.hostTimerCtrl.style.display = "none"; D.hostApprovePanel.style.display = "none"; D.hostModeCtrl.style.display = "none";
 }
 
 let _timerRaf = null;
@@ -828,6 +872,13 @@ function startTimerLoop() {
     const remain = Math.max(0, _roomExpireAt - srvNow());
     const m = Math.floor(remain / 60000), s = Math.floor((remain % 60000) / 1000);
     D.timerDsp.textContent = `${m}:${String(s).padStart(2,"0")}`;
+    
+    // ホストの場合、タイマーに反映（ただしドラッグ中などを考慮して一定間隔で反映するのが望ましいが今回は表示のみ更新）
+    if(isHost && document.activeElement !== D.timerSlider) {
+        const remainMin = Math.max(1, Math.round(remain / 60000));
+        D.timerSlider.value = remainMin; updateTimerTooltip();
+    }
+
     if (remain <= 0 && !_exitLock) { _exitLock = true; exitRoom(); return; }
     _timerRaf = requestAnimationFrame(tick);
   };
@@ -864,10 +915,8 @@ async function checkCurrentRoomStatus() {
   } catch { D.roomResumeArea.style.display = "none"; }
 }
 
-// 承認処理（ホスト専用）
 window.approveGuest = async (guestUid, guestKey) => {
   if (!isHost || !masterKey) return;
-  // ゲストの公開鍵(guestKey)で部屋のマスター鍵を暗号化して渡す
   const encryptedMasterKey = CryptoJS.AES.encrypt(masterKey, guestKey).toString();
   await update(ref(db, `presence/${curR}/${guestUid}`), { status: "approved", mk: encryptedMasterKey });
 };
@@ -886,7 +935,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
 
     let roomData = null;
     
-    // 部屋が存在しない場合は作成（ホスト）
     if (!snap.exists()) {
       if (!pass) throw new Error("新規部屋の作成にはパスワードが必要です。");
       masterKey = getMasterKey(roomId, pass);
@@ -905,7 +953,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       
       enterChatUI(roomData);
     } 
-    // 部屋が存在する場合は入室（ゲスト）
     else {
       roomData = snap.val();
       _roomExpireAt = roomData.expireAt;
@@ -913,47 +960,39 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       myPresRef = ref(db, `presence/${hashId}/${myUid}`);
 
       if (isHost && pass) {
-        masterKey = getMasterKey(roomId, pass); // ホストの再入室
+        masterKey = getMasterKey(roomId, pass);
         const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
         await update(myPresRef, { status: "approved", meta: enc(metaStr, masterKey) });
         enterChatUI(roomData);
       } else if (roomData.requireApproval) {
-        // 承認制ゲストフロー
-        myGuestKey = CryptoJS.lib.WordArray.random(16).toString(); // 一時鍵
-        
-        // 待機中は、運営には見えないがホストには見えるようにRoomIDベースの弱い鍵でメタデータを保護
+        myGuestKey = CryptoJS.lib.WordArray.random(16).toString(); 
         const waitKey = CryptoJS.SHA256(SYSTEM_SALT + roomId).toString();
         const waitMetaStr = JSON.stringify({ n: name, p: trip, c: curColor });
 
         await set(myPresRef, { status: "waiting", gk: myGuestKey, wmeta: enc(waitMetaStr, waitKey) });
         
-        // 待機画面の表示
         D.lobby.style.display = "none";
         D.waitModTrip.textContent = `${name} ${trip}`;
         D.waitMod.classList.add("show");
         
-        // 自分のステータスを監視して、承認されたらマスター鍵を受け取る
         onValue(myPresRef, (s) => {
           if (!s.exists()) return;
           const val = s.val();
           if (val.status === "approved" && val.mk) {
             masterKey = CryptoJS.AES.decrypt(val.mk, myGuestKey).toString(CryptoJS.enc.Utf8);
             if (masterKey) {
-               // 承認後、正規の暗号化メタデータに更新
                const finalMetaStr = JSON.stringify({ n: name, p: trip, c: curColor });
                update(myPresRef, { wmeta: null, gk: null, mk: null, meta: enc(finalMetaStr, masterKey) });
-               D.waitMod.classList.remove("show");
+               D.waitMod.classList.remove("show"); // 即時入室・反映
                enterChatUI(roomData);
                sendSysMsg(`${trip ? trip + " " : ""}${name} が承認され入室しました`);
             }
           }
         });
         
-        // キャンセルボタン
         D.waitCancelBtn.onclick = () => { exitRoom(); };
 
       } else {
-        // パスワード直入室フロー
         if (!pass) throw new Error("この部屋は承認制ではありません。パスワードが必要です。");
         masterKey = getMasterKey(roomId, pass);
         const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
@@ -974,12 +1013,12 @@ function enterChatUI(roomData) {
   if (isHost) {
     D.hostTimerCtrl.style.display = "flex";
     const currentRemainMin = Math.max(1, Math.round((_roomExpireAt - srvNow()) / 60000));
-    D.timerSlider.value = currentRemainMin; D.timerInput.value = currentRemainMin;
-    D.timerApplyBtn.onclick = async () => { await update(ref(db, `rooms/${curR}`), { expireAt: srvNow() + (parseInt(D.timerInput.value) || 30) * 60000 }); showToast("タイマーを更新しました"); };
+    D.timerSlider.value = currentRemainMin; updateTimerTooltip();
     
-    if (roomData.requireApproval) {
-      D.hostApprovePanel.style.display = "flex";
-    }
+    // モード切替UIの初期化
+    D.hostModeCtrl.style.display = "flex";
+    isRoomApproveMode = roomData.requireApproval === true;
+    updateRoomModeBtnUI();
   }
 
   startTimerLoop();
@@ -990,14 +1029,18 @@ function enterChatUI(roomData) {
       return; 
     }
     _roomExpireAt = s.val().expireAt;
+    if(isHost) {
+        // DB上のモードとUIを同期
+        isRoomApproveMode = s.val().requireApproval === true;
+        updateRoomModeBtnUI();
+    }
   });
 
   _pOff = onValue(ref(db, `presence/${curR}`), s => {
     if (!curR) return;
     const fg = document.createDocumentFragment(); let count = 0;
     
-    // ホスト用の待機リスト表示更新
-    if (isHost && roomData.requireApproval) D.waitList.innerHTML = "";
+    if (isHost) D.waitList.innerHTML = "";
 
     for (const [id, u] of Object.entries(s.val() || {})) {
       if (!u) continue;
@@ -1014,7 +1057,6 @@ function enterChatUI(roomData) {
           } catch(e){}
         }
       } else if (u.status === "waiting" && isHost && u.wmeta && u.gk) {
-        // ホストとして待機者を解読してリストに追加
         const waitKey = CryptoJS.SHA256(SYSTEM_SALT + rawR).toString();
         const metaStr = dec(u.wmeta, waitKey);
         if (metaStr) {
@@ -1029,7 +1071,7 @@ function enterChatUI(roomData) {
       }
     }
     D.pl.innerHTML = ""; D.pl.appendChild(fg); D.pcnt.textContent = `[${count}人オンライン]`;
-    if(isHost && roomData.requireApproval && D.waitList.children.length === 0) D.waitList.innerHTML = '<span style="font-size:10px; color:var(--m2);">待機中のユーザーはいません</span>';
+    if(isHost && isRoomApproveMode && D.waitList.children.length === 0) D.waitList.innerHTML = '<span style="font-size:10px; color:var(--m2);">待機中のユーザーはいません</span>';
   });
 
   _cOff = onValue(query(ref(db, `chat/${curR}`), orderByChild("t"), limitToLast(100)), snap => {
@@ -1053,7 +1095,6 @@ async function exitRoom() {
     await sendSysMsg(`${localStorage.getItem("nz_mytrip_styled")||""} ${curN} が退室しました`);
     if(myPresRef) await remove(myPresRef).catch(()=>{});
     
-    // 自分が最後の1人なら部屋を消す
     const pSnap = await get(ref(db, `presence/${curR}`));
     if (!pSnap.exists() || Object.keys(pSnap.val() || {}).length === 0) { await wipe(curR).catch(()=>{}); }
   }

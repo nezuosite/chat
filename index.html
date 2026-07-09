@@ -108,16 +108,17 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   0% { opacity: 0; transform: translateY(15px); }
   100% { opacity: 1; transform: translateY(0); }
 }
-.mw{position:relative; display:flex;flex-direction:column;width:100%;opacity:0;animation:slideInUp 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards; user-select:text; -webkit-user-select:text;}
+/* 削除ボタンを下部に配置するためのレイアウト調整 */
+.mw{position:relative; display:flex;flex-direction:column;width:100%;opacity:0;animation:slideInUp 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards; user-select:text; -webkit-user-select:text; padding-bottom:24px;}
 .mw.grouped { margin-top: -6px; } 
 .mw.grouped .mb { border-top-left-radius: 4px; }
 .mm{display:flex;align-items:center;gap:6px;font-size:11px;margin-bottom:2px;padding-left:4px}
 .ts{color:var(--m2);font-size:9.5px;margin-left:auto}
 .mb{align-self:start;background:var(--sf);border:1px solid transparent;border-left:3px solid;border-radius:4px 12px 12px 12px;padding:8px 12px;font-size:14px;line-height:1.5;max-width:100%;word-break:break-all;white-space:pre-wrap}
 .sys-msg{text-align:center;font-size:10.5px;font-weight:bold;color:var(--mu);margin:8px 0;background:rgba(255,255,255,0.04);padding:6px;border-radius:6px;width:100%;align-self:center;border:1px solid rgba(255,255,255,0.05);}
-.del-btn{position:absolute;right:0;top:-10px;display:none;background:var(--ro);color:#fff;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:bold;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,0.3);z-index:10;border:1px solid rgba(255,255,255,0.2);}
+.del-btn{position:absolute;right:0;bottom:0;display:none;background:var(--ro);color:#fff;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:bold;cursor:pointer;z-index:10;}
 .mw:hover .del-btn{display:block;}
-@media (hover: none){ .del-btn{display:block;opacity:0.3;top:0;right:4px;padding:4px;} .del-btn:active{opacity:1;} }
+@media (hover: none){ .del-btn{display:block;opacity:0.5;position:static;margin-top:4px;align-self:flex-end;} }
 
 /* メディアアコーディオンコンテナ */
 .media-accordion {margin-top: 8px; border: 1px solid var(--bd); border-radius: 6px; overflow: hidden; background: var(--s2); max-width: 100%;}
@@ -147,19 +148,22 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 /* 常時表示フローティングナビゲーション */
 #fn{position:fixed;right:16px;bottom:80px;display:none;flex-direction:column;align-items:flex-end;gap:10px;z-index:90}
 #fn.visible{display:flex}
-#fn button{width:44px;height:44px;border-radius:50%;background:rgba(30,41,59,.9);backdrop-filter:blur(4px);border:1px solid var(--bd);color:rgba(255,255,255,.9);display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.4);transition:all 0.2s;font-size:9px;font-weight:bold}
-#fn button:active{transform:scale(0.92)}
+#fn button.circle-btn{width:44px;height:44px;border-radius:50%;background:rgba(30,41,59,.9);backdrop-filter:blur(4px);border:1px solid var(--bd);color:rgba(255,255,255,.9);display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.4);transition:all 0.2s;font-size:12px;font-weight:bold}
+#fn button.circle-btn:active{transform:scale(0.92)}
 #fn svg{width:18px;height:18px;stroke-width:2.5;margin-bottom:2px}
-#tTBtn{background:var(--sf)!important; color:var(--tx)!important; border-color:var(--bd)!important;}
-#tTBtn.track-active{background:var(--in)!important; color:#fff!important; border-color:var(--i2)!important;}
+
+/* スイッチ型トグルボタン */
+.switch-btn {position:relative; width:60px!important; height:30px!important; border-radius:15px!important; background:var(--sf)!important; border:1px solid var(--bd)!important; padding:0 8px!important; overflow:hidden; transition:all 0.3s ease; box-shadow:0 4px 12px rgba(0,0,0,.4);}
+.switch-btn::after {content:""; position:absolute; top:3px; left:3px; width:22px; height:22px; background:#fff; border-radius:50%; transition:transform 0.3s ease;}
+.switch-btn.active {background:var(--in)!important; border-color:var(--i2)!important;}
+.switch-btn.active::after {transform:translateX(30px);}
+.switch-text {font-size:10px; font-weight:bold; pointer-events:none; color:var(--tx);}
 
 /* 未読通知チップ */
 @keyframes pulseGlow { 0% { box-shadow:0 0 0 0 rgba(244,63,94,0.6); } 70% { box-shadow:0 0 0 8px rgba(244,63,94,0); } 100% { box-shadow:0 0 0 0 rgba(244,63,94,0); } }
 #unreadChip {width:auto!important; padding:0 14px; border-radius:22px!important; background:var(--ro)!important; border-color:#f43f5e!important; color:#fff!important; flex-direction:row!important; gap:6px; font-size:12px!important; font-weight:800; animation:pulseGlow 2s infinite;}
 #unreadChip svg {width:16px;height:16px;margin:0;}
 #unreadChip.hide {display:none!important;}
-
-#closeKbBtn.hide {display:none!important;}
 
 /* トースト通知 */
 .toast {position:fixed; bottom:90px; left:50%; transform:translateX(-50%) translateY(20px); opacity:0; background:rgba(16,185,129,0.95); color:#fff; padding:10px 20px; border-radius:30px; font-weight:bold; font-size:12px; box-shadow:0 4px 12px rgba(0,0,0,0.3); transition:all 0.3s cubic-bezier(0.175,0.885,0.32,1.275); z-index:1000; pointer-events:none;}
@@ -291,18 +295,27 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 </div>
 
 <div id="fn">
-  <button id="unreadChip" class="hide" title="最新へスクロール">
+  <button id="unreadChip" class="circle-btn hide" title="最新へスクロール">
     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
     <span id="unreadText">新着あり</span>
   </button>
-  <button id="closeKbBtn" class="hide" title="キーボードを閉じる">
-    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-    <span>閉じる</span>
+  
+  <button id="upBtn" class="circle-btn" title="一番上へ">▲</button>
+  <button id="downBtn" class="circle-btn" title="一番下へ">▼</button>
+  
+  <button id="kbToggleBtn" class="switch-btn" title="送信後のキーボード設定">
+    <span id="kbStatusText" class="switch-text">KB:閉</span>
   </button>
-  <button id="tTBtn" title="追従切替">
-    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
-    <span id="trackStatusText">追従ON</span>
+  
+  <button id="tTBtn" class="switch-btn active" title="自動追従切替">
+    <span id="trackStatusText" class="switch-text" style="color:#fff;">追従ON</span>
   </button>
+</div>
+
+<div id="videoFloat" style="display:none; position:fixed; top:80px; left:10px; z-index:20000; width:320px; background:#000; border:2px solid var(--in); border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,0.5); overflow:hidden;">
+  <div id="videoHeader" style="padding:6px; background:var(--in); color:#fff; font-size:11px; cursor:move; text-align:center; font-weight:bold; user-select:none;">ドラッグで移動</div>
+  <div id="videoContainer" style="width:100%; padding-top:56.25%; position:relative;"></div>
+  <button id="closeVideoBtn" style="width:100%; padding:8px; background:#333; color:#fff; border:none; font-size:12px; font-weight:bold;">閉じる</button>
 </div>
 
 <div id="gmod" class="mod-overlay">
@@ -375,13 +388,15 @@ const D = {
   clrmod:$("clrmod"), clrPick2:$("clrPick2"), clrPrev:$("clrPrev"), clrOk:$("clrOk"), clrCancel:$("clrCancel"), clrBtn:$("clrBtn"), clrDot:$("clrDot"),
   hdr:$("hdr"), rdsp:$("rdsp"), pcnt:$("pcnt"), timerDsp:$("timerDsp"), copyUrlBtn:$("copyUrlBtn"), pl:$("pl"), exBtn:$("exBtn"),
   tl:$("tl"), tli:$("tl-inner"), ib:$("ib"), mi:$("mi"), sdBtn:$("sdBtn"), clrMsgBtn:$("clrMsgBtn"),
-  fn:$("fn"), tTBtn:$("tTBtn"), unreadChip:$("unreadChip"), unreadText:$("unreadText"), closeKbBtn:$("closeKbBtn"),
+  fn:$("fn"), tTBtn:$("tTBtn"), unreadChip:$("unreadChip"), unreadText:$("unreadText"), 
+  upBtn:$("upBtn"), downBtn:$("downBtn"), kbToggleBtn:$("kbToggleBtn"), kbStatusText:$("kbStatusText"),
   lbClrPick:$("lbClrPick"), trackStatusText:$("trackStatusText"),
   roomResumeArea:$("roomResumeArea"), resumeBtn:$("resumeBtn"),
   hostTimerCtrl:$("hostTimerCtrl"), timerSlider:$("timerSlider"), timerInput:$("timerInput"), timerApplyBtn:$("timerApplyBtn"),
   imgBtn:$("imgBtn"), fileInput:$("fileInput"),
   accHeader:$("accHeader"), accBody:$("accBody"),
-  imgViewMod:$("imgViewMod"), imgViewSrc:$("imgViewSrc")
+  imgViewMod:$("imgViewMod"), imgViewSrc:$("imgViewSrc"),
+  videoFloat:$("videoFloat"), videoContainer:$("videoContainer"), closeVideoBtn:$("closeVideoBtn")
 };
 
 let _srvOff = 0;
@@ -519,12 +534,55 @@ const fDT = ts => {
 
 const UR = /(https?:\/\/[^\s\n<>"]+)/gi;
 
+// フローティング再生のロジック
+window.popVideo = (iframeHtml) => {
+  const isVertical = iframeHtml.includes("tiktok") || iframeHtml.includes("shorts") || iframeHtml.includes("reel");
+  if(isVertical) {
+    D.videoFloat.style.width = "200px";
+    D.videoContainer.style.paddingTop = "177.7%"; // 9:16
+  } else {
+    D.videoFloat.style.width = "320px";
+    D.videoContainer.style.paddingTop = "56.25%"; // 16:9
+  }
+  D.videoContainer.innerHTML = iframeHtml;
+  D.videoFloat.style.display = "block";
+  showToast("🎥 フローティング再生を開始しました");
+};
+
+D.closeVideoBtn.onclick = () => {
+  D.videoFloat.style.display = "none";
+  D.videoContainer.innerHTML = "";
+  document.querySelectorAll('.media-accordion.open').forEach(el => el.classList.remove('open'));
+  showToast("動画を終了しました");
+};
+
+// ドラッグロジック
+let isDraggingVideo = false;
+D.videoFloat.onmousedown = (e) => { if(e.target.id === "videoHeader") isDraggingVideo = true; };
+document.addEventListener("mousemove", (e) => {
+  if(!isDraggingVideo) return;
+  D.videoFloat.style.top = Math.max(0, e.clientY - 10) + "px";
+  D.videoFloat.style.left = (e.clientX - 100) + "px";
+});
+document.addEventListener("mouseup", () => { isDraggingVideo = false; });
+// スマホのタッチドラッグ
+D.videoFloat.addEventListener("touchstart", (e) => { if(e.target.id === "videoHeader") isDraggingVideo = true; }, {passive:true});
+document.addEventListener("touchmove", (e) => {
+  if(!isDraggingVideo) return;
+  const touch = e.touches[0];
+  D.videoFloat.style.top = Math.max(0, touch.clientY - 10) + "px";
+  D.videoFloat.style.left = (touch.clientX - 100) + "px";
+}, {passive:true});
+document.addEventListener("touchend", () => { isDraggingVideo = false; });
+
+
 function parseMediaEmbed(url) {
   let innerHtml = ""; let label = "📎 添付メディア";
   const yt = url.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i);
   const tt = url.match(/tiktok\.com\/.*video\/(\d+)/i);
   const nc = url.match(/nicovideo\.jp\/watch\/(sm\d+)/i);
   const ig = url.match(/instagram\.com\/(?:p|reel)\/([a-zA-Z0-9_-]+)/i);
+  let isImage = false;
 
   if (yt && yt[1]) {
     label = "📺 YouTube"; 
@@ -539,7 +597,7 @@ function parseMediaEmbed(url) {
     label = "📷 Instagram";
     innerHtml = `<div class="media-wrapper" style="padding-top:120%;"><iframe src="https://www.instagram.com/p/${ig[1]}/embed" allowfullscreen loading="lazy"></iframe></div>`;
   } else if (/\.(jpg|jpeg|png|gif|webp)(?:\?.*)?$/i.test(url)) {
-    label = "🖼 画像"; 
+    label = "🖼 画像"; isImage = true;
     innerHtml = `<img src="${url}" class="media-direct" loading="lazy" alt="Image">`;
   } else if (/\.(mp4|webm)(?:\?.*)?$/i.test(url)) {
     label = "📹 動画"; 
@@ -547,6 +605,14 @@ function parseMediaEmbed(url) {
   }
   
   if (!innerHtml) return "";
+
+  // 画像以外はフローティング再生ボタンのみをアコーディオン内に表示する
+  if (!isImage) {
+    const floatBtnHtml = `<button onclick='popVideo(\`${innerHtml.replace(/"/g, '\\"')}\`)' style="width:100%; padding:10px; background:var(--in); color:white; border:none; border-radius:4px; font-size:12px; font-weight:bold; cursor:pointer;">▶ フローティング再生を開始</button>`;
+    return `<div class="media-accordion"><div class="media-header" onclick="this.parentElement.classList.toggle('open')"><span>${label}</span><span class="media-icon">▾</span></div><div class="media-body">${floatBtnHtml}</div></div>`;
+  }
+
+  // 画像はそのままアコーディオン内に表示
   return `<div class="media-accordion"><div class="media-header" onclick="this.parentElement.classList.toggle('open')"><span>${label}</span><span class="media-icon">▾</span></div><div class="media-body">${innerHtml}</div></div>`;
 }
 
@@ -600,6 +666,7 @@ function cMsg(msg, shouldGroup = false) {
   if (shouldGroup) d.innerHTML = `<div class="mb" style="border-color:${esc(sC)}">${contentHtml}</div>`;
   else d.innerHTML = `<div class="mm">${nameSpan}${timeSpan}</div><div class="mb" style="border-color:${esc(sC)}">${contentHtml}</div>`;
   
+  // 削除ボタン
   if (msg.u === myUid) {
     const dbn = document.createElement("button");
     dbn.className = "del-btn"; dbn.textContent = "× 削除";
@@ -611,9 +678,24 @@ function cMsg(msg, shouldGroup = false) {
 }
 
 let curR = null, curP = null, curN = null, rawR = null, myUid = null;
-let isW = false, _exitLock = false, isLiveMode = true, displayCount = 100, unreadCount = 0;
+let isW = false, _exitLock = false, isLiveMode = false, displayCount = 100, unreadCount = 0;
 let logArray = [], displayedMsgIds = new Set();
 let myPresRef = null, _roomExpireAt = null, _cOff = null, _pOff = null, _rOff = null;
+
+// キーボード維持設定
+let keepKbOpen = localStorage.getItem("nz_keep_kb") === "true";
+const updateKbBtnUI = () => {
+  D.kbToggleBtn.classList.toggle("active", keepKbOpen);
+  D.kbStatusText.textContent = keepKbOpen ? "KB:開" : "KB:閉";
+  D.kbStatusText.style.color = keepKbOpen ? "#fff" : "var(--tx)";
+};
+D.kbToggleBtn.onclick = () => {
+  keepKbOpen = !keepKbOpen;
+  localStorage.setItem("nz_keep_kb", keepKbOpen);
+  updateKbBtnUI();
+  showToast(keepKbOpen ? "送信後: キーボードを開いたままにします" : "送信後: キーボードを閉じます");
+};
+updateKbBtnUI();
 
 D.tl.addEventListener("click", (e) => {
   if(e.target.tagName === "IMG" && e.target.classList.contains("media-direct")) {
@@ -624,14 +706,24 @@ D.tl.addEventListener("click", (e) => {
 
 function updateScrollBtnUI() {
   if (isLiveMode) {
-    D.tTBtn.classList.add("track-active");
+    D.tTBtn.classList.add("active");
     D.trackStatusText.textContent = "追従ON";
+    D.trackStatusText.style.color = "#fff";
     D.unreadChip.classList.add("hide");
     unreadCount = 0;
   } else {
-    D.tTBtn.classList.remove("track-active");
+    D.tTBtn.classList.remove("active");
     D.trackStatusText.textContent = "追従OFF";
+    D.trackStatusText.style.color = "var(--tx)";
   }
+  updateJumpButtons();
+}
+
+function updateJumpButtons() {
+  const isAtTop = D.tl.scrollTop <= 0;
+  const isAtBottom = (D.tl.scrollHeight - D.tl.scrollTop - D.tl.clientHeight) <= 5;
+  D.upBtn.disabled = isAtTop; D.upBtn.style.opacity = isAtTop ? "0.3" : "1";
+  D.downBtn.disabled = isAtBottom; D.downBtn.style.opacity = isAtBottom ? "0.3" : "1";
 }
 
 const scBottom = (force = false) => {
@@ -640,7 +732,7 @@ const scBottom = (force = false) => {
   }
 };
 
-// ⚡ MutationObserverによる完璧な追従
+// ⚡ MutationObserverによる追従
 const tlObserver = new MutationObserver((mutations) => {
   let hasNew = false;
   mutations.forEach(m => { if(m.addedNodes.length > 0) hasNew = true; });
@@ -651,7 +743,6 @@ const tlObserver = new MutationObserver((mutations) => {
 tlObserver.observe(D.tli, { childList: true });
 
 D.tl.addEventListener("scroll", () => {
-  // 閾値を200pxに拡大し、追従が途切れないようにする
   isLiveMode = (D.tl.scrollHeight - D.tl.scrollTop - D.tl.clientHeight) <= 200;
   updateScrollBtnUI();
 }, {passive:true});
@@ -661,20 +752,18 @@ D.tTBtn.onclick = () => {
   if(isLiveMode) scBottom(true); 
   updateScrollBtnUI(); 
 };
+D.upBtn.onclick = () => { isLiveMode = false; D.tl.scrollTop = 0; updateScrollBtnUI(); };
+D.downBtn.onclick = () => { isLiveMode = true; scBottom(true); updateScrollBtnUI(); };
+
 D.unreadChip.onclick = () => { 
   isLiveMode = true; 
   scBottom(true); 
   updateScrollBtnUI(); 
 };
 
-D.closeKbBtn.onclick = () => D.mi.blur();
 D.mi.addEventListener("focus", () => {
   isLiveMode = true; updateScrollBtnUI();
   setTimeout(() => scBottom(true), 150);
-  D.closeKbBtn.classList.remove("hide");
-});
-D.mi.addEventListener("blur", () => {
-  setTimeout(() => { if (document.activeElement !== D.mi) D.closeKbBtn.classList.add("hide"); }, 150);
 });
 document.onclick = (e) => { 
   if (D.app.style.display === "flex" && !D.ib.contains(e.target) && !D.hdr.contains(e.target) && !D.fn.contains(e.target) && !D.clrmod.contains(e.target) && !e.target.closest(".mod-overlay")) {
@@ -726,7 +815,7 @@ function clearAll() {
   if(typeof _cOff === "function"){ _cOff(); _cOff = null; }
   if(typeof _pOff === "function"){ _pOff(); _pOff = null; }
   if(typeof _rOff === "function"){ _rOff(); _rOff = null; }
-  symKey = null; logArray = []; isLiveMode = true; displayedMsgIds.clear(); D.tli.innerHTML = "";
+  symKey = null; logArray = []; isLiveMode = false; displayedMsgIds.clear(); D.tli.innerHTML = "";
   stopTimerLoop(); D.hostTimerCtrl.style.display = "none";
 }
 
@@ -795,6 +884,10 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
   try {
     clearAll(); _exitLock = false;
     
+    // 削除された部屋への即時再入室に備え、古いキャッシュデータをクリア
+    localStorage.removeItem("nz_active_ri");
+    localStorage.removeItem("nz_active_created");
+
     const hashId = CryptoJS.SHA256(roomId + pass).toString();
     const roomSalt = CryptoJS.SHA256(hashId).toString();
     
@@ -804,10 +897,9 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
     const roomRef = ref(db, `rooms/${hashId}`);
     let snap = await get(roomRef);
     
-    // 寿命チェックによる即時Wipe判定
     if (snap.exists() && snap.val().expireAt < srvNow()) {
       await wipe(hashId);
-      snap = await get(roomRef); // 初期化後の空データを再取得
+      snap = await get(roomRef); 
     }
 
     let roomData = null;
@@ -824,7 +916,6 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
 
     myPresRef = ref(db, `presence/${hashId}/${myUid}`);
     const presSnap = await get(myPresRef);
-    // 初回アクセス（またはWipe後）のみ通知を流す（再接続はサイレント）
     if (!presSnap.exists()) await sendSysMsg(`${trip ? trip + " " : ""}${name} が入室しました`);
     
     await set(myPresRef, { n: enc(name), c: enc(curColor), p: trip || "" });
@@ -844,7 +935,16 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
     startTimerLoop();
 
     _rOff = onValue(roomRef, s => {
-      if (!s.exists()) { if(!_exitLock) { _exitLock = true; showLobby("部屋の寿命が尽きたため完全消去されました。"); } return; }
+      // 部屋の削除を検知した際の処理（即時再入室が可能なようにキャッシュを破棄）
+      if (!s.exists()) { 
+        if(!_exitLock) { 
+          _exitLock = true; 
+          localStorage.removeItem("nz_active_ri"); 
+          localStorage.removeItem("nz_active_created");
+          showLobby("部屋が削除されました。同じIDとパスワードで新しい部屋を作成・入室できます。"); 
+        } 
+        return; 
+      }
       _roomExpireAt = s.val().expireAt;
     });
 
@@ -878,7 +978,12 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
       });
       newLogs.sort((a, b) => a.t - b.t);
       logArray = newLogs; renderMessages();
+      updateJumpButtons();
     });
+    
+    // 入室直後は最新メッセージに強制追従
+    isLiveMode = true;
+    updateScrollBtnUI();
     hideSplash();
   } catch (e) { showLobby("入室エラー: " + e.message); }
 }
@@ -889,7 +994,6 @@ async function exitRoom() {
     await sendSysMsg(`${localStorage.getItem("nz_mytrip_styled")||""} ${curN} が退室しました`);
     if(myPresRef) await remove(myPresRef).catch(()=>{});
     
-    // 退室後、自分が最後の1人だった場合は即時Wipe
     const pSnap = await get(ref(db, `presence/${curR}`));
     if (!pSnap.exists() || Object.keys(pSnap.val() || {}).length === 0) {
        await wipe(curR).catch(()=>{});
@@ -911,8 +1015,14 @@ async function sendMsg(overrideText = null, imgData = null) {
   lastSendTime = now;
   D.mi.value = ""; D.mi.style.height = "auto";
   
-  // 送信時に強制追従とフォーカス維持
-  isLiveMode = true; updateScrollBtnUI(); D.mi.focus(); 
+  // キーボード維持設定に基づく挙動
+  if (!keepKbOpen) {
+    D.mi.blur();
+  } else {
+    D.mi.focus();
+  }
+  
+  isLiveMode = true; updateScrollBtnUI();
 
   await push(ref(db, `chat/${curR}`), {
     u: myUid,
@@ -938,7 +1048,6 @@ D.fileInput.onchange = (e) => {
       if (w > 800) { h = Math.round((h * 800) / w); w = 800; }
       cvs.width = w; cvs.height = h;
       cvs.getContext("2d").drawImage(img, 0, 0, w, h);
-      // ⚡ 画像圧縮率を0.6に最適化
       sendMsg(null, cvs.toDataURL("image/jpeg", 0.6)).then(() => {
         D.imgBtn.innerHTML = origIcon; D.imgBtn.disabled = false; D.fileInput.value = "";
       }).catch(() => {

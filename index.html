@@ -46,7 +46,6 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .ibox b{color:#a5b4fc}
 #lberr{background:var(--rg);border:1px solid rgba(244,63,94,.3);border-radius:4px;padding:4px;font-size:11px;color:#fda4af;display:none;text-align:center;font-weight:bold}
 
-/* 継続中部屋アナウンス表示用 */
 #roomResumeArea{display:none;background:rgba(0,255,102,0.06);border:1px solid rgba(0,255,102,0.3);border-radius:6px;padding:8px 10px;flex-direction:column;gap:6px}
 .res-title{font-size:11px;font-weight:bold;color:var(--em)}
 .res-btn{width:100%;padding:6px;background:var(--em);color:#000;border-radius:4px;font-size:11px;font-weight:bold;text-align:center}
@@ -55,8 +54,8 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .fl{font-size:9.5px;font-weight:700;color:var(--mu)}
 .inp{width:100%;background:var(--sf);border:1px solid var(--bd);border-radius:5px;padding:6px 8px;color:var(--tx);outline:none;font-size:12px}
 .inp:focus{border-color:var(--in)}
+#tripPreview{font-size:10.5px; font-weight:bold; color:var(--mu); margin-top:2px;}
 
-/* アコーディオン設定用 */
 .accordion-header{background:var(--sf);border:1px solid var(--bd);border-radius:5px;padding:8px 10px;font-size:11px;font-weight:bold;color:#a5b4fc;cursor:pointer;display:flex;align-items:center;justify-content:between;user-select:none;margin-top:2px}
 .accordion-header:hover{background:rgba(255,255,255,0.03)}
 .accordion-body{display:none;flex-direction:column;gap:8px;border:1px dashed var(--bd);padding:10px;border-radius:5px;background:rgba(0,0,0,0.15)}
@@ -101,20 +100,24 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .htc-btn{background:var(--in); color:#fff; font-size:10px; font-weight:bold; padding:4px 10px; border-radius:4px}
 
 /* タイムライン */
-#tl{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px 14px;background-color:#0d1117;-webkit-overflow-scrolling:touch;touch-action:pan-y!important;overscroll-behavior-y:contain;scroll-behavior:smooth;}
+#tl{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px 14px;background-color:#0d1117;-webkit-overflow-scrolling:touch;touch-action:pan-y!important;overscroll-behavior-y:contain;}
 #tl-inner{display:flex;flex-direction:column;justify-content:flex-end;gap:10px;width:100%;max-width:600px;margin:0 auto;min-height:100%}
 
-/* メッセージ描画（自然なアニメーション） */
+/* メッセージ描画 */
 @keyframes slideInUp {
   0% { opacity: 0; transform: translateY(15px); }
   100% { opacity: 1; transform: translateY(0); }
 }
-.mw{display:flex;flex-direction:column;width:100%;opacity:0;animation:slideInUp 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards; cursor:pointer; user-select:none; -webkit-user-select:none;}
+.mw{position:relative; display:flex;flex-direction:column;width:100%;opacity:0;animation:slideInUp 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards; user-select:text; -webkit-user-select:text;}
 .mw.grouped { margin-top: -6px; } 
 .mw.grouped .mb { border-top-left-radius: 4px; }
 .mm{display:flex;align-items:center;gap:6px;font-size:11px;margin-bottom:2px;padding-left:4px}
 .ts{color:var(--m2);font-size:9.5px;margin-left:auto}
 .mb{align-self:start;background:var(--sf);border:1px solid transparent;border-left:3px solid;border-radius:4px 12px 12px 12px;padding:8px 12px;font-size:14px;line-height:1.5;max-width:100%;word-break:break-all;white-space:pre-wrap}
+.sys-msg{text-align:center;font-size:10.5px;font-weight:bold;color:var(--mu);margin:8px 0;background:rgba(255,255,255,0.04);padding:6px;border-radius:6px;width:100%;align-self:center;border:1px solid rgba(255,255,255,0.05);}
+.del-btn{position:absolute;right:0;top:-10px;display:none;background:var(--ro);color:#fff;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:bold;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,0.3);z-index:10;border:1px solid rgba(255,255,255,0.2);}
+.mw:hover .del-btn{display:block;}
+@media (hover: none){ .del-btn{display:block;opacity:0.3;top:0;right:4px;padding:4px;} .del-btn:active{opacity:1;} }
 
 /* メディアアコーディオンコンテナ */
 .media-accordion {margin-top: 8px; border: 1px solid var(--bd); border-radius: 6px; overflow: hidden; background: var(--s2); max-width: 100%;}
@@ -156,8 +159,11 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 #unreadChip svg {width:16px;height:16px;margin:0;}
 #unreadChip.hide {display:none!important;}
 
-/* キーボード閉じるボタン */
 #closeKbBtn.hide {display:none!important;}
+
+/* トースト通知 */
+.toast {position:fixed; bottom:90px; left:50%; transform:translateX(-50%) translateY(20px); opacity:0; background:rgba(16,185,129,0.95); color:#fff; padding:10px 20px; border-radius:30px; font-weight:bold; font-size:12px; box-shadow:0 4px 12px rgba(0,0,0,0.3); transition:all 0.3s cubic-bezier(0.175,0.885,0.32,1.275); z-index:1000; pointer-events:none;}
+.toast.show {transform:translateX(-50%) translateY(0); opacity:1;}
 
 /* モーダル共通 */
 .mod-overlay{position:fixed;inset:0;background:rgba(15,23,42,.8);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:10000;padding:16px}
@@ -186,8 +192,8 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <div class="lbsub">DISPOSABLE REALTIME CHAT</div>
     <div class="lbi">
       <div class="ibox">
-        🔑 <b>完全使い捨て ＆ 自動分散クリーンアップ</b><br>
-        全員が退室、または不通から3分以上経過するとデータは自動で完全物理破壊(Wipe)されます。
+        🔑 <b>完全使い捨て ＆ 自動クリーンアップ</b><br>
+        設定された寿命を過ぎると、次回のアクセス時にすべてのログと部屋情報が物理的に完全消去(Wipe)されます。
       </div>
       <div id="lberr"></div>
 
@@ -203,7 +209,8 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       
       <div class="fg">
         <label class="fl">トリップキー * (必須項目)</label>
-        <input type="text" id="tripi" class="inp" placeholder="本人証明用キー（日本語・全角対応）" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
+        <input type="text" id="tripi" class="inp" placeholder="本人証明用キー" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
+        <div id="tripPreview">プレビュー: 名無し</div>
       </div>
 
       <div class="accordion-header" id="accHeader">⚙️ 詳細設定を開く (カラー・時間調整など)</div>
@@ -213,7 +220,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
           <div class="clrpick-grid" id="lbClrPick"></div>
         </div>
         <div class="fg">
-          <label class="fl">部屋の有効時間 (1〜60分) ※作成時初期値</label>
+          <label class="fl">部屋の有効時間 (1〜60分) ※上限60分</label>
           <input type="number" id="timeri" class="inp" min="1" max="60" value="30">
         </div>
       </div>
@@ -224,7 +231,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       </div>
       <div class="fg">
         <label class="fl">部屋パスワード *</label>
-        <input type="text" id="pi" class="inp" placeholder="共通暗号化パスワード（日本語・全角対応）" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
+        <input type="text" id="pi" class="inp" placeholder="共通暗号化パスワード" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
       </div>
 
       <div class="brow">
@@ -308,15 +315,16 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       </p>
     </div>
     <div class="gs" style="border-left-color: #f87171;">
-      <h4>⏱ ハートビート ＆ 3分猶予自動Wipe</h4>
+      <h4>⏱ 完全Wipe ＆ オンライン偽装</h4>
       <p style="font-size:10.5px; color:var(--mu); margin-top:2px;">
-        通信切断やタブ閉じが起きても、3分間は入室者リストに維持されます。全員が完全に離脱し、3分間誰も心拍（ハートビート）を打たなくなった瞬間、次に部屋を覗いたアクセス者によってすべてのデータが<b>物理削除(Wipe)</b>されます。
+        タブを閉じたりスリープ状態になっても、明示的に退室しない限り部屋の寿命まで入室者リストに残り続けます。<br>
+        寿命(タイマー)が尽きると、次回誰かがアクセスした瞬間に<b>チャットログを含む全データが物理削除(Wipe)</b>されます。
       </p>
     </div>
     <div class="gs" style="border-left-color: #34d399;">
       <h4>🗑 メッセージの削除について</h4>
       <p style="font-size:10.5px; color:var(--mu); margin-top:2px;">
-        自分が送信したメッセージを<b>長押し</b>することで、データベース上から即座に削除することができます。
+        自分の発言にホバー（またはタップ）で表示される<b>「× 削除」ボタン</b>から、データベース上のログを即座に物理削除可能です。
       </p>
     </div>
     <button class="btn bp" id="gcBtn" style="font-size:12px;padding:8px;margin-top:4px">閉じる</button>
@@ -362,7 +370,7 @@ const $   = id => document.getElementById(id);
 
 const D = {
   splash:$("splash"), lobby:$("lobby"), lberr:$("lberr"), app:$("app"),
-  ni:$("ni"), tripi:$("tripi"), ri:$("ri"), pi:$("pi"), timeri:$("timeri"),
+  ni:$("ni"), tripi:$("tripi"), ri:$("ri"), pi:$("pi"), timeri:$("timeri"), tripPreview:$("tripPreview"),
   enBtn:$("enBtn"), gnBtn:$("gnBtn"), gdBtn:$("gdBtn"), gmod:$("gmod"), gcBtn:$("gcBtn"),
   clrmod:$("clrmod"), clrPick2:$("clrPick2"), clrPrev:$("clrPrev"), clrOk:$("clrOk"), clrCancel:$("clrCancel"), clrBtn:$("clrBtn"), clrDot:$("clrDot"),
   hdr:$("hdr"), rdsp:$("rdsp"), pcnt:$("pcnt"), timerDsp:$("timerDsp"), copyUrlBtn:$("copyUrlBtn"), pl:$("pl"), exBtn:$("exBtn"),
@@ -380,9 +388,9 @@ let _srvOff = 0;
 onValue(ref(db, ".info/serverTimeOffset"), s => { _srvOff = s.val() || 0; });
 const srvNow = () => Date.now() + _srvOff;
 
-const makeTrip = (tripKey) => {
+const makeTrip = (name, tripKey) => {
   if (!tripKey) return "";
-  const hash = CryptoJS.SHA256(tripKey).toString();
+  const hash = CryptoJS.SHA256(name + tripKey).toString();
   return "◆" + hash.substring(0, 10);
 };
 
@@ -414,11 +422,32 @@ const dec = c => {
 
 const esc = t => (t||"").replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-D.ni.addEventListener("input",  ()=>{ localStorage.setItem("nz_ni", D.ni.value); });
-D.tripi.addEventListener("input", ()=>{ localStorage.setItem("nz_tripi", D.tripi.value); });
+const updateTripPreview = () => {
+  const n = D.ni.value || "名無し";
+  const tk = D.tripi.value;
+  const t = tk ? makeTrip(n, tk) : "";
+  D.tripPreview.textContent = `プレビュー: ${n} ${t}`;
+};
+D.ni.addEventListener("input", () => { localStorage.setItem("nz_ni", D.ni.value); updateTripPreview(); });
+D.tripi.addEventListener("input", () => { localStorage.setItem("nz_tripi", D.tripi.value); updateTripPreview(); });
+
 D.ri.addEventListener("input",  ()=>{ localStorage.setItem("nz_ri_val", D.ri.value); });
 D.pi.addEventListener("input",  ()=>{ localStorage.setItem("nz_pi_val", D.pi.value); });
-D.timeri.addEventListener("input", ()=>{ localStorage.setItem("nz_timer_val", D.timeri.value); });
+
+const clampTimer = (val) => { let v = parseInt(val); if (isNaN(v)) return 30; return Math.max(1, Math.min(60, v)); };
+D.timeri.addEventListener("input", (e) => {
+  let val = parseInt(e.target.value);
+  if (val > 60) e.target.value = 60;
+  if (val < 1) e.target.value = 1;
+  localStorage.setItem("nz_timer_val", e.target.value);
+});
+D.timeri.addEventListener("blur", (e) => { e.target.value = clampTimer(e.target.value); });
+D.timerInput.oninput = (e) => { 
+  let val = parseInt(e.target.value);
+  if (val > 60) e.target.value = 60;
+  if (val < 1) e.target.value = 1;
+  D.timerSlider.value = e.target.value; 
+};
 
 D.accHeader.onclick = () => {
   const isOpen = D.accBody.style.display === "flex";
@@ -475,6 +504,13 @@ D.clrOk.addEventListener("click", async () => {
 });
 D.clrCancel.addEventListener("click", () => D.clrmod.classList.remove("show"));
 
+function showToast(msg) {
+  const t = document.createElement("div"); t.className = "toast"; t.textContent = msg;
+  document.body.appendChild(t);
+  requestAnimationFrame(() => t.classList.add("show"));
+  setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.remove(), 300); }, 2000);
+}
+
 const fDT = ts => {
   if(!ts) return "";
   const d = new Date(ts);
@@ -483,7 +519,6 @@ const fDT = ts => {
 
 const UR = /(https?:\/\/[^\s\n<>"]+)/gi;
 
-// 各種メディア（YouTube, TikTok, ニコニコ, Instagram）埋め込み・LazyLoad・PiP対応
 function parseMediaEmbed(url) {
   let innerHtml = ""; let label = "📎 添付メディア";
   const yt = url.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i);
@@ -540,9 +575,14 @@ function parseTxtSplit(txt) {
 function cMsg(msg, shouldGroup = false) {
   const txt = dec(msg.m); if(!txt) return null;
   const d = document.createElement("div"); 
-  d.className = "mw" + (shouldGroup ? " grouped" : ""); 
   d.dataset.mid = msg.id;
+
+  if (msg.sys) {
+    d.className = "sys-msg"; d.textContent = txt;
+    return d;
+  }
   
+  d.className = "mw" + (shouldGroup ? " grouped" : ""); 
   const sN = dec(msg.n) || "???", sC = dec(msg.c) || "#94a3b8", sT = msg.p ? esc(msg.p) : "";
   
   let contentHtml = "";
@@ -560,24 +600,11 @@ function cMsg(msg, shouldGroup = false) {
   if (shouldGroup) d.innerHTML = `<div class="mb" style="border-color:${esc(sC)}">${contentHtml}</div>`;
   else d.innerHTML = `<div class="mm">${nameSpan}${timeSpan}</div><div class="mb" style="border-color:${esc(sC)}">${contentHtml}</div>`;
   
-  // ⚡ 自身の発言に対する長押し削除イベントの付与
   if (msg.u === myUid) {
-    let pressTimer;
-    const startPress = () => {
-      pressTimer = setTimeout(() => {
-        if (confirm("この発言を削除しますか？")) {
-          remove(ref(db, `chat/${curR}/${msg.id}`)).catch(()=>{});
-        }
-      }, 800);
-    };
-    const cancelPress = () => clearTimeout(pressTimer);
-    
-    d.addEventListener("mousedown", startPress);
-    d.addEventListener("touchstart", startPress, {passive: true});
-    d.addEventListener("mouseup", cancelPress);
-    d.addEventListener("mouseleave", cancelPress);
-    d.addEventListener("touchend", cancelPress);
-    d.addEventListener("touchcancel", cancelPress);
+    const dbn = document.createElement("button");
+    dbn.className = "del-btn"; dbn.textContent = "× 削除";
+    dbn.onclick = (e) => { e.stopPropagation(); if (confirm("この発言を削除しますか？")) remove(ref(db, `chat/${curR}/${msg.id}`)); };
+    d.appendChild(dbn);
   }
 
   return d;
@@ -586,9 +613,8 @@ function cMsg(msg, shouldGroup = false) {
 let curR = null, curP = null, curN = null, rawR = null, myUid = null;
 let isW = false, _exitLock = false, isLiveMode = true, displayCount = 100, unreadCount = 0;
 let logArray = [], displayedMsgIds = new Set();
-let myPresRef = null, _roomExpireAt = null, _cOff = null, _pOff = null, _rOff = null, _hbInterval = null;
+let myPresRef = null, _roomExpireAt = null, _cOff = null, _pOff = null, _rOff = null;
 
-// ⚡ タイムラインの画像クリックを検知してモーダルを開くイベント
 D.tl.addEventListener("click", (e) => {
   if(e.target.tagName === "IMG" && e.target.classList.contains("media-direct")) {
     D.imgViewSrc.src = e.target.src;
@@ -610,13 +636,23 @@ function updateScrollBtnUI() {
 
 const scBottom = (force = false) => {
   if (isLiveMode || force) { 
-    D.tl.style.scrollBehavior = force ? "auto" : "smooth"; 
     D.tl.scrollTop = D.tl.scrollHeight; 
   }
 };
 
+// ⚡ MutationObserverによる完璧な追従
+const tlObserver = new MutationObserver((mutations) => {
+  let hasNew = false;
+  mutations.forEach(m => { if(m.addedNodes.length > 0) hasNew = true; });
+  if (hasNew && isLiveMode) {
+    requestAnimationFrame(() => scBottom(true));
+  }
+});
+tlObserver.observe(D.tli, { childList: true });
+
 D.tl.addEventListener("scroll", () => {
-  isLiveMode = (D.tl.scrollHeight - D.tl.scrollTop - D.tl.clientHeight) <= 60;
+  // 閾値を200pxに拡大し、追従が途切れないようにする
+  isLiveMode = (D.tl.scrollHeight - D.tl.scrollTop - D.tl.clientHeight) <= 200;
   updateScrollBtnUI();
 }, {passive:true});
 
@@ -631,10 +667,9 @@ D.unreadChip.onclick = () => {
   updateScrollBtnUI(); 
 };
 
-// キーボード閉じるボタン関連
 D.closeKbBtn.onclick = () => D.mi.blur();
 D.mi.addEventListener("focus", () => {
-  isLiveMode = true; 
+  isLiveMode = true; updateScrollBtnUI();
   setTimeout(() => scBottom(true), 150);
   D.closeKbBtn.classList.remove("hide");
 });
@@ -643,14 +678,13 @@ D.mi.addEventListener("blur", () => {
 });
 document.onclick = (e) => { 
   if (D.app.style.display === "flex" && !D.ib.contains(e.target) && !D.hdr.contains(e.target) && !D.fn.contains(e.target) && !D.clrmod.contains(e.target) && !e.target.closest(".mod-overlay")) {
-    // 画面外タップ時はキーボードを維持しない
+    D.mi.blur();
   }
 };
 
-function renderMessages(preserveScroll = false) {
+function renderMessages() {
   const currentSlice = logArray.slice(Math.max(0, logArray.length - displayCount));
   const currentSliceIds = new Set(currentSlice.map(m => m.id));
-  const oldH = D.tl.scrollHeight, oldT = D.tl.scrollTop;
 
   Array.from(D.tli.children).forEach(c => {
     if(c.dataset.mid && !currentSliceIds.has(c.dataset.mid)) { c.remove(); displayedMsgIds.delete(c.dataset.mid); }
@@ -658,22 +692,22 @@ function renderMessages(preserveScroll = false) {
 
   let hasNewMsg = false;
   currentSlice.forEach((m, i) => {
-    let shouldGroup = (i > 0 && currentSlice[i - 1].n === m.n && currentSlice[i - 1].p === m.p && (m.t - currentSlice[i - 1].t < 60000));
+    let shouldGroup = (i > 0 && currentSlice[i - 1].n === m.n && currentSlice[i - 1].p === m.p && (m.t - currentSlice[i - 1].t < 60000) && !m.sys && !currentSlice[i - 1].sys);
     if (!displayedMsgIds.has(m.id)) {
       const el = cMsg(m, shouldGroup);
-      if (el) { D.tli.appendChild(el); displayedMsgIds.add(m.id); hasNewMsg = true; }
+      if (el) { 
+        D.tli.appendChild(el); 
+        displayedMsgIds.add(m.id); 
+        if (m.u !== myUid && !m.sys) hasNewMsg = true;
+      }
     }
   });
 
-  // 追従OFF時に新着があればチップを表示（通知機能は全廃）
   if (hasNewMsg && !isLiveMode) {
     unreadCount++;
     D.unreadText.textContent = `新着あり (${unreadCount})`;
     D.unreadChip.classList.remove("hide");
   }
-
-  if (preserveScroll && oldH > 0) D.tl.scrollTop = oldT + (D.tl.scrollHeight - oldH);
-  else requestAnimationFrame(() => setTimeout(() => scBottom(false), 30));
 }
 
 async function wipe(r) {
@@ -683,32 +717,12 @@ async function wipe(r) {
   await set(ref(db, `presence/${r}`), null);
 }
 
-function startHeartbeatLoop(hashId) {
-  if (_hbInterval) clearInterval(_hbInterval);
-  const hbRef = ref(db, `presence/${hashId}/${myUid}`);
-  _hbInterval = setInterval(async () => {
-    if (!curR) return;
-    await update(hbRef, { ls: serverTimestamp() }).catch(()=>{});
-  }, 20000);
-}
-function stopHeartbeatLoop() { if (_hbInterval) { clearInterval(_hbInterval); _hbInterval = null; } }
-
-async function checkAndWipeOldRoom(hashId) {
-  try {
-    const pSnap = await get(ref(db, `presence/${hashId}`));
-    if (!pSnap.exists()) return;
-    const pData = pSnap.val() || {};
-    const now = Date.now() + _srvOff;
-    let hasLiveUser = false;
-    for (const u of Object.values(pData)) {
-      if (u && u.ls && (now - u.ls < 180000)) { hasLiveUser = true; break; }
-    }
-    if (!hasLiveUser) await wipe(hashId);
-  } catch(e) {}
+async function sendSysMsg(text) {
+  if (!curR) return;
+  await push(ref(db, `chat/${curR}`), { sys: true, m: enc(text), t: serverTimestamp() });
 }
 
 function clearAll() {
-  stopHeartbeatLoop();
   if(typeof _cOff === "function"){ _cOff(); _cOff = null; }
   if(typeof _pOff === "function"){ _pOff(); _pOff = null; }
   if(typeof _rOff === "function"){ _rOff(); _rOff = null; }
@@ -750,6 +764,7 @@ function showLobby(msg = "") {
   D.ri.value = localStorage.getItem("nz_ri_val") || "";
   D.pi.value = localStorage.getItem("nz_pi_val") || "";
   D.timeri.value = localStorage.getItem("nz_timer_val") || "30";
+  updateTripPreview();
   syncPickers(curColor);
   hideSplash(); checkCurrentRoomStatus();
 }
@@ -761,7 +776,7 @@ async function checkCurrentRoomStatus() {
     const lastPi = localStorage.getItem("nz_pi_val") || "";
     const hashId = CryptoJS.SHA256(lastRi + lastPi).toString();
     const snap = await get(ref(db, `rooms/${hashId}`));
-    if (snap.exists() && snap.val().created === parseInt(lastCreated)) {
+    if (snap.exists() && snap.val().created === parseInt(lastCreated) && snap.val().expireAt > srvNow()) {
       D.roomResumeArea.style.display = "flex";
       D.resumeBtn.onclick = () => { D.ri.value = lastRi; D.pi.value = lastPi; D.enBtn.click(); };
     } else {
@@ -773,10 +788,7 @@ async function checkCurrentRoomStatus() {
 D.copyUrlBtn.onclick = () => {
   if(!rawR || !curP) return;
   const url = `${location.origin}${location.pathname}?r=${encodeURIComponent(rawR)}&p=${encodeURIComponent(curP)}`;
-  navigator.clipboard.writeText(url).then(() => {
-    const orig = D.copyUrlBtn.textContent; D.copyUrlBtn.textContent = "✅ コピー完了";
-    setTimeout(() => D.copyUrlBtn.textContent = orig, 1500);
-  });
+  navigator.clipboard.writeText(url).then(() => showToast("✅ コピーしました"));
 };
 
 async function doJoin(roomId, pass, name, trip, initTimer) {
@@ -785,15 +797,20 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
     
     const hashId = CryptoJS.SHA256(roomId + pass).toString();
     const roomSalt = CryptoJS.SHA256(hashId).toString();
-    await checkAndWipeOldRoom(hashId);
     
     curR = hashId; rawR = roomId; curP = pass; curN = name;
     symKey = CryptoJS.PBKDF2(pass, roomSalt, {keySize:256/32, iterations:10000});
 
     const roomRef = ref(db, `rooms/${hashId}`);
     let snap = await get(roomRef);
-    let roomData = null;
     
+    // 寿命チェックによる即時Wipe判定
+    if (snap.exists() && snap.val().expireAt < srvNow()) {
+      await wipe(hashId);
+      snap = await get(roomRef); // 初期化後の空データを再取得
+    }
+
+    let roomData = null;
     if (!snap.exists()) {
       _roomExpireAt = srvNow() + (initTimer * 60000);
       roomData = { created: serverTimestamp(), host: myUid, expireAt: _roomExpireAt };
@@ -806,8 +823,11 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
     }
 
     myPresRef = ref(db, `presence/${hashId}/${myUid}`);
-    await set(myPresRef, { n: enc(name), c: enc(curColor), p: trip || "", ls: serverTimestamp() });
-    startHeartbeatLoop(hashId);
+    const presSnap = await get(myPresRef);
+    // 初回アクセス（またはWipe後）のみ通知を流す（再接続はサイレント）
+    if (!presSnap.exists()) await sendSysMsg(`${trip ? trip + " " : ""}${name} が入室しました`);
+    
+    await set(myPresRef, { n: enc(name), c: enc(curColor), p: trip || "" });
 
     D.lobby.style.display = "none";
     D.app.style.display = "flex"; D.app.classList.add("visible"); D.fn.classList.add("visible");
@@ -818,14 +838,13 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
       const currentRemainMin = Math.max(1, Math.round((_roomExpireAt - srvNow()) / 60000));
       D.timerSlider.value = currentRemainMin; D.timerInput.value = currentRemainMin;
       D.timerSlider.oninput = () => { D.timerInput.value = D.timerSlider.value; };
-      D.timerInput.oninput = () => { D.timerSlider.value = D.timerInput.value; };
       D.timerApplyBtn.onclick = async () => { await update(roomRef, { expireAt: srvNow() + (parseInt(D.timerInput.value) || 30) * 60000 }); };
     } else { D.hostTimerCtrl.style.display = "none"; }
 
     startTimerLoop();
 
     _rOff = onValue(roomRef, s => {
-      if (!s.exists()) { if(!_exitLock) { _exitLock = true; showLobby("部屋の有効期限が切れたか、自動分散システムにより消滅されました。"); } return; }
+      if (!s.exists()) { if(!_exitLock) { _exitLock = true; showLobby("部屋の寿命が尽きたため完全消去されました。"); } return; }
       _roomExpireAt = s.val().expireAt;
     });
 
@@ -848,37 +867,40 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
     _cOff = onValue(query(ref(db, `chat/${hashId}`), orderByChild("t"), limitToLast(100)), snap => {
       if(!curR) return;
       const newLogs = [];
-      const currentFallbackTime = Date.now(); // 時系列固定のためのフォールバック
+      const currentFallbackTime = Date.now();
       if(snap.exists()) snap.forEach(cs => { 
         const m = cs.val(); 
         if(m){ 
           m.id = cs.key; 
-          if (!m.t) m.t = currentFallbackTime; // タイムスタンプ未達時の補完
+          if (!m.t) m.t = currentFallbackTime; 
           newLogs.push(m); 
         } 
       });
       newLogs.sort((a, b) => a.t - b.t);
-      logArray = newLogs; renderMessages(!isLiveMode);
+      logArray = newLogs; renderMessages();
     });
     hideSplash();
   } catch (e) { showLobby("入室エラー: " + e.message); }
 }
 
 async function exitRoom() {
-  _exitLock = true; stopHeartbeatLoop();
+  _exitLock = true; 
   if (curR) {
+    await sendSysMsg(`${localStorage.getItem("nz_mytrip_styled")||""} ${curN} が退室しました`);
     if(myPresRef) await remove(myPresRef).catch(()=>{});
+    
+    // 退室後、自分が最後の1人だった場合は即時Wipe
     const pSnap = await get(ref(db, `presence/${curR}`));
-    let activeCount = 0; const now = Date.now() + _srvOff;
-    for(const u of Object.values(pSnap.val() || {})) { if (u && u.ls && (now - u.ls < 180000)) activeCount++; }
-    if (activeCount === 0) await wipe(curR).catch(()=>{});
+    if (!pSnap.exists() || Object.keys(pSnap.val() || {}).length === 0) {
+       await wipe(curR).catch(()=>{});
+    }
   }
   localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created"); localStorage.setItem("nz_is_in_room", "false");
   if (window.history?.replaceState) window.history.replaceState({}, document.title, location.pathname);
   clearAll(); showLobby();
 }
 
-D.exBtn.onclick = () => { if (confirm("退室しますか？あなたが最後のオンラインメンバーの場合、部屋内の全データは即座に完全消去されます。")) exitRoom(); };
+D.exBtn.onclick = () => { if (confirm("退室しますか？あなたが最後のオンラインメンバーの場合、部屋は即座に完全消去されます。")) exitRoom(); };
 
 let lastSendTime = 0;
 async function sendMsg(overrideText = null, imgData = null) {
@@ -888,13 +910,12 @@ async function sendMsg(overrideText = null, imgData = null) {
   const now = Date.now(); if (now - lastSendTime < 350) return;
   lastSendTime = now;
   D.mi.value = ""; D.mi.style.height = "auto";
-  isLiveMode = true; scBottom(true);
   
-  // ⚡ 送信後もフォーカス（キーボード）を維持する
-  D.mi.focus(); 
+  // 送信時に強制追従とフォーカス維持
+  isLiveMode = true; updateScrollBtnUI(); D.mi.focus(); 
 
   await push(ref(db, `chat/${curR}`), {
-    u: myUid, // ← 削除権限の判定に使用
+    u: myUid,
     n: enc(curN),
     c: enc(curColor),
     p: localStorage.getItem("nz_mytrip_styled") || "",
@@ -917,7 +938,8 @@ D.fileInput.onchange = (e) => {
       if (w > 800) { h = Math.round((h * 800) / w); w = 800; }
       cvs.width = w; cvs.height = h;
       cvs.getContext("2d").drawImage(img, 0, 0, w, h);
-      sendMsg(null, cvs.toDataURL("image/jpeg", 0.8)).then(() => {
+      // ⚡ 画像圧縮率を0.6に最適化
+      sendMsg(null, cvs.toDataURL("image/jpeg", 0.6)).then(() => {
         D.imgBtn.innerHTML = origIcon; D.imgBtn.disabled = false; D.fileInput.value = "";
       }).catch(() => {
         alert("送信失敗"); D.imgBtn.innerHTML = origIcon; D.imgBtn.disabled = false; D.fileInput.value = "";
@@ -939,12 +961,13 @@ D.clrMsgBtn.onclick = () => { D.mi.value = ""; D.mi.style.height = "auto"; D.mi.
 
 D.enBtn.onclick = async () => {
   if (localStorage.getItem("nz_is_in_room") === "true") { alert("既に他のタブで入室しています。"); return; }
-  const n = D.ni.value.trim(), r = D.ri.value.trim(), p = D.pi.value.trim(), tk = D.tripi.value.trim(), tm = parseInt(D.timeri.value) || 30;
+  const n = D.ni.value.trim(), r = D.ri.value.trim(), p = D.pi.value.trim(), tk = D.tripi.value.trim();
+  const tm = clampTimer(D.timeri.value);
   if (!n || !r || !p || !tk) { alert("必須項目をすべて入力してください。"); return; }
   
   localStorage.setItem("nz_is_in_room", "true");
   D.enBtn.disabled = true; D.enBtn.textContent = "入室中...";
-  const tripStyled = makeTrip(tk); localStorage.setItem("nz_mytrip_styled", tripStyled);
+  const tripStyled = makeTrip(n, tk); localStorage.setItem("nz_mytrip_styled", tripStyled);
   await doJoin(r, p, n, tripStyled, tm);
 };
 
@@ -959,7 +982,6 @@ D.gnBtn.onclick = () => {
 D.gdBtn.onclick = () => D.gmod.classList.add("show");
 D.gcBtn.onclick = () => D.gmod.classList.remove("show");
 
-// ⚡ モーダルの背景（または画像モーダル自身）をタップして閉じる処理
 document.querySelectorAll(".mod-overlay").forEach(m => { 
   m.onclick = e => { 
     if(e.target === m || m.id === "imgViewMod") m.classList.remove("show"); 
@@ -985,10 +1007,10 @@ onAuthStateChanged(auth, async user => {
     try {
       const hashId = CryptoJS.SHA256(savedActiveRi + savedPi).toString();
       const snap = await get(ref(db, `rooms/${hashId}`));
-      if (snap.exists() && snap.val().created === parseInt(savedActiveCreated)) {
+      if (snap.exists() && snap.val().created === parseInt(savedActiveCreated) && snap.val().expireAt > srvNow()) {
         if (localStorage.getItem("nz_is_in_room") !== "true") {
           localStorage.setItem("nz_is_in_room", "true");
-          const tripStyled = makeTrip(savedTripKey); localStorage.setItem("nz_mytrip_styled", tripStyled);
+          const tripStyled = makeTrip(savedNi, savedTripKey); localStorage.setItem("nz_mytrip_styled", tripStyled);
           await doJoin(savedActiveRi, savedPi, savedNi, tripStyled, savedTimer);
           return; 
         }

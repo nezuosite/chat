@@ -109,7 +109,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   0% { opacity: 0; transform: translateY(15px); }
   100% { opacity: 1; transform: translateY(0); }
 }
-.mw{display:flex;flex-direction:column;width:100%;opacity:0;animation:slideInUp 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;}
+.mw{display:flex;flex-direction:column;width:100%;opacity:0;animation:slideInUp 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards; cursor:pointer; user-select:none; -webkit-user-select:none;}
 .mw.grouped { margin-top: -6px; } 
 .mw.grouped .mb { border-top-left-radius: 4px; }
 .mm{display:flex;align-items:center;gap:6px;font-size:11px;margin-bottom:2px;padding-left:4px}
@@ -126,7 +126,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .media-accordion.open .media-body {display: flex; flex-direction: column;}
 .media-wrapper {position: relative; width: 100%; padding-top: 56.25%;}
 .media-wrapper iframe {position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;}
-.media-direct {max-width: 100%; max-height: 240px; border-radius: 4px; object-fit: contain;}
+.media-direct {max-width: 100%; max-height: 240px; border-radius: 4px; object-fit: contain; cursor: zoom-in;}
 
 /* 入力バー */
 #ib{display:none;padding:8px 12px calc(8px + var(--safe));background:var(--sf);border-top:1px solid var(--bd);align-items:flex-end;gap:8px;flex-shrink:0}
@@ -151,7 +151,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 #tTBtn{background:var(--in) !important; color:#fff !important; border-color:var(--i2) !important;}
 #tTBtn.track-active{background:#00ff66 !important; color:#000 !important; border-color:#10b981 !important;}
 
-/* モーダル */
+/* モーダル共通 */
 .mod-overlay{position:fixed;inset:0;background:rgba(15,23,42,.8);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:10000;padding:16px}
 .mod-overlay.show{display:flex}
 .gc,.clrmc{background:var(--sf);border:1px solid var(--bd);border-radius:12px;width:100%;max-width:440px;display:flex;flex-direction:column;gap:10px;padding:14px;max-height:85vh;overflow-y:auto}
@@ -162,6 +162,10 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .clr-cancel,.clr-ok{flex:1;padding:10px;border-radius:8px;font-size:13px;font-weight:700;text-align:center}
 .clr-cancel{background:var(--bg);border:1px solid var(--bd);color:var(--tx)}
 .clr-ok{background:var(--in);color:#fff}
+
+/* 画像拡大モーダル専用 */
+#imgViewMod{background:rgba(0,0,0,0.92);backdrop-filter:blur(6px);padding:0;cursor:zoom-out}
+#imgViewMod img{max-width:100%;max-height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none;}
 </style>
 </head>
 <body>
@@ -297,6 +301,12 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         通信切断やタブ閉じが起きても、3分間は入室者リストに維持されます。全員が完全に離脱し、3分間誰も心拍（ハートビート）を打たなくなった瞬間、次に部屋を覗いたアクセス者によってすべてのデータが<b>物理削除(Wipe)</b>されます。
       </p>
     </div>
+    <div class="gs" style="border-left-color: #34d399;">
+      <h4>🗑 メッセージの削除について</h4>
+      <p style="font-size:10.5px; color:var(--mu); margin-top:2px;">
+        自分が送信したメッセージを<b>長押し</b>することで、データベース上から即座に削除することができます。
+      </p>
+    </div>
     <button class="btn bp" id="gcBtn" style="font-size:12px;padding:8px;margin-top:4px">閉じる</button>
   </div>
 </div>
@@ -311,6 +321,10 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       <button class="clr-ok" id="clrOk">適用</button>
     </div>
   </div>
+</div>
+
+<div id="imgViewMod" class="mod-overlay">
+  <img id="imgViewSrc" src="" alt="拡大画像">
 </div>
 
 <script type="module">
@@ -345,7 +359,8 @@ const D = {
   roomResumeArea:$("roomResumeArea"), resumeBtn:$("resumeBtn"),
   hostTimerCtrl:$("hostTimerCtrl"), timerSlider:$("timerSlider"), timerInput:$("timerInput"), timerApplyBtn:$("timerApplyBtn"),
   imgBtn:$("imgBtn"), fileInput:$("fileInput"),
-  accHeader:$("accHeader"), accBody:$("accBody")
+  accHeader:$("accHeader"), accBody:$("accBody"),
+  imgViewMod:$("imgViewMod"), imgViewSrc:$("imgViewSrc")
 };
 
 let _srvOff = 0;
@@ -500,7 +515,6 @@ function cMsg(msg, shouldGroup = false) {
   d.className = "mw" + (shouldGroup ? " grouped" : ""); 
   d.dataset.mid = msg.id;
   
-  // ペイロード短縮化(m: text, n: name, c: color, p: trip, t: time)
   const sN = dec(msg.n) || "???", sC = dec(msg.c) || "#94a3b8", sT = msg.p ? esc(msg.p) : "";
   
   let contentHtml = "";
@@ -518,6 +532,26 @@ function cMsg(msg, shouldGroup = false) {
   if (shouldGroup) d.innerHTML = `<div class="mb" style="border-color:${esc(sC)}">${contentHtml}</div>`;
   else d.innerHTML = `<div class="mm">${nameSpan}${timeSpan}</div><div class="mb" style="border-color:${esc(sC)}">${contentHtml}</div>`;
   
+  // ⚡ 自身の発言に対する長押し削除イベントの付与
+  if (msg.u === myUid) {
+    let pressTimer;
+    const startPress = () => {
+      pressTimer = setTimeout(() => {
+        if (confirm("この発言を削除しますか？")) {
+          remove(ref(db, `chat/${curR}/${msg.id}`)).catch(()=>{});
+        }
+      }, 800);
+    };
+    const cancelPress = () => clearTimeout(pressTimer);
+    
+    d.addEventListener("mousedown", startPress);
+    d.addEventListener("touchstart", startPress, {passive: true});
+    d.addEventListener("mouseup", cancelPress);
+    d.addEventListener("mouseleave", cancelPress);
+    d.addEventListener("touchend", cancelPress);
+    d.addEventListener("touchcancel", cancelPress);
+  }
+
   return d;
 }
 
@@ -525,6 +559,14 @@ let curR = null, curP = null, curN = null, rawR = null, myUid = null;
 let isW = false, _exitLock = false, isLiveMode = true, displayCount = 100;
 let logArray = [], displayedMsgIds = new Set();
 let myPresRef = null, _roomExpireAt = null, _cOff = null, _pOff = null, _rOff = null, _hbInterval = null;
+
+// ⚡ タイムラインの画像クリックを検知してモーダルを開くイベント
+D.tl.addEventListener("click", (e) => {
+  if(e.target.tagName === "IMG" && e.target.classList.contains("media-direct")) {
+    D.imgViewSrc.src = e.target.src;
+    D.imgViewMod.classList.add("show");
+  }
+});
 
 function updateScrollBtnUI() {
   const isAtTop = D.tl.scrollTop <= 6;
@@ -546,7 +588,7 @@ D.tl.addEventListener("scroll", () => {
 
 D.tBBtn.onclick = () => { isLiveMode = false; D.tl.style.scrollBehavior = "smooth"; D.tl.scrollTop = 0; updateScrollBtnUI(); };
 D.tTBtn.onclick = () => { isLiveMode = true; scBottom(true); updateScrollBtnUI(); };
-document.onclick = (e) => { if (D.app.style.display === "flex" && !D.ib.contains(e.target) && !D.hdr.contains(e.target) && !D.fn.contains(e.target) && !D.clrmod.contains(e.target)) D.mi.focus(); };
+document.onclick = (e) => { if (D.app.style.display === "flex" && !D.ib.contains(e.target) && !D.hdr.contains(e.target) && !D.fn.contains(e.target) && !D.clrmod.contains(e.target) && !e.target.closest(".mod-overlay")) D.mi.focus(); };
 D.mi.addEventListener("focus", () => { isLiveMode = true; setTimeout(() => scBottom(true), 60); });
 
 function renderMessages(preserveScroll = false) {
@@ -567,7 +609,6 @@ function renderMessages(preserveScroll = false) {
     }
   });
 
-  // 非アクティブ時の新着通知
   if (hasNewMsg && document.visibilityState === "hidden" && "Notification" in window && Notification.permission === "granted") {
     new Notification("新着メッセージ", { body: "チャットに新しいメッセージが届きました", icon: "/favicon.ico" });
   }
@@ -683,7 +724,6 @@ D.copyUrlBtn.onclick = () => {
 async function doJoin(roomId, pass, name, trip, initTimer) {
   try {
     clearAll(); _exitLock = false;
-    // 通知権限リクエスト
     if("Notification" in window && Notification.permission !== "granted") Notification.requestPermission();
     
     const hashId = CryptoJS.SHA256(roomId + pass).toString();
@@ -691,7 +731,6 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
     await checkAndWipeOldRoom(hashId);
     
     curR = hashId; rawR = roomId; curP = pass; curN = name;
-    // 最強セキュリティ: 1万回イテレーションへ昇格
     symKey = CryptoJS.PBKDF2(pass, roomSalt, {keySize:256/32, iterations:10000});
 
     const roomRef = ref(db, `rooms/${hashId}`);
@@ -710,7 +749,6 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
     }
 
     myPresRef = ref(db, `presence/${hashId}/${myUid}`);
-    // ペイロード短縮化
     await set(myPresRef, { n: enc(name), c: enc(curColor), p: trip || "", ls: serverTimestamp() });
     startHeartbeatLoop(hashId);
 
@@ -787,8 +825,9 @@ async function sendMsg(overrideText = null, imgData = null) {
   D.mi.value = ""; D.mi.style.height = "auto";
   isLiveMode = true; scBottom(true);
 
-  // ペイロード1文字化
+  // ⚡ 自身のUIDをセットして送信
   await push(ref(db, `chat/${curR}`), {
+    u: myUid, // ← 削除権限の判定に使用
     n: enc(curN),
     c: enc(curColor),
     p: localStorage.getItem("nz_mytrip_styled") || "",
@@ -852,7 +891,13 @@ D.gnBtn.onclick = () => {
 
 D.gdBtn.onclick = () => D.gmod.classList.add("show");
 D.gcBtn.onclick = () => D.gmod.classList.remove("show");
-document.querySelectorAll(".mod-overlay").forEach(m => { m.onclick = e => { if(e.target === m) m.classList.remove("show"); }; });
+
+// ⚡ モーダルの背景（または画像モーダル自身）をタップして閉じる処理
+document.querySelectorAll(".mod-overlay").forEach(m => { 
+  m.onclick = e => { 
+    if(e.target === m || m.id === "imgViewMod") m.classList.remove("show"); 
+  }; 
+});
 
 window.addEventListener("beforeunload", () => { localStorage.setItem("nz_is_in_room", "false"); });
 

@@ -134,7 +134,6 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .media-play-btn:hover {background: var(--in); color: #fff;}
 .media-player-container {display: none; opacity: 0; transition: opacity 0.3s ease; position: relative; width: 100%; background: #000; text-align: center;}
 .media-player-container iframe, .media-player-container video {width: 100%; height: auto; max-height: 80vh; aspect-ratio: auto; object-fit: contain; display: block; border: none;}
-/* 横長・縦長自動追従のためのラッパー調整。iframeはアスペクト比を維持させる設定が必要な場合があるため、基本はautoとする */
 .close-player-btn {display: block; width: 100%; padding: 8px; background: var(--ro); color: #fff; font-size: 11px; font-weight: bold; border: none; cursor: pointer;}
 .media-direct {max-width: 100%; max-height: 240px; border-radius: 4px; object-fit: contain; cursor: zoom-in;}
 
@@ -511,11 +510,10 @@ D.timeri.addEventListener("input", (e) => {
 });
 D.timeri.addEventListener("blur", (e) => { e.target.value = clampTimer(e.target.value); });
 
-// ホストタイマー スライダー操作（ツールチップと値確定の分離）
+// ホストタイマー スライダー操作
 const updateTimerTooltip = () => {
   const val = D.timerSlider.value;
   D.timerTooltip.textContent = `${val}分`;
-  // つまみの位置に合わせてツールチップを移動
   const min = D.timerSlider.min || 1;
   const max = D.timerSlider.max || 60;
   const percent = ((val - min) / (max - min)) * 100;
@@ -536,7 +534,7 @@ D.timerSlider.addEventListener("change", async () => {
 // ホスト 入室モード切替
 let isRoomApproveMode = true;
 const updateRoomModeBtnUI = () => {
-  D.roomModeToggleBtn.classList.toggle("active", !isRoomApproveMode); // ON=オープンとする視覚表現
+  D.roomModeToggleBtn.classList.toggle("active", !isRoomApproveMode);
   D.roomModeStatusText.textContent = isRoomApproveMode ? "承認制" : "ｵｰﾌﾟﾝ";
   D.roomModeStatusText.style.color = isRoomApproveMode ? "var(--tx)" : "#fff";
   D.hostApprovePanel.style.display = isRoomApproveMode ? "flex" : "none";
@@ -612,18 +610,16 @@ const fDT = ts => {
 
 const UR = /(https?:\/\/[^\s\n<>"]+)/gi;
 
-// 新しい動画UIロジック（ボタン展開＆クロスフェード）
+// 動画UIロジック
 window.toggleVideoPlay = (btnElement, iframeHtml) => {
   const containerId = btnElement.getAttribute('data-target-id');
   const container = document.getElementById(containerId);
   if(!container) return;
 
   if (container.style.display === "none" || container.style.display === "") {
-    // 再生開始（クロスフェード展開）
     btnElement.style.display = "none";
     container.style.display = "block";
     container.innerHTML = iframeHtml + `<button class="close-player-btn" onclick="closeVideoPlayer('${containerId}', this.parentElement.previousElementSibling)">■ 閉じる</button>`;
-    // わずかに遅らせてopacityを1にし、クロスフェードさせる
     requestAnimationFrame(() => {
       container.style.opacity = "1";
     });
@@ -638,11 +634,10 @@ window.closeVideoPlayer = (containerId, playBtnElement) => {
       container.style.display = "none";
       container.innerHTML = "";
       if(playBtnElement) playBtnElement.style.display = "block";
-    }, 300); // transition時間と合わせる
+    }, 300); 
   }
 };
 
-// 一意のID生成用
 const generateId = () => 'vid_' + Math.random().toString(36).substr(2, 9);
 
 function parseMediaEmbed(url) {
@@ -653,7 +648,6 @@ function parseMediaEmbed(url) {
   const ig = url.match(/instagram\.com\/(?:p|reel)\/([a-zA-Z0-9_-]+)/i);
   let isImage = false;
 
-  // 縦横のアスペクト比自動追従を実現するため、iframeには width:100%; height:100%; は指定せず、CSSでaspect-ratio:auto、object-fit:containを適用させる
   if (yt && yt[1]) { 
     icon = "📺"; title = "YouTube 動画"; 
     innerHtml = `<iframe src="https://www.youtube.com/embed/${yt[1]}?autoplay=1&mute=1" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen loading="lazy" style="aspect-ratio: 16/9;"></iframe>`; 
@@ -682,7 +676,6 @@ function parseMediaEmbed(url) {
   if (!innerHtml) return "";
 
   if (isImage) {
-    // 画像は直接表示（アコーディオン廃止に伴いそのまま返す）
     return `<div class="media-embed-box" style="padding:4px;"><div style="font-size:10px; color:var(--mu); margin-bottom:4px;">${icon} 画像</div>${innerHtml}</div>`;
   }
 
@@ -844,11 +837,22 @@ function renderMessages() {
   if (hasNewMsg && !isLiveMode) { unreadCount++; D.unreadText.textContent = `新着あり (${unreadCount})`; D.unreadChip.classList.remove("hide"); }
 }
 
+/** * 【変更点】物理削除用ロジック
+ * 単一パスの set ではなく update を使って全ノードを同時に物理消去する
+ */
 async function wipe(r) {
-  if(!r) return;
-  await set(ref(db, `rooms/${r}`), null);
-  await set(ref(db, `chat/${r}`), null);
-  await set(ref(db, `presence/${r}`), null);
+  if (!r) return;
+  const updates = {
+    [`rooms/${r}`]: null,
+    [`chat/${r}`]: null,
+    [`presence/${r}`]: null
+  };
+  try {
+    await update(ref(db), updates);
+    console.log("Cleanup: Room wiped.");
+  } catch (e) {
+    console.error("Wipe error:", e);
+  }
 }
 
 async function sendSysMsg(text) {
@@ -873,7 +877,6 @@ function startTimerLoop() {
     const m = Math.floor(remain / 60000), s = Math.floor((remain % 60000) / 1000);
     D.timerDsp.textContent = `${m}:${String(s).padStart(2,"0")}`;
     
-    // ホストの場合、タイマーに反映（ただしドラッグ中などを考慮して一定間隔で反映するのが望ましいが今回は表示のみ更新）
     if(isHost && document.activeElement !== D.timerSlider) {
         const remainMin = Math.max(1, Math.round(remain / 60000));
         D.timerSlider.value = remainMin; updateTimerTooltip();
@@ -931,7 +934,12 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
     
     const roomRef = ref(db, `rooms/${hashId}`);
     let snap = await get(roomRef);
-    if (snap.exists() && snap.val().expireAt < srvNow()) { await wipe(hashId); snap = await get(roomRef); }
+
+    // 【変更点】期限切れなら入室前に物理削除
+    if (snap.exists() && snap.val().expireAt < srvNow()) { 
+      await wipe(hashId); 
+      snap = await get(roomRef); 
+    }
 
     let roomData = null;
     
@@ -983,7 +991,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
             if (masterKey) {
                const finalMetaStr = JSON.stringify({ n: name, p: trip, c: curColor });
                update(myPresRef, { wmeta: null, gk: null, mk: null, meta: enc(finalMetaStr, masterKey) });
-               D.waitMod.classList.remove("show"); // 即時入室・反映
+               D.waitMod.classList.remove("show");
                enterChatUI(roomData);
                sendSysMsg(`${trip ? trip + " " : ""}${name} が承認され入室しました`);
             }
@@ -1015,7 +1023,6 @@ function enterChatUI(roomData) {
     const currentRemainMin = Math.max(1, Math.round((_roomExpireAt - srvNow()) / 60000));
     D.timerSlider.value = currentRemainMin; updateTimerTooltip();
     
-    // モード切替UIの初期化
     D.hostModeCtrl.style.display = "flex";
     isRoomApproveMode = roomData.requireApproval === true;
     updateRoomModeBtnUI();
@@ -1030,7 +1037,6 @@ function enterChatUI(roomData) {
     }
     _roomExpireAt = s.val().expireAt;
     if(isHost) {
-        // DB上のモードとUIを同期
         isRoomApproveMode = s.val().requireApproval === true;
         updateRoomModeBtnUI();
     }
@@ -1089,14 +1095,21 @@ function enterChatUI(roomData) {
   isLiveMode = true; updateScrollBtnUI(); hideSplash();
 }
 
+/** * 【変更点】退室時処理の最適化
+ * 残存メンバーがいない場合はアトミックな Wipe を呼び出して確実にデータを消去する
+ */
 async function exitRoom() {
   _exitLock = true; 
   if (curR && masterKey && localStorage.getItem("nz_is_in_room") === "true") {
     await sendSysMsg(`${localStorage.getItem("nz_mytrip_styled")||""} ${curN} が退室しました`);
     if(myPresRef) await remove(myPresRef).catch(()=>{});
     
+    // メンバーチェックと部屋の消去判定
     const pSnap = await get(ref(db, `presence/${curR}`));
-    if (!pSnap.exists() || Object.keys(pSnap.val() || {}).length === 0) { await wipe(curR).catch(()=>{}); }
+    const members = pSnap.val();
+    if (!members || Object.keys(members).length === 0) {
+      await wipe(curR).catch(()=>{});
+    }
   }
   localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created"); localStorage.setItem("nz_is_in_room", "false");
   if (window.history?.replaceState) window.history.replaceState({}, document.title, location.pathname);

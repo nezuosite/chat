@@ -436,7 +436,7 @@ const D = {
   clrmod:$("clrmod"), clrPick2:$("clrPick2"), clrPrev:$("clrPrev"), clrOk:$("clrOk"), clrCancel:$("clrCancel"), clrBtn:$("clrBtn"), clrDot:$("clrDot"),
   hdr:$("hdr"), rdsp:$("rdsp"), pcnt:$("pcnt"), timerDsp:$("timerDsp"), copyUrlBtn:$("copyUrlBtn"), pl:$("pl"), exBtn:$("exBtn"),
   tl:$("tl"), tli:$("tl-inner"), ib:$("ib"), ibToolbar:$("ibToolbar"), mi:$("mi"), sdBtn:$("sdBtn"), clrMsgBtn:$("clrMsgBtn"),
-  tTBtn:$("tTBtn"), unreadChip:$("unreadChip"), unreadText:$("unreadChip"), // inner text is inside chip now
+  tTBtn:$("tTBtn"), unreadChip:$("unreadChip"), unreadText:$("unreadChip"),
   upBtn:$("upBtn"), downBtn:$("downBtn"), kbToggleBtn:$("kbToggleBtn"), kbStatusText:$("kbStatusText"),
   lbClrPick:$("lbClrPick"), trackStatusText:$("trackStatusText"),
   roomResumeArea:$("roomResumeArea"), resumeBtn:$("resumeBtn"),
@@ -450,7 +450,6 @@ const D = {
   floatingPlayer:$("floatingPlayer"), fpHeader:$("fpHeader"), fpContent:$("fpContent"), fpClose:$("fpClose")
 };
 
-// --- フローティングプレイヤー ドラッグ実装 ---
 let isDraggingFP = false, startXFP, startYFP, initXFP, initYFP;
 D.fpHeader.addEventListener('pointerdown', (e) => {
   if(e.target.id === 'fpClose') return;
@@ -476,7 +475,6 @@ D.fpClose.addEventListener('click', () => {
   D.fpContent.innerHTML = '';
 });
 
-// --- 暗号化とハッシュの基盤（PRO仕様） ---
 const SYSTEM_SALT = "NEZU_PRO_SYS_SALT_2026_V1"; 
 
 const makeTrip = (name, tripKey) => {
@@ -535,7 +533,6 @@ D.tripi.addEventListener("input", () => { localStorage.setItem("nz_tripi", D.tri
 D.ri.addEventListener("input",  ()=>{ localStorage.setItem("nz_ri_val", D.ri.value); });
 D.pi.addEventListener("input",  ()=>{ localStorage.setItem("nz_pi_val", D.pi.value); });
 
-// コピー機能
 const copyToClip = (text) => { navigator.clipboard.writeText(text).then(() => showToast("✅ コピーしました")); };
 D.lbCopyTripBtn.onclick = () => copyToClip(`${D.ni.value || "名無し"} ${localStorage.getItem("nz_mytrip_styled")||""}`);
 D.waitCopyIdBtn.onclick = () => copyToClip(`${localStorage.getItem("nz_myname")} ${localStorage.getItem("nz_mytrip_styled")||""}`);
@@ -550,7 +547,6 @@ D.timeri.addEventListener("input", (e) => {
 });
 D.timeri.addEventListener("blur", (e) => { e.target.value = clampTimer(e.target.value); });
 
-// ホストタイマー スライダー操作
 const updateTimerTooltip = () => {
   const val = D.timerSlider.value;
   D.timerTooltip.textContent = `${val}分`;
@@ -571,7 +567,6 @@ D.timerSlider.addEventListener("change", async () => {
   }
 });
 
-// ホスト 入室モード切替
 let isRoomApproveMode = true;
 const updateRoomModeBtnUI = () => {
   D.roomModeToggleBtn.classList.toggle("active", !isRoomApproveMode);
@@ -650,11 +645,9 @@ const fDT = ts => {
 
 const UR = /(https?:\/\/[^\s\n<>"]+)/gi;
 
-// フローティング・メディア展開ロジック
 window.toggleVideoPlay = (btnElement, iframeHtml) => {
   D.fpContent.innerHTML = iframeHtml;
   D.floatingPlayer.style.display = "block";
-  // Reset placement to bottom right when opened newly
   D.floatingPlayer.style.top = "70px";
   D.floatingPlayer.style.left = "auto";
   D.floatingPlayer.style.right = "10px";

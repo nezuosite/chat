@@ -30,6 +30,12 @@ input,textarea,select{font-family:inherit;-webkit-user-select:text;user-select:t
 button{cursor:pointer;font-family:inherit;border:none;background:none}
 button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 
+/* 利き手モード (左利き) */
+body.left-hand #ib > div:last-child { flex-direction: row-reverse; }
+body.left-hand .mi-container { padding: 4px 32px 4px 30px; }
+body.left-hand .battach { left: auto; right: 4px; }
+body.left-hand .bclrm { right: auto; left: 8px; }
+
 /* スプラッシュスクリーン */
 #splash{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;transition:opacity .25s}
 .spin{width:26px;height:26px;border:3px solid var(--in);border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite}
@@ -106,11 +112,18 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .htc-slider:active + .slider-tooltip, .htc-slider:hover + .slider-tooltip {display: block;}
 .wait-user-card {background:var(--sf); border:1px solid var(--em); padding:2px 6px; border-radius:4px; display:flex; align-items:center; gap:6px; font-size:10px;}
 
-/* タイムライン (余白ゼロ化) */
+/* 通話UI (新規追加) */
+#callUI {display:none; background:var(--s2); border-bottom:1px solid var(--bd); padding:4px 8px; align-items:center; justify-content:space-between; flex-shrink:0;}
+#callUI span {font-size:10.5px; font-weight:bold; color:var(--tx);}
+.call-btn {padding:4px 10px; background:var(--in); color:#fff; border-radius:4px; font-size:10px; font-weight:bold; cursor:pointer; display:flex; gap:4px; align-items:center;}
+.call-btn.active {background:var(--ro);}
+.call-pulse {width:6px;height:6px;border-radius:50%;background:#fff;animation:pulseGlow 1.5s infinite;}
+
+/* タイムライン */
 #tl{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:2px 4px;background-color:#0d1117;-webkit-overflow-scrolling:touch;touch-action:pan-y!important;overscroll-behavior-y:contain;}
 #tl-inner{display:flex;flex-direction:column;justify-content:flex-end;gap:4px;width:100%;max-width:600px;margin:0 auto;min-height:100%}
 
-/* メッセージ描画 (余白ゼロ化) */
+/* メッセージ描画 */
 @keyframes slideInUp { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
 .mw{position:relative; display:flex;flex-direction:column;width:100%;opacity:0;animation:slideInUp 0.2s cubic-bezier(0.22, 1, 0.36, 1) forwards; user-select:text; -webkit-user-select:text; padding-bottom:6px;}
 .mw.grouped { margin-top: -2px; } 
@@ -123,7 +136,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .mw:hover .del-btn{display:block;}
 @media (hover: none){ .del-btn{display:block;opacity:0.5;position:static;margin-top:2px;align-self:flex-end;} }
 
-/* 動画・メディアUI (フローティング向け) */
+/* 動画・メディアUI */
 .media-embed-box {margin-top: 4px; border: 1px solid var(--bd); border-radius: 4px; background: var(--s2); overflow: hidden; max-width: 100%;}
 .media-meta {display: flex; align-items: center; gap: 6px; padding: 6px 8px; font-size: 10.5px; color: #a5b4fc; background: rgba(255,255,255,0.02);}
 .media-meta a {color: inherit; text-decoration: underline; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
@@ -131,7 +144,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .media-play-btn:hover {background: var(--in); color: #fff;}
 .media-direct {max-width: 100%; max-height: 200px; border-radius: 2px; object-fit: contain; cursor: zoom-in; display:block;}
 
-/* フローティングプレイヤー (新規追加) */
+/* フローティングプレイヤー (同期対応) */
 #floatingPlayer {
   position: fixed; top: 70px; right: 10px; width: 300px; max-width: 90vw; background: #000;
   border: 1px solid var(--bd); border-radius: 6px; overflow: hidden; display: none;
@@ -144,6 +157,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 #fpClose { background: none; border: none; color: #f43f5e; font-size: 14px; font-weight: bold; cursor: pointer; line-height: 1; }
 #fpContent { width: 100%; background: #000; }
 #fpContent iframe, #fpContent video { width: 100%; aspect-ratio: 16/9; display: block; border: none; }
+.sync-badge {background:var(--ro); color:#fff; padding:2px 4px; border-radius:4px; font-size:8px; margin-left:6px; animation:pulseGlow 2s infinite;}
 
 /* 入力バー ＆ ツールバー統合 */
 #ib{display:none; flex-direction: column; padding:4px 6px calc(4px + var(--safe)); background:var(--sf); border-top:1px solid var(--bd); gap:4px; flex-shrink:0;}
@@ -163,7 +177,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 #unreadChip {background: var(--ro)!important; border-color: #f43f5e!important; color: #fff!important; animation: pulseGlow 2s infinite;}
 #unreadChip.hide {display: none!important;}
 
-.mi-container{position:relative;flex:1;display:flex;align-items:flex-end;background:var(--bg);border:1px solid var(--bd);border-radius:16px;padding:4px 30px 4px 32px}
+.mi-container{position:relative;flex:1;display:flex;align-items:flex-end;background:var(--bg);border:1px solid var(--bd);border-radius:16px;padding:4px 30px 4px 32px; transition: padding 0.2s;}
 .battach{position:absolute;left:4px;bottom:3px;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--m2);transition:color 0.2s, background 0.2s}
 .battach:active{background:rgba(255,255,255,0.1);color:var(--tx)}
 .battach svg{width:18px;height:18px}
@@ -233,7 +247,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         </div>
       </div>
 
-      <div class="accordion-header" id="accHeader">⚙️ 詳細設定を開く (カラー・時間調整など)</div>
+      <div class="accordion-header" id="accHeader">⚙️ 詳細設定を開く (カラー・時間・利き手など)</div>
       <div class="accordion-body" id="accBody">
         <div class="clrbox">
           <div class="clrlbl">ネーム＆吹き出しカラー</div>
@@ -243,6 +257,9 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
           <label class="fl">部屋の有効時間 (1〜60分) ※上限60分</label>
           <input type="number" id="timeri" class="inp" min="1" max="60" value="30">
         </div>
+        <label class="check-lbl" style="margin-top:8px;">
+          <input type="checkbox" id="chkLeftHand"> ✋ 左利きモード (UI反転) を有効にする
+        </label>
       </div>
 
       <div class="fg">
@@ -300,6 +317,11 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       <span class="htc-lbl">🔔 承認待ち:</span>
       <div id="waitList" style="display:flex; gap:6px; overflow-x:auto;"></div>
     </div>
+    
+    <div id="callUI">
+      <span>🎙 音声通話 (E2EE/P2P)</span>
+      <button id="joinCallBtn" class="call-btn">参加する</button>
+    </div>
 
     <div id="tl" role="log" aria-live="polite">
       <div id="tl-inner"></div>
@@ -307,7 +329,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 
     <div id="floatingPlayer">
       <div id="fpHeader">
-        <span>🎬 プレイヤー</span>
+        <span>🎬 プレイヤー <span id="fpSyncBadge" class="sync-badge" style="display:none;">同期中</span></span>
         <button id="fpClose">×</button>
       </div>
       <div id="fpContent"></div>
@@ -317,6 +339,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       <div id="ibToolbar">
         <div class="tb-group">
           <button id="unreadChip" class="tb-btn hide">新着あり</button>
+          <button id="callToggleBtn" class="tb-btn" title="通話パネルを開閉">📞</button>
           <button id="upBtn" class="tb-btn" title="一番上へ">▲</button>
           <button id="downBtn" class="tb-btn" title="一番下へ">▼</button>
         </div>
@@ -407,10 +430,12 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   <img id="imgViewSrc" src="" alt="拡大画像">
 </div>
 
+<div id="remoteAudioContainer" style="display:none;"></div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { getDatabase, ref, push, onValue, set, update, remove, query, orderByChild, limitToLast, get, serverTimestamp }
+import { getDatabase, ref, push, onValue, set, update, remove, query, orderByChild, limitToLast, get, serverTimestamp, onDisconnect, onChildAdded, onChildChanged }
   from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -431,6 +456,7 @@ const $   = id => document.getElementById(id);
 const D = {
   splash:$("splash"), lobby:$("lobby"), lberr:$("lberr"), app:$("app"),
   ni:$("ni"), tripi:$("tripi"), ri:$("ri"), pi:$("pi"), timeri:$("timeri"), chkApproveMode:$("chkApproveMode"),
+  chkLeftHand:$("chkLeftHand"), 
   tripPreview:$("tripPreview"), tripPrevText:$("tripPrevText"), lbCopyTripBtn:$("lbCopyTripBtn"),
   enBtn:$("enBtn"), gnBtn:$("gnBtn"), gdBtn:$("gdBtn"), gmod:$("gmod"), gcBtn:$("gcBtn"),
   clrmod:$("clrmod"), clrPick2:$("clrPick2"), clrPrev:$("clrPrev"), clrOk:$("clrOk"), clrCancel:$("clrCancel"), clrBtn:$("clrBtn"), clrDot:$("clrDot"),
@@ -447,8 +473,18 @@ const D = {
   accHeader:$("accHeader"), accBody:$("accBody"),
   imgViewMod:$("imgViewMod"), imgViewSrc:$("imgViewSrc"),
   waitMod:$("waitMod"), waitModTrip:$("waitModTrip"), waitCopyIdBtn:$("waitCopyIdBtn"), waitCancelBtn:$("waitCancelBtn"),
-  floatingPlayer:$("floatingPlayer"), fpHeader:$("fpHeader"), fpContent:$("fpContent"), fpClose:$("fpClose")
+  floatingPlayer:$("floatingPlayer"), fpHeader:$("fpHeader"), fpContent:$("fpContent"), fpClose:$("fpClose"), fpSyncBadge:$("fpSyncBadge"),
+  callToggleBtn:$("callToggleBtn"), callUI:$("callUI"), joinCallBtn:$("joinCallBtn"), remoteAudioContainer:$("remoteAudioContainer")
 };
+
+// 利き手モード設定 (UI反転)
+const updateHandMode = () => { 
+  if(D.chkLeftHand.checked){ document.body.classList.add("left-hand"); localStorage.setItem("nz_lh", "1"); } 
+  else { document.body.classList.remove("left-hand"); localStorage.setItem("nz_lh", "0"); } 
+};
+D.chkLeftHand.checked = localStorage.getItem("nz_lh") === "1";
+updateHandMode();
+D.chkLeftHand.addEventListener("change", updateHandMode);
 
 let isDraggingFP = false, startXFP, startYFP, initXFP, initYFP;
 D.fpHeader.addEventListener('pointerdown', (e) => {
@@ -586,7 +622,7 @@ D.roomModeToggleBtn.onclick = async () => {
 D.accHeader.onclick = () => {
   const isOpen = D.accBody.style.display === "flex";
   D.accBody.style.display = isOpen ? "none" : "flex";
-  D.accHeader.textContent = isOpen ? "⚙️ 詳細設定を開く (カラー・時間調整など)" : "⚙️ 詳細設定を閉じる";
+  D.accHeader.textContent = isOpen ? "⚙️ 詳細設定を開く (カラー・時間・利き手など)" : "⚙️ 詳細設定を閉じる";
 };
 
 const COLORS = [
@@ -645,12 +681,19 @@ const fDT = ts => {
 
 const UR = /(https?:\/\/[^\s\n<>"]+)/gi;
 
-window.toggleVideoPlay = (btnElement, iframeHtml) => {
+// メディア同期機能の統合
+window.toggleVideoPlay = async (btnElement, iframeHtml, url) => {
   D.fpContent.innerHTML = iframeHtml;
   D.floatingPlayer.style.display = "block";
   D.floatingPlayer.style.top = "70px";
   D.floatingPlayer.style.left = "auto";
   D.floatingPlayer.style.right = "10px";
+  if(curR) {
+    try {
+      const syncData = { url: url, html: iframeHtml, ts: serverTimestamp(), u: myUid };
+      await update(ref(db, `rooms/${curR}/media`), { sync: enc(JSON.stringify(syncData), masterKey) });
+    } catch(e){}
+  }
 };
 
 function parseMediaEmbed(url) {
@@ -687,17 +730,16 @@ function parseMediaEmbed(url) {
   }
   
   if (!innerHtml) return "";
-
   if (isImage) {
     return `<div class="media-embed-box" style="padding:4px;"><div style="font-size:10px; color:var(--mu); margin-bottom:2px;">${icon} 画像</div>${innerHtml}</div>`;
   }
 
   const safeHtml = innerHtml.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-
+  const safeUrl = url.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   return `
     <div class="media-embed-box">
       <div class="media-meta"><span>${icon}</span> <a href="${url}" target="_blank" rel="noopener noreferrer">${title}</a></div>
-      <button class="media-play-btn" onclick="toggleVideoPlay(this, '${safeHtml}')">▶ プレイヤーで再生する</button>
+      <button class="media-play-btn" onclick="toggleVideoPlay(this, '${safeHtml}', '${safeUrl}')">▶ プレイヤーで同期再生</button>
     </div>
   `;
 }
@@ -772,6 +814,7 @@ let curR = null, curN = null, rawR = null, myUid = null;
 let isW = false, _exitLock = false, isLiveMode = false, displayCount = 100, unreadCount = 0;
 let logArray = [], displayedMsgIds = new Set();
 let myPresRef = null, _roomExpireAt = null, _cOff = null, _pOff = null, _rOff = null;
+let lastMediaTs = 0; // メディア同期用
 
 let keepKbOpen = localStorage.getItem("nz_keep_kb") === "true";
 const updateKbBtnUI = () => {
@@ -853,7 +896,8 @@ async function wipe(r) {
   const updates = {
     [`rooms/${r}`]: null,
     [`chat/${r}`]: null,
-    [`presence/${r}`]: null
+    [`presence/${r}`]: null,
+    [`webrtc/${r}`]: null
   };
   try {
     await update(ref(db), updates);
@@ -874,6 +918,7 @@ function clearAll() {
   if(typeof _rOff === "function"){ _rOff(); _rOff = null; }
   masterKey = null; logArray = []; isLiveMode = false; displayedMsgIds.clear(); D.tli.innerHTML = "";
   stopTimerLoop(); D.hostTimerCtrl.style.display = "none"; D.hostApprovePanel.style.display = "none"; D.hostModeCtrl.style.display = "none";
+  stopCall(); // 退室時に通話を停止
 }
 
 let _timerRaf = null;
@@ -962,6 +1007,8 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       myPresRef = ref(db, `presence/${hashId}/${myUid}`);
       const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
       await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey) });
+      onDisconnect(myPresRef).remove(); // フェイルセーフ: 切断時の自動削除
+      
       await sendSysMsg(`${trip ? trip + " " : ""}${name} が部屋を作成しました`);
       
       const freshSnap = await get(roomRef);
@@ -979,6 +1026,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         masterKey = getMasterKey(roomId, pass);
         const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
         await update(myPresRef, { status: "approved", meta: enc(metaStr, masterKey) });
+        onDisconnect(myPresRef).remove();
         enterChatUI(roomData);
       } else if (roomData.requireApproval) {
         myGuestKey = CryptoJS.lib.WordArray.random(16).toString(); 
@@ -986,6 +1034,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         const waitMetaStr = JSON.stringify({ n: name, p: trip, c: curColor });
 
         await set(myPresRef, { status: "waiting", gk: myGuestKey, wmeta: enc(waitMetaStr, waitKey) });
+        onDisconnect(myPresRef).remove();
         
         D.lobby.style.display = "none";
         D.waitModTrip.textContent = `${name} ${trip}`;
@@ -1013,6 +1062,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         masterKey = getMasterKey(roomId, pass);
         const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
         await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey) });
+        onDisconnect(myPresRef).remove();
         await sendSysMsg(`${trip ? trip + " " : ""}${name} が入室しました`);
         enterChatUI(roomData);
       }
@@ -1038,15 +1088,34 @@ function enterChatUI(roomData) {
 
   startTimerLoop();
 
+  // メディア同期とタイマー情報の検知
   _rOff = onValue(ref(db, `rooms/${curR}`), s => {
     if (!s.exists()) { 
       if(!_exitLock) { _exitLock = true; localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created"); showLobby("部屋が削除されました。"); } 
       return; 
     }
-    _roomExpireAt = s.val().expireAt;
+    const rVal = s.val();
+    _roomExpireAt = rVal.expireAt;
     if(isHost) {
-        isRoomApproveMode = s.val().requireApproval === true;
+        isRoomApproveMode = rVal.requireApproval === true;
         updateRoomModeBtnUI();
+    }
+    // 同期再生プレイヤー自動起動
+    if(rVal.media && rVal.media.sync) {
+        const syncDataStr = dec(rVal.media.sync, masterKey);
+        if(syncDataStr) {
+            try {
+                const syncData = JSON.parse(syncDataStr);
+                if(syncData.ts !== lastMediaTs && syncData.u !== myUid) {
+                    lastMediaTs = syncData.ts;
+                    D.fpContent.innerHTML = syncData.html;
+                    D.floatingPlayer.style.display = "block";
+                    D.floatingPlayer.style.top = "70px"; D.floatingPlayer.style.left = "auto"; D.floatingPlayer.style.right = "10px";
+                    D.fpSyncBadge.style.display = "inline-block";
+                    setTimeout(()=> D.fpSyncBadge.style.display = "none", 3000);
+                }
+            } catch(e){}
+        }
     }
   });
 
@@ -1198,6 +1267,117 @@ D.gcBtn.onclick = () => D.gmod.classList.remove("show");
 document.querySelectorAll(".mod-overlay").forEach(m => { m.onclick = e => { if(e.target === m || m.id === "imgViewMod") m.classList.remove("show"); }; });
 
 window.addEventListener("beforeunload", () => { localStorage.setItem("nz_is_in_room", "false"); });
+
+// --- WebRTC (P2P Audio) 統合 ---
+let localAudioStream = null;
+let rtcPeers = {}; 
+const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+let webrtcUnsub = null;
+
+D.callToggleBtn.onclick = () => { 
+  D.callUI.style.display = D.callUI.style.display === "flex" ? "none" : "flex"; 
+};
+
+async function startCall() {
+  try {
+    localAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    D.joinCallBtn.innerHTML = "<div class='call-pulse'></div> 通話終了";
+    D.joinCallBtn.classList.add("active");
+    const myCallRef = ref(db, `webrtc/${curR}/${myUid}`);
+    await set(myCallRef, { active: true, t: serverTimestamp() });
+    onDisconnect(myCallRef).remove(); // 切断時に削除
+    listenForCallSignals();
+  } catch(e) {
+    alert("マイクへのアクセスが許可されていません");
+  }
+}
+
+function stopCall() {
+  if(localAudioStream) { localAudioStream.getTracks().forEach(t => t.stop()); localAudioStream = null; }
+  Object.values(rtcPeers).forEach(p => p.close()); rtcPeers = {};
+  D.remoteAudioContainer.innerHTML = "";
+  D.joinCallBtn.innerHTML = "参加する"; D.joinCallBtn.classList.remove("active");
+  if(curR && myUid) remove(ref(db, `webrtc/${curR}/${myUid}`));
+  if(webrtcUnsub) { webrtcUnsub(); webrtcUnsub = null; }
+}
+
+D.joinCallBtn.onclick = () => { if(localAudioStream) stopCall(); else startCall(); };
+
+function listenForCallSignals() {
+  const signalingRef = ref(db, `webrtc/${curR}`);
+  webrtcUnsub = onValue(signalingRef, async (snap) => {
+    if(!localAudioStream) return;
+    const users = snap.val() || {};
+    // 新規参加者に対してOfferを送信する簡易メッシュロジック
+    for (const [targetUid, data] of Object.entries(users)) {
+      if(targetUid === myUid || !data.active) continue;
+      
+      // 暗号化されたシグナリングデータを取得
+      if (data.signal && data.to === myUid) {
+        const signalStr = dec(data.signal, masterKey);
+        if(signalStr) {
+          try {
+             const signal = JSON.parse(signalStr);
+             await handleSignal(targetUid, signal);
+          } catch(e){}
+        }
+      } else if (!rtcPeers[targetUid] && targetUid > myUid) {
+        // ID辞書順で大きい方がOfferを作る（重複回避）
+        createPeerAndOffer(targetUid);
+      }
+    }
+  });
+}
+
+function createPeer(targetUid) {
+  const pc = new RTCPeerConnection(rtcConfig);
+  localAudioStream.getTracks().forEach(track => pc.addTrack(track, localAudioStream));
+  
+  pc.onicecandidate = async (e) => {
+    if (e.candidate) {
+      const signalPayload = JSON.stringify({ candidate: e.candidate });
+      await update(ref(db, `webrtc/${curR}/${myUid}`), { to: targetUid, signal: enc(signalPayload, masterKey) });
+    }
+  };
+  
+  pc.ontrack = (e) => {
+    let au = document.getElementById(`audio_${targetUid}`);
+    if(!au) {
+      au = document.createElement("audio"); au.id = `audio_${targetUid}`; au.autoplay = true;
+      D.remoteAudioContainer.appendChild(au);
+    }
+    au.srcObject = e.streams[0];
+  };
+  
+  rtcPeers[targetUid] = pc;
+  return pc;
+}
+
+async function createPeerAndOffer(targetUid) {
+  const pc = createPeer(targetUid);
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  const signalPayload = JSON.stringify({ sdp: offer });
+  await update(ref(db, `webrtc/${curR}/${myUid}`), { to: targetUid, signal: enc(signalPayload, masterKey) });
+}
+
+async function handleSignal(targetUid, signal) {
+  let pc = rtcPeers[targetUid];
+  if(!pc) pc = createPeer(targetUid);
+
+  if (signal.sdp) {
+    await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+    if (signal.sdp.type === "offer") {
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      const signalPayload = JSON.stringify({ sdp: answer });
+      await update(ref(db, `webrtc/${curR}/${myUid}`), { to: targetUid, signal: enc(signalPayload, masterKey) });
+    }
+  } else if (signal.candidate) {
+    await pc.addIceCandidate(new RTCIceCandidate(signal.candidate)).catch(e=>{});
+  }
+}
+// --- WebRTC ここまで ---
 
 let isInit = false;
 onAuthStateChanged(auth, async user => {

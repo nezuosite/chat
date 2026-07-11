@@ -118,6 +118,29 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .wait-user-card {background:var(--sf); border:1px solid var(--em); padding:2px 6px; border-radius:4px; display:flex; align-items:center; gap:6px; font-size:10px;}
 .btn-pm5 {background:var(--sf); border:1px solid var(--bd); color:var(--tx); border-radius:4px; font-size:10px; font-weight:bold; padding:2px 6px; cursor:pointer;}
 
+/* [新規] 承認フロー効率化: 待機カードの視認性強化（経過時間・拒否ボタン・新着パルス） */
+.wait-card-v2{background:var(--sf); border:1px solid var(--em); padding:4px 8px; border-radius:6px; display:flex; align-items:center; gap:8px; font-size:10px; flex-shrink:0; animation:slideInUp 0.2s ease forwards;}
+.wait-card-v2.is-new{animation:pulseGlow 1.4s ease-in-out 2;}
+.wait-info{display:flex; flex-direction:column; gap:1px; min-width:0;}
+.wait-elapsed{font-size:8.5px; color:var(--m2); font-family:monospace;}
+.wait-actions{display:flex; gap:4px; margin-left:2px;}
+.btn-approve{background:var(--in); color:#fff; padding:4px 10px; border-radius:4px; font-weight:bold; font-size:10.5px; cursor:pointer; white-space:nowrap;}
+.btn-reject{background:rgba(244,63,94,.15); color:#fda4af; border:1px solid rgba(244,63,94,.4); padding:4px 8px; border-radius:4px; font-weight:bold; font-size:10.5px; cursor:pointer; white-space:nowrap;}
+#waitBadge{display:none; background:var(--ro); color:#fff; font-size:9px; font-weight:900; padding:1px 6px; border-radius:8px; margin-left:-2px; animation:pulseGlow 2s infinite;}
+#waitBadge.show{display:inline-block;}
+
+/* [新規] 自動再接続・状態バナー */
+#connBanner{position:fixed; top:0; left:0; right:0; z-index:10001; text-align:center; font-size:11px; font-weight:bold; padding:7px; padding-top:calc(7px + env(safe-area-inset-top,0px)); display:none; transform:translateY(-100%); transition:transform 0.25s ease;}
+#connBanner.show{display:block; transform:translateY(0);}
+#connBanner.reconnecting{background:rgba(244,63,94,.95); color:#fff;}
+#connBanner.restored{background:rgba(16,185,129,.95); color:#fff;}
+
+/* [新規] 動画リンクのインラインサムネイルプレビュー（YouTube等：実iframeはタップ時のみ読込＝軽量・プライバシー維持） */
+.yt-thumb-wrap{position:relative; width:100%; cursor:pointer; display:block; overflow:hidden; margin-top:0;}
+.yt-thumb-wrap img{width:100%; display:block; max-height:220px; object-fit:cover; background:#000;}
+.yt-play-ol{position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:44px; height:44px; background:rgba(0,0,0,.65); border-radius:50%; display:flex; align-items:center; justify-content:center; pointer-events:none;}
+.yt-play-ol::after{content:""; display:block; border-style:solid; border-width:8px 0 8px 13px; border-color:transparent transparent transparent #fff; margin-left:3px;}
+
 /* タイムライン */
 #tl{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:4px 6px 80px 6px;background-color:#0d1117;-webkit-overflow-scrolling:touch;touch-action:pan-y!important;overscroll-behavior-y:contain;}
 #tl-inner{display:flex;flex-direction:column;justify-content:flex-end;gap:0;width:100%;max-width:600px;margin:0 auto;min-height:100%}
@@ -228,6 +251,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 <body>
 
 <div id="splash"><div class="spin"></div><div class="spt">NEZU ONETIME CHAT PRO</div></div>
+<div id="connBanner"></div>
 
 <div id="lobby">
   <div class="lbo">
@@ -299,6 +323,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       <div class="hr">
         <span class="rn" id="rdsp"></span>
         <span id="modeIndicator" class="mode-open">🔓 OPEN</span>
+        <span id="waitBadge">🔔 0</span>
         <span class="pcnt" id="pcnt"></span>
         <span id="timerDsp">--:--</span>
         <div class="hbs">
@@ -463,12 +488,12 @@ const db  = getDatabase(app);
 const $   = id => document.getElementById(id);
 
 const D = {
-  splash:$("splash"), lobby:$("lobby"), lberr:$("lberr"), app:$("app"),
+  splash:$("splash"), lobby:$("lobby"), lberr:$("lberr"), app:$("app"), connBanner:$("connBanner"),
   ni:$("ni"), tripi:$("tripi"), ri:$("ri"), pi:$("pi"), timeri:$("timeri"), chkApproveMode:$("chkApproveMode"),
   tripPreview:$("tripPreview"), tripPrevText:$("tripPrevText"), lbCopyTripBtn:$("lbCopyTripBtn"),
   enBtn:$("enBtn"), gnBtn:$("gnBtn"), gdBtn:$("gdBtn"), gmod:$("gmod"), gcBtn:$("gcBtn"),
   clrmod:$("clrmod"), clrPick2:$("clrPick2"), clrPrev:$("clrPrev"), clrOk:$("clrOk"), clrCancel:$("clrCancel"), clrBtn:$("clrBtn"), clrDot:$("clrDot"),
-  hdr:$("hdr"), rdsp:$("rdsp"), modeIndicator:$("modeIndicator"), pcnt:$("pcnt"), timerDsp:$("timerDsp"), copyUrlBtn:$("copyUrlBtn"), pl:$("pl"), exBtn:$("exBtn"),
+  hdr:$("hdr"), rdsp:$("rdsp"), modeIndicator:$("modeIndicator"), waitBadge:$("waitBadge"), pcnt:$("pcnt"), timerDsp:$("timerDsp"), copyUrlBtn:$("copyUrlBtn"), pl:$("pl"), exBtn:$("exBtn"),
   tl:$("tl"), tli:$("tl-inner"), ib:$("ib"), ibToolbar:$("ibToolbar"), mi:$("mi"), sdBtn:$("sdBtn"), clrMsgBtn:$("clrMsgBtn"),
   scrollFab:$("scrollFab"), fabUnread:$("fabUnread"), kbToggleBtn:$("kbToggleBtn"), kbStatusText:$("kbStatusText"),
   lbClrPick:$("lbClrPick"),
@@ -676,11 +701,11 @@ function parseMediaEmbed(url) {
   const tt = url.match(/tiktok\.com\/.*video\/(\d+)/i);
   const nc = url.match(/nicovideo\.jp\/watch\/(sm\d+)/i);
   const ig = url.match(/instagram\.com\/(?:p|reel)\/([a-zA-Z0-9_-]+)/i);
-  let isImage = false;
+  let isImage = false, isDirectVideo = false, ytId = null;
 
   if (yt && yt[1]) { 
-    icon = "📺"; title = "YouTube 動画"; 
-    innerHtml = `<iframe src="https://www.youtube.com/embed/${yt[1]}" allow="encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe>`; 
+    icon = "📺"; title = "YouTube 動画"; ytId = yt[1];
+    innerHtml = `<iframe src="https://www.youtube.com/embed/${yt[1]}?autoplay=1" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe>`; 
   } 
   else if (tt && tt[1]) { 
     icon = "🎵"; title = "TikTok 動画"; 
@@ -699,17 +724,39 @@ function parseMediaEmbed(url) {
     innerHtml = `<img src="${url}" class="media-direct" loading="lazy" alt="Image">`; 
   } 
   else if (/\.(mp4|webm)(?:\?.*)?$/i.test(url)) { 
-    icon = "📹"; title = "動画ファイル"; 
-    innerHtml = `<video controls src="${url}" style="width:100%; aspect-ratio:auto; max-height:80vh;" playsinline></video>`; 
+    icon = "📹"; title = "動画ファイル"; isDirectVideo = true;
+    innerHtml = `<video controls preload="metadata" playsinline style="width:100%; max-height:280px; border-radius:4px; display:block; background:#000;"><source src="${url}"></video>`; 
   }
   
   if (!innerHtml) return "";
+
+  // [新規] 画像は従来通り、自ホスト動画ファイル(mp4/webm)も外部トラッキングを伴わないため
+  // 画像と同様に即座にインライン表示する（クリック不要・プライバシーへの影響なし）
   if (isImage) {
     return `<div class="media-embed-box" style="padding:4px;"><div style="font-size:10px; color:var(--mu); margin-bottom:2px;">${icon} 画像</div>${innerHtml}</div>`;
+  }
+  if (isDirectVideo) {
+    return `<div class="media-embed-box" style="padding:4px;"><div style="font-size:10px; color:var(--mu); margin-bottom:2px;">${icon} 動画</div>${innerHtml}</div>`;
   }
 
   const safeHtml = innerHtml.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   const safeUrl = url.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+  // [新規] YouTubeのみ、外部トラッキングiframeを読み込まずに公式サムネイル画像(img.youtube.com)で
+  // インラインプレビューを表示する。実際の再生(iframe読込)はタップ時のみ発火＝軽量化とプライバシー原則を両立
+  if (ytId) {
+    return `
+      <div class="media-embed-box">
+        <div class="media-meta"><span>${icon}</span> <span>${title}</span></div>
+        <div class="yt-thumb-wrap" onclick="toggleVideoPlay(this, '${safeHtml}', '${safeUrl}')">
+          <img src="https://img.youtube.com/vi/${ytId}/mqdefault.jpg" loading="lazy" alt="YouTube thumbnail">
+          <div class="yt-play-ol"></div>
+        </div>
+      </div>
+    `;
+  }
+
+  // TikTok/ニコニコ/Instagramは静止画サムネイルAPIが信頼できないため、既存通りタップ式のまま維持
   return `
     <div class="media-embed-box">
       <div class="media-meta"><span>${icon}</span> <span>${title}</span></div>
@@ -883,6 +930,7 @@ function clearAll() {
   if(typeof _rOff === "function"){ _rOff(); _rOff = null; }
   masterKey = null; isLiveMode = false; displayedMsgIds.clear(); D.tli.innerHTML = "";
   stopTimerLoop(); D.hostTimerCtrl.style.display = "none"; D.hostApprovePanel.style.display = "none"; D.hostModeCtrl.style.display = "none";
+  stopWaitTicker(); _seenWaitIds.clear(); D.waitBadge.classList.remove("show");
 }
 
 let _timerRaf = null;
@@ -942,6 +990,55 @@ window.approveGuest = async (guestUid, guestKey) => {
   await update(ref(db, `presence/${curR}/${guestUid}`), { status: "approved", mk: encryptedMasterKey });
 };
 
+// [新規] 承認拒否（既存の物理削除方式=presenceのremoveのみを利用。Wipe条件やexitRoomには一切触れない）
+window.rejectGuest = async (guestUid) => {
+  if (!isHost || !curR) return;
+  await remove(ref(db, `presence/${curR}/${guestUid}`)).catch(()=>{});
+  showToast("🚫 入室リクエストを拒否しました");
+};
+
+// [新規] 承認待ち経過時間の可読化（「34秒前」等）
+function formatElapsed(reqAt) {
+  if (!reqAt) return "受付中";
+  const diffSec = Math.max(0, Math.floor((srvNow() - reqAt) / 1000));
+  if (diffSec < 60) return `${diffSec}秒前`;
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}分前`;
+  return `${Math.floor(diffMin/60)}時間前`;
+}
+
+// [新規] 承認待ちカードのUI生成を専用関数化（視認性向上のための拡張。復号・暗号ロジックには触れない）
+let _seenWaitIds = new Set();
+function renderApprovalCard(uid, wm, gk, reqAt) {
+  const isNew = !_seenWaitIds.has(uid);
+  _seenWaitIds.add(uid);
+  const card = document.createElement("div");
+  card.className = "wait-card-v2" + (isNew ? " is-new" : "");
+  card.innerHTML = `
+    <div class="wait-info">
+      <span style="color:${esc(wm.c)}; font-weight:bold; font-size:11px;">${esc(wm.n)} ${esc(wm.p||"")}</span>
+      <span class="wait-elapsed" data-reqat="${reqAt||0}">${formatElapsed(reqAt)}</span>
+    </div>
+    <div class="wait-actions">
+      <button class="btn-approve" onclick="approveGuest('${uid}','${gk}')">許可</button>
+      <button class="btn-reject" onclick="rejectGuest('${uid}')">拒否</button>
+    </div>`;
+  return card;
+}
+
+// [新規] 承認パネルが表示されている間、経過時間表示のみを軽量に定期更新（再描画・再取得は行わない）
+let _waitTickTimer = null;
+function startWaitTicker() {
+  stopWaitTicker();
+  _waitTickTimer = setInterval(() => {
+    if (!isHost) return;
+    document.querySelectorAll(".wait-elapsed").forEach(el => {
+      el.textContent = formatElapsed(parseInt(el.dataset.reqat) || 0);
+    });
+  }, 5000);
+}
+function stopWaitTicker() { if (_waitTickTimer) { clearInterval(_waitTickTimer); _waitTickTimer = null; } }
+
 async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
   try {
     clearAll(); _exitLock = false;
@@ -997,7 +1094,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         const waitKey = CryptoJS.SHA256(SYSTEM_SALT + roomId).toString();
         const waitMetaStr = JSON.stringify({ n: name, p: trip, c: curColor });
 
-        await set(myPresRef, { status: "waiting", gk: myGuestKey, wmeta: enc(waitMetaStr, waitKey) });
+        await set(myPresRef, { status: "waiting", gk: myGuestKey, wmeta: enc(waitMetaStr, waitKey), reqAt: serverTimestamp() });
         onDisconnect(myPresRef).remove();
         
         D.lobby.style.display = "none";
@@ -1048,6 +1145,7 @@ function enterChatUI(roomData) {
     D.hostModeCtrl.style.display = "flex";
     isRoomApproveMode = roomData.requireApproval === true;
     updateRoomModeBtnUI();
+    startWaitTicker();
   }
 
   startTimerLoop();
@@ -1072,7 +1170,7 @@ function enterChatUI(roomData) {
 
   _pOff = onValue(ref(db, `presence/${curR}`), s => {
     if (!curR) return;
-    const fg = document.createDocumentFragment(); let count = 0;
+    const fg = document.createDocumentFragment(); let count = 0, waitCount = 0;
     
     if (isHost) D.waitList.innerHTML = "";
 
@@ -1096,16 +1194,15 @@ function enterChatUI(roomData) {
         if (metaStr) {
           try {
              const wm = JSON.parse(metaStr);
-             const card = document.createElement("div"); card.className = "wait-user-card";
-             card.innerHTML = `<span style="color:${esc(wm.c)}; font-weight:bold;">${esc(wm.n)} ${esc(wm.p)}</span> 
-                               <button style="background:var(--in); color:#fff; padding:2px 8px; border-radius:4px; font-weight:bold; cursor:pointer;" onclick="approveGuest('${id}', '${u.gk}')">許可</button>`;
-             D.waitList.appendChild(card);
+             waitCount++;
+             D.waitList.appendChild(renderApprovalCard(id, wm, u.gk, u.reqAt));
           } catch(e){}
         }
       }
     }
     D.pl.innerHTML = ""; D.pl.appendChild(fg); D.pcnt.textContent = `[${count}人]`;
     if(isHost && isRoomApproveMode && D.waitList.children.length === 0) D.waitList.innerHTML = '<span style="font-size:10px; color:var(--m2);">待機中のユーザーはいません</span>';
+    if (isHost) { D.waitBadge.textContent = `🔔 ${waitCount}`; D.waitBadge.classList.toggle("show", waitCount > 0); }
   });
 
   // 爆速 差分同期（onChildAdded）
@@ -1121,6 +1218,63 @@ function enterChatUI(roomData) {
   
   isLiveMode = true; hideSplash(); setTimeout(()=> scBottom(true), 300);
 }
+
+// ===== [新規] 通信切断時の自動再接続・差分同期強化 =====
+// 既存のonChildAdded/onValueリスナーはFirebase SDKが再接続時に自動で再購読するが、
+// ・UI側の表示(モード表示/寿命/スクロール)を即座に正しい状態へ戻す
+// ・ユーザーに「今オフラインである」ことを明示し、無用なリロードを防ぐ
+// ことを目的とした軽量な監視レイヤーをここに追加する。renderSingleMessageの重複防止(displayedMsgIds)
+// により、再取得しても二重表示にはならないため安全に重ね掛けできる。
+let _wasDisconnected = false;
+let _connBannerTimer = null;
+
+function initConnectionMonitor() {
+  onValue(ref(db, ".info/connected"), (snap) => {
+    const connected = snap.val() === true;
+    if (!connected) {
+      _wasDisconnected = true;
+      if (curR) showConnBanner("🔌 通信が切断されました。再接続中...", "reconnecting", 0);
+    } else if (_wasDisconnected) {
+      _wasDisconnected = false;
+      if (curR) {
+        showConnBanner("✅ 再接続しました", "restored", 2500);
+        forceResync();
+      }
+    }
+  });
+}
+
+function showConnBanner(msg, cls, autoHideMs) {
+  if (!D.connBanner) return;
+  clearTimeout(_connBannerTimer);
+  D.connBanner.textContent = msg;
+  D.connBanner.className = "show " + cls;
+  if (autoHideMs > 0) { _connBannerTimer = setTimeout(() => { D.connBanner.classList.remove("show"); }, autoHideMs); }
+}
+
+// 再接続直後の自己修復（ワンショット取得のみ。チャットログの購読方式やWipe条件には触れない）
+async function forceResync() {
+  if (!curR || !masterKey) return;
+  try {
+    const roomSnap = await get(ref(db, `rooms/${curR}`));
+    if (roomSnap.exists()) {
+      const rVal = roomSnap.val();
+      _roomExpireAt = rVal.expireAt;
+      const requireApproval = rVal.requireApproval === true;
+      D.modeIndicator.textContent = requireApproval ? "🔒 LOCKED" : "🔓 OPEN";
+      D.modeIndicator.className = requireApproval ? "mode-locked" : "mode-open";
+      if (isHost) { isRoomApproveMode = requireApproval; updateRoomModeBtnUI(); }
+    } else if (!_exitLock) {
+      _exitLock = true; showLobby("部屋が削除されました。"); return;
+    }
+    if (isLiveMode) scBottom(true);
+  } catch (e) { /* サイレント失敗。次のリアルタイム更新で自然回復するため致命的ではない */ }
+}
+
+// バックグラウンド復帰（画面ロック解除・タブ切替からの復帰）時もリロード不要で即座に状態を最新化
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && curR && masterKey) { forceResync(); }
+});
 
 async function exitRoom() {
   _exitLock = true; 
@@ -1223,6 +1377,7 @@ let isInit = false;
 onAuthStateChanged(auth, async user => {
   if (!user) { signInAnonymously(auth).catch(e => { D.lberr.textContent = "接続エラー: " + e.message; D.lberr.style.display = "block"; hideSplash(); }); return; }
   myUid = user.uid; if (isInit) return; isInit = true;
+  initConnectionMonitor();
 
   const sp = new URLSearchParams(location.search), urlR = sp.get("r");
   if (urlR) { D.ri.value = urlR; localStorage.setItem("nz_ri_val", urlR); }

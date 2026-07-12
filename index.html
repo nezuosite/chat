@@ -224,6 +224,27 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .gs h4{font-size:11.5px;margin-bottom:2px;font-weight:800}
 
 .clr-prev{background:var(--bg);padding:8px;border-radius:6px;text-align:center;font-size:11px;font-weight:700}
+
+/* モーダル内ボタンレイアウト（左右分離・危険色分離） */
+.wait-btns {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  gap: 24px;
+  margin-top: 12px;
+}
+#delCancelBtn {
+  background: var(--sf);
+  color: var(--tx);
+  border: 1px solid var(--bd);
+  flex: 1;
+}
+#delExecuteBtn {
+  background: var(--ro) !important;
+  color: #fff !important;
+  flex: 1;
+}
+
 .clr-btns{display:flex;gap:6px;margin-top:2px}
 .clr-cancel,.clr-ok{flex:1;padding:8px;border-radius:6px;font-size:11px;font-weight:700;text-align:center}
 .clr-cancel{background:var(--bg);border:1px solid var(--bd);color:var(--tx)}
@@ -432,10 +453,10 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   <div class="gc" style="max-width:320px;">
     <h3 style="font-size:13px; color:var(--ro);">⚠️ 発言の削除確認</h3>
     <div style="font-size:10px; color:var(--mu);">以下の発言を完全に消去しますか？（復元できません）</div>
-    <div id="delConfirmPreview" class="del-modal-text"></div>
+    <div id="delConfirmPreview" style="font-size: 11px; background: rgba(0,0,0,0.1); padding: 8px; border-radius: 4px; max-height: 100px; overflow-y: auto; margin-top: 6px; border-left: 2px solid var(--ro); word-break: break-all;"></div>
     <div class="wait-btns">
-      <button class="btn bq" id="delCancelBtn" style="flex:1;">戻る</button>
-      <button class="btn bp" id="delExecuteBtn" style="flex:1; background:var(--ro);">完全に削除</button>
+      <button class="btn bq" id="delCancelBtn">戻る</button>
+      <button class="btn bp" id="delExecuteBtn">完全に削除</button>
     </div>
   </div>
 </div>
@@ -489,7 +510,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   </div>
 </div>
 
-<!-- 画像拡大ビューモーダル（ピンチズーム対応、位置固定） -->
+<!-- 画像拡大ビューモーダル（ピンチズーム・パン対応） -->
 <div id="imgViewMod" class="mod-overlay">
   <img id="imgViewSrc" src="" alt="拡大画像">
   <button class="modal-bottom-close" style="position:fixed; bottom:16px; left:50%; transform:translateX(-50%); max-width:180px; z-index:10001;" id="imgViewCloseBtn">閉じる</button>
@@ -903,33 +924,41 @@ function updateScrollBtnUI() {
 
 const scBottom = (force = false) => { if (force || (autoScrollEnabled && isLiveMode)) { D.tl.scrollTop = D.tl.scrollHeight; } };
 
-D.tl.addEventListener("scroll", updateScrollBtnUI, {passive:true});
-D.mi.addEventListener("focus", () => { isLiveMode = true; setTimeout(() => scBottom(true), 150); });
+D.tl.addEventListener("scroll", () => {
+  requestAnimationFrame(updateScrollBtnUI);
+}, {passive:true});
 
-D.jumpUpBtn.onclick = () => { D.tl.scrollTop = 0; isLiveMode = false; updateScrollBtnUI(); };
-D.jumpDownBtn.onclick = () => { isLiveMode = true; scBottom(true); updateScrollBtnUI(); };
+D.mi.addEventListener("focus", () => { isLiveMode = true; setTimeout(() => {
+  requestAnimationFrame(() => scBottom(true));
+}, 150); });
+
+D.jumpUpBtn.onclick = () => { D.tl.scrollTop = 0; isLiveMode = false; requestAnimationFrame(updateScrollBtnUI); };
+D.jumpDownBtn.onclick = () => { isLiveMode = true; requestAnimationFrame(() => scBottom(true)); };
 
 function renderSingleMessage(m) {
   if (displayedMsgIds.has(m.id)) return;
   const el = cMsg(m); 
   if (el) {
-    D.tli.appendChild(el); 
-    displayedMsgIds.add(m.id); 
-    if (m.u !== myUid && !m.sys) {
-        if (!isLiveMode) { 
-            unreadCount++; 
-            updateScrollBtnUI();
-        }
-    }
-    if(D.tli.children.length > 100) {
-        const first = D.tli.firstElementChild;
-        if(first) { 
-          displayedMsgIds.delete(first.dataset.mid); 
-          if(first.dataset.cid) displayedMsgIds.delete(first.dataset.cid);
-          first.remove(); 
-        }
-    }
-    scBottom();
+    // DOM処理のMicroTask・requestAnimationFrame化
+    queueMicrotask(() => {
+      D.tli.appendChild(el); 
+      displayedMsgIds.add(m.id); 
+      if (m.u !== myUid && !m.sys) {
+          if (!isLiveMode) { 
+              unreadCount++; 
+              requestAnimationFrame(updateScrollBtnUI);
+          }
+      }
+      if(D.tli.children.length > 100) {
+          const first = D.tli.firstElementChild;
+          if(first) { 
+            displayedMsgIds.delete(first.dataset.mid); 
+            if(first.dataset.cid) displayedMsgIds.delete(first.dataset.cid);
+            first.remove(); 
+          }
+      }
+      requestAnimationFrame(() => scBottom());
+    });
   }
 }
 
@@ -949,7 +978,13 @@ function removeMessageEl(id) {
 
 async function wipe(r) {
   if (!r) return;
-  const updates = { [`rooms/${r}`]: null, [`chat/${r}`]: null, [`presence/${r}`]: null, [`pending/${r}`]: null };
+  const updates = { 
+    [`rooms/${r}`]: null, 
+    [`chat/${r}`]: null, 
+    [`presence/${r}`]: null, 
+    [`pending/${r}`]: null,
+    [`authorized_users/${r}`]: null // 権限ノードも完全削除
+  };
   try { await update(ref(db), updates); } catch (e) { }
 }
 
@@ -958,7 +993,7 @@ async function sendSysMsg(text) {
   await push(ref(db, `chat/${curR}`), { sys: true, m: enc(text, masterKey), t: serverTimestamp() });
 }
 
-// 退室ボタンクリックなど明示的な操作の場合のみプレゼンス等削除を伴い退出
+// 退室
 window.doExit = async () => {
   _exitLock = true; 
   if (curR && masterKey && localStorage.getItem("nz_is_in_room") === "true") {
@@ -1039,13 +1074,18 @@ async function checkCurrentRoomStatus() {
   } catch { D.roomResumeArea.style.display = "none"; }
 }
 
-// 承認処理の超高速化
+// 承認処理の超高速化 & 永続化
 window.approveGuest = async (guestUid, guestKey) => {
   if (!isHost || !masterKey) return;
   try {
     const encryptedMasterKey = CryptoJS.AES.encrypt(masterKey, guestKey).toString();
     const guestMetaRef = ref(db, `presence/${curR}/${guestUid}`);
     await set(guestMetaRef, { status: "approved", mk: encryptedMasterKey });
+    
+    // authorized_usersノードにも永続承認情報（暗号化マスターキー）を書き込む
+    const authRef = ref(db, `authorized_users/${curR}/${guestUid}`);
+    await set(authRef, { mk: encryptedMasterKey });
+
     await remove(ref(db, `pending/${curR}/${guestUid}`));
     showToast("✅ 承認してメンバーに昇格しました");
   } catch (e) { showToast("⚠️ 承認に失敗しました"); }
@@ -1101,6 +1141,15 @@ function stopWaitTicker() { if (_waitTickTimer) { clearInterval(_waitTickTimer);
 async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
   try {
     clearAll(); _exitLock = false;
+    
+    // 再入室（リ rejoin）判定用の事前取得
+    let isRejoin = false;
+    const lastRi = localStorage.getItem("nz_active_ri");
+    const lastCreated = localStorage.getItem("nz_active_created");
+    if (lastRi === roomId && lastCreated) {
+      isRejoin = true;
+    }
+
     localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created");
 
     const hashId = getRoomHash(roomId);
@@ -1151,7 +1200,33 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         await update(myPresRef, { status: "approved", meta: enc(metaStr, masterKey), isHost: true });
         enterChatUI(roomData);
       } else if (roomData.requireApproval) {
+        // authorized_usersによる永続承認権限チェック
+        const authSnap = await get(ref(db, `authorized_users/${hashId}/${myUid}`));
+        if (authSnap.exists() && authSnap.val().mk) {
+          // すでに承認情報がある場合は、承認をスキップ（サイレント復帰・抑制）
+          let savedGuestKey = localStorage.getItem(`nz_gk_${hashId}`);
+          if (savedGuestKey) {
+            try {
+              masterKey = CryptoJS.AES.decrypt(authSnap.val().mk, savedGuestKey).toString(CryptoJS.enc.Utf8);
+            } catch (err) {
+              masterKey = null;
+            }
+          }
+          if (masterKey) {
+            const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
+            await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey) });
+            // システムメッセージ送信なし
+            enterChatUI(roomData);
+            localStorage.setItem("nz_active_ri", roomId); 
+            localStorage.setItem("nz_active_created", roomData.created);
+            localStorage.setItem("nz_is_in_room", "true");
+            return;
+          }
+        }
+
+        // 新規申請
         myGuestKey = CryptoJS.lib.WordArray.random(16).toString(); 
+        localStorage.setItem(`nz_gk_${hashId}`, myGuestKey); // サイレント復旧キー保存
         const waitKey = CryptoJS.SHA256(SYSTEM_SALT + roomId).toString();
         const waitMetaStr = JSON.stringify({ n: name, p: trip, c: curColor });
 
@@ -1187,7 +1262,11 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         masterKey = getMasterKey(roomId, pass);
         const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
         await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey) });
-        await sendSysMsg(`${trip ? trip + " " : ""}${name} が入室しました`);
+        
+        // 再入室時はシステムメッセージ出力を抑制（サイレント復帰仕様）
+        if (!isRejoin) {
+          await sendSysMsg(`${trip ? trip + " " : ""}${name} が入室しました`);
+        }
         enterChatUI(roomData);
       }
       localStorage.setItem("nz_active_ri", roomId); 
@@ -1314,7 +1393,9 @@ function enterChatUI(roomData) {
     removeMessageEl(snap.key);
   });
   
-  isLiveMode = true; hideSplash(); setTimeout(()=> scBottom(true), 300);
+  isLiveMode = true; hideSplash(); setTimeout(()=> {
+    requestAnimationFrame(() => scBottom(true));
+  }, 300);
 }
 
 // 切断監視
@@ -1359,7 +1440,7 @@ async function forceResync() {
     } else if (!_exitLock) {
       _exitLock = true; showLobby("部屋が削除されました。"); return;
     }
-    if (isLiveMode) scBottom(true);
+    if (isLiveMode) requestAnimationFrame(() => scBottom(true));
   } catch (e) { }
 }
 
@@ -1376,7 +1457,7 @@ async function sendMsg(overrideText = null, imgData = null) {
   
   D.mi.value = ""; D.mi.style.height = "auto";
   if (!keepKbOpen) D.mi.blur(); else D.mi.focus();
-  isLiveMode = true; scBottom(true);
+  isLiveMode = true; requestAnimationFrame(() => scBottom(true));
 
   const metaObj = { n: curN, p: localStorage.getItem("nz_mytrip_styled") || "", c: curColor };
   const cid = "opt_" + myUid + "_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
@@ -1445,45 +1526,98 @@ D.gdBtn.onclick = () => D.gmod.classList.add("show");
 D.gcBtn.onclick = () => D.gmod.classList.remove("show");
 document.querySelectorAll(".mod-overlay").forEach(m => { m.onclick = e => { if(e.target === m || m.id === "imgViewMod") m.classList.remove("show"); }; });
 
-// ズームモーダル用ロジック (画像は画面中央に完全固定)
+// ズームモーダル用ロジック (画像位置は1本指パン、2本指ピンチ拡大に対応)
 let scale = 1;
+let translateX = 0;
+let translateY = 0;
+let isDragging = false;
+let startX = 0;
+let startY = 0;
+let initialDistance = 0;
 const imgEl = D.imgViewSrc;
 const overlayEl = D.imgViewMod;
-let initialDistance = 0;
 
 function resetZoom() {
   scale = 1;
+  translateX = 0;
+  translateY = 0;
   updateTransform();
 }
 
 function updateTransform() {
-  imgEl.style.transform = `scale(${scale})`;
+  imgEl.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
 }
 
 overlayEl.addEventListener('touchstart', (e) => {
   if (e.target === D.imgViewCloseBtn) return;
-  if (e.touches.length === 2) {
+  if (e.touches.length === 1) {
+    if (scale > 1) { // 拡大時のみパン可能（標準等倍時は位置固定）
+      isDragging = true;
+      startX = e.touches[0].clientX - translateX;
+      startY = e.touches[0].clientY - translateY;
+    }
+  } else if (e.touches.length === 2) {
+    isDragging = false;
     initialDistance = getDistance(e.touches[0], e.touches[1]);
   }
 }, { passive: true });
 
 overlayEl.addEventListener('touchmove', (e) => {
   if (e.target === D.imgViewCloseBtn) return;
-  if (e.touches.length === 2) {
+  if (isDragging && e.touches.length === 1 && scale > 1) {
+    translateX = e.touches[0].clientX - startX;
+    translateY = e.touches[0].clientY - startY;
+    updateTransform();
+  } else if (e.touches.length === 2) {
     const dist = getDistance(e.touches[0], e.touches[1]);
     const factor = dist / initialDistance;
-    scale = Math.max(0.5, Math.min(5, scale * factor));
+    scale = Math.max(1, Math.min(5, scale * factor)); // 縮小防止、等倍に自動吸着
     initialDistance = dist;
+    if (scale === 1) {
+      translateX = 0;
+      translateY = 0;
+    }
     updateTransform();
   }
 }, { passive: true });
 
+overlayEl.addEventListener('touchend', (e) => {
+  isDragging = false;
+  if (scale <= 1) {
+    resetZoom();
+  }
+});
+
 overlayEl.addEventListener('wheel', (e) => {
   e.preventDefault();
   const delta = e.deltaY > 0 ? 0.9 : 1.1;
-  scale = Math.max(0.5, Math.min(5, scale * delta));
+  scale = Math.max(1, Math.min(5, scale * delta));
+  if (scale === 1) {
+    translateX = 0;
+    translateY = 0;
+  }
   updateTransform();
 }, { passive: false });
+
+overlayEl.addEventListener('mousedown', (e) => {
+  if (e.target === D.imgViewCloseBtn) return;
+  if (scale > 1) {
+    isDragging = true;
+    startX = e.clientX - translateX;
+    startY = e.clientY - translateY;
+  }
+});
+
+window.addEventListener('mousemove', (e) => {
+  if (!isDragging || scale <= 1) return;
+  translateX = e.clientX - startX;
+  translateY = e.clientY - startY;
+  updateTransform();
+});
+
+window.addEventListener('mouseup', () => {
+  isDragging = false;
+});
 
 function getDistance(t1, t2) {
   return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);

@@ -477,7 +477,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 <div id="waitMod" class="mod-overlay">
   <div class="gc" style="max-width:320px;">
     <h3>⏳ ホストの承認待ち...</h3>
-    <div style="font-size:9.5px; color:var(--mu);">ホストが承認するまでチャットには参加できません。<br>この画面のままお待ちください。</div>
+    <div style="font-size:9.5px; color:var(--mu);">ホストが承認するまでチャットには参加できません。<br>この画面 of ままお待ちください。</div>
     <div class="wait-trip-box">
       <div style="font-size:9px; color:var(--m2); margin-bottom:3px;">あなたのID（ホストに伝えてください）</div>
       <b id="waitModTrip" style="font-size:13px; color:var(--em);"></b>
@@ -514,7 +514,6 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   <div class="clrmc">
     <h3 style="font-size:12px;">カラーを変更</h3>
     <div class="clrpick-grid" id="clrPick2" style="margin:4px 0"></div>
-    <div class="clr-prev" id="clrPrev"><span style="color:var(--usr-color)">■ この色で名前、トリップ、発言時刻が同期表示されます</span></div>
     <div class="clr-prev" id="clrPrev"><span style="color:var(--usr-color)">■ この色で名前、トリップ、発言時刻が同期表示されます</span></div>
     <div class="clr-btns">
       <button class="clr-cancel" id="clrCancel">キャンセル</button>
@@ -577,7 +576,7 @@ const D = {
 
 const SYSTEM_SALT = "NEZU_PRO_SYS_SALT_2026_V1"; 
 
-// 修正：未定義だったキーボード固定状態、および自動スクロール状態の管理変数を追加
+// 送信後のキーボード固定状態、および自動スクロール状態の管理変数
 let keepKbOpen = false;
 let isAutoScroll = true;
 
@@ -619,11 +618,10 @@ let isHost = false;
 let myGuestKey = null;
 let targetDelId = null;
 
-// 修正：CryptoJSの鍵自動派生による不整合を防ぐため、常にWordArrayに変換して処理するセキュアなヘルパーを導入
+// CryptoJSの鍵自動派生による不整合を防ぐため、常にWordArrayに変換して処理するセキュアなヘルパーを導入
 const parseKeyWA = (key) => {
   if (!key) return null;
   if (typeof key === "string") {
-    // 16進数文字列（Hex）であればHex.parse、そうでなければ通常のUtf8文字列として解釈
     return /^[0-9a-fA-F]+$/.test(key) ? CryptoJS.enc.Hex.parse(key) : CryptoJS.enc.Utf8.parse(key);
   }
   return key;
@@ -632,7 +630,7 @@ const parseKeyWA = (key) => {
 // E2E暗号化を完全に保証するオリジナル暗号モデル
 const enc = (t, key = masterKey) => {
   if (!t || !key) return "";
-  const keyWA = parseKeyWA(key); // 修正：WordArray化して鍵自動派生による不整合を防ぐ
+  const keyWA = parseKeyWA(key); // WordArray化して鍵自動派生による不整合を防ぐ
   const iv = CryptoJS.lib.WordArray.random(16);
   const ct = CryptoJS.AES.encrypt(t, keyWA, { iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 });
   const ivHex = iv.toString(CryptoJS.enc.Hex);
@@ -645,7 +643,7 @@ const enc = (t, key = masterKey) => {
 const dec = (c, key = masterKey) => {
   if (!c || !key) return null;
   try {
-    const keyWA = parseKeyWA(key); // 修正：WordArray化して鍵自動派生による不整合を防ぐ
+    const keyWA = parseKeyWA(key); // WordArray化して鍵自動派生による不整合を防ぐ
     const parts = c.split(":");
     if (parts.length >= 3) {
       const ivHex = parts[0], ct = parts[1], mac = parts[2];
@@ -926,7 +924,7 @@ function cMsg(msg) {
   const metaStr = dec(msg.meta, masterKey);
   const txt = dec(msg.m, masterKey);
   
-  // 修正：復号エラーが発生した際にサイレントで失敗せず、詳細をログに出力した上で警告UIをレンダリング（原因特定を容易にするため）
+  // 復号エラーが発生した際にサイレントで失敗せず、詳細をログに出力した上で警告UIをレンダリング（原因特定を容易にするため）
   if (!metaStr || !txt) {
     console.error(`復号エラー (ID: ${msg.id})`, { metaStr, txt, masterKey });
     
@@ -1000,7 +998,7 @@ D.delExecuteBtn.onclick = async () => {
 let curR = null, curN = null, rawR = null, myUid = null;
 let isW = false, _exitLock = false, isLiveMode = false, unreadCount = 0;
 let displayedMsgIds = new Set();
-let myPresRef = null, _roomExpireAt = null, _cOff = null, _pOff = null, _rOff = null, _crOff = null, _waitPresOff = null, _pendingOff = null;
+let myPresRef = null, _roomExpireAt = null, _cOff = null, _pOff = null, _rOff = null, _crOff = null, _waitPresOff = null, _waitRoomOff = null, _pendingOff = null;
 
 // リアルタイム受信メッセージの即時描画（待機バッファ排除）のための直コール化
 function queueIncomingMessage(m) {
@@ -1041,7 +1039,6 @@ function removeMessageEl(id) {
 
 async function wipe(r) {
   if (!r) return;
-  // 追加されたtimestampを含む全てのデータを物理消去（一括 null セットで保証）
   const updates = { [`rooms/${r}`]: null, [`chat/${r}`]: null, [`presence/${r}`]: null, [`pending/${r}`]: null, [`authorized_users/${r}`]: null };
   try { await update(ref(db), updates); } catch (e) { }
 }
@@ -1091,6 +1088,7 @@ function clearAll() {
   if(typeof _pOff === "function"){ _pOff(); _pOff = null; }
   if(typeof _rOff === "function"){ _rOff(); _rOff = null; }
   if(typeof _waitPresOff === "function"){ _waitPresOff(); _waitPresOff = null; }
+  if(typeof _waitRoomOff === "function"){ _waitRoomOff(); _waitRoomOff = null; } // 修正: メモリリーク防止のため監視解除
   if(typeof _pendingOff === "function"){ _pendingOff(); _pendingOff = null; }
   masterKey = null; isLiveMode = false; displayedMsgIds.clear(); D.tli.innerHTML = "";
   stopTimerLoop(); D.hostTimerCtrl.style.display = "none"; D.hostApprovePanel.style.display = "none"; D.hostModeCtrl.style.display = "none";
@@ -1173,7 +1171,7 @@ window.approveGuest = async (guestUid, guestKey) => {
     }
 
     // 2. ホスト側でゲスト用メタデータを代理暗号化
-    // 修正：guestKey（Hex文字列）を parseKeyWA で適切に変換して自動派生バグを防ぐ
+    // guestKey（Hex文字列）を parseKeyWA で適切に変換して自動派生バグを防ぐ
     const guestKeyWA = parseKeyWA(guestKey);
     const encryptedMasterKey = CryptoJS.AES.encrypt(masterKey, guestKeyWA).toString();
     const guestEncryptedMeta = enc(JSON.stringify({ n: guestName, p: guestTrip, c: guestColor }), masterKey);
@@ -1183,7 +1181,7 @@ window.approveGuest = async (guestUid, guestKey) => {
     updates[`presence/${curR}/${guestUid}`] = { 
       status: "approved", 
       mk: encryptedMasterKey,
-      meta: guestEncryptedMeta // ゲスト復帰を待たずに在室リストへ即時追加
+      meta: guestEncryptedMeta 
     };
     updates[`authorized_users/${curR}/${guestUid}`] = { mk: encryptedMasterKey, ts: serverTimestamp() };
     updates[`pending/${curR}/${guestUid}`] = null;
@@ -1326,7 +1324,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         const myPresSnap = await get(myPresRef);
         if (myPresSnap.exists() && myPresSnap.val().status === "approved" && myPresSnap.val().mk && authLocalKey) {
           try {
-            // 修正：authLocalKeyを parseKeyWA でWordArray化して確実に復号する
             const authKeyWA = parseKeyWA(authLocalKey);
             const decryptedMk = CryptoJS.AES.decrypt(myPresSnap.val().mk, authKeyWA).toString(CryptoJS.enc.Utf8);
             if (decryptedMk) {
@@ -1345,7 +1342,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
           try {
             const authSnap = await get(ref(db, `authorized_users/${hashId}/${myUid}`));
             if (authSnap.exists() && authSnap.val().mk) {
-              // 修正：authLocalKeyを parseKeyWA でWordArray化して確実に復号する
               const authKeyWA = parseKeyWA(authLocalKey);
               const decryptedMk = CryptoJS.AES.decrypt(authSnap.val().mk, authKeyWA).toString(CryptoJS.enc.Utf8);
               if (decryptedMk) {
@@ -1357,7 +1353,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
               }
             }
           } catch (e) {
-            console.error("永続認可復号エラー (フォールバックします):", e);
+            console.error("永続認自律復帰復号エラー (フォールバック):", e);
           }
         }
 
@@ -1374,19 +1370,19 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         D.waitModTrip.textContent = `${name} ${trip}`;
         D.waitMod.classList.add("show");
         
-        // ゲスト側の常時待機監視。ホスト側の代理書き込みを検知した瞬間、即座に入室
+        // ゲスト側の常時待機監視
         _waitPresOff = onValue(myPresRef, (s) => {
           if (!s.exists()) return;
           const val = s.val();
           if (val.status === "approved" && val.mk) {
             try {
-              // 修正：myGuestKey を parseKeyWA で WordArray にパースして復号する
               const guestKeyWA = parseKeyWA(myGuestKey);
               const decryptedMk = CryptoJS.AES.decrypt(val.mk, guestKeyWA).toString(CryptoJS.enc.Utf8);
               if (decryptedMk) {
                  masterKey = decryptedMk;
                  D.waitMod.classList.remove("show");
                  if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
+                 if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
                  enterChatUI(roomData, pass);
               }
             } catch(e){
@@ -1394,8 +1390,44 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
             }
           }
         });
+
+        // 修正：承認待ちをしている間に「オープンモード(requireApproval: false)」に変更された場合の自動突破処理
+        _waitRoomOff = onValue(ref(db, `rooms/${hashId}`), async (s) => {
+          if (!s.exists()) return;
+          const rVal = s.val();
+          if (rVal.requireApproval === false) {
+            console.log("ホストによって部屋がオープン化されたため、自動入室を試みます。");
+            
+            // 待機用リアルタイムリスナーを解除
+            if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
+            if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
+
+            const currentPass = pass || localStorage.getItem("nz_pi_val") || "";
+            if (currentPass) {
+              masterKey = getMasterKey(roomId, currentPass);
+              const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
+              
+              // 待機データを消去して即座に approved へ遷移
+              await remove(pendingRef).catch(()=>{});
+              await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey) });
+              
+              D.waitMod.classList.remove("show");
+              
+              if (!hasEnteredBefore) {
+                await sendSysMsg(`${trip ? trip + " " : ""}${name} が入室しました（オープン自動移行）`);
+              }
+              enterChatUI(rVal, currentPass);
+            } else {
+              D.waitMod.classList.remove("show");
+              showLobby("エラー: 部屋がオープンモードになりましたが、暗号化パスワードが存在しません。");
+            }
+          }
+        });
         
-        D.waitCancelBtn.onclick = () => { doExit(); };
+        D.waitCancelBtn.onclick = () => { 
+          if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
+          doExit(); 
+        };
 
       } else {
         if (!pass) throw new Error("承認制ではありません。パスワードが必要です。");
@@ -1424,7 +1456,7 @@ function enterChatUI(roomData, pass) {
   localStorage.setItem("nz_active_created", roomData.created);
   localStorage.setItem("nz_is_in_room", "true");
   localStorage.setItem(`nz_entered_${curR}`, "true");
-  // リロード引き戻し復号用のパスワードをローカルに完全同期させ、発言不能不具合を修復
+  
   if (pass) {
     localStorage.setItem("nz_pi_val", pass);
   }
@@ -1529,14 +1561,13 @@ function enterChatUI(roomData, pass) {
     _pendingOff = onValue(ref(db, `pending/${curR}`), rafThrottle(renderPendingList));
   }
 
-  // サーバー時刻（timestamp）を基準とし、ソートして100件取得
   _cOff = onChildAdded(query(ref(db, `chat/${curR}`), orderByChild("timestamp"), limitToLast(100)), snap => {
     if(!curR || !masterKey) return;
     const m = snap.val(); 
     if(m) { 
       m.id = snap.key; 
       if (!m.t) m.t = Date.now(); 
-      if (!m.timestamp) m.timestamp = m.t; // timestamp未対応の過去ログとの互換性
+      if (!m.timestamp) m.timestamp = m.t; 
       if (m.cid && displayedMsgIds.has(m.cid)) { removeMessageEl(m.cid); }
       queueIncomingMessage(m);
     } 
@@ -1578,7 +1609,6 @@ async function forceResync() {
       D.modeIndicator.className = requireApproval ? "mode-locked" : "mode-open";
       if (isHost) { isRoomApproveMode = requireApproval; updateRoomModeBtnUI(); }
 
-      // 接続復帰時の未取得ログ補正
       const chatSnap = await get(query(ref(db, `chat/${curR}`), orderByChild("timestamp"), limitToLast(100)));
       if (chatSnap.exists()) {
         const msgs = chatSnap.val();
@@ -1599,8 +1629,63 @@ async function forceResync() {
   }
 }
 
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible" && curR && masterKey) { forceResync(); }
+// 修正：タブがアクティブになった際の「待機時間最適化（能動プル）」の強化
+document.addEventListener("visibilitychange", async () => {
+  if (document.visibilityState === "visible") {
+    // 1. すでに入室済みであれば通常同期
+    if (curR && masterKey) { 
+      forceResync(); 
+    }
+    
+    // 2. 承認待機画面が表示されている場合、タブ復帰の瞬間に最新ステータスを即プル（通信再開を待たずに復帰）
+    if (D.waitMod.classList.contains("show") && curR && myUid && myGuestKey) {
+      console.log("タブ復帰を検知：最新の承認状態と部屋モードを先行取得します。");
+      try {
+        const myPresSnap = await get(myPresRef);
+        if (myPresSnap.exists()) {
+          const val = myPresSnap.val();
+          if (val.status === "approved" && val.mk) {
+            const guestKeyWA = parseKeyWA(myGuestKey);
+            const decryptedMk = CryptoJS.AES.decrypt(val.mk, guestKeyWA).toString(CryptoJS.enc.Utf8);
+            if (decryptedMk) {
+              masterKey = decryptedMk;
+              D.waitMod.classList.remove("show");
+              if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
+              if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
+              
+              const rSnap = await get(ref(db, `rooms/${curR}`));
+              const rData = rSnap.exists() ? rSnap.val() : { requireApproval: true };
+              enterChatUI(rData, localStorage.getItem("nz_pi_val"));
+              return;
+            }
+          }
+        }
+        
+        // 部屋状態も get() で確認し、ホストが承認制を切っていた場合は即座に自動入室
+        const roomSnap = await get(ref(db, `rooms/${curR}`));
+        if (roomSnap.exists()) {
+          const rVal = roomSnap.val();
+          if (rVal.requireApproval === false) {
+            const currentPass = localStorage.getItem("nz_pi_val") || "";
+            if (currentPass) {
+              masterKey = getMasterKey(rawR, currentPass);
+              const metaStr = JSON.stringify({ n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor });
+              await remove(ref(db, `pending/${curR}/${myUid}`)).catch(()=>{});
+              await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey) });
+              
+              D.waitMod.classList.remove("show");
+              if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
+              if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
+              
+              enterChatUI(rVal, currentPass);
+            }
+          }
+        }
+      } catch (e) {
+        console.error("タブ復帰時の強制承認引き戻しエラー:", e);
+      }
+    }
+  }
 });
 
 let lastSendTime = 0;
@@ -1617,7 +1702,6 @@ async function sendMsg(overrideText = null, imgData = null) {
   const metaObj = { n: curN, p: localStorage.getItem("nz_mytrip_styled") || "", c: curColor };
   const cid = "opt_" + myUid + "_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
   
-  // 楽観的表示用一時オブジェクト（同期したサーバー時刻を使用）
   const nowSrv = srvNow();
   const tempObj = { 
     id: cid, 
@@ -1641,7 +1725,6 @@ async function sendMsg(overrideText = null, imgData = null) {
     });
   } catch (e) {
     removeMessageEl(cid);
-    // 修正：サイレント失敗を防ぎ、Firebaseエラー（セキュリティルール拒否等）をトーストとログで可視化
     console.error("Firebaseへのメッセージ送信に失敗しました:", e);
     showToast(`❌ 送信失敗: ${e.message}`);
   }
@@ -1701,7 +1784,7 @@ D.gdBtn.onclick = () => D.gmod.classList.add("show");
 D.gcBtn.onclick = () => D.gmod.classList.remove("show");
 document.querySelectorAll(".mod-overlay").forEach(m => { m.onclick = e => { if(e.target === m || m.id === "imgViewMod") m.classList.remove("show"); }; });
 
-// 修正：未定義だった自動スクロール(最下部スクロール)処理の実装
+// 自動スクロール(最下部スクロール)処理の実装
 const scBottom = (force = false) => {
   if (!isAutoScroll && !force) return;
   requestAnimationFrame(() => {
@@ -1710,7 +1793,7 @@ const scBottom = (force = false) => {
   });
 };
 
-// 修正：未定義だったキーボード固定トグルと自動追従トグルのバインド処理を定義
+// キーボード固定トグルと自動追従トグルのバインド処理を定義
 D.kbToggleBtn.onclick = () => {
   keepKbOpen = !keepKbOpen;
   D.kbToggleBtn.classList.toggle("active", keepKbOpen);
@@ -1727,15 +1810,13 @@ D.autoScrollToggleBtn.onclick = () => {
   showToast(isAutoScroll ? "📜 新着ログに追従スクロールします" : "📜 スクロール追従をオフにしました");
 };
 
-// 修正：未定義だったジャンプボタン（▲▼）の更新状態制御とスクロール監視の追加
+// ジャンプボタン（▲▼）の更新状態制御とスクロール監視の追加
 const updateJumpBtns = () => {
   const sTop = D.tl.scrollTop;
   const sHeight = D.tl.scrollHeight;
   const cHeight = D.tl.clientHeight;
   
-  // 先頭へジャンプの有効／無効
   D.jumpUpBtn.disabled = sTop <= 10;
-  // 最新へジャンプの有効／無効
   D.jumpDownBtn.disabled = sTop + cHeight >= sHeight - 10;
 };
 
@@ -1775,7 +1856,6 @@ overlayEl.addEventListener('touchstart', (e) => {
     initialDistance = getDistance(e.touches[0], e.touches[1]);
   } else if (e.touches.length === 1) {
     if (scale === 1) {
-      // 等倍スケール時、グーグル画像検索のようにドラッグダウンで閉じる処理を開始
       startY = e.touches[0].clientY;
       isDraggingDown = true;
       isPanning = false;
@@ -1805,7 +1885,7 @@ overlayEl.addEventListener('touchmove', (e) => {
       if (deltaY > 0) {
         panY = deltaY;
         imgEl.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
-        imgEl.style.opacity = Math.max(0.3, 1 - (deltaY / 300)); // 引っ張る量に応じてフェードアウト
+        imgEl.style.opacity = Math.max(0.3, 1 - (deltaY / 300)); 
       }
     } else if (isPanning) {
       const dx = e.touches[0].clientX - lastPanX;
@@ -1821,10 +1901,8 @@ overlayEl.addEventListener('touchmove', (e) => {
 overlayEl.addEventListener('touchend', (e) => {
   if (isDraggingDown && scale === 1) {
     if (panY > 100) {
-      // 100px以上の引き下げで直感的にモーダルを閉じる (グーグル画像検索UX)
       D.imgViewMod.classList.remove("show");
     } else {
-      // 閾値未満の場合は慣性で元のバウンス位置に戻す
       panY = 0;
       imgEl.style.transition = "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease";
       updateTransform();
@@ -1853,7 +1931,6 @@ function getDistance(t1, t2) {
   return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
 }
 
-// 同意ボタンのハンドリング
 D.consentBtn.onclick = () => {
   D.consent.style.display = "none";
   D.lobby.style.display = "block";
@@ -1869,7 +1946,6 @@ onAuthStateChanged(auth, async user => {
   
   const savedActiveRi = localStorage.getItem("nz_active_ri"), savedActiveCreated = localStorage.getItem("nz_active_created"), savedNi = localStorage.getItem("nz_ni"), savedPi = localStorage.getItem("nz_pi_val"), savedTripKey = localStorage.getItem("nz_tripi"), savedTimer = parseInt(localStorage.getItem("nz_timer_val")) || 30;
   
-  // 修正：自動再入室がスキップされた場合のデバッグ用ログ出力を定義（リロード連携の追跡を容易にするため）
   console.log("自動再入室パラメータ検証:", { savedActiveRi, savedActiveCreated, savedNi, savedPi, savedTripKey });
 
   // 複窓対策およびリロード引き戻し自動再入室 (同意画面を自動スキップ)

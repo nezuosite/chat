@@ -451,7 +451,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 
 <div id="toastContainer"></div>
 
-<!-- 发言削除確認モーダル (左右分離・警告赤色最適化) -->
+<!-- 発言削除確認モーダル (左右分離・警告赤色最適化) -->
 <div id="delConfirmMod" class="mod-overlay">
   <div class="gc" style="max-width:320px;">
     <h3 style="font-size:13px; color:var(--ro);">⚠️ 発言の削除確認</h3>
@@ -1057,16 +1057,48 @@ async function checkCurrentRoomStatus() {
   } catch { D.roomResumeArea.style.display = "none"; }
 }
 
-// 承認処理
+// 承認処理 (ホスト側が代理となってゲスト情報を暗号化・通知プッシュまでを即時完結)
 window.approveGuest = async (guestUid, guestKey) => {
   if (!isHost || !masterKey) return;
   try {
+    // 1. 承認通知用に、pendingノードから該当ゲストのメタデータを取得
+    const pendingSnap = await get(ref(db, `pending/${curR}/${guestUid}`));
+    let guestName = "名無し";
+    let guestTrip = "";
+    let guestColor = "#94a3b8";
+    
+    if (pendingSnap.exists() && pendingSnap.val().wmeta) {
+      const waitKey = CryptoJS.SHA256(SYSTEM_SALT + rawR).toString();
+      const metaStr = dec(pendingSnap.val().wmeta, waitKey);
+      if (metaStr) {
+        try {
+          const wm = JSON.parse(metaStr);
+          guestName = wm.n || "名無し";
+          guestTrip = wm.p || "";
+          guestColor = wm.c || "#94a3b8";
+        } catch(e){}
+      }
+    }
+
+    // 2. ホスト側でゲスト用メタデータを代理暗号化
     const encryptedMasterKey = CryptoJS.AES.encrypt(masterKey, guestKey).toString();
-    const guestMetaRef = ref(db, `presence/${curR}/${guestUid}`);
-    await set(guestMetaRef, { status: "approved", mk: encryptedMasterKey });
-    // authorized_usersによる永続的権限管理（仕様3）
-    await set(ref(db, `authorized_users/${curR}/${guestUid}`), { mk: encryptedMasterKey, ts: serverTimestamp() });
-    await remove(ref(db, `pending/${curR}/${guestUid}`));
+    const guestEncryptedMeta = enc(JSON.stringify({ n: guestName, p: guestTrip, c: guestColor }), masterKey);
+
+    // 3. アトミックなDB更新処理により、オフライン・バックグラウンド時でも在室者リストの描画整合性を担保
+    const updates = {};
+    updates[`presence/${curR}/${guestUid}`] = { 
+      status: "approved", 
+      mk: encryptedMasterKey,
+      meta: guestEncryptedMeta // ゲスト復帰を待たずに在室リストへ即時追加
+    };
+    updates[`authorized_users/${curR}/${guestUid}`] = { mk: encryptedMasterKey, ts: serverTimestamp() };
+    updates[`pending/${curR}/${guestUid}`] = null;
+    
+    await update(ref(db), updates);
+
+    // 4. ホストが代理人となって即座に入室アナウンス（絶対時刻付き）を通知プッシュ
+    await sendSysMsg(`${guestTrip ? guestTrip + " " : ""}${guestName} が承認され入室しました`);
+
     showToast("✅ 承認してメンバーに昇格しました");
   } catch (e) { alert("承認に失敗しました"); }
 };
@@ -1135,7 +1167,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
     }
 
     let roomData = null;
-    // 既存の入室履歴フラグを取得し、システムログ出力を抑制（サイレント復帰、仕様3）
     const hasEnteredBefore = localStorage.getItem(`nz_entered_${hashId}`) === "true";
     
     if (!snap.exists()) {
@@ -1175,10 +1206,23 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         await update(myPresRef, { status: "approved", meta: enc(metaStr, masterKey), isHost: true });
         enterChatUI(roomData);
       } else if (roomData.requireApproval) {
-        // 永続認可(authorized_users)の照合による承認スキップ（仕様3: サイレント復帰）
         const authLocalKey = localStorage.getItem(`nz_authkey_${hashId}`);
-        let silentResumed = false;
+        
+        // 【オフライン承認引き戻し】相手がタブを閉じていた場合でも、presenceのmkが存在すれば即座に復号して入室
+        const myPresSnap = await get(myPresRef);
+        if (myPresSnap.exists() && myPresSnap.val().status === "approved" && myPresSnap.val().mk && authLocalKey) {
+          try {
+            const decryptedMk = CryptoJS.AES.decrypt(myPresSnap.val().mk, authLocalKey).toString(CryptoJS.enc.Utf8);
+            if (decryptedMk) {
+              masterKey = decryptedMk;
+              await update(myPresRef, { mk: null }); // mkを使い捨てクリーンアップ
+              enterChatUI(roomData);
+              return;
+            }
+          } catch(e){}
+        }
 
+        // 永続認可(authorized_users)の照合による承認スキップ（仕様3: サイレント復帰）
         if (authLocalKey) {
           try {
             const authSnap = await get(ref(db, `authorized_users/${hashId}/${myUid}`));
@@ -1189,47 +1233,44 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
                 const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
                 await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey), isHost: false });
                 enterChatUI(roomData);
-                silentResumed = true;
+                return;
               }
             }
           } catch (e) { /* 復号失敗時は通常の承認フローへフォールバック */ }
         }
 
-        if (!silentResumed) {
-          myGuestKey = CryptoJS.lib.WordArray.random(16).toString();
-          localStorage.setItem(`nz_authkey_${hashId}`, myGuestKey);
-          const waitKey = CryptoJS.SHA256(SYSTEM_SALT + roomId).toString();
-          const waitMetaStr = JSON.stringify({ n: name, p: trip, c: curColor });
+        // 通常の新規の承認申請フロー
+        myGuestKey = CryptoJS.lib.WordArray.random(16).toString();
+        localStorage.setItem(`nz_authkey_${hashId}`, myGuestKey);
+        const waitKey = CryptoJS.SHA256(SYSTEM_SALT + roomId).toString();
+        const waitMetaStr = JSON.stringify({ n: name, p: trip, c: curColor });
 
-          const pendingRef = ref(db, `pending/${hashId}/${myUid}`);
-          await set(pendingRef, { status: "waiting", gk: myGuestKey, wmeta: enc(waitMetaStr, waitKey), reqAt: serverTimestamp() });
-          
-          D.lobby.style.display = "none";
-          D.waitModTrip.textContent = `${name} ${trip}`;
-          D.waitMod.classList.add("show");
-          
-          _waitPresOff = onValue(myPresRef, (s) => {
-            if (!s.exists()) return;
-            const val = s.val();
-            if (val.status === "approved" && val.mk) {
-              masterKey = CryptoJS.AES.decrypt(val.mk, myGuestKey).toString(CryptoJS.enc.Utf8);
-              if (masterKey) {
-                 const finalMetaStr = JSON.stringify({ n: name, p: trip, c: curColor });
-                 update(myPresRef, { gk: null, mk: null, meta: enc(finalMetaStr, masterKey) });
-                 
-                 D.waitMod.classList.remove("show");
-                 if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
-                 
-                 enterChatUI(roomData);
-                 if (!hasEnteredBefore) {
-                   sendSysMsg(`${trip ? trip + " " : ""}${name} が承認され入室しました`);
-                 }
-              }
+        const pendingRef = ref(db, `pending/${hashId}/${myUid}`);
+        await set(pendingRef, { status: "waiting", gk: myGuestKey, wmeta: enc(waitMetaStr, waitKey), reqAt: serverTimestamp() });
+        
+        D.lobby.style.display = "none";
+        D.waitModTrip.textContent = `${name} ${trip}`;
+        D.waitMod.classList.add("show");
+        
+        // ゲスト側の常時待機監視。ホスト側の代理書き込みを検知した瞬間、すぐに入室UIへ遷移
+        _waitPresOff = onValue(myPresRef, (s) => {
+          if (!s.exists()) return;
+          const val = s.val();
+          if (val.status === "approved" && val.mk) {
+            masterKey = CryptoJS.AES.decrypt(val.mk, myGuestKey).toString(CryptoJS.enc.Utf8);
+            if (masterKey) {
+               update(myPresRef, { mk: null }); // mkのクリーンアップ
+               
+               D.waitMod.classList.remove("show");
+               if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
+               
+               enterChatUI(roomData);
+               // 入室通知はホストが代理送信済みのためゲスト側からは二重送信しない
             }
-          });
-          
-          D.waitCancelBtn.onclick = () => { doExit(); };
-        }
+          }
+        });
+        
+        D.waitCancelBtn.onclick = () => { doExit(); };
 
       } else {
         if (!pass) throw new Error("承認制ではありません。パスワードが必要です。");
@@ -1526,7 +1567,7 @@ D.gdBtn.onclick = () => D.gmod.classList.add("show");
 D.gcBtn.onclick = () => D.gmod.classList.remove("show");
 document.querySelectorAll(".mod-overlay").forEach(m => { m.onclick = e => { if(e.target === m || m.id === "imgViewMod") m.classList.remove("show"); }; });
 
-// ズームモーダル用ロジック（2本指ピンチによる拡大縮小 ＋ 1本指パンによる位置移動に対応、親要素のtouch-action無効化による高滑らか性維持）
+// ズームモーダル用ロジック（2本指ピンチによる拡大縮小 ＋ 1本指パンによる位置移動に対応、親要素のtouch-action無協化による高滑らか性維持）
 let scale = 1, panX = 0, panY = 0;
 let lastPanX = 0, lastPanY = 0, isPanning = false;
 const imgEl = D.imgViewSrc;

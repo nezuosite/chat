@@ -515,6 +515,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <h3 style="font-size:12px;">カラーを変更</h3>
     <div class="clrpick-grid" id="clrPick2" style="margin:4px 0"></div>
     <div class="clr-prev" id="clrPrev"><span style="color:var(--usr-color)">■ この色で名前、トリップ、発言時刻が同期表示されます</span></div>
+    <div class="clr-prev" id="clrPrev"><span style="color:var(--usr-color)">■ この色で名前、トリップ、発言時刻が同期表示されます</span></div>
     <div class="clr-btns">
       <button class="clr-cancel" id="clrCancel">キャンセル</button>
       <button class="clr-ok" id="clrOk">適用</button>
@@ -522,7 +523,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   </div>
 </div>
 
-<!-- 画像拡大ビューモーダル（ピンチズーム＋1本指パン対応、スワイプダウン（ドラッグ）で閉じる直感UI、位置固定） -->
+<!-- 画像拡大ビューモーダル -->
 <div id="imgViewMod" class="mod-overlay">
   <img id="imgViewSrc" src="" alt="拡大画像">
   <button class="modal-bottom-close" style="position:fixed; bottom:16px; left:50%; transform:translateX(-50%); max-width:180px; z-index:10001;" id="imgViewCloseBtn">閉じる</button>
@@ -576,6 +577,10 @@ const D = {
 
 const SYSTEM_SALT = "NEZU_PRO_SYS_SALT_2026_V1"; 
 
+// 修正：未定義だったキーボード固定状態、および自動スクロール状態の管理変数を追加
+let keepKbOpen = false;
+let isAutoScroll = true;
+
 // モバイルキーボード表示時の伸縮レイアウト補正 (VisualViewport APIの最適化)
 if (window.visualViewport) {
   const onViewportChange = () => {
@@ -614,14 +619,25 @@ let isHost = false;
 let myGuestKey = null;
 let targetDelId = null;
 
+// 修正：CryptoJSの鍵自動派生による不整合を防ぐため、常にWordArrayに変換して処理するセキュアなヘルパーを導入
+const parseKeyWA = (key) => {
+  if (!key) return null;
+  if (typeof key === "string") {
+    // 16進数文字列（Hex）であればHex.parse、そうでなければ通常のUtf8文字列として解釈
+    return /^[0-9a-fA-F]+$/.test(key) ? CryptoJS.enc.Hex.parse(key) : CryptoJS.enc.Utf8.parse(key);
+  }
+  return key;
+};
+
 // E2E暗号化を完全に保証するオリジナル暗号モデル
 const enc = (t, key = masterKey) => {
   if (!t || !key) return "";
+  const keyWA = parseKeyWA(key); // 修正：WordArray化して鍵自動派生による不整合を防ぐ
   const iv = CryptoJS.lib.WordArray.random(16);
-  const ct = CryptoJS.AES.encrypt(t, key, { iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 });
+  const ct = CryptoJS.AES.encrypt(t, keyWA, { iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 });
   const ivHex = iv.toString(CryptoJS.enc.Hex);
   const ctStr = ct.toString();
-  const mac = CryptoJS.HmacSHA256(ivHex + ":" + ctStr, key).toString();
+  const mac = CryptoJS.HmacSHA256(ivHex + ":" + ctStr, keyWA).toString();
   return ivHex + ":" + ctStr + ":" + mac;
 };
 
@@ -629,15 +645,22 @@ const enc = (t, key = masterKey) => {
 const dec = (c, key = masterKey) => {
   if (!c || !key) return null;
   try {
+    const keyWA = parseKeyWA(key); // 修正：WordArray化して鍵自動派生による不整合を防ぐ
     const parts = c.split(":");
     if (parts.length >= 3) {
       const ivHex = parts[0], ct = parts[1], mac = parts[2];
-      if (CryptoJS.HmacSHA256(ivHex + ":" + ct, key).toString() !== mac) return null;
+      if (CryptoJS.HmacSHA256(ivHex + ":" + ct, keyWA).toString() !== mac) {
+        console.error("HMAC検証に失敗しました。パスワード（暗号化キー）が不一致の可能性があります。");
+        return null;
+      }
       const iv = CryptoJS.enc.Hex.parse(ivHex);
-      return CryptoJS.AES.decrypt(ct, key, { iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }).toString(CryptoJS.enc.Utf8) || null;
+      return CryptoJS.AES.decrypt(ct, keyWA, { iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }).toString(CryptoJS.enc.Utf8) || null;
     }
     return null;
-  } catch { return null; }
+  } catch (e) {
+    console.error("復号処理で例外が発生しました:", e);
+    return null;
+  }
 };
 
 let _srvOff = 0;
@@ -690,7 +713,10 @@ D.timeri.addEventListener("blur", (e) => { e.target.value = clampTimer(e.target.
 const updateTimerUIFromVal = async (val) => {
   if (curR && isHost) {
       _roomExpireAt = srvNow() + (val * 60000);
-      await update(ref(db, `rooms/${curR}`), { expireAt: _roomExpireAt });
+      await update(ref(db, `rooms/${curR}`), { expireAt: _roomExpireAt }).catch(e => {
+        console.error("Firebaseタイマー更新エラー:", e);
+        showToast("❌ 制限時間の更新に失敗しました");
+      });
       showToast("✅ 寿命を更新");
   }
 };
@@ -713,7 +739,10 @@ D.roomModeToggleBtn.onclick = async () => {
   if (!curR || !isHost) return;
   isRoomApproveMode = !isRoomApproveMode;
   updateRoomModeBtnUI();
-  await update(ref(db, `rooms/${curR}`), { requireApproval: isRoomApproveMode });
+  await update(ref(db, `rooms/${curR}`), { requireApproval: isRoomApproveMode }).catch(e => {
+    console.error("Firebaseモード変更エラー:", e);
+    showToast("❌ モード変更に失敗しました");
+  });
   showToast(isRoomApproveMode ? "🔒 承認制モードON" : "🔓 オープンモードON");
 };
 
@@ -896,8 +925,20 @@ function cMsg(msg) {
 
   const metaStr = dec(msg.meta, masterKey);
   const txt = dec(msg.m, masterKey);
-  // 復号できないメッセージ（鍵の不整合、他セッションの残骸など）も非表示にする
-  if (!metaStr || !txt) return null; 
+  
+  // 修正：復号エラーが発生した際にサイレントで失敗せず、詳細をログに出力した上で警告UIをレンダリング（原因特定を容易にするため）
+  if (!metaStr || !txt) {
+    console.error(`復号エラー (ID: ${msg.id})`, { metaStr, txt, masterKey });
+    
+    const d = document.createElement("div");
+    d.dataset.mid = msg.id;
+    d.dataset.ts = msgTs;
+    d.className = "sys-msg";
+    d.style.borderColor = "rgba(244,63,94,0.3)";
+    d.style.color = "#fda4af";
+    d.innerHTML = `⚠️ 復号エラー (ID: ${msg.id ? msg.id.substring(0,8) : '???'}) - パスワードが異なるか、データが破損しています。`;
+    return d;
+  }
   
   let meta; try { meta = JSON.parse(metaStr); } catch { return null; }
 
@@ -945,7 +986,10 @@ D.delCancelBtn.onclick = () => { D.delConfirmMod.classList.remove("show"); targe
 D.delExecuteBtn.onclick = async () => {
   if (curR && targetDelId) {
     if (confirm("本当にこのメッセージを物理削除しますか？\nこの操作は元に戻せません。")) {
-      await remove(ref(db, `chat/${curR}/${targetDelId}`)).catch(()=>{});
+      await remove(ref(db, `chat/${curR}/${targetDelId}`)).catch(e => {
+        console.error("削除エラー:", e);
+        showToast("❌ メッセージの削除に失敗しました");
+      });
       showToast("✅ 削除完了");
     }
   }
@@ -1009,6 +1053,8 @@ async function sendSysMsg(text) {
     m: enc(text, masterKey), 
     t: serverTimestamp(),
     timestamp: serverTimestamp() // UTCタイムスタンプ必須項目追加
+  }).catch(e => {
+    console.error("システムメッセージ送信失敗:", e);
   });
 }
 
@@ -1102,7 +1148,7 @@ async function checkCurrentRoomStatus() {
   } catch { D.roomResumeArea.style.display = "none"; }
 }
 
-// 承認処理 (ホスト側が代理となってゲスト情報を暗号化・通知プッシュまでを即時完結。DBのヌル安全チェックを大幅に強化)
+// 承認処理 (ホスト側が代理となってゲスト情報を暗号化・通知プッシュまでを即時完結)
 window.approveGuest = async (guestUid, guestKey) => {
   if (!isHost || !masterKey) return;
   try {
@@ -1127,7 +1173,9 @@ window.approveGuest = async (guestUid, guestKey) => {
     }
 
     // 2. ホスト側でゲスト用メタデータを代理暗号化
-    const encryptedMasterKey = CryptoJS.AES.encrypt(masterKey, guestKey).toString();
+    // 修正：guestKey（Hex文字列）を parseKeyWA で適切に変換して自動派生バグを防ぐ
+    const guestKeyWA = parseKeyWA(guestKey);
+    const encryptedMasterKey = CryptoJS.AES.encrypt(masterKey, guestKeyWA).toString();
     const guestEncryptedMeta = enc(JSON.stringify({ n: guestName, p: guestTrip, c: guestColor }), masterKey);
 
     // 3. アトミックなDB更新処理により、オフライン・バックグラウンド時でも在室者リストの描画整合性を担保
@@ -1146,7 +1194,10 @@ window.approveGuest = async (guestUid, guestKey) => {
     await sendSysMsg(`${guestTrip ? guestTrip + " " : ""}${guestName} が承認され入室しました`);
 
     showToast("✅ 承認してメンバーに昇格しました");
-  } catch (e) { alert("承認に失敗しました"); }
+  } catch (e) { 
+    console.error("ゲスト承認失敗:", e);
+    alert("承認に失敗しました: " + e.message); 
+  }
 };
 
 window.rejectGuest = async (guestUid) => {
@@ -1275,14 +1326,18 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         const myPresSnap = await get(myPresRef);
         if (myPresSnap.exists() && myPresSnap.val().status === "approved" && myPresSnap.val().mk && authLocalKey) {
           try {
-            const decryptedMk = CryptoJS.AES.decrypt(myPresSnap.val().mk, authLocalKey).toString(CryptoJS.enc.Utf8);
+            // 修正：authLocalKeyを parseKeyWA でWordArray化して確実に復号する
+            const authKeyWA = parseKeyWA(authLocalKey);
+            const decryptedMk = CryptoJS.AES.decrypt(myPresSnap.val().mk, authKeyWA).toString(CryptoJS.enc.Utf8);
             if (decryptedMk) {
               masterKey = decryptedMk;
               await update(myPresRef, { mk: null }); // mkを使い捨てクリーンアップ
               enterChatUI(roomData, pass);
               return;
             }
-          } catch(e){}
+          } catch(e){
+            console.error("オフライン承認復号エラー:", e);
+          }
         }
 
         // 永続認可(authorized_users)の照合による承認スキップ（仕様3: サイレント復帰）
@@ -1290,7 +1345,9 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
           try {
             const authSnap = await get(ref(db, `authorized_users/${hashId}/${myUid}`));
             if (authSnap.exists() && authSnap.val().mk) {
-              const decryptedMk = CryptoJS.AES.decrypt(authSnap.val().mk, authLocalKey).toString(CryptoJS.enc.Utf8);
+              // 修正：authLocalKeyを parseKeyWA でWordArray化して確実に復号する
+              const authKeyWA = parseKeyWA(authLocalKey);
+              const decryptedMk = CryptoJS.AES.decrypt(authSnap.val().mk, authKeyWA).toString(CryptoJS.enc.Utf8);
               if (decryptedMk) {
                 masterKey = decryptedMk;
                 const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
@@ -1299,7 +1356,9 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
                 return;
               }
             }
-          } catch (e) { /* 復号失敗時は通常の承認フローへフォールバック */ }
+          } catch (e) {
+            console.error("永続認可復号エラー (フォールバックします):", e);
+          }
         }
 
         // 通常の新規の承認申請フロー
@@ -1315,20 +1374,24 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         D.waitModTrip.textContent = `${name} ${trip}`;
         D.waitMod.classList.add("show");
         
-        // ゲスト側の常時待機監視。ホスト側の代理書き込みを検知した瞬間、即座に入室（爆速化）
+        // ゲスト側の常時待機監視。ホスト側の代理書き込みを検知した瞬間、即座に入室
         _waitPresOff = onValue(myPresRef, (s) => {
           if (!s.exists()) return;
           const val = s.val();
           if (val.status === "approved" && val.mk) {
             try {
-              const decryptedMk = CryptoJS.AES.decrypt(val.mk, myGuestKey).toString(CryptoJS.enc.Utf8);
+              // 修正：myGuestKey を parseKeyWA で WordArray にパースして復号する
+              const guestKeyWA = parseKeyWA(myGuestKey);
+              const decryptedMk = CryptoJS.AES.decrypt(val.mk, guestKeyWA).toString(CryptoJS.enc.Utf8);
               if (decryptedMk) {
                  masterKey = decryptedMk;
                  D.waitMod.classList.remove("show");
                  if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
                  enterChatUI(roomData, pass);
               }
-            } catch(e){}
+            } catch(e){
+              console.error("承認キー復号失敗:", e);
+            }
           }
         });
         
@@ -1345,7 +1408,10 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         enterChatUI(roomData, pass);
       }
     }
-  } catch (e) { showLobby("エラー: " + e.message); }
+  } catch (e) { 
+    console.error("入室処理全体エラー:", e);
+    showLobby("エラー: " + e.message); 
+  }
 }
 
 function enterChatUI(roomData, pass) {
@@ -1353,12 +1419,12 @@ function enterChatUI(roomData, pass) {
   D.app.style.display = "flex"; D.app.classList.add("visible");
   D.ib.classList.add("show"); D.rdsp.textContent = rawR;
 
-  // セッション状態を確実にマーク（再入室、自動入室時のサイレント処理を保証）
+  // セッション状態を確実にマーク
   localStorage.setItem("nz_active_ri", rawR); 
   localStorage.setItem("nz_active_created", roomData.created);
   localStorage.setItem("nz_is_in_room", "true");
   localStorage.setItem(`nz_entered_${curR}`, "true");
-  // リロード引き戻し復号用のパスワード（pass）をローカルに完全同期させ、発言不能不具合を修復
+  // リロード引き戻し復号用のパスワードをローカルに完全同期させ、発言不能不具合を修復
   if (pass) {
     localStorage.setItem("nz_pi_val", pass);
   }
@@ -1394,7 +1460,7 @@ function enterChatUI(roomData, pass) {
     if(isHost) { isRoomApproveMode = requireApproval; updateRoomModeBtnUI(); }
   });
 
-  // 在室者リストの描画（rAFでスロットリングし連続更新をまとめて描画：仕様1）
+  // 在室者リストの描画
   function renderPresenceList(s) {
     if (!curR) return;
     const fg = document.createDocumentFragment(); let count = 0;
@@ -1433,7 +1499,7 @@ function enterChatUI(roomData, pass) {
   }
   _pOff = onValue(ref(db, `presence/${curR}`), rafThrottle(renderPresenceList));
 
-  // ホスト専用の pending 監視（rAFスロットリング：仕様1）
+  // ホスト専用の pending 監視
   if (isHost) {
     function renderPendingList(s) {
       if (!curR || !isHost) return;
@@ -1483,7 +1549,7 @@ function enterChatUI(roomData, pass) {
   isLiveMode = true; hideSplash(); setTimeout(()=> scBottom(true), 300);
 }
 
-// 切断監視 (接続、再接続の表示処理を廃止し、バックグラウンドでの同期のみを行うサイレント仕様)
+// 切断監視
 let _wasDisconnected = false;
 
 function initConnectionMonitor() {
@@ -1498,10 +1564,6 @@ function initConnectionMonitor() {
       }
     }
   });
-}
-
-function showConnBanner(msg, cls, autoHideMs) {
-  // 接続・再接続通知の非表示化
 }
 
 async function forceResync() {
@@ -1532,7 +1594,9 @@ async function forceResync() {
       _exitLock = true; showLobby("部屋が削除されました。"); return;
     }
     if (isLiveMode) scBottom(true);
-  } catch (e) { }
+  } catch (e) {
+    console.error("再同期に失敗しました:", e);
+  }
 }
 
 document.addEventListener("visibilitychange", () => {
@@ -1577,7 +1641,9 @@ async function sendMsg(overrideText = null, imgData = null) {
     });
   } catch (e) {
     removeMessageEl(cid);
-    alert("送信に失敗しました");
+    // 修正：サイレント失敗を防ぎ、Firebaseエラー（セキュリティルール拒否等）をトーストとログで可視化
+    console.error("Firebaseへのメッセージ送信に失敗しました:", e);
+    showToast(`❌ 送信失敗: ${e.message}`);
   }
 }
 
@@ -1634,6 +1700,53 @@ D.gnBtn.onclick = () => {
 D.gdBtn.onclick = () => D.gmod.classList.add("show");
 D.gcBtn.onclick = () => D.gmod.classList.remove("show");
 document.querySelectorAll(".mod-overlay").forEach(m => { m.onclick = e => { if(e.target === m || m.id === "imgViewMod") m.classList.remove("show"); }; });
+
+// 修正：未定義だった自動スクロール(最下部スクロール)処理の実装
+const scBottom = (force = false) => {
+  if (!isAutoScroll && !force) return;
+  requestAnimationFrame(() => {
+    D.tl.scrollTop = D.tl.scrollHeight;
+    updateJumpBtns();
+  });
+};
+
+// 修正：未定義だったキーボード固定トグルと自動追従トグルのバインド処理を定義
+D.kbToggleBtn.onclick = () => {
+  keepKbOpen = !keepKbOpen;
+  D.kbToggleBtn.classList.toggle("active", keepKbOpen);
+  D.kbStatusText.textContent = keepKbOpen ? "KB:開" : "KB:閉";
+  D.kbStatusText.style.color = keepKbOpen ? "#fff" : "var(--tx)";
+  showToast(keepKbOpen ? "⌨️ 送信後も入力欄にフォーカスを維持します" : "⌨️ 送信後に入力フォーカスを外します");
+};
+
+D.autoScrollToggleBtn.onclick = () => {
+  isAutoScroll = !isAutoScroll;
+  D.autoScrollToggleBtn.classList.toggle("active", isAutoScroll);
+  D.autoScrollStatusText.textContent = isAutoScroll ? "追従:ON" : "追従:OFF";
+  D.autoScrollStatusText.style.color = isAutoScroll ? "#fff" : "var(--tx)";
+  showToast(isAutoScroll ? "📜 新着ログに追従スクロールします" : "📜 スクロール追従をオフにしました");
+};
+
+// 修正：未定義だったジャンプボタン（▲▼）の更新状態制御とスクロール監視の追加
+const updateJumpBtns = () => {
+  const sTop = D.tl.scrollTop;
+  const sHeight = D.tl.scrollHeight;
+  const cHeight = D.tl.clientHeight;
+  
+  // 先頭へジャンプの有効／無効
+  D.jumpUpBtn.disabled = sTop <= 10;
+  // 最新へジャンプの有効／無効
+  D.jumpDownBtn.disabled = sTop + cHeight >= sHeight - 10;
+};
+
+D.tl.addEventListener("scroll", updateJumpBtns);
+
+D.jumpUpBtn.onclick = () => {
+  D.tl.scrollTo({ top: 0, behavior: "smooth" });
+};
+D.jumpDownBtn.onclick = () => {
+  D.tl.scrollTo({ top: D.tl.scrollHeight, behavior: "smooth" });
+};
 
 // ズームモーダル用ロジック（2本指ピンチによる拡大縮小 ＋ 1本指パンによる位置移動に対応、親要素のtouch-action無効化による高滑らか性維持）
 let scale = 1, panX = 0, panY = 0;
@@ -1756,6 +1869,9 @@ onAuthStateChanged(auth, async user => {
   
   const savedActiveRi = localStorage.getItem("nz_active_ri"), savedActiveCreated = localStorage.getItem("nz_active_created"), savedNi = localStorage.getItem("nz_ni"), savedPi = localStorage.getItem("nz_pi_val"), savedTripKey = localStorage.getItem("nz_tripi"), savedTimer = parseInt(localStorage.getItem("nz_timer_val")) || 30;
   
+  // 修正：自動再入室がスキップされた場合のデバッグ用ログ出力を定義（リロード連携の追跡を容易にするため）
+  console.log("自動再入室パラメータ検証:", { savedActiveRi, savedActiveCreated, savedNi, savedPi, savedTripKey });
+
   // 複窓対策およびリロード引き戻し自動再入室 (同意画面を自動スキップ)
   if (savedActiveRi && savedActiveCreated && savedNi && savedTripKey) {
     try {
@@ -1774,7 +1890,9 @@ onAuthStateChanged(auth, async user => {
         await doJoin(savedActiveRi, savedPi, savedNi, tripStyled, savedTimer, snap.val().requireApproval);
         return; 
       }
-    } catch(e) { }
+    } catch(e) {
+      console.error("自動再入室フローでエラーが発生しました:", e);
+    }
   }
 
   if (urlR) { 

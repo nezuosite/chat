@@ -433,7 +433,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 
 <div id="toastContainer"></div>
 
-<!-- 发言削除確認モーダル (左右分離・警告赤色最適化) -->
+<!-- 発言削除確認モーダル (左右分離・警告赤色最適化) -->
 <div id="delConfirmMod" class="mod-overlay">
   <div class="gc" style="max-width:320px;">
     <h3 style="font-size:13px; color:var(--ro);">⚠️ 発言の削除確認</h3>
@@ -1023,16 +1023,24 @@ async function sendSysMsg(text) {
 // 退室ボタンクリック等による明示的な退室
 window.doExit = async () => {
   _exitLock = true; 
+  const hashId = curR;
   if (curR && masterKey && localStorage.getItem("nz_is_in_room") === "true") {
     await sendSysMsg(`${localStorage.getItem("nz_mytrip_styled")||""} ${curN} が退室しました`);
     if(myPresRef) await remove(myPresRef).catch(()=>{});
     await remove(ref(db, `pending/${curR}/${myUid}`)).catch(()=>{});
+    // 退室後の再入室時は承認を必要とするため、この部屋における永続認可データ(authorized_users)をFirebaseから削除
+    await remove(ref(db, `authorized_users/${curR}/${myUid}`)).catch(()=>{});
     
     const pSnap = await get(ref(db, `presence/${curR}`));
     const members = pSnap.val();
     if (!members || Object.keys(members).length === 0) {
       await wipe(curR).catch(()=>{});
     }
+  }
+  // セッション情報と入室履歴フラグ(nz_entered_${hashId})を削除し、再入室時のお知らせログ出力を有効にする
+  if (hashId) {
+    localStorage.removeItem(`nz_entered_${hashId}`);
+    localStorage.removeItem(`nz_authkey_${hashId}`);
   }
   localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created"); localStorage.setItem("nz_is_in_room", "false");
   if (window.history?.replaceState) window.history.replaceState({}, document.title, location.pathname);
@@ -1417,20 +1425,17 @@ function enterChatUI(roomData) {
   isLiveMode = true; hideSplash(); setTimeout(()=> scBottom(true), 300);
 }
 
-// 切断監視（システム通知は上部 connBanner に集約、トーストやアラート等による割込みを排除：仕様4）
+// 切断監視 (接続、再接続の表示処理を廃止し、バックグラウンドでの同期のみを行うサイレント仕様へ変更)
 let _wasDisconnected = false;
-let _connBannerTimer = null;
 
 function initConnectionMonitor() {
   onValue(ref(db, ".info/connected"), (snap) => {
     const connected = snap.val() === true;
     if (!connected) {
       _wasDisconnected = true;
-      if (curR) showConnBanner("🔌 通信が切断されました。再接続中...", "reconnecting", 0);
     } else if (_wasDisconnected) {
       _wasDisconnected = false;
       if (curR) {
-        showConnBanner("✅ 再接続しました", "restored", 2500);
         forceResync();
       }
     }
@@ -1438,11 +1443,7 @@ function initConnectionMonitor() {
 }
 
 function showConnBanner(msg, cls, autoHideMs) {
-  if (!D.connBanner) return;
-  clearTimeout(_connBannerTimer);
-  D.connBanner.textContent = msg;
-  D.connBanner.className = "show " + cls;
-  if (autoHideMs > 0) { _connBannerTimer = setTimeout(() => { D.connBanner.classList.remove("show"); }, autoHideMs); }
+  // 接続・再接続通知の非表示化に伴い本機能はサイレント化
 }
 
 async function forceResync() {

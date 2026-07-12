@@ -140,6 +140,11 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 #waitBadge{display:none; background:var(--ro); color:#fff; font-size:8px; font-weight:900; padding:1px 4px; border-radius:6px; margin-left:-2px; animation:pulseGlow 2s infinite;}
 #waitBadge.show{display:inline-block;}
 
+/* 誤操作防止: モーダル内ボタンの左右分離用レイアウト（旧バージョンで未定義だったため追加） */
+.wait-btns{display:flex; gap:16px; margin-top:6px;}
+.wait-trip-box{background:var(--s2); border:1px solid var(--bd); border-radius:6px; padding:10px; text-align:center; margin:6px 0;}
+.del-modal-text{background:var(--s2); border:1px solid var(--bd); border-radius:6px; padding:8px; font-size:11px; color:var(--tx); max-height:120px; overflow-y:auto; word-break:break-all; white-space:pre-wrap; margin:4px 0;}
+
 #connBanner{position:fixed; top:0; left:0; right:0; z-index:10001; text-align:center; font-size:10px; font-weight:bold; padding:4px; padding-top:calc(4px + env(safe-area-inset-top,0px)); display:none; transform:translateY(-100%); transition:transform 0.2s ease;}
 #connBanner.show{display:block; transform:translateY(0);}
 #connBanner.reconnecting{background:rgba(244,63,94,.92); color:#fff;}
@@ -224,27 +229,6 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .gs h4{font-size:11.5px;margin-bottom:2px;font-weight:800}
 
 .clr-prev{background:var(--bg);padding:8px;border-radius:6px;text-align:center;font-size:11px;font-weight:700}
-
-/* モーダル内ボタンレイアウト（左右分離・危険色分離） */
-.wait-btns {
-  display: flex;
-  justify-content: space-between;
-  width: 100%;
-  gap: 24px;
-  margin-top: 12px;
-}
-#delCancelBtn {
-  background: var(--sf);
-  color: var(--tx);
-  border: 1px solid var(--bd);
-  flex: 1;
-}
-#delExecuteBtn {
-  background: var(--ro) !important;
-  color: #fff !important;
-  flex: 1;
-}
-
 .clr-btns{display:flex;gap:6px;margin-top:2px}
 .clr-cancel,.clr-ok{flex:1;padding:8px;border-radius:6px;font-size:11px;font-weight:700;text-align:center}
 .clr-cancel{background:var(--bg);border:1px solid var(--bd);color:var(--tx)}
@@ -453,10 +437,10 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   <div class="gc" style="max-width:320px;">
     <h3 style="font-size:13px; color:var(--ro);">⚠️ 発言の削除確認</h3>
     <div style="font-size:10px; color:var(--mu);">以下の発言を完全に消去しますか？（復元できません）</div>
-    <div id="delConfirmPreview" style="font-size: 11px; background: rgba(0,0,0,0.1); padding: 8px; border-radius: 4px; max-height: 100px; overflow-y: auto; margin-top: 6px; border-left: 2px solid var(--ro); word-break: break-all;"></div>
+    <div id="delConfirmPreview" class="del-modal-text"></div>
     <div class="wait-btns">
-      <button class="btn bq" id="delCancelBtn">戻る</button>
-      <button class="btn bp" id="delExecuteBtn">完全に削除</button>
+      <button class="btn bq" id="delCancelBtn" style="flex:1;">戻る</button>
+      <button class="btn bp" id="delExecuteBtn" style="flex:1; background:var(--ro);">完全に削除</button>
     </div>
   </div>
 </div>
@@ -510,7 +494,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   </div>
 </div>
 
-<!-- 画像拡大ビューモーダル（ピンチズーム・パン対応） -->
+<!-- 画像拡大ビューモーダル（ピンチズーム＋1本指パン対応、位置固定） -->
 <div id="imgViewMod" class="mod-overlay">
   <img id="imgViewSrc" src="" alt="拡大画像">
   <button class="modal-bottom-close" style="position:fixed; bottom:16px; left:50%; transform:translateX(-50%); max-width:180px; z-index:10001;" id="imgViewCloseBtn">閉じる</button>
@@ -640,6 +624,8 @@ const copyToClip = (text) => {
 D.lbCopyTripBtn.onclick = () => copyToClip(`${D.ni.value || "名無し"} ${localStorage.getItem("nz_mytrip_styled")||""}`);
 D.waitCopyIdBtn.onclick = () => copyToClip(`${localStorage.getItem("nz_myname")} ${localStorage.getItem("nz_mytrip_styled")||""}`);
 D.copyUrlBtn.onclick = () => copyToClip(`${location.origin}${location.pathname}?r=${encodeURIComponent(rawR)}`);
+// 誤操作防止: 退室は取り返しがつかない操作のため確認ダイアログを挟む（以前はハンドラ自体が未接続だった）
+D.exBtn.onclick = () => { if (confirm("本当に退室しますか？")) doExit(); };
 
 const clampTimer = (val) => { let v = parseInt(val); if (isNaN(v)) return 30; return Math.max(1, Math.min(180, v)); };
 D.timeri.value = localStorage.getItem("nz_timer_val") || "30";
@@ -868,6 +854,8 @@ let curR = null, curN = null, rawR = null, myUid = null;
 let isW = false, _exitLock = false, isLiveMode = false, unreadCount = 0;
 let displayedMsgIds = new Set();
 let myPresRef = null, _roomExpireAt = null, _cOff = null, _pOff = null, _rOff = null, _crOff = null, _waitPresOff = null, _pendingOff = null;
+// リアルタイム受信メッセージのrAFバッチ描画用キュー（仕様1: パフォーマンス対応）
+let _msgQueue = [], _flushScheduled = false;
 
 let keepKbOpen = localStorage.getItem("nz_keep_kb") === "true";
 const updateKbBtnUI = () => {
@@ -924,41 +912,81 @@ function updateScrollBtnUI() {
 
 const scBottom = (force = false) => { if (force || (autoScrollEnabled && isLiveMode)) { D.tl.scrollTop = D.tl.scrollHeight; } };
 
-D.tl.addEventListener("scroll", () => {
-  requestAnimationFrame(updateScrollBtnUI);
-}, {passive:true});
+D.tl.addEventListener("scroll", updateScrollBtnUI, {passive:true});
+D.mi.addEventListener("focus", () => { isLiveMode = true; setTimeout(() => scBottom(true), 150); });
 
-D.mi.addEventListener("focus", () => { isLiveMode = true; setTimeout(() => {
-  requestAnimationFrame(() => scBottom(true));
-}, 150); });
+D.jumpUpBtn.onclick = () => { D.tl.scrollTop = 0; isLiveMode = false; updateScrollBtnUI(); };
+D.jumpDownBtn.onclick = () => { isLiveMode = true; scBottom(true); updateScrollBtnUI(); };
 
-D.jumpUpBtn.onclick = () => { D.tl.scrollTop = 0; isLiveMode = false; requestAnimationFrame(updateScrollBtnUI); };
-D.jumpDownBtn.onclick = () => { isLiveMode = true; requestAnimationFrame(() => scBottom(true)); };
+// DOM操作をrAFに介してメインスレッドのブロッキングを回避する軽量スロットラー（仕様1）
+function rafThrottle(fn) {
+  let scheduled = false, latestArgs = null;
+  return (...args) => {
+    latestArgs = args;
+    if (scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(() => { scheduled = false; fn(...latestArgs); });
+  };
+}
 
+function trimTimeline() {
+  while (D.tli.children.length > 100) {
+    const first = D.tli.firstElementChild;
+    if (!first) break;
+    displayedMsgIds.delete(first.dataset.mid);
+    if (first.dataset.cid) displayedMsgIds.delete(first.dataset.cid);
+    first.remove();
+  }
+}
+
+// 自分の発言（楽観的表示）は即時描画。1件だけなのでrAFを介す必要はない
 function renderSingleMessage(m) {
   if (displayedMsgIds.has(m.id)) return;
   const el = cMsg(m); 
   if (el) {
-    // DOM処理のMicroTask・requestAnimationFrame化
-    queueMicrotask(() => {
-      D.tli.appendChild(el); 
-      displayedMsgIds.add(m.id); 
-      if (m.u !== myUid && !m.sys) {
-          if (!isLiveMode) { 
-              unreadCount++; 
-              requestAnimationFrame(updateScrollBtnUI);
-          }
-      }
-      if(D.tli.children.length > 100) {
-          const first = D.tli.firstElementChild;
-          if(first) { 
-            displayedMsgIds.delete(first.dataset.mid); 
-            if(first.dataset.cid) displayedMsgIds.delete(first.dataset.cid);
-            first.remove(); 
-          }
-      }
-      requestAnimationFrame(() => scBottom());
-    });
+    D.tli.appendChild(el); 
+    displayedMsgIds.add(m.id); 
+    if (m.u !== myUid && !m.sys) {
+        if (!isLiveMode) { 
+            unreadCount++; 
+            updateScrollBtnUI();
+        }
+    }
+    trimTimeline();
+    scBottom();
+  }
+}
+
+// リアルタイム受信メッセージはrAF単位でバッチ描画し、連続受信時のブロッキングを回避（体感遅延は最大1フレーム）
+function queueIncomingMessage(m) {
+  _msgQueue.push(m);
+  if (!_flushScheduled) {
+    _flushScheduled = true;
+    requestAnimationFrame(flushIncomingMessages);
+  }
+}
+function flushIncomingMessages() {
+  _flushScheduled = false;
+  if (!curR || _msgQueue.length === 0) { _msgQueue = []; return; }
+  const batch = _msgQueue; _msgQueue = [];
+  const frag = document.createDocumentFragment();
+  let appended = 0, newUnread = 0;
+  for (const m of batch) {
+    if (displayedMsgIds.has(m.id)) continue;
+    const el = cMsg(m);
+    if (el) {
+      frag.appendChild(el);
+      displayedMsgIds.add(m.id);
+      appended++;
+      if (m.u !== myUid && !m.sys && !isLiveMode) newUnread++;
+    }
+  }
+  if (appended > 0) {
+    D.tli.appendChild(frag);
+    if (newUnread > 0) unreadCount += newUnread;
+    trimTimeline();
+    updateScrollBtnUI();
+    scBottom();
   }
 }
 
@@ -978,13 +1006,7 @@ function removeMessageEl(id) {
 
 async function wipe(r) {
   if (!r) return;
-  const updates = { 
-    [`rooms/${r}`]: null, 
-    [`chat/${r}`]: null, 
-    [`presence/${r}`]: null, 
-    [`pending/${r}`]: null,
-    [`authorized_users/${r}`]: null // 権限ノードも完全削除
-  };
+  const updates = { [`rooms/${r}`]: null, [`chat/${r}`]: null, [`presence/${r}`]: null, [`pending/${r}`]: null, [`authorized_users/${r}`]: null };
   try { await update(ref(db), updates); } catch (e) { }
 }
 
@@ -993,7 +1015,7 @@ async function sendSysMsg(text) {
   await push(ref(db, `chat/${curR}`), { sys: true, m: enc(text, masterKey), t: serverTimestamp() });
 }
 
-// 退室
+// 退室ボタンクリックなど明示的な操作の場合のみプレゼンス等削除を伴い退出
 window.doExit = async () => {
   _exitLock = true; 
   if (curR && masterKey && localStorage.getItem("nz_is_in_room") === "true") {
@@ -1020,6 +1042,7 @@ function clearAll() {
   if(typeof _waitPresOff === "function"){ _waitPresOff(); _waitPresOff = null; }
   if(typeof _pendingOff === "function"){ _pendingOff(); _pendingOff = null; }
   masterKey = null; isLiveMode = false; displayedMsgIds.clear(); D.tli.innerHTML = "";
+  _msgQueue = []; _flushScheduled = false;
   stopTimerLoop(); D.hostTimerCtrl.style.display = "none"; D.hostApprovePanel.style.display = "none"; D.hostModeCtrl.style.display = "none";
   stopWaitTicker(); _seenWaitIds.clear(); D.waitBadge.classList.remove("show");
 }
@@ -1074,21 +1097,18 @@ async function checkCurrentRoomStatus() {
   } catch { D.roomResumeArea.style.display = "none"; }
 }
 
-// 承認処理の超高速化 & 永続化
+// 承認処理の超高速化
 window.approveGuest = async (guestUid, guestKey) => {
   if (!isHost || !masterKey) return;
   try {
     const encryptedMasterKey = CryptoJS.AES.encrypt(masterKey, guestKey).toString();
     const guestMetaRef = ref(db, `presence/${curR}/${guestUid}`);
     await set(guestMetaRef, { status: "approved", mk: encryptedMasterKey });
-    
-    // authorized_usersノードにも永続承認情報（暗号化マスターキー）を書き込む
-    const authRef = ref(db, `authorized_users/${curR}/${guestUid}`);
-    await set(authRef, { mk: encryptedMasterKey });
-
+    // authorized_users: 永続的な権限管理（仕様3）。以後この端末は再入室時に承認をスキップできる
+    await set(ref(db, `authorized_users/${curR}/${guestUid}`), { mk: encryptedMasterKey, ts: serverTimestamp() });
     await remove(ref(db, `pending/${curR}/${guestUid}`));
     showToast("✅ 承認してメンバーに昇格しました");
-  } catch (e) { showToast("⚠️ 承認に失敗しました"); }
+  } catch (e) { alert("承認に失敗しました"); }
 };
 
 window.rejectGuest = async (guestUid) => {
@@ -1096,7 +1116,7 @@ window.rejectGuest = async (guestUid) => {
   try {
     await remove(ref(db, `pending/${curR}/${guestUid}`));
     showToast("🚫 入室申請を拒否しました");
-  } catch (e) { showToast("⚠️ 拒否に失敗しました"); }
+  } catch (e) { alert("拒否に失敗しました"); }
 };
 
 function formatElapsed(reqAt) {
@@ -1141,15 +1161,6 @@ function stopWaitTicker() { if (_waitTickTimer) { clearInterval(_waitTickTimer);
 async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
   try {
     clearAll(); _exitLock = false;
-    
-    // 再入室（リ rejoin）判定用の事前取得
-    let isRejoin = false;
-    const lastRi = localStorage.getItem("nz_active_ri");
-    const lastCreated = localStorage.getItem("nz_active_created");
-    if (lastRi === roomId && lastCreated) {
-      isRejoin = true;
-    }
-
     localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created");
 
     const hashId = getRoomHash(roomId);
@@ -1200,73 +1211,67 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         await update(myPresRef, { status: "approved", meta: enc(metaStr, masterKey), isHost: true });
         enterChatUI(roomData);
       } else if (roomData.requireApproval) {
-        // authorized_usersによる永続承認権限チェック
-        const authSnap = await get(ref(db, `authorized_users/${hashId}/${myUid}`));
-        if (authSnap.exists() && authSnap.val().mk) {
-          // すでに承認情報がある場合は、承認をスキップ（サイレント復帰・抑制）
-          let savedGuestKey = localStorage.getItem(`nz_gk_${hashId}`);
-          if (savedGuestKey) {
-            try {
-              masterKey = CryptoJS.AES.decrypt(authSnap.val().mk, savedGuestKey).toString(CryptoJS.enc.Utf8);
-            } catch (err) {
-              masterKey = null;
+        // 永続認可(authorized_users)の照合による無音再入室を先に試みる（仕様3: サイレント復帰）
+        const authLocalKey = localStorage.getItem(`nz_authkey_${hashId}`);
+        let silentResumed = false;
+
+        if (authLocalKey) {
+          try {
+            const authSnap = await get(ref(db, `authorized_users/${hashId}/${myUid}`));
+            if (authSnap.exists() && authSnap.val().mk) {
+              const decryptedMk = CryptoJS.AES.decrypt(authSnap.val().mk, authLocalKey).toString(CryptoJS.enc.Utf8);
+              if (decryptedMk) {
+                masterKey = decryptedMk;
+                const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
+                await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey), isHost: false });
+                // サイレント復帰: 承認をスキップし、システムログも出力しない
+                enterChatUI(roomData);
+                silentResumed = true;
+              }
             }
-          }
-          if (masterKey) {
-            const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
-            await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey) });
-            // システムメッセージ送信なし
-            enterChatUI(roomData);
-            localStorage.setItem("nz_active_ri", roomId); 
-            localStorage.setItem("nz_active_created", roomData.created);
-            localStorage.setItem("nz_is_in_room", "true");
-            return;
-          }
+          } catch (e) { /* 復号失敗時は通常の承認フローへフォールバック */ }
         }
 
-        // 新規申請
-        myGuestKey = CryptoJS.lib.WordArray.random(16).toString(); 
-        localStorage.setItem(`nz_gk_${hashId}`, myGuestKey); // サイレント復旧キー保存
-        const waitKey = CryptoJS.SHA256(SYSTEM_SALT + roomId).toString();
-        const waitMetaStr = JSON.stringify({ n: name, p: trip, c: curColor });
+        if (!silentResumed) {
+          myGuestKey = CryptoJS.lib.WordArray.random(16).toString();
+          localStorage.setItem(`nz_authkey_${hashId}`, myGuestKey);
+          const waitKey = CryptoJS.SHA256(SYSTEM_SALT + roomId).toString();
+          const waitMetaStr = JSON.stringify({ n: name, p: trip, c: curColor });
 
-        const pendingRef = ref(db, `pending/${hashId}/${myUid}`);
-        await set(pendingRef, { status: "waiting", gk: myGuestKey, wmeta: enc(waitMetaStr, waitKey), reqAt: serverTimestamp() });
-        
-        D.lobby.style.display = "none";
-        D.waitModTrip.textContent = `${name} ${trip}`;
-        D.waitMod.classList.add("show");
-        
-        _waitPresOff = onValue(myPresRef, (s) => {
-          if (!s.exists()) return;
-          const val = s.val();
-          if (val.status === "approved" && val.mk) {
-            masterKey = CryptoJS.AES.decrypt(val.mk, myGuestKey).toString(CryptoJS.enc.Utf8);
-            if (masterKey) {
-               const finalMetaStr = JSON.stringify({ n: name, p: trip, c: curColor });
-               update(myPresRef, { gk: null, mk: null, meta: enc(finalMetaStr, masterKey) });
-               
-               D.waitMod.classList.remove("show");
-               if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
-               
-               enterChatUI(roomData);
-               sendSysMsg(`${trip ? trip + " " : ""}${name} が承認され入室しました`);
+          const pendingRef = ref(db, `pending/${hashId}/${myUid}`);
+          await set(pendingRef, { status: "waiting", gk: myGuestKey, wmeta: enc(waitMetaStr, waitKey), reqAt: serverTimestamp() });
+          
+          D.lobby.style.display = "none";
+          D.waitModTrip.textContent = `${name} ${trip}`;
+          D.waitMod.classList.add("show");
+          
+          _waitPresOff = onValue(myPresRef, (s) => {
+            if (!s.exists()) return;
+            const val = s.val();
+            if (val.status === "approved" && val.mk) {
+              masterKey = CryptoJS.AES.decrypt(val.mk, myGuestKey).toString(CryptoJS.enc.Utf8);
+              if (masterKey) {
+                 const finalMetaStr = JSON.stringify({ n: name, p: trip, c: curColor });
+                 update(myPresRef, { gk: null, mk: null, meta: enc(finalMetaStr, masterKey) });
+                 
+                 D.waitMod.classList.remove("show");
+                 if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
+                 
+                 enterChatUI(roomData);
+                 sendSysMsg(`${trip ? trip + " " : ""}${name} が承認され入室しました`);
+              }
             }
-          }
-        });
-        
-        D.waitCancelBtn.onclick = () => { doExit(); };
+          });
+          
+          D.waitCancelBtn.onclick = () => { doExit(); };
+        }
 
       } else {
         if (!pass) throw new Error("承認制ではありません。パスワードが必要です。");
         masterKey = getMasterKey(roomId, pass);
         const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
         await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey) });
-        
-        // 再入室時はシステムメッセージ出力を抑制（サイレント復帰仕様）
-        if (!isRejoin) {
-          await sendSysMsg(`${trip ? trip + " " : ""}${name} が入室しました`);
-        }
+        await sendSysMsg(`${trip ? trip + " " : ""}${name} が入室しました`);
         enterChatUI(roomData);
       }
       localStorage.setItem("nz_active_ri", roomId); 
@@ -1312,7 +1317,8 @@ function enterChatUI(roomData) {
     if(isHost) { isRoomApproveMode = requireApproval; updateRoomModeBtnUI(); }
   });
 
-  _pOff = onValue(ref(db, `presence/${curR}`), s => {
+  // 在室者リストの描画（rAFでスロットリングし、連続presence更新時のDOM再構築を1フレームにまとめる：仕様1）
+  function renderPresenceList(s) {
     if (!curR) return;
     const fg = document.createDocumentFragment(); let count = 0;
     
@@ -1347,11 +1353,12 @@ function enterChatUI(roomData) {
       renderMember(id, u);
     }
     D.pl.innerHTML = ""; D.pl.appendChild(fg); D.pcnt.textContent = `[${count}人]`;
-  });
+  }
+  _pOff = onValue(ref(db, `presence/${curR}`), rafThrottle(renderPresenceList));
 
-  // ホスト専用の pending 監視
+  // ホスト専用の pending 監視（こちらもrAFスロットリング：仕様1）
   if (isHost) {
-    _pendingOff = onValue(ref(db, `pending/${curR}`), s => {
+    function renderPendingList(s) {
       if (!curR || !isHost) return;
       D.waitList.innerHTML = "";
       let waitCount = 0;
@@ -1375,7 +1382,8 @@ function enterChatUI(roomData) {
       }
       D.waitBadge.textContent = `🔔 ${waitCount}`;
       D.waitBadge.classList.toggle("show", waitCount > 0);
-    });
+    }
+    _pendingOff = onValue(ref(db, `pending/${curR}`), rafThrottle(renderPendingList));
   }
 
   _cOff = onChildAdded(query(ref(db, `chat/${curR}`), orderByChild("t"), limitToLast(100)), snap => {
@@ -1385,7 +1393,7 @@ function enterChatUI(roomData) {
       m.id = snap.key; 
       if (!m.t) m.t = Date.now(); 
       if (m.cid && displayedMsgIds.has(m.cid)) { removeMessageEl(m.cid); }
-      renderSingleMessage(m);
+      queueIncomingMessage(m);
     } 
   });
 
@@ -1393,9 +1401,7 @@ function enterChatUI(roomData) {
     removeMessageEl(snap.key);
   });
   
-  isLiveMode = true; hideSplash(); setTimeout(()=> {
-    requestAnimationFrame(() => scBottom(true));
-  }, 300);
+  isLiveMode = true; hideSplash(); setTimeout(()=> scBottom(true), 300);
 }
 
 // 切断監視
@@ -1440,7 +1446,7 @@ async function forceResync() {
     } else if (!_exitLock) {
       _exitLock = true; showLobby("部屋が削除されました。"); return;
     }
-    if (isLiveMode) requestAnimationFrame(() => scBottom(true));
+    if (isLiveMode) scBottom(true);
   } catch (e) { }
 }
 
@@ -1457,7 +1463,7 @@ async function sendMsg(overrideText = null, imgData = null) {
   
   D.mi.value = ""; D.mi.style.height = "auto";
   if (!keepKbOpen) D.mi.blur(); else D.mi.focus();
-  isLiveMode = true; requestAnimationFrame(() => scBottom(true));
+  isLiveMode = true; scBottom(true);
 
   const metaObj = { n: curN, p: localStorage.getItem("nz_mytrip_styled") || "", c: curColor };
   const cid = "opt_" + myUid + "_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
@@ -1468,7 +1474,7 @@ async function sendMsg(overrideText = null, imgData = null) {
     await push(ref(db, `chat/${curR}`), { u: myUid, cid: cid, meta: enc(JSON.stringify(metaObj), masterKey), m: enc(imgData ? "IMG::" + imgData : txt, masterKey), t: serverTimestamp() });
   } catch (e) {
     removeMessageEl(cid);
-    showToast("⚠️ 送信に失敗しました");
+    alert("送信に失敗しました");
   }
 }
 
@@ -1526,98 +1532,69 @@ D.gdBtn.onclick = () => D.gmod.classList.add("show");
 D.gcBtn.onclick = () => D.gmod.classList.remove("show");
 document.querySelectorAll(".mod-overlay").forEach(m => { m.onclick = e => { if(e.target === m || m.id === "imgViewMod") m.classList.remove("show"); }; });
 
-// ズームモーダル用ロジック (画像位置は1本指パン、2本指ピンチ拡大に対応)
-let scale = 1;
-let translateX = 0;
-let translateY = 0;
-let isDragging = false;
-let startX = 0;
-let startY = 0;
-let initialDistance = 0;
+// ズームモーダル用ロジック（2本指ピンチによる拡大縮小 ＋ 1本指パンによる位置移動に対応：仕様4）
+let scale = 1, panX = 0, panY = 0;
+let lastPanX = 0, lastPanY = 0, isPanning = false;
 const imgEl = D.imgViewSrc;
 const overlayEl = D.imgViewMod;
+let initialDistance = 0;
 
 function resetZoom() {
-  scale = 1;
-  translateX = 0;
-  translateY = 0;
+  scale = 1; panX = 0; panY = 0;
   updateTransform();
 }
 
 function updateTransform() {
-  imgEl.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+  imgEl.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
 }
 
 overlayEl.addEventListener('touchstart', (e) => {
   if (e.target === D.imgViewCloseBtn) return;
-  if (e.touches.length === 1) {
-    if (scale > 1) { // 拡大時のみパン可能（標準等倍時は位置固定）
-      isDragging = true;
-      startX = e.touches[0].clientX - translateX;
-      startY = e.touches[0].clientY - translateY;
-    }
-  } else if (e.touches.length === 2) {
-    isDragging = false;
+  if (e.touches.length === 2) {
+    isPanning = false;
     initialDistance = getDistance(e.touches[0], e.touches[1]);
+  } else if (e.touches.length === 1) {
+    isPanning = true;
+    lastPanX = e.touches[0].clientX;
+    lastPanY = e.touches[0].clientY;
   }
 }, { passive: true });
 
 overlayEl.addEventListener('touchmove', (e) => {
   if (e.target === D.imgViewCloseBtn) return;
-  if (isDragging && e.touches.length === 1 && scale > 1) {
-    translateX = e.touches[0].clientX - startX;
-    translateY = e.touches[0].clientY - startY;
-    updateTransform();
-  } else if (e.touches.length === 2) {
+  if (e.touches.length === 2) {
+    isPanning = false;
     const dist = getDistance(e.touches[0], e.touches[1]);
     const factor = dist / initialDistance;
-    scale = Math.max(1, Math.min(5, scale * factor)); // 縮小防止、等倍に自動吸着
+    scale = Math.max(0.5, Math.min(5, scale * factor));
     initialDistance = dist;
-    if (scale === 1) {
-      translateX = 0;
-      translateY = 0;
-    }
+    updateTransform();
+  } else if (e.touches.length === 1 && isPanning) {
+    const dx = e.touches[0].clientX - lastPanX;
+    const dy = e.touches[0].clientY - lastPanY;
+    panX += dx; panY += dy;
+    lastPanX = e.touches[0].clientX;
+    lastPanY = e.touches[0].clientY;
     updateTransform();
   }
 }, { passive: true });
 
 overlayEl.addEventListener('touchend', (e) => {
-  isDragging = false;
-  if (scale <= 1) {
-    resetZoom();
+  if (e.touches.length === 1) {
+    isPanning = true;
+    lastPanX = e.touches[0].clientX;
+    lastPanY = e.touches[0].clientY;
+  } else {
+    isPanning = false;
   }
-});
+}, { passive: true });
 
 overlayEl.addEventListener('wheel', (e) => {
   e.preventDefault();
   const delta = e.deltaY > 0 ? 0.9 : 1.1;
-  scale = Math.max(1, Math.min(5, scale * delta));
-  if (scale === 1) {
-    translateX = 0;
-    translateY = 0;
-  }
+  scale = Math.max(0.5, Math.min(5, scale * delta));
   updateTransform();
 }, { passive: false });
-
-overlayEl.addEventListener('mousedown', (e) => {
-  if (e.target === D.imgViewCloseBtn) return;
-  if (scale > 1) {
-    isDragging = true;
-    startX = e.clientX - translateX;
-    startY = e.clientY - translateY;
-  }
-});
-
-window.addEventListener('mousemove', (e) => {
-  if (!isDragging || scale <= 1) return;
-  translateX = e.clientX - startX;
-  translateY = e.clientY - startY;
-  updateTransform();
-});
-
-window.addEventListener('mouseup', () => {
-  isDragging = false;
-});
 
 function getDistance(t1, t2) {
   return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);

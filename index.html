@@ -36,12 +36,15 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .spt{font-size:9px;font-weight:800;color:var(--m2);letter-spacing:.2em}
 
+/* 同意画面 (ワンクッション) */
+#consent{display:none;position:fixed;inset:0;background:var(--bg);z-index:9500;overflow-y:auto;}
+
 /* ロビーUI (高密度化) */
 #lobby{display:none;position:fixed;inset:0;background:var(--bg);z-index:100;overflow-y:auto;}
-.lbo{height:auto;min-height:100%;display:flex;flex-direction:column;padding:4px 6px calc(4px + var(--safe));gap:2px;justify-content:center;max-width:360px;margin:0 auto}
+.lbo{height:auto;min-height:100%;display:flex;flex-direction:column;padding:4px 6px calc(4px + var(--safe));gap:6px;justify-content:center;max-width:360px;margin:0 auto}
 .lbt{font-size:12px;font-weight:900;color:#818cf8;text-align:center;letter-spacing:.05em}
 .lbsub{font-size:7px;font-weight:700;color:var(--m2);text-align:center;letter-spacing:.1em;margin-top:-2px}
-.lbi{display:flex;flex-direction:column;gap:4px;width:100%}
+.lbi{display:flex;flex-direction:column;gap:6px;width:100%}
 .ibox{background:rgba(79,70,229,.04);border:1px solid rgba(99,102,241,.15);border-radius:4px;padding:4px 6px;font-size:9.5px;color:var(--mu);line-height:1.3}
 .ibox b{color:#a5b4fc}
 #lberr{background:var(--rg);border:1px solid rgba(244,63,94,.3);border-radius:4px;padding:3px;font-size:10px;color:#fda4af;display:none;text-align:center;font-weight:bold}
@@ -291,6 +294,24 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 <div id="splash"><div class="spin"></div><div class="spt">NEZU ONETIME CHAT PRO</div></div>
 <div id="connBanner"></div>
 
+<!-- 同意画面 (ワンクッション) -->
+<div id="consent">
+  <div class="lbo" style="max-width:400px; padding:20px;">
+    <h2 class="lbt" style="font-size:16px; margin-bottom:8px;">⚠️ 免責事項・利用規約への同意</h2>
+    <div class="ibox" style="font-size:11px; margin-bottom:12px; max-height:250px; overflow-y:auto; background:rgba(255,255,255,0.02); border-color:var(--bd);">
+      <b>■ 完全秘匿・ゼロログ仕様について</b><br>
+      本チャットは、完全匿名かつ「ゼロ知識証明」に近いエンドツーエンド暗号化（E2EE）を採用しています。管理者を含む第三者はメッセージ内容を一切解読できません。<br><br>
+      <b>■ データの物理削除</b><br>
+      最後の一人が退室した瞬間、サーバー上の部屋に関連するすべてのデータ（部屋情報、メッセージ、暗号化キー）は物理的に完全消去されます。復元は100%不可能です。<br><br>
+      <b>■ 免責事項</b><br>
+      ・暗号化パスワードの紛失時、データの復号や復元は一切行えません。<br>
+      ・本システムの利用により生じた直接的、間接的損害について、開発者・運営者は一切の責任を負いません。<br>
+      ・違法行為、規約違反行為への利用は厳禁です。
+    </div>
+    <button class="btn bp" id="consentBtn" style="padding:12px; font-size:12px; width:100%;">上記に同意してチャットを始める</button>
+  </div>
+</div>
+
 <!-- ロビー画面 -->
 <div id="lobby">
   <div class="lbo">
@@ -539,6 +560,7 @@ const $   = id => document.getElementById(id);
 
 const D = {
   splash:$("splash"), lobby:$("lobby"), lberr:$("lberr"), app:$("app"), connBanner:$("connBanner"),
+  consent:$("consent"), consentBtn:$("consentBtn"),
   ni:$("ni"), tripi:$("tripi"), ri:$("ri"), pi:$("pi"), timeri:$("timeri"), chkApproveMode:$("chkApproveMode"),
   tripPreview:$("tripPreview"), tripPrevText:$("tripPrevText"), lbCopyTripBtn:$("lbCopyTripBtn"),
   enBtn:$("enBtn"), gnBtn:$("gnBtn"), gdBtn:$("gdBtn"), gmod:$("gmod"), gcBtn:$("gcBtn"),
@@ -630,16 +652,25 @@ D.ni.addEventListener("input", () => { localStorage.setItem("nz_ni", D.ni.value)
 D.tripi.addEventListener("input", () => { localStorage.setItem("nz_tripi", D.tripi.value); updateTripPreview(); });
 
 D.ri.addEventListener("input",  ()=>{ localStorage.setItem("nz_ri_val", D.ri.value); });
-D.pi.addEventListener("input",  ()=>{ localStorage.setItem("nz_pi_val", D.pi.value); });
+
+// 暗号化パスワードはsessionStorage（ブラウザ終了で自動揮発）で安全に保持
+D.pi.addEventListener("input",  ()=>{ sessionStorage.setItem("nz_pi_val", D.pi.value); });
 
 const copyToClip = (text) => { 
   navigator.clipboard.writeText(text).then(() => {
     showToast("✅ コピーしました"); 
   }); 
 };
+
+// URLフラグメント機能（#に暗号化パスワードを載せることでサーバーログからの漏洩を完全防止）
+D.copyUrlBtn.onclick = () => {
+  const pass = D.pi.value || sessionStorage.getItem("nz_pi_val") || "";
+  const fragment = pass ? `#${encodeURIComponent(pass)}` : "";
+  copyToClip(`${location.origin}${location.pathname}?r=${encodeURIComponent(rawR)}${fragment}`);
+};
+
 D.lbCopyTripBtn.onclick = () => copyToClip(`${D.ni.value || "名無し"} ${localStorage.getItem("nz_mytrip_styled")||""}`);
 D.waitCopyIdBtn.onclick = () => copyToClip(`${localStorage.getItem("nz_myname")} ${localStorage.getItem("nz_mytrip_styled")||""}`);
-D.copyUrlBtn.onclick = () => copyToClip(`${location.origin}${location.pathname}?r=${encodeURIComponent(rawR)}`);
 
 const clampTimer = (val) => { let v = parseInt(val); if (isNaN(v)) return 30; return Math.max(1, Math.min(180, v)); };
 D.timeri.value = localStorage.getItem("nz_timer_val") || "30";
@@ -997,18 +1028,32 @@ async function sendSysMsg(text) {
 window.doExit = async () => {
   _exitLock = true; 
   if (curR && masterKey && localStorage.getItem("nz_is_in_room") === "true") {
-    await sendSysMsg(`${localStorage.getItem("nz_mytrip_styled")||""} ${curN} が退室しました`);
+    await sendSysMsg(`${localStorage.getItem("nz_mytrip_styled")||""} ${curN} が退室しました`).catch(()=>{});
+    
+    // 自身のプレゼンスを削除する前に残りの人数をカウント
+    const pSnap = await get(ref(db, `presence/${curR}`));
+    const members = pSnap.val() || {};
+    
+    // 自分以外の有効な approved メンバーがいるかチェック
+    let otherApprovedCount = 0;
+    for (const [id, u] of Object.entries(members)) {
+      if (id !== myUid && u && u.status === "approved") {
+        otherApprovedCount++;
+      }
+    }
+
     if(myPresRef) await remove(myPresRef).catch(()=>{});
     await remove(ref(db, `pending/${curR}/${myUid}`)).catch(()=>{});
     
-    const pSnap = await get(ref(db, `presence/${curR}`));
-    const members = pSnap.val();
-    if (!members || Object.keys(members).length === 0) {
+    // 自分以外の生存者が0になった瞬間に物理ワイプ実行（ゼロログポリシーの厳守）
+    if (otherApprovedCount === 0) {
       await wipe(curR).catch(()=>{});
     }
   }
   localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created"); localStorage.setItem("nz_is_in_room", "false");
-  if (window.history?.replaceState) window.history.replaceState({}, document.title, location.pathname);
+  if (window.history?.replaceState) {
+    window.history.replaceState({}, document.title, location.pathname);
+  }
   clearAll(); showLobby();
 };
 
@@ -1054,7 +1099,7 @@ function showLobby(msg = "") {
   D.enBtn.disabled = false; D.enBtn.textContent = "入室 / 作成";
   
   D.ni.value = localStorage.getItem("nz_ni") || ""; D.tripi.value = localStorage.getItem("nz_tripi") || "";
-  D.ri.value = localStorage.getItem("nz_ri_val") || ""; D.pi.value = localStorage.getItem("nz_pi_val") || "";
+  D.ri.value = localStorage.getItem("nz_ri_val") || ""; D.pi.value = sessionStorage.getItem("nz_pi_val") || "";
   D.timeri.value = localStorage.getItem("nz_timer_val") || "30";
   updateTripPreview(); syncPickers(curColor); hideSplash(); checkCurrentRoomStatus();
 }
@@ -1142,7 +1187,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
   try {
     clearAll(); _exitLock = false;
     
-    // 再入室（リ rejoin）判定用の事前取得
+    // 再入室（rejoin）判定用の事前取得
     let isRejoin = false;
     const lastRi = localStorage.getItem("nz_active_ri");
     const lastCreated = localStorage.getItem("nz_active_created");
@@ -1519,7 +1564,7 @@ D.gnBtn.onclick = () => {
   for(let i=0; i<10; i++) r += c[Math.floor(Math.random()*c.length)];
   for(let i=0; i<12; i++) p += c[Math.floor(Math.random()*c.length)];
   D.ri.value = r; D.pi.value = p;
-  localStorage.setItem("nz_ri_val", r); localStorage.setItem("nz_pi_val", p);
+  localStorage.setItem("nz_ri_val", r); sessionStorage.setItem("nz_pi_val", p);
 };
 
 D.gdBtn.onclick = () => D.gmod.classList.add("show");
@@ -1629,9 +1674,24 @@ onAuthStateChanged(auth, async user => {
   myUid = user.uid; if (isInit) return; isInit = true;
   initConnectionMonitor();
 
-  const sp = new URLSearchParams(location.search), urlR = sp.get("r");
+  // URLパラメータとフラグメント(#以降)から部屋情報を安全に取得
+  const sp = new URLSearchParams(location.search);
+  const urlR = sp.get("r");
+  let urlP = "";
+  if (location.hash) {
+    urlP = decodeURIComponent(location.hash.substring(1));
+  }
   
-  const savedActiveRi = localStorage.getItem("nz_active_ri"), savedActiveCreated = localStorage.getItem("nz_active_created"), savedNi = localStorage.getItem("nz_ni"), savedPi = localStorage.getItem("nz_pi_val"), savedTripKey = localStorage.getItem("nz_tripi"), savedTimer = parseInt(localStorage.getItem("nz_timer_val")) || 30;
+  if (urlR) { 
+    D.ri.value = urlR; 
+    localStorage.setItem("nz_ri_val", urlR); 
+  }
+  if (urlP) {
+    D.pi.value = urlP;
+    sessionStorage.setItem("nz_pi_val", urlP);
+  }
+  
+  const savedActiveRi = localStorage.getItem("nz_active_ri"), savedActiveCreated = localStorage.getItem("nz_active_created"), savedNi = localStorage.getItem("nz_ni"), savedPi = sessionStorage.getItem("nz_pi_val"), savedTripKey = localStorage.getItem("nz_tripi"), savedTimer = parseInt(localStorage.getItem("nz_timer_val")) || 30;
   
   // 複窓対策およびリロード引き戻し自動再入室
   if (savedActiveRi && savedActiveCreated && savedNi && savedTripKey) {
@@ -1643,7 +1703,8 @@ onAuthStateChanged(auth, async user => {
         const tripStyled = makeTrip(savedNi, savedTripKey); localStorage.setItem("nz_mytrip_styled", tripStyled);
         
         if (window.history?.replaceState) {
-          window.history.replaceState({}, document.title, location.pathname + "?r=" + encodeURIComponent(savedActiveRi));
+          const fragment = savedPi ? `#${encodeURIComponent(savedPi)}` : "";
+          window.history.replaceState({}, document.title, location.pathname + "?r=" + encodeURIComponent(savedActiveRi) + fragment);
         }
         await doJoin(savedActiveRi, savedPi, savedNi, tripStyled, savedTimer, snap.val().requireApproval);
         return; 
@@ -1651,12 +1712,18 @@ onAuthStateChanged(auth, async user => {
     } catch(e) { }
   }
 
-  if (urlR) { 
-    D.ri.value = urlR; 
-    localStorage.setItem("nz_ri_val", urlR); 
+  // 同意画面の制御
+  const isAgreed = localStorage.getItem("nz_terms_agreed") === "true";
+  if (!isAgreed) {
+    D.consent.style.display = "block";
+    D.consentBtn.onclick = () => {
+      localStorage.setItem("nz_terms_agreed", "true");
+      D.consent.style.display = "none";
+      showLobby();
+    };
+  } else {
+    showLobby();
   }
-  
-  showLobby();
 });
 </script>
 </body>

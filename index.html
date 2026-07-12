@@ -144,6 +144,25 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .mw:hover .del-btn{display:block;}
 @media (hover: none){ .del-btn{display:block;opacity:0.6;position:static;margin-top:2px;align-self:flex-end;} }
 
+/* ログ内インライン画像（最適なサイズ＆余白最適化） */
+.inline-img {
+  max-width: 240px;
+  max-height: 200px;
+  width: auto;
+  height: auto;
+  border-radius: 6px;
+  margin: 4px 0;
+  display: block;
+  cursor: zoom-in;
+  object-fit: contain;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #000;
+  transition: opacity 0.15s;
+}
+.inline-img:hover {
+  opacity: 0.9;
+}
+
 /* メディアバッジ用インラインスタイル */
 .media-badge {display:inline-flex; align-items:center; gap:2px; font-weight:800; padding:1px 3px; border-radius:3px; font-size:8.5px; color:#000; text-transform:uppercase; vertical-align:middle; line-height:1;}
 .media-link-container {display:flex; flex-direction:column; gap:2px; margin-top:2px; max-width:100%;}
@@ -195,8 +214,16 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .clr-cancel{background:var(--bg);border:1px solid var(--bd);color:var(--tx)}
 .clr-ok{background:var(--in);color:#fff}
 
-#imgViewMod{background:rgba(0,0,0,0.92);backdrop-filter:blur(4px);padding:0;cursor:zoom-out}
-#imgViewMod img{max-width:100%;max-height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none;}
+#imgViewMod{background:rgba(0,0,0,0.92);backdrop-filter:blur(4px);padding:0;cursor:zoom-out;overflow:hidden;}
+#imgViewSrc {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+  transition: transform 0.05s ease-out;
+  transform-origin: center center;
+}
 .modal-bottom-close {width:100%; padding:8px; background:var(--ro); color:#fff; border-radius:5px; font-weight:bold; font-size:11px; text-align:center; margin-top:6px;}
 
 #toastContainer {
@@ -448,7 +475,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   </div>
 </div>
 
-<!-- 画像拡大ビューモーダル -->
+<!-- 画像拡大ビューモーダル（ピンチズーム対応） -->
 <div id="imgViewMod" class="mod-overlay">
   <img id="imgViewSrc" src="" alt="拡大画像">
   <button class="modal-bottom-close" style="position:fixed; bottom:16px; left:50%; transform:translateX(-50%); max-width:180px; z-index:10001;" id="imgViewCloseBtn">閉じる</button>
@@ -684,7 +711,7 @@ const fDT = ts => {
 
 const UR = /(https?:\/\/[^\s\n<>"]+)/gi;
 
-// URLアドレスをそのままリンクとして書く単純パース処理
+// URLをプレーンなリンクにする処理
 function parseTxtSplit(txt) {
   const norm = txt.replace(/[\u3000]/g," "); const parts = []; let last = 0, m; UR.lastIndex = 0;
   while((m = UR.exec(norm)) !== null){
@@ -713,12 +740,12 @@ window.triggerDeleteMsg = (mid, previewText) => {
   D.delConfirmMod.classList.add("show");
 };
 
-// モバイルフレンドリーな長押し削除ロジックの付加
+// モバイルフレンドリーな長押し削除
 function attachLongPressListener(element, mid, previewText) {
   let touchTimer = null;
   const triggerDuration = 600; // 600ms
 
-  const onStart = (e) => {
+  const onStart = () => {
     touchTimer = setTimeout(() => {
       triggerDeleteMsg(mid, previewText);
     }, triggerDuration);
@@ -731,6 +758,13 @@ function attachLongPressListener(element, mid, previewText) {
   element.addEventListener('touchend', onCancel, { passive: true });
   element.addEventListener('touchmove', onCancel, { passive: true });
 }
+
+// 拡大ズームモーダル起動処理
+window.openZoomModal = (b64) => {
+  D.imgViewSrc.src = b64;
+  D.imgViewMod.classList.add("show");
+  resetZoom();
+};
 
 function cMsg(msg) {
   if (msg.sys) {
@@ -756,18 +790,13 @@ function cMsg(msg) {
   
   let contentHtml = "";
   let rawTextPreview = txt;
+  
   if (txt.startsWith("IMG::data:image/")) {
     rawTextPreview = "[画像ファイル]";
     const b64 = txt.substring(5);
     if (b64.match(/^data:image\/(jpeg|png|gif|webp);base64,[a-zA-Z0-9+/=]+$/)) {
-       contentHtml = `
-         <div class="media-link-container">
-           <div class="media-inline-row">
-             <span class="media-badge" style="background:var(--em); color:#000;">🖼 添付画像</span>
-             <a href="#" class="inline-img-viewer" data-src="${b64}" style="color:#a5b4fc; text-decoration:underline; font-weight:700;">画像を拡大表示</a>
-           </div>
-         </div>
-       `;
+       // 最適サイズで即座にインライン表示
+       contentHtml = `<img src="${b64}" class="inline-img" alt="画像" onclick="openZoomModal('${b64}')">`;
     } else { contentHtml = "<span style='color:red'>[不正な画像データ]</span>"; }
   } else { contentHtml = parseTxtSplit(txt).textHtml; }
   
@@ -827,17 +856,6 @@ D.autoScrollToggleBtn.onclick = () => {
   if (autoScrollEnabled) { isLiveMode = true; scBottom(true); updateScrollBtnUI(); }
 };
 updateAutoScrollBtnUI();
-
-// 拡大画像をインラインバッジクリックから起動するためのデリゲーション
-D.tl.addEventListener("click", (e) => {
-  const inlineBtn = e.target.closest('.inline-img-viewer');
-  if (inlineBtn) {
-    e.preventDefault();
-    D.imgViewSrc.src = inlineBtn.getAttribute('data-src');
-    D.imgViewMod.classList.add("show");
-  }
-});
-D.imgViewCloseBtn.onclick = () => D.imgViewMod.classList.remove("show");
 
 function updateScrollBtnUI() {
   const scrollTop = D.tl.scrollTop;
@@ -901,7 +919,7 @@ function renderSingleMessage(m) {
   }
 }
 
-// 重複排除処理の最適化
+// 重複排除
 function removeMessageEl(id) {
   displayedMsgIds.delete(id);
   const el = D.tli.querySelector(`[data-mid="${CSS.escape(String(id))}"]`);
@@ -926,7 +944,7 @@ async function sendSysMsg(text) {
   await push(ref(db, `chat/${curR}`), { sys: true, m: enc(text, masterKey), t: serverTimestamp() });
 }
 
-// 退出処理
+// 退出（確実な物理削除連携）
 window.doExit = async () => {
   _exitLock = true; 
   if (curR && masterKey && localStorage.getItem("nz_is_in_room") === "true") {
@@ -1007,12 +1025,14 @@ async function checkCurrentRoomStatus() {
   } catch { D.roomResumeArea.style.display = "none"; }
 }
 
-// ホストによるメンバー昇格・承認フロー
+// 承認処理の超高速化
 window.approveGuest = async (guestUid, guestKey) => {
   if (!isHost || !masterKey) return;
   try {
     const encryptedMasterKey = CryptoJS.AES.encrypt(masterKey, guestKey).toString();
-    await update(ref(db, `presence/${curR}/${guestUid}`), { status: "approved", mk: encryptedMasterKey });
+    const guestMetaRef = ref(db, `presence/${curR}/${guestUid}`);
+    // 承認データと復号キーを即時にセット
+    await set(guestMetaRef, { status: "approved", mk: encryptedMasterKey });
     await remove(ref(db, `pending/${curR}/${guestUid}`));
     showToast("✅ 承認してメンバーに昇格しました");
   } catch (e) { showToast("⚠️ 承認に失敗しました"); }
@@ -1094,7 +1114,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       myPresRef = ref(db, `presence/${hashId}/${myUid}`);
       const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
       await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey), isHost: true });
-      onDisconnect(myPresRef).remove();
       
       await sendSysMsg(`${trip ? trip + " " : ""}${name} が部屋を作成しました`);
       
@@ -1117,23 +1136,20 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         masterKey = getMasterKey(roomId, pass);
         const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
         await update(myPresRef, { status: "approved", meta: enc(metaStr, masterKey), isHost: true });
-        onDisconnect(myPresRef).remove();
         enterChatUI(roomData);
       } else if (roomData.requireApproval) {
         myGuestKey = CryptoJS.lib.WordArray.random(16).toString(); 
         const waitKey = CryptoJS.SHA256(SYSTEM_SALT + roomId).toString();
         const waitMetaStr = JSON.stringify({ n: name, p: trip, c: curColor });
 
-        // 承認制：待機データを pending ノードに格納して監視開始
         const pendingRef = ref(db, `pending/${hashId}/${myUid}`);
         await set(pendingRef, { status: "waiting", gk: myGuestKey, wmeta: enc(waitMetaStr, waitKey), reqAt: serverTimestamp() });
-        onDisconnect(pendingRef).remove();
         
         D.lobby.style.display = "none";
         D.waitModTrip.textContent = `${name} ${trip}`;
         D.waitMod.classList.add("show");
         
-        // 承認時の「自動入室」監視
+        // 承認完了を極めて低遅延で感知する即時リスナー
         _waitPresOff = onValue(myPresRef, (s) => {
           if (!s.exists()) return;
           const val = s.val();
@@ -1142,7 +1158,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
             if (masterKey) {
                const finalMetaStr = JSON.stringify({ n: name, p: trip, c: curColor });
                update(myPresRef, { gk: null, mk: null, meta: enc(finalMetaStr, masterKey) });
-               onDisconnect(myPresRef).remove(); 
                
                D.waitMod.classList.remove("show");
                if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
@@ -1160,7 +1175,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         masterKey = getMasterKey(roomId, pass);
         const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
         await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey) });
-        onDisconnect(myPresRef).remove();
         await sendSysMsg(`${trip ? trip + " " : ""}${name} が入室しました`);
         enterChatUI(roomData);
       }
@@ -1211,8 +1225,10 @@ function enterChatUI(roomData) {
     if (!curR) return;
     const fg = document.createDocumentFragment(); let count = 0;
     
-    for (const [id, u] of Object.entries(s.val() || {})) {
-      if (!u) continue;
+    const list = s.val() || {};
+    let hasMeInList = false;
+
+    const renderMember = (id, u) => {
       if (u.status === "approved" && u.meta) {
         const metaStr = dec(u.meta, masterKey);
         if(metaStr) {
@@ -1226,6 +1242,18 @@ function enterChatUI(roomData) {
           } catch(e){}
         }
       }
+    };
+
+    // 自己生存キャッシュ: 自分自身の入室情報を強制的にリストの先頭にレンダリングする
+    if (myUid && localStorage.getItem("nz_is_in_room") === "true") {
+      const myMetaStr = JSON.stringify({ n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor });
+      renderMember(myUid, { status: "approved", meta: enc(myMetaStr, masterKey), isHost: isHost });
+      hasMeInList = true;
+    }
+
+    for (const [id, u] of Object.entries(list)) {
+      if (!u || (id === myUid && hasMeInList)) continue;
+      renderMember(id, u);
     }
     D.pl.innerHTML = ""; D.pl.appendChild(fg); D.pcnt.textContent = `[${count}人]`;
   });
@@ -1405,6 +1433,93 @@ D.gdBtn.onclick = () => D.gmod.classList.add("show");
 D.gcBtn.onclick = () => D.gmod.classList.remove("show");
 document.querySelectorAll(".mod-overlay").forEach(m => { m.onclick = e => { if(e.target === m || m.id === "imgViewMod") m.classList.remove("show"); }; });
 
+// ズーム・ドラッグ拡大モーダル用ロジック
+let scale = 1;
+let translateX = 0;
+let translateY = 0;
+let isDragging = false;
+let startX = 0;
+let startY = 0;
+let initialDistance = 0;
+const imgEl = D.imgViewSrc;
+const overlayEl = D.imgViewMod;
+
+function resetZoom() {
+  scale = 1;
+  translateX = 0;
+  translateY = 0;
+  updateTransform();
+}
+
+function updateTransform() {
+  imgEl.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+}
+
+overlayEl.addEventListener('touchstart', (e) => {
+  if (e.target === D.imgViewCloseBtn) return;
+  if (e.touches.length === 1) {
+    isDragging = true;
+    startX = e.touches[0].clientX - translateX;
+    startY = e.touches[0].clientY - translateY;
+  } else if (e.touches.length === 2) {
+    isDragging = false;
+    initialDistance = getDistance(e.touches[0], e.touches[1]);
+  }
+}, { passive: true });
+
+overlayEl.addEventListener('touchmove', (e) => {
+  if (e.target === D.imgViewCloseBtn) return;
+  if (isDragging && e.touches.length === 1) {
+    translateX = e.touches[0].clientX - startX;
+    translateY = e.touches[0].clientY - startY;
+    updateTransform();
+  } else if (e.touches.length === 2) {
+    const dist = getDistance(e.touches[0], e.touches[1]);
+    const factor = dist / initialDistance;
+    scale = Math.max(0.5, Math.min(5, scale * factor));
+    initialDistance = dist;
+    updateTransform();
+  }
+}, { passive: true });
+
+overlayEl.addEventListener('touchend', (e) => {
+  isDragging = false;
+  if (e.touches.length === 1) {
+    isDragging = true;
+    startX = e.touches[0].clientX - translateX;
+    startY = e.touches[0].clientY - translateY;
+  }
+});
+
+overlayEl.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const delta = e.deltaY > 0 ? 0.9 : 1.1;
+  scale = Math.max(0.5, Math.min(5, scale * delta));
+  updateTransform();
+}, { passive: false });
+
+overlayEl.addEventListener('mousedown', (e) => {
+  if (e.target === D.imgViewCloseBtn) return;
+  isDragging = true;
+  startX = e.clientX - translateX;
+  startY = e.clientY - translateY;
+});
+
+window.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  translateX = e.clientX - startX;
+  translateY = e.clientY - startY;
+  updateTransform();
+});
+
+window.addEventListener('mouseup', () => {
+  isDragging = false;
+});
+
+function getDistance(t1, t2) {
+  return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+}
+
 let isInit = false;
 onAuthStateChanged(auth, async user => {
   if (!user) { signInAnonymously(auth).catch(e => { D.lberr.textContent = "接続エラー: " + e.message; D.lberr.style.display = "block"; hideSplash(); }); return; }
@@ -1415,7 +1530,7 @@ onAuthStateChanged(auth, async user => {
   
   const savedActiveRi = localStorage.getItem("nz_active_ri"), savedActiveCreated = localStorage.getItem("nz_active_created"), savedNi = localStorage.getItem("nz_ni"), savedPi = localStorage.getItem("nz_pi_val"), savedTripKey = localStorage.getItem("nz_tripi"), savedTimer = parseInt(localStorage.getItem("nz_timer_val")) || 30;
   
-  // 複窓対策およびリロード引き戻し自動再入室フロー
+  // 複窓対策およびリロード引き戻し自動再入室
   if (savedActiveRi && savedActiveCreated && savedNi && savedTripKey) {
     try {
       const hashId = getRoomHash(savedActiveRi);
@@ -1424,7 +1539,6 @@ onAuthStateChanged(auth, async user => {
         localStorage.setItem("nz_is_in_room", "true");
         const tripStyled = makeTrip(savedNi, savedTripKey); localStorage.setItem("nz_mytrip_styled", tripStyled);
         
-        // パラメータが異なる場合（複窓時など）は現在の正しいアクティブ部屋URLに上書き
         if (window.history?.replaceState) {
           window.history.replaceState({}, document.title, location.pathname + "?r=" + encodeURIComponent(savedActiveRi));
         }
@@ -1434,7 +1548,6 @@ onAuthStateChanged(auth, async user => {
     } catch(e) { }
   }
 
-  // アクティブな部屋がない場合にのみ、招待リンクパラメータを新規適用
   if (urlR) { 
     D.ri.value = urlR; 
     localStorage.setItem("nz_ri_val", urlR); 

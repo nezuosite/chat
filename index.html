@@ -763,7 +763,7 @@ function parseTxtSplit(txt) {
   const norm = txt.replace(/[\u3000]/g," "); const parts = []; let last = 0, m; UR.lastIndex = 0;
   while((m = UR.exec(norm)) !== null){
     if(m.index > last) parts.push({t:"t", v:norm.slice(last, m.index)});
-    parts.push({t:"u", v:m[0]}); last = m.index + m[0].length;
+    parts.push({t:"u", m:m[0]}); last = m.index + m[0].length;
   }
   if(last < norm.length) parts.push({t:"t", v:norm.slice(last)});
   
@@ -774,7 +774,7 @@ function parseTxtSplit(txt) {
       const h = esc(p.v).replace(/\n/g,"<br>");
       if(h) textParts.push(h);
     } else {
-      const su = esc(p.v); 
+      const su = esc(p.m); 
       textParts.push(`<a href="${su}" target="_blank" rel="noopener noreferrer" style="color:#60a5fa; text-decoration:underline;">${su}</a>`);
     }
   }
@@ -1149,6 +1149,27 @@ function startWaitTicker() {
   }, 4000);
 }
 function stopWaitTicker() { if (_waitTickTimer) { clearInterval(_waitTickTimer); _waitTickTimer = null; } }
+
+// DOM操作をrAFに介してメインスレッドのブロッキングを回避する軽量スロットラー
+function rafThrottle(fn) {
+  let scheduled = false, latestArgs = null;
+  return (...args) => {
+    latestArgs = args;
+    if (scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(() => { scheduled = false; fn(...latestArgs); });
+  };
+}
+
+function trimTimeline() {
+  while (D.tli.children.length > 100) {
+    const first = D.tli.firstElementChild;
+    if (!first) break;
+    displayedMsgIds.delete(first.dataset.mid);
+    if (first.dataset.cid) displayedMsgIds.delete(first.dataset.cid);
+    first.remove();
+  }
+}
 
 async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
   try {

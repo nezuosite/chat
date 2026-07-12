@@ -1187,12 +1187,8 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       
       const freshSnap = await get(roomRef);
       if(freshSnap.exists()) { 
-        localStorage.setItem("nz_active_ri", roomId); 
-        localStorage.setItem("nz_active_created", freshSnap.val().created); 
-        localStorage.setItem("nz_is_in_room", "true");
+        enterChatUI(freshSnap.val());
       }
-      
-      enterChatUI(roomData);
     } 
     else {
       roomData = snap.val();
@@ -1282,10 +1278,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         }
         enterChatUI(roomData);
       }
-      localStorage.setItem("nz_active_ri", roomId); 
-      localStorage.setItem("nz_active_created", roomData.created);
-      localStorage.setItem("nz_is_in_room", "true");
-      localStorage.setItem(`nz_entered_${hashId}`, "true");
     }
   } catch (e) { showLobby("エラー: " + e.message); }
 }
@@ -1294,6 +1286,12 @@ function enterChatUI(roomData) {
   D.lobby.style.display = "none"; D.waitMod.classList.remove("show");
   D.app.style.display = "flex"; D.app.classList.add("visible");
   D.ib.classList.add("show"); D.rdsp.textContent = rawR;
+
+  // セッション状態を確実にマーク（リロード・再入室時の自動サイレント化を保証）
+  localStorage.setItem("nz_active_ri", rawR); 
+  localStorage.setItem("nz_active_created", roomData.created);
+  localStorage.setItem("nz_is_in_room", "true");
+  localStorage.setItem(`nz_entered_${curR}`, "true");
 
   if (isHost) {
     D.hostTimerCtrl.style.display = "flex";
@@ -1567,7 +1565,7 @@ D.gdBtn.onclick = () => D.gmod.classList.add("show");
 D.gcBtn.onclick = () => D.gmod.classList.remove("show");
 document.querySelectorAll(".mod-overlay").forEach(m => { m.onclick = e => { if(e.target === m || m.id === "imgViewMod") m.classList.remove("show"); }; });
 
-// ズームモーダル用ロジック（2本指ピンチによる拡大縮小 ＋ 1本指パンによる位置移動に対応、親要素のtouch-action無協化による高滑らか性維持）
+// ズームモーダル用ロジック（2本指ピンチによる拡大縮小 ＋ 1本指パンによる位置移動に対応、親要素のtouch-action無効化による高滑らか性維持）
 let scale = 1, panX = 0, panY = 0;
 let lastPanX = 0, lastPanY = 0, isPanning = false;
 const imgEl = D.imgViewSrc;

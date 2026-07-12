@@ -36,6 +36,9 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .spt{font-size:9px;font-weight:800;color:var(--m2);letter-spacing:.2em}
 
+/* 同意画面 (最前面) */
+#consent{position:fixed;inset:0;background:var(--bg);z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;overflow-y:auto;}
+
 /* ロビーUI (高密度化) */
 #lobby{display:none;position:fixed;inset:0;background:var(--bg);z-index:100;overflow-y:auto;}
 .lbo{height:auto;min-height:100%;display:flex;flex-direction:column;padding:4px 6px calc(4px + var(--safe));gap:2px;justify-content:center;max-width:360px;margin:0 auto}
@@ -276,8 +279,23 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 <div id="splash"><div class="spin"></div><div class="spt">NEZU ONETIME CHAT PRO</div></div>
 <div id="connBanner"></div>
 
+<!-- 利用同意画面 (ワンクッションUI) -->
+<div id="consent">
+  <div class="lbo" style="max-width:360px; text-align:center;">
+    <h2 class="lbt" style="font-size:14px; color:#818cf8; margin-bottom:8px;">⚡ NEZU ONETIME CHAT - PRO</h2>
+    <div class="lbsub" style="font-size:8px; margin-bottom:16px;">DISPOSABLE & ZERO-KNOWLEDGE E2EE</div>
+    <div class="ibox" style="text-align:left; margin-bottom:16px;">
+      🔒 <b>セキュリティ・免責事項への同意</b><br><br>
+      ・本システムは完全匿名かつ使い捨ての設計です。<br>
+      ・最後の一人が退室した瞬間に、すべてのデータ（暗号化テキスト、タイムスタンプ、承認状態等）がサーバーから完全に物理消去されます。<br>
+      ・ハッシュ（#）以降のパスワード情報は、ゼロ知識設計に基づき、サーバーに一切送信されません。
+    </div>
+    <button class="btn bp" id="consentBtn" style="width:100%; padding:10px; font-weight:bold;">同意してチャットを始める</button>
+  </div>
+</div>
+
 <!-- ロビー画面 -->
-<div id="lobby">
+<div id="lobby" style="display: none;">
   <div class="lbo">
     <h2 class="lbt">⚡ NEZU ONETIME CHAT - PRO</h2>
     <div class="lbsub">DISPOSABLE & ZERO-KNOWLEDGE E2EE</div>
@@ -433,7 +451,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 
 <div id="toastContainer"></div>
 
-<!-- 発言削除確認モーダル (左右分離・警告赤色最適化) -->
+<!-- 发言削除確認モーダル (左右分離・警告赤色最適化) -->
 <div id="delConfirmMod" class="mod-overlay">
   <div class="gc" style="max-width:320px;">
     <h3 style="font-size:13px; color:var(--ro);">⚠️ 発言の削除確認</h3>
@@ -543,7 +561,8 @@ const D = {
   imgViewMod:$("imgViewMod"), imgViewSrc:$("imgViewSrc"), imgViewCloseBtn:$("imgViewCloseBtn"),
   waitMod:$("waitMod"), waitModTrip:$("waitModTrip"), waitCopyIdBtn:$("waitCopyIdBtn"), waitCancelBtn:$("waitCancelBtn"),
   delConfirmMod:$("delConfirmMod"), delConfirmPreview:$("delConfirmPreview"), delCancelBtn:$("delCancelBtn"), delExecuteBtn:$("delExecuteBtn"),
-  toastContainer:$("toastContainer")
+  toastContainer:$("toastContainer"),
+  consent:$("consent"), consentBtn:$("consentBtn")
 };
 
 const SYSTEM_SALT = "NEZU_PRO_SYS_SALT_2026_V1"; 
@@ -895,89 +914,9 @@ let isW = false, _exitLock = false, isLiveMode = false, unreadCount = 0;
 let displayedMsgIds = new Set();
 let myPresRef = null, _roomExpireAt = null, _cOff = null, _pOff = null, _rOff = null, _crOff = null, _waitPresOff = null, _pendingOff = null;
 
-// リアルタイム受信メッセージのMicroTaskバッチ描画用
-let _msgQueue = [], _flushScheduled = false;
-
-let keepKbOpen = localStorage.getItem("nz_keep_kb") === "true";
-const updateKbBtnUI = () => {
-  D.kbToggleBtn.classList.toggle("active", keepKbOpen);
-  D.kbStatusText.textContent = keepKbOpen ? "KB:開" : "KB:閉";
-  D.kbStatusText.style.color = keepKbOpen ? "#fff" : "var(--tx)";
-};
-D.kbToggleBtn.onclick = () => { keepKbOpen = !keepKbOpen; localStorage.setItem("nz_keep_kb", keepKbOpen); updateKbBtnUI(); };
-updateKbBtnUI();
-
-let autoScrollEnabled = localStorage.getItem("nz_auto_scroll") !== "false";
-const updateAutoScrollBtnUI = () => {
-  D.autoScrollToggleBtn.classList.toggle("active", autoScrollEnabled);
-  D.autoScrollStatusText.textContent = autoScrollEnabled ? "追従:ON" : "追従:OFF";
-  D.autoScrollStatusText.style.color = autoScrollEnabled ? "#fff" : "var(--tx)";
-};
-D.autoScrollToggleBtn.onclick = () => {
-  autoScrollEnabled = !autoScrollEnabled;
-  localStorage.setItem("nz_auto_scroll", autoScrollEnabled);
-  updateAutoScrollBtnUI();
-  if (autoScrollEnabled) { isLiveMode = true; scBottom(true); updateScrollBtnUI(); }
-};
-updateAutoScrollBtnUI();
-
-function updateScrollBtnUI() {
-  const scrollTop = D.tl.scrollTop;
-  const scrollHeight = D.tl.scrollHeight;
-  const clientHeight = D.tl.clientHeight;
-  
-  const isAtBottom = (scrollHeight - scrollTop - clientHeight) <= 20;
-  const isAtTop = scrollTop <= 5;
-  
-  if (isAtBottom) {
-    isLiveMode = true;
-    unreadCount = 0;
-    D.jumpDownBtn.disabled = true;
-    D.jumpDownBtn.textContent = "▼";
-  } else {
-    isLiveMode = false;
-    D.jumpDownBtn.disabled = false;
-    if (unreadCount > 0) {
-      D.jumpDownBtn.textContent = `▼ (${unreadCount})`;
-    } else {
-      D.jumpDownBtn.textContent = "▼";
-    }
-  }
-  
-  if (isAtTop) {
-    D.jumpUpBtn.disabled = true;
-  } else {
-    D.jumpUpBtn.disabled = false;
-  }
-}
-
-const scBottom = (force = false) => { if (force || (autoScrollEnabled && isLiveMode)) { D.tl.scrollTop = D.tl.scrollHeight; } };
-
-D.tl.addEventListener("scroll", updateScrollBtnUI, {passive:true});
-D.mi.addEventListener("focus", () => { isLiveMode = true; setTimeout(() => scBottom(true), 150); });
-
-D.jumpUpBtn.onclick = () => { D.tl.scrollTop = 0; isLiveMode = false; updateScrollBtnUI(); };
-D.jumpDownBtn.onclick = () => { isLiveMode = true; scBottom(true); updateScrollBtnUI(); };
-
-// DOM操作をrAFに介してメインスレッドのブロッキングを回避する軽量スロットラー
-function rafThrottle(fn) {
-  let scheduled = false, latestArgs = null;
-  return (...args) => {
-    latestArgs = args;
-    if (scheduled) return;
-    scheduled = true;
-    requestAnimationFrame(() => { scheduled = false; fn(...latestArgs); });
-  };
-}
-
-function trimTimeline() {
-  while (D.tli.children.length > 100) {
-    const first = D.tli.firstElementChild;
-    if (!first) break;
-    displayedMsgIds.delete(first.dataset.mid);
-    if (first.dataset.cid) displayedMsgIds.delete(first.dataset.cid);
-    first.remove();
-  }
+// リアルタイム受信メッセージの即時描画（待機バッファ排除）のための直コール化
+function queueIncomingMessage(m) {
+  renderSingleMessage(m);
 }
 
 // 自分の発言（楽観的表示）は即時、時系列を並び替えて描画
@@ -994,41 +933,6 @@ function renderSingleMessage(m) {
         }
     }
     trimTimeline();
-    scBottom();
-  }
-}
-
-// リアルタイム受信メッセージはMicroTask単位で一気に時系列順ソートの上バッチ描画
-function queueIncomingMessage(m) {
-  _msgQueue.push(m);
-  if (!_flushScheduled) {
-    _flushScheduled = true;
-    queueMicrotask(flushIncomingMessages);
-  }
-}
-function flushIncomingMessages() {
-  _flushScheduled = false;
-  if (!curR || _msgQueue.length === 0) { _msgQueue = []; return; }
-  const batch = _msgQueue; _msgQueue = [];
-  
-  // バッチ内のメッセージデータをあらかじめ時刻（timestamp）順にソート
-  batch.sort((a, b) => (a.timestamp || a.t || 0) - (b.timestamp || b.t || 0));
-
-  let appended = 0, newUnread = 0;
-  for (const m of batch) {
-    if (displayedMsgIds.has(m.id)) continue;
-    const el = cMsg(m);
-    if (el) {
-      insertMessageEl(el); // 厳密ソート順でDOM挿入
-      displayedMsgIds.add(m.id);
-      appended++;
-      if (m.u !== myUid && !m.sys && !isLiveMode) newUnread++;
-    }
-  }
-  if (appended > 0) {
-    if (newUnread > 0) unreadCount += newUnread;
-    trimTimeline();
-    updateScrollBtnUI();
     scBottom();
   }
 }
@@ -1099,7 +1003,6 @@ function clearAll() {
   if(typeof _waitPresOff === "function"){ _waitPresOff(); _waitPresOff = null; }
   if(typeof _pendingOff === "function"){ _pendingOff(); _pendingOff = null; }
   masterKey = null; isLiveMode = false; displayedMsgIds.clear(); D.tli.innerHTML = "";
-  _msgQueue = []; _flushScheduled = false; // メモリ内データも物理消去として完全に破棄を保証
   stopTimerLoop(); D.hostTimerCtrl.style.display = "none"; D.hostApprovePanel.style.display = "none"; D.hostModeCtrl.style.display = "none";
   stopWaitTicker(); _seenWaitIds.clear(); D.waitBadge.classList.remove("show");
 }
@@ -1147,7 +1050,7 @@ async function checkCurrentRoomStatus() {
     const snap = await get(ref(db, `rooms/${hashId}`));
     if (snap.exists() && snap.val().created === parseInt(lastCreated) && snap.val().expireAt > srvNow()) {
       D.roomResumeArea.style.display = "flex";
-      D.resumeBtn.onclick = () => { D.ri.value = lastRi; D.enBtn.click(); };
+      D.resumeBtn.onclick = () => { D.ri.value = lastRi; D.consent.style.display = "none"; D.enBtn.click(); };
     } else {
       localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created"); D.roomResumeArea.style.display = "none";
     }
@@ -1503,6 +1406,19 @@ async function forceResync() {
       D.modeIndicator.textContent = requireApproval ? "🔒 LOCKED" : "🔓 OPEN";
       D.modeIndicator.className = requireApproval ? "mode-locked" : "mode-open";
       if (isHost) { isRoomApproveMode = requireApproval; updateRoomModeBtnUI(); }
+
+      // 接続復帰時の未取得ログ補正
+      const chatSnap = await get(query(ref(db, `chat/${curR}`), orderByChild("timestamp"), limitToLast(100)));
+      if (chatSnap.exists()) {
+        const msgs = chatSnap.val();
+        for (const [id, m] of Object.entries(msgs)) {
+          if (!displayedMsgIds.has(id)) {
+            m.id = id;
+            if (!m.timestamp) m.timestamp = m.t || Date.now();
+            queueIncomingMessage(m);
+          }
+        }
+      }
     } else if (!_exitLock) {
       _exitLock = true; showLobby("部屋が削除されました。"); return;
     }
@@ -1678,6 +1594,12 @@ function getDistance(t1, t2) {
   return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
 }
 
+// 同意ボタンのハンドリング
+D.consentBtn.onclick = () => {
+  D.consent.style.display = "none";
+  D.lobby.style.display = "block";
+};
+
 let isInit = false;
 onAuthStateChanged(auth, async user => {
   if (!user) { signInAnonymously(auth).catch(e => { D.lberr.textContent = "接続エラー: " + e.message; D.lberr.style.display = "block"; hideSplash(); }); return; }
@@ -1688,7 +1610,7 @@ onAuthStateChanged(auth, async user => {
   
   const savedActiveRi = localStorage.getItem("nz_active_ri"), savedActiveCreated = localStorage.getItem("nz_active_created"), savedNi = localStorage.getItem("nz_ni"), savedPi = localStorage.getItem("nz_pi_val"), savedTripKey = localStorage.getItem("nz_tripi"), savedTimer = parseInt(localStorage.getItem("nz_timer_val")) || 30;
   
-  // 複窓対策およびリロード引き戻し自動再入室 (堅牢性：仕様5)
+  // 複窓対策およびリロード引き戻し自動再入室 (同意画面を自動スキップ)
   if (savedActiveRi && savedActiveCreated && savedNi && savedTripKey) {
     try {
       const hashId = getRoomHash(savedActiveRi);
@@ -1700,6 +1622,9 @@ onAuthStateChanged(auth, async user => {
         if (window.history?.replaceState) {
           window.history.replaceState({}, document.title, location.pathname + "?r=" + encodeURIComponent(savedActiveRi));
         }
+        
+        // 再入室時は同意画面をスキップして即時移行
+        D.consent.style.display = "none";
         await doJoin(savedActiveRi, savedPi, savedNi, tripStyled, savedTimer, snap.val().requireApproval);
         return; 
       }

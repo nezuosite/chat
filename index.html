@@ -95,7 +95,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .bclr-dot{width:6px;height:6px;border-radius:50%;display:inline-block}
 .bx{background:rgba(244,63,94,.12)!important; border-color:rgba(244,63,94,.3)!important; color:#fda4af!important; font-weight:900!important;}
 
-/* 1. 入室者リスト (上から順に配置するサイドパネル代わりの最上部スタック) */
+/* 1. 入室者リスト (最上部配置) */
 #pl{display:flex;gap:3px;overflow-x:auto;padding:2px;white-space:nowrap;scrollbar-width:none;border-bottom:1px solid rgba(255,255,255,0.03);background:var(--s2);flex-shrink:0;}
 #pl::-webkit-scrollbar{display:none;}
 .chip{font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px;background:var(--bg);border:1px solid var(--bd);display:inline-flex;align-items:center;}
@@ -111,10 +111,6 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 #hostApprovePanel{display:none; background:var(--s2); border-bottom:1px solid var(--bd); padding:2px 4px; align-items:center; gap:4px; flex-shrink:0; overflow-x:auto;}
 #hostTimerCtrl{display:none; background:var(--s2); border-bottom:1px solid var(--bd); padding:2px 4px; align-items:center; gap:4px; flex-shrink:0; overflow-x:auto;}
 .htc-lbl{font-size:9px; font-weight:bold; color:var(--mu); white-space:nowrap}
-.htc-slider-container {position: relative; flex: 1; display: flex; align-items: center;}
-.htc-slider{width: 100%; accent-color:var(--in); height:4px; cursor:pointer; touch-action:none;}
-.slider-tooltip {position: absolute; top: -16px; left: 50%; transform: translateX(-50%); background: var(--tx); color: var(--bg); font-size: 8px; font-weight: bold; padding: 1px 3px; border-radius: 3px; display: none; white-space: nowrap; pointer-events: none;}
-.htc-slider:active + .slider-tooltip, .htc-slider:hover + .slider-tooltip {display: block;}
 .btn-pm5 {background:var(--sf); border:1px solid var(--bd); color:var(--tx); border-radius:3px; font-size:9px; font-weight:bold; padding:1px 4px; cursor:pointer;}
 
 /* 4. ステータスバッジ */
@@ -153,41 +149,27 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .media-link-container {display:flex; flex-direction:column; gap:2px; margin-top:2px; max-width:100%;}
 .media-inline-row {display:inline-flex; align-items:center; gap:4px; flex-wrap:wrap; font-size:10.5px;}
 
-/* フローティング追従ボタン */
-#scrollFab {
-  position: fixed; bottom: 85px; right: 12px; width: 38px; height: 38px; border-radius: 50%;
-  background: rgba(79, 70, 229, 0.85); color: white; display: none; align-items: center; justify-content: center;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.4); z-index: 100; cursor: pointer; backdrop-filter: blur(3px); transition: opacity 0.15s;
-}
-#scrollFab.show { display: flex; }
-#scrollFab:active { opacity: 0.7; }
-#scrollFab svg { width: 20px; height: 20px; }
-.fab-unread-badge {
-  position: absolute; top: -3px; right: -3px; background: var(--ro); color: #fff; font-size: 8px; font-weight: bold;
-  padding: 1px 4px; border-radius: 8px; border: 1px solid var(--bg); display: none;
-}
-.fab-unread-badge.show { display: block; animation: pulseGlow 2s infinite; }
-
-/* 入力バー (上部に補助コントロールボタン、下部に入力フォームエリアを集約) */
+/* 入力バー */
 #ib{display:none; flex-direction: column; padding:3px calc(4px + env(safe-area-inset-right,0px)) calc(3px + var(--safe)) calc(4px + env(safe-area-inset-left,0px)); background:var(--sf); border-top:1px solid var(--bd); gap:3px; flex-shrink:0;}
 #ib.show{display:flex}
 
 /* 入力バー上の補助ボタン行 */
-#ibTopBar { display:flex; align-items:center; justify-content:space-between; gap:4px; padding-bottom:2px; border-bottom:1px solid rgba(255,255,255,0.04); }
+#ibTopBar { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.04); }
 
 /* 入力フォーム本体 */
 #ibToolbar { width:100%; align-items: center; display: flex; gap:4px; padding: 0; }
 .ib-icon-btn{flex-shrink:0;}
 
-.jump-btns{display:flex; flex-direction:row; gap:3px; flex-shrink:0;}
-.jump-btn{width:22px; height:18px; border-radius:3px; background:var(--s2); border:1px solid var(--bd); color:var(--tx); font-size:9px; display:flex; align-items:center; justify-content:center; line-height:1; padding:0;}
+.jump-btns{display:flex; flex-direction:row; gap:6px; flex-shrink:0;}
+.jump-btn{width:56px; height:32px; border-radius:6px; background:var(--s2); border:1px solid var(--bd); color:var(--tx); font-size:11px; font-weight:bold; display:flex; align-items:center; justify-content:center; line-height:1; padding:0; cursor:pointer;}
 .jump-btn:active{background:var(--in); color:#fff;}
+.jump-btn:disabled{opacity:0.3; cursor:not-allowed;}
 
-.switch-btn {position:relative; width:44px!important; height:18px!important; border-radius:9px!important; background:var(--s2)!important; border:1px solid var(--bd)!important; padding:0 2px!important; overflow:hidden; transition:all 0.25s ease; cursor:pointer; display: flex; align-items: center;}
-.switch-btn::after {content:""; position:absolute; top:1px; left:1px; width:14px; height:14px; background:#fff; border-radius:50%; transition:transform 0.25s ease;}
+.switch-btn {position:relative; width:64px!important; height:32px!important; border-radius:16px!important; background:var(--s2)!important; border:1px solid var(--bd)!important; padding:0 2px!important; overflow:hidden; transition:all 0.25s ease; cursor:pointer; display: flex; align-items: center;}
+.switch-btn::after {content:""; position:absolute; top:2px; left:2px; width:26px; height:26px; background:#fff; border-radius:50%; transition:transform 0.25s ease;}
 .switch-btn.active {background:var(--in)!important; border-color:var(--i2)!important;}
-.switch-btn.active::after {transform:translateX(26px);}
-.switch-text {font-size:8px; font-weight:bold; pointer-events:none; color:var(--tx); position:relative; z-index:2; width: 100%; text-align: center;}
+.switch-btn.active::after {transform:translateX(32px);}
+.switch-text {font-size:10px; font-weight:bold; pointer-events:none; color:var(--tx); position:relative; z-index:2; width: 100%; text-align: center;}
 
 /* 入力エリア */
 .mi-container{position:relative;flex:1;display:flex;align-items:center;background:var(--bg);border:1px solid var(--bd);border-radius:12px;padding:2px 20px 2px 24px;}
@@ -216,6 +198,29 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 #imgViewMod{background:rgba(0,0,0,0.92);backdrop-filter:blur(4px);padding:0;cursor:zoom-out}
 #imgViewMod img{max-width:100%;max-height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none;}
 .modal-bottom-close {width:100%; padding:8px; background:var(--ro); color:#fff; border-radius:5px; font-weight:bold; font-size:11px; text-align:center; margin-top:6px;}
+
+#toastContainer {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10005;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: none;
+}
+.toast {
+  background: rgba(16, 185, 129, 0.95);
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: bold;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  animation: slideInUp 0.15s ease forwards;
+  transition: opacity 0.3s;
+}
 </style>
 </head>
 <body>
@@ -261,8 +266,8 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
           <div class="clrpick-grid" id="lbClrPick"></div>
         </div>
         <div class="fg">
-          <label class="fl">部屋の有効時間 (1〜60分) ※直接入力可</label>
-          <input type="number" id="timeri" class="inp" min="1" max="60" value="30">
+          <label class="fl">部屋の有効時間 (1〜180分) ※直接入力可</label>
+          <input type="number" id="timeri" class="inp" min="1" max="180" value="30">
         </div>
       </div>
 
@@ -318,12 +323,9 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     </div>
 
     <div id="hostTimerCtrl">
-      <span class="htc-lbl">⏱ 寿命:</span>
+      <span class="htc-lbl">⏱ 寿命(分):</span>
       <button class="btn-pm5" id="timerM5">-5分</button>
-      <div class="htc-slider-container">
-        <input type="range" id="timerSlider" class="htc-slider" min="1" max="60" value="30">
-        <div id="timerTooltip" class="slider-tooltip">30分</div>
-      </div>
+      <input type="number" id="hostTimerInput" class="inp" min="1" max="180" style="width: 70px; text-align: center; font-weight: bold; background: var(--sf); border: 1px solid var(--bd); color: var(--tx); border-radius: 4px;" value="30">
       <button class="btn-pm5" id="timerP5">+5分</button>
     </div>
 
@@ -340,12 +342,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       <div id="tl-inner"></div>
     </div>
 
-    <div id="scrollFab" title="最新のメッセージへ">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
-      <div id="fabUnread" class="fab-unread-badge"></div>
-    </div>
-
-    <!-- 入力バー (要件に準拠したレイアウト変更) -->
+    <!-- 入力バー -->
     <div id="ib">
       <!-- 横幅100%活用：設定用ボタン群をすべて入力バーの上部に1列で配置 -->
       <div id="ibTopBar">
@@ -359,8 +356,8 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         </button>
         <!-- 4. 上下ジャンプ(▲▼) -->
         <div class="jump-btns">
-          <button class="jump-btn" id="jumpUpBtn" title="ログの先頭へ">▲</button>
-          <button class="jump-btn" id="jumpDownBtn" title="最新のメッセージへ">▼</button>
+          <button class="jump-btn" id="jumpUpBtn" title="ログの先頭へ" disabled>▲</button>
+          <button class="jump-btn" id="jumpDownBtn" title="最新のメッセージへ" disabled>▼</button>
         </div>
       </div>
 
@@ -486,12 +483,12 @@ const D = {
   clrmod:$("clrmod"), clrPick2:$("clrPick2"), clrPrev:$("clrPrev"), clrOk:$("clrOk"), clrCancel:$("clrCancel"), clrBtn:$("clrBtn"), clrDot:$("clrDot"),
   hdr:$("hdr"), rdsp:$("rdsp"), modeIndicator:$("modeIndicator"), waitBadge:$("waitBadge"), pcnt:$("pcnt"), timerDsp:$("timerDsp"), copyUrlBtn:$("copyUrlBtn"), pl:$("pl"), exBtn:$("exBtn"),
   tl:$("tl"), tli:$("tl-inner"), ib:$("ib"), mi:$("mi"), sdBtn:$("sdBtn"), clrMsgBtn:$("clrMsgBtn"),
-  scrollFab:$("scrollFab"), fabUnread:$("fabUnread"), kbToggleBtn:$("kbToggleBtn"), kbStatusText:$("kbStatusText"),
+  kbToggleBtn:$("kbToggleBtn"), kbStatusText:$("kbStatusText"),
   autoScrollToggleBtn:$("autoScrollToggleBtn"), autoScrollStatusText:$("autoScrollStatusText"),
   jumpUpBtn:$("jumpUpBtn"), jumpDownBtn:$("jumpDownBtn"), statusBar:$("statusBar"),
   lbClrPick:$("lbClrPick"),
   roomResumeArea:$("roomResumeArea"), resumeBtn:$("resumeBtn"),
-  hostTimerCtrl:$("hostTimerCtrl"), timerSlider:$("timerSlider"), timerTooltip:$("timerTooltip"), timerM5:$("timerM5"), timerP5:$("timerP5"),
+  hostTimerCtrl:$("hostTimerCtrl"), hostTimerInput:$("hostTimerInput"), timerM5:$("timerM5"), timerP5:$("timerP5"),
   hostApprovePanel:$("hostApprovePanel"), waitList:$("waitList"),
   hostModeCtrl:$("hostModeCtrl"), roomModeToggleBtn:$("roomModeToggleBtn"), roomModeStatusText:$("roomModeStatusText"),
   imgBtn:$("imgBtn"), fileInput:$("fileInput"),
@@ -573,46 +570,40 @@ D.tripi.addEventListener("input", () => { localStorage.setItem("nz_tripi", D.tri
 D.ri.addEventListener("input",  ()=>{ localStorage.setItem("nz_ri_val", D.ri.value); });
 D.pi.addEventListener("input",  ()=>{ localStorage.setItem("nz_pi_val", D.pi.value); });
 
-const copyToClip = (text) => { navigator.clipboard.writeText(text).then(() => showToast("✅ コピーしました")); };
+const copyToClip = (text) => { 
+  navigator.clipboard.writeText(text).then(() => {
+    showToast("✅ コピーしました"); 
+  }); 
+};
 D.lbCopyTripBtn.onclick = () => copyToClip(`${D.ni.value || "名無し"} ${localStorage.getItem("nz_mytrip_styled")||""}`);
 D.waitCopyIdBtn.onclick = () => copyToClip(`${localStorage.getItem("nz_myname")} ${localStorage.getItem("nz_mytrip_styled")||""}`);
 D.copyUrlBtn.onclick = () => copyToClip(`${location.origin}${location.pathname}?r=${encodeURIComponent(rawR)}`);
 
-const clampTimer = (val) => { let v = parseInt(val); if (isNaN(v)) return 30; return Math.max(1, Math.min(60, v)); };
+const clampTimer = (val) => { let v = parseInt(val); if (isNaN(v)) return 30; return Math.max(1, Math.min(180, v)); };
 D.timeri.value = localStorage.getItem("nz_timer_val") || "30";
 D.timeri.addEventListener("input", (e) => {
   let val = parseInt(e.target.value);
-  if (val > 60) e.target.value = 60;
+  if (val > 180) e.target.value = 180;
   if (val < 1) e.target.value = 1;
   localStorage.setItem("nz_timer_val", e.target.value);
 });
 D.timeri.addEventListener("blur", (e) => { e.target.value = clampTimer(e.target.value); });
 
+// 寿命タイマー値変更時にFirebaseを瞬時更新
 const updateTimerUIFromVal = async (val) => {
   if (curR && isHost) {
-      await update(ref(db, `rooms/${curR}`), { expireAt: srvNow() + (val * 60000) });
+      _roomExpireAt = srvNow() + (val * 60000);
+      await update(ref(db, `rooms/${curR}`), { expireAt: _roomExpireAt });
       showToast("✅ 寿命を更新");
   }
 };
-D.timerM5.onclick = () => { let v = clampTimer(parseInt(D.timerSlider.value) - 5); D.timerSlider.value = v; updateTimerTooltip(); updateTimerUIFromVal(v); };
-D.timerP5.onclick = () => { let v = clampTimer(parseInt(D.timerSlider.value) + 5); D.timerSlider.value = v; updateTimerTooltip(); updateTimerUIFromVal(v); };
-
-const updateTimerTooltip = () => {
-  const val = D.timerSlider.value;
-  D.timerTooltip.textContent = `${val}分`;
-  const min = D.timerSlider.min || 1;
-  const max = D.timerSlider.max || 60;
-  const percent = ((val - min) / (max - min)) * 100;
-  D.timerTooltip.style.left = `calc(${percent}% + (${8 - percent * 0.15}px))`; 
-};
-
-D.timerSlider.addEventListener("input", updateTimerTooltip);
-D.timerSlider.addEventListener("change", () => { updateTimerUIFromVal(parseInt(D.timerSlider.value) || 30); });
-
-let _sliderDragging = false;
-D.timerSlider.addEventListener("pointerdown", () => { _sliderDragging = true; });
-D.timerSlider.addEventListener("pointerup", () => { _sliderDragging = false; });
-D.timerSlider.addEventListener("pointercancel", () => { _sliderDragging = false; });
+D.timerM5.onclick = () => { let v = clampTimer(parseInt(D.hostTimerInput.value) - 5); D.hostTimerInput.value = v; updateTimerUIFromVal(v); };
+D.timerP5.onclick = () => { let v = clampTimer(parseInt(D.hostTimerInput.value) + 5); D.hostTimerInput.value = v; updateTimerUIFromVal(v); };
+D.hostTimerInput.addEventListener("change", (e) => {
+  let val = clampTimer(parseInt(e.target.value));
+  e.target.value = val;
+  updateTimerUIFromVal(val);
+});
 
 let isRoomApproveMode = false;
 const updateRoomModeBtnUI = () => {
@@ -693,83 +684,7 @@ const fDT = ts => {
 
 const UR = /(https?:\/\/[^\s\n<>"]+)/gi;
 
-// 音楽ダウンロード確認ダイアログのトリガー
-window.triggerDownload = (url, name) => {
-  if (confirm(`ファイルを即時ダウンロードしますか？\n対象: ${name}`)) {
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = name || "download.mp3";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  }
-};
-
-// URL検知時のメディアパース：【最重要修正】動画・画像のカード化・埋め込み・プレイヤー表示を完全撤廃。
-// プラットフォーム種類に即応した「色付きバッジ ＋ テキスト別タブリンク」にのみ単純構成化。
-function parseMediaEmbed(url) {
-  let icon = "🔗"; let title = "添付リンク"; let badgeColor = "var(--bd)";
-  const tt = url.match(/tiktok\.com\/.*video\/(\d+)/i);
-  const nc = url.match(/nicovideo\.jp\/watch\/(sm\d+)/i);
-  const ig = url.match(/instagram\.com\/(?:p|reel)\/([a-zA-Z0-9_-]+)/i);
-  const yt = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
-  const isImg = /\.(jpg|jpeg|png|gif|webp)(?:\?.*)?$/i.test(url);
-  const isVid = /\.(mp4|webm)(?:\?.*)?$/i.test(url);
-  const isAud = /\.(mp3|wav|ogg|aac)(?:\?.*)?$/i.test(url);
-
-  if (yt && yt[1]) { icon = "🎥"; title = "YouTube"; badgeColor = "#ef4444"; }
-  else if (tt && tt[1]) { icon = "🎵"; title = "TikTok"; badgeColor = "#00f2fe"; }
-  else if (nc && nc[1]) { icon = "📺"; title = "ニコニコ"; badgeColor = "#252525"; }
-  else if (ig && ig[1]) { icon = "📷"; title = "Instagram"; badgeColor = "#e1306c"; }
-  else if (isImg) { icon = "🖼"; title = "画像"; badgeColor = "var(--em)"; }
-  else if (isVid) { icon = "📹"; title = "動画"; badgeColor = "#3b82f6"; }
-  else if (isAud) { icon = "🎵"; title = "音声"; badgeColor = "#a855f7"; }
-  else { return ""; }
-
-  const safeUrl = url.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  
-  if (isAud) {
-    const urlFilename = url.substring(url.lastIndexOf('/') + 1).split('?')[0];
-    const safeFilename = urlFilename.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    const hash = CryptoJS.MD5(url).toString().substring(0,8);
-    // 音声もコンパクトなインラインバッジ、リンク、およびDLボタン構成に高密度統一
-    return `
-      <div class="media-link-container">
-        <div class="media-inline-row">
-          <span class="media-badge" style="background:${badgeColor};">${icon} ${title}</span>
-          <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="color:#a5b4fc; text-decoration:underline; font-weight:700;">${esc(urlFilename)}</a>
-          <span id="size-${hash}" style="color:var(--m2); font-size:8px; font-family:monospace;">(容量取得中...)</span>
-          <button onclick="triggerDownload('${safeUrl}', '${safeFilename}')" style="background:rgba(255,255,255,0.08); border:1px solid var(--bd); color:var(--tx); padding:1px 3px; border-radius:3px; font-size:8px; font-weight:bold; cursor:pointer;">📥 DL</button>
-        </div>
-      </div>
-      <script>
-        fetch('${safeUrl}', { method: 'HEAD' })
-          .then(res => {
-            const bytes = res.headers.get('content-length');
-            const el = document.getElementById('size-${hash}');
-            if (el && bytes) {
-              el.textContent = '(' + (bytes / (1024 * 1024)).toFixed(2) + ' MB)';
-            } else if (el) { el.textContent = ''; }
-          }).catch(() => {
-            const el = document.getElementById('size-${hash}');
-            if (el) el.textContent = '';
-          });
-      <\/script>
-    `;
-  }
-
-  // 動画や画像を含め、プレイヤー埋め込みやカード描画を一切行わず、極小バッジとテキスト別タブリンクに変換
-  return `
-    <div class="media-link-container">
-      <div class="media-inline-row">
-        <span class="media-badge" style="background:${badgeColor};">${icon} ${title}</span>
-        <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="color:#a5b4fc; text-decoration:underline;">リンクを開く (別タブ)</a>
-      </div>
-    </div>
-  `;
-}
-
-// むき出しのURLを非表示にし、常にミニマルなバッジリンクとして構築するパーサー
+// URLアドレスをそのままリンクとして書く単純パース処理
 function parseTxtSplit(txt) {
   const norm = txt.replace(/[\u3000]/g," "); const parts = []; let last = 0, m; UR.lastIndex = 0;
   while((m = UR.exec(norm)) !== null){
@@ -786,22 +701,10 @@ function parseTxtSplit(txt) {
       if(h) textParts.push(h);
     } else {
       const su = esc(p.v); 
-      const mediaHtml = parseMediaEmbed(p.v);
-      if (mediaHtml) {
-        textParts.push(mediaHtml);
-      } else {
-        textParts.push(`
-          <div class="media-link-container">
-            <div class="media-inline-row">
-              <span class="media-badge" style="background:var(--bd);">🔗 リンク</span>
-              <a href="${su}" target="_blank" rel="noopener noreferrer" style="color:#a5b4fc; text-decoration:underline;">リンクを開く</a>
-            </div>
-          </div>
-        `);
-      }
+      textParts.push(`<a href="${su}" target="_blank" rel="noopener noreferrer" style="color:#60a5fa; text-decoration:underline;">${su}</a>`);
     }
   }
-  return { textHtml: textParts.join("<br>") };
+  return { textHtml: textParts.join("") };
 }
 
 window.triggerDeleteMsg = (mid, previewText) => {
@@ -857,12 +760,10 @@ function cMsg(msg) {
     rawTextPreview = "[画像ファイル]";
     const b64 = txt.substring(5);
     if (b64.match(/^data:image\/(jpeg|png|gif|webp);base64,[a-zA-Z0-9+/=]+$/)) {
-       // アップロード画像も同様に埋め込みを行わず、拡大モーダル展開用のリンクバッジに統一
-       const hash = CryptoJS.MD5(b64).toString().substring(0,8);
        contentHtml = `
          <div class="media-link-container">
            <div class="media-inline-row">
-             <span class="media-badge" style="background:var(--em);">🖼 添付画像</span>
+             <span class="media-badge" style="background:var(--em); color:#000;">🖼 添付画像</span>
              <a href="#" class="inline-img-viewer" data-src="${b64}" style="color:#a5b4fc; text-decoration:underline; font-weight:700;">画像を拡大表示</a>
            </div>
          </div>
@@ -939,22 +840,38 @@ D.tl.addEventListener("click", (e) => {
 D.imgViewCloseBtn.onclick = () => D.imgViewMod.classList.remove("show");
 
 function updateScrollBtnUI() {
-  const isAtBottom = (D.tl.scrollHeight - D.tl.scrollTop - D.tl.clientHeight) <= 20;
+  const scrollTop = D.tl.scrollTop;
+  const scrollHeight = D.tl.scrollHeight;
+  const clientHeight = D.tl.clientHeight;
+  
+  const isAtBottom = (scrollHeight - scrollTop - clientHeight) <= 20;
+  const isAtTop = scrollTop <= 5;
+  
   if (isAtBottom) {
     isLiveMode = true;
-    D.scrollFab.classList.remove("show");
-    D.fabUnread.classList.remove("show");
     unreadCount = 0;
+    D.jumpDownBtn.disabled = true;
+    D.jumpDownBtn.textContent = "▼";
   } else {
     isLiveMode = false;
-    D.scrollFab.classList.add("show");
+    D.jumpDownBtn.disabled = false;
+    if (unreadCount > 0) {
+      D.jumpDownBtn.textContent = `▼ (${unreadCount})`;
+    } else {
+      D.jumpDownBtn.textContent = "▼";
+    }
+  }
+  
+  if (isAtTop) {
+    D.jumpUpBtn.disabled = true;
+  } else {
+    D.jumpUpBtn.disabled = false;
   }
 }
 
 const scBottom = (force = false) => { if (force || (autoScrollEnabled && isLiveMode)) { D.tl.scrollTop = D.tl.scrollHeight; } };
 
 D.tl.addEventListener("scroll", updateScrollBtnUI, {passive:true});
-D.scrollFab.onclick = () => { isLiveMode = true; scBottom(true); updateScrollBtnUI(); };
 D.mi.addEventListener("focus", () => { isLiveMode = true; setTimeout(() => scBottom(true), 150); });
 
 D.jumpUpBtn.onclick = () => { D.tl.scrollTop = 0; isLiveMode = false; updateScrollBtnUI(); };
@@ -969,8 +886,7 @@ function renderSingleMessage(m) {
     if (m.u !== myUid && !m.sys) {
         if (!isLiveMode) { 
             unreadCount++; 
-            D.fabUnread.textContent = unreadCount; 
-            D.fabUnread.classList.add("show");
+            updateScrollBtnUI();
         }
     }
     if(D.tli.children.length > 100) {
@@ -985,7 +901,7 @@ function renderSingleMessage(m) {
   }
 }
 
-// 要件5: 重複排除処理の最適化。cidが一致する楽観的UIを完全に削除
+// 重複排除処理の最適化
 function removeMessageEl(id) {
   displayedMsgIds.delete(id);
   const el = D.tli.querySelector(`[data-mid="${CSS.escape(String(id))}"]`);
@@ -1002,7 +918,7 @@ function removeMessageEl(id) {
 async function wipe(r) {
   if (!r) return;
   const updates = { [`rooms/${r}`]: null, [`chat/${r}`]: null, [`presence/${r}`]: null, [`pending/${r}`]: null };
-  try { await update(ref(db), updates); console.log("Cleanup: Room wiped."); } catch (e) { }
+  try { await update(ref(db), updates); } catch (e) { }
 }
 
 async function sendSysMsg(text) {
@@ -1010,7 +926,7 @@ async function sendSysMsg(text) {
   await push(ref(db, `chat/${curR}`), { sys: true, m: enc(text, masterKey), t: serverTimestamp() });
 }
 
-// 要件6: doExit関数としての機能統廃合とすべての監視リセット徹底
+// 退出処理
 window.doExit = async () => {
   _exitLock = true; 
   if (curR && masterKey && localStorage.getItem("nz_is_in_room") === "true") {
@@ -1050,10 +966,9 @@ function startTimerLoop() {
     const m = Math.floor(remain / 60000), s = Math.floor((remain % 60000) / 1000);
     D.timerDsp.textContent = `${m}:${String(s).padStart(2,"0")}`;
     
-    // 要件6: スライダーのドラッグ中、およびフォーカスが当たっている時は値を強制上書きせず競合を排除
-    if(isHost && document.activeElement !== D.timerSlider && !_sliderDragging) {
+    if(isHost && document.activeElement !== D.hostTimerInput) {
         const remainMin = Math.max(1, Math.round(remain / 60000));
-        D.timerSlider.value = remainMin; updateTimerTooltip();
+        D.hostTimerInput.value = remainMin;
     }
 
     if (remain <= 0 && !_exitLock) { _exitLock = true; doExit(); return; }
@@ -1092,14 +1007,12 @@ async function checkCurrentRoomStatus() {
   } catch { D.roomResumeArea.style.display = "none"; }
 }
 
-// 要件6: pendingを処理。ホストによるメンバー昇格・承認フロー
+// ホストによるメンバー昇格・承認フロー
 window.approveGuest = async (guestUid, guestKey) => {
   if (!isHost || !masterKey) return;
   try {
     const encryptedMasterKey = CryptoJS.AES.encrypt(masterKey, guestKey).toString();
-    // 1. members(presence)への昇格追加
     await update(ref(db, `presence/${curR}/${guestUid}`), { status: "approved", mk: encryptedMasterKey });
-    // 2. pendingノードからの確実な除去
     await remove(ref(db, `pending/${curR}/${guestUid}`));
     showToast("✅ 承認してメンバーに昇格しました");
   } catch (e) { showToast("⚠️ 承認に失敗しました"); }
@@ -1186,7 +1099,11 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       await sendSysMsg(`${trip ? trip + " " : ""}${name} が部屋を作成しました`);
       
       const freshSnap = await get(roomRef);
-      if(freshSnap.exists()) { localStorage.setItem("nz_active_ri", roomId); localStorage.setItem("nz_active_created", freshSnap.val().created); }
+      if(freshSnap.exists()) { 
+        localStorage.setItem("nz_active_ri", roomId); 
+        localStorage.setItem("nz_active_created", freshSnap.val().created); 
+        localStorage.setItem("nz_is_in_room", "true");
+      }
       
       enterChatUI(roomData);
     } 
@@ -1216,7 +1133,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         D.waitModTrip.textContent = `${name} ${trip}`;
         D.waitMod.classList.add("show");
         
-        // 【最重要修正】承認時の「自動入室」ロジック：presenceノードにホストが情報を書き込んだ瞬間を監視
+        // 承認時の「自動入室」監視
         _waitPresOff = onValue(myPresRef, (s) => {
           if (!s.exists()) return;
           const val = s.val();
@@ -1224,9 +1141,8 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
             masterKey = CryptoJS.AES.decrypt(val.mk, myGuestKey).toString(CryptoJS.enc.Utf8);
             if (masterKey) {
                const finalMetaStr = JSON.stringify({ n: name, p: trip, c: curColor });
-               // 承認・復号完了により、不要なメタ情報をクリアして正式メンバー化
                update(myPresRef, { gk: null, mk: null, meta: enc(finalMetaStr, masterKey) });
-               onDisconnect(myPresRef).remove(); // 退出時の自動除去設定を上書き設定
+               onDisconnect(myPresRef).remove(); 
                
                D.waitMod.classList.remove("show");
                if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
@@ -1248,7 +1164,9 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         await sendSysMsg(`${trip ? trip + " " : ""}${name} が入室しました`);
         enterChatUI(roomData);
       }
-      localStorage.setItem("nz_active_ri", roomId); localStorage.setItem("nz_active_created", roomData.created);
+      localStorage.setItem("nz_active_ri", roomId); 
+      localStorage.setItem("nz_active_created", roomData.created);
+      localStorage.setItem("nz_is_in_room", "true");
     }
   } catch (e) { showLobby("エラー: " + e.message); }
 }
@@ -1261,7 +1179,7 @@ function enterChatUI(roomData) {
   if (isHost) {
     D.hostTimerCtrl.style.display = "flex";
     const currentRemainMin = Math.max(1, Math.round((_roomExpireAt - srvNow()) / 60000));
-    D.timerSlider.value = currentRemainMin; updateTimerTooltip();
+    D.hostTimerInput.value = currentRemainMin;
     
     D.hostModeCtrl.style.display = "flex";
     isRoomApproveMode = roomData.requireApproval === true;
@@ -1312,7 +1230,7 @@ function enterChatUI(roomData) {
     D.pl.innerHTML = ""; D.pl.appendChild(fg); D.pcnt.textContent = `[${count}人]`;
   });
 
-  // ホスト専用の pending 監視フロー。ホストのみに承認要求を動的反映
+  // ホスト専用の pending 監視
   if (isHost) {
     _pendingOff = onValue(ref(db, `pending/${curR}`), s => {
       if (!curR || !isHost) return;
@@ -1421,8 +1339,6 @@ async function sendMsg(overrideText = null, imgData = null) {
   isLiveMode = true; scBottom(true);
 
   const metaObj = { n: curN, p: localStorage.getItem("nz_mytrip_styled") || "", c: curColor };
-  
-  // 重複排除に欠かせない、同一のcidを発行した楽観的UIの仮DOM生成
   const cid = "opt_" + myUid + "_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
   const tempObj = { id: cid, cid: cid, u: myUid, meta: enc(JSON.stringify(metaObj), masterKey), m: enc(imgData ? "IMG::" + imgData : txt, masterKey), t: Date.now() };
   renderSingleMessage(tempObj);
@@ -1489,8 +1405,6 @@ D.gdBtn.onclick = () => D.gmod.classList.add("show");
 D.gcBtn.onclick = () => D.gmod.classList.remove("show");
 document.querySelectorAll(".mod-overlay").forEach(m => { m.onclick = e => { if(e.target === m || m.id === "imgViewMod") m.classList.remove("show"); }; });
 
-window.addEventListener("beforeunload", () => { localStorage.setItem("nz_is_in_room", "false"); });
-
 let isInit = false;
 onAuthStateChanged(auth, async user => {
   if (!user) { signInAnonymously(auth).catch(e => { D.lberr.textContent = "接続エラー: " + e.message; D.lberr.style.display = "block"; hideSplash(); }); return; }
@@ -1498,24 +1412,34 @@ onAuthStateChanged(auth, async user => {
   initConnectionMonitor();
 
   const sp = new URLSearchParams(location.search), urlR = sp.get("r");
-  if (urlR) { D.ri.value = urlR; localStorage.setItem("nz_ri_val", urlR); }
   
   const savedActiveRi = localStorage.getItem("nz_active_ri"), savedActiveCreated = localStorage.getItem("nz_active_created"), savedNi = localStorage.getItem("nz_ni"), savedPi = localStorage.getItem("nz_pi_val"), savedTripKey = localStorage.getItem("nz_tripi"), savedTimer = parseInt(localStorage.getItem("nz_timer_val")) || 30;
   
+  // 複窓対策およびリロード引き戻し自動再入室フロー
   if (savedActiveRi && savedActiveCreated && savedNi && savedTripKey) {
     try {
       const hashId = getRoomHash(savedActiveRi);
       const snap = await get(ref(db, `rooms/${hashId}`));
       if (snap.exists() && snap.val().created === parseInt(savedActiveCreated) && snap.val().expireAt > srvNow()) {
-        if (localStorage.getItem("nz_is_in_room") !== "true") {
-          localStorage.setItem("nz_is_in_room", "true");
-          const tripStyled = makeTrip(savedNi, savedTripKey); localStorage.setItem("nz_mytrip_styled", tripStyled);
-          await doJoin(savedActiveRi, savedPi, savedNi, tripStyled, savedTimer, snap.val().requireApproval);
-          return; 
+        localStorage.setItem("nz_is_in_room", "true");
+        const tripStyled = makeTrip(savedNi, savedTripKey); localStorage.setItem("nz_mytrip_styled", tripStyled);
+        
+        // パラメータが異なる場合（複窓時など）は現在の正しいアクティブ部屋URLに上書き
+        if (window.history?.replaceState) {
+          window.history.replaceState({}, document.title, location.pathname + "?r=" + encodeURIComponent(savedActiveRi));
         }
+        await doJoin(savedActiveRi, savedPi, savedNi, tripStyled, savedTimer, snap.val().requireApproval);
+        return; 
       }
     } catch(e) { }
   }
+
+  // アクティブな部屋がない場合にのみ、招待リンクパラメータを新規適用
+  if (urlR) { 
+    D.ri.value = urlR; 
+    localStorage.setItem("nz_ri_val", urlR); 
+  }
+  
   showLobby();
 });
 </script>

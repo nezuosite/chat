@@ -84,16 +84,31 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 #app.visible{display:flex}
 #cp{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;background:#0d1117;position:relative}
 
-/* ヘッダー */
-#hdr{background:var(--sf);border-bottom:1px solid var(--bd);padding:1px 4px;flex-shrink:0}
-.hr{display:flex;align-items:center;gap:4px;height:20px}
-.rn{font-weight:800;font-size:11px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
-.pcnt{font-size:9.5px;font-weight:700;color:var(--mu);font-family:monospace}
-#timerDsp{font-family:monospace;font-weight:bold;color:#f87171;font-size:11px;background:rgba(244,63,94,0.08);padding:1px 3px;border-radius:3px;border:1px solid rgba(244,63,94,0.2)}
-.hbs{display:flex;gap:3px;z-index:10}
-.hbs button{padding:2px 4px;border-radius:4px;font-size:9.5px;font-weight:700;background:var(--bg);border:1px solid var(--bd);color:var(--tx);display:flex;align-items:center;gap:1px}
+/* ヘッダー (押し間違いのない配置に最適化) */
+#hdr{background:var(--sf);border-bottom:1px solid var(--bd);padding:6px 12px;flex-shrink:0}
+.hr{display:flex;align-items:center;justify-content:space-between;gap:12px;height:44px}
+.rn{font-weight:800;font-size:13px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.pcnt{font-size:10px;font-weight:700;color:var(--mu);font-family:monospace}
+#timerDsp{font-family:monospace;font-weight:bold;color:#f87171;font-size:11px;background:rgba(244,63,94,0.08);padding:2px 4px;border-radius:3px;border:1px solid rgba(244,63,94,0.2)}
+
+/* 各種操作ボタンの押しやすさ・マージン最適化 */
+.hbs{display:flex;gap:16px;z-index:10;align-items:center;}
+.hbs button{padding:6px 12px;height:34px;border-radius:6px;font-size:11px;font-weight:700;background:var(--bg);border:1px solid var(--bd);color:var(--tx);display:flex;align-items:center;gap:4px;transition:background 0.15s, border-color 0.15s;}
+.hbs button:active{background:rgba(255,255,255,0.08);}
 .bclr-dot{width:6px;height:6px;border-radius:50%;display:inline-block}
-.bx{background:rgba(244,63,94,.12)!important; border-color:rgba(244,63,94,.3)!important; color:#fda4af!important; font-weight:900!important;}
+
+/* 退室ボタンの押し間違いのないようなサイズとカラー最適化 */
+.bx{
+  background:rgba(244,63,94,.16)!important; 
+  border-color:rgba(244,63,94,.4)!important; 
+  color:#fda4af!important; 
+  font-weight:900!important;
+  padding:6px 16px!important;
+  margin-left:8px;
+}
+.bx:active{
+  background:rgba(244,63,94,.3)!important;
+}
 
 /* 1. 入室者リスト (最上部配置) */
 #pl{display:flex;gap:3px;overflow-x:auto;padding:2px;white-space:nowrap;scrollbar-width:none;border-bottom:1px solid rgba(255,255,255,0.03);background:var(--s2);flex-shrink:0;}
@@ -371,7 +386,6 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 
     <!-- 入力バー -->
     <div id="ib">
-      <!-- 横幅100%活用：設定用ボタン群をすべて入力バーの上部に1列で配置 -->
       <div id="ibTopBar">
         <!-- 1. キーボードボタン -->
         <button id="kbToggleBtn" class="switch-btn ib-icon-btn" title="送信後のキーボード設定">
@@ -475,7 +489,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   </div>
 </div>
 
-<!-- 画像拡大ビューモーダル（ピンチズーム対応） -->
+<!-- 画像拡大ビューモーダル（ピンチズーム対応、位置固定） -->
 <div id="imgViewMod" class="mod-overlay">
   <img id="imgViewSrc" src="" alt="拡大画像">
   <button class="modal-bottom-close" style="position:fixed; bottom:16px; left:50%; transform:translateX(-50%); max-width:180px; z-index:10001;" id="imgViewCloseBtn">閉じる</button>
@@ -944,7 +958,7 @@ async function sendSysMsg(text) {
   await push(ref(db, `chat/${curR}`), { sys: true, m: enc(text, masterKey), t: serverTimestamp() });
 }
 
-// 退出（確実な物理削除連携）
+// 退室ボタンクリックなど明示的な操作の場合のみプレゼンス等削除を伴い退出
 window.doExit = async () => {
   _exitLock = true; 
   if (curR && masterKey && localStorage.getItem("nz_is_in_room") === "true") {
@@ -1031,7 +1045,6 @@ window.approveGuest = async (guestUid, guestKey) => {
   try {
     const encryptedMasterKey = CryptoJS.AES.encrypt(masterKey, guestKey).toString();
     const guestMetaRef = ref(db, `presence/${curR}/${guestUid}`);
-    // 承認データと復号キーを即時にセット
     await set(guestMetaRef, { status: "approved", mk: encryptedMasterKey });
     await remove(ref(db, `pending/${curR}/${guestUid}`));
     showToast("✅ 承認してメンバーに昇格しました");
@@ -1149,7 +1162,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         D.waitModTrip.textContent = `${name} ${trip}`;
         D.waitMod.classList.add("show");
         
-        // 承認完了を極めて低遅延で感知する即時リスナー
         _waitPresOff = onValue(myPresRef, (s) => {
           if (!s.exists()) return;
           const val = s.val();
@@ -1433,47 +1445,31 @@ D.gdBtn.onclick = () => D.gmod.classList.add("show");
 D.gcBtn.onclick = () => D.gmod.classList.remove("show");
 document.querySelectorAll(".mod-overlay").forEach(m => { m.onclick = e => { if(e.target === m || m.id === "imgViewMod") m.classList.remove("show"); }; });
 
-// ズーム・ドラッグ拡大モーダル用ロジック
+// ズームモーダル用ロジック (画像は画面中央に完全固定)
 let scale = 1;
-let translateX = 0;
-let translateY = 0;
-let isDragging = false;
-let startX = 0;
-let startY = 0;
-let initialDistance = 0;
 const imgEl = D.imgViewSrc;
 const overlayEl = D.imgViewMod;
+let initialDistance = 0;
 
 function resetZoom() {
   scale = 1;
-  translateX = 0;
-  translateY = 0;
   updateTransform();
 }
 
 function updateTransform() {
-  imgEl.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+  imgEl.style.transform = `scale(${scale})`;
 }
 
 overlayEl.addEventListener('touchstart', (e) => {
   if (e.target === D.imgViewCloseBtn) return;
-  if (e.touches.length === 1) {
-    isDragging = true;
-    startX = e.touches[0].clientX - translateX;
-    startY = e.touches[0].clientY - translateY;
-  } else if (e.touches.length === 2) {
-    isDragging = false;
+  if (e.touches.length === 2) {
     initialDistance = getDistance(e.touches[0], e.touches[1]);
   }
 }, { passive: true });
 
 overlayEl.addEventListener('touchmove', (e) => {
   if (e.target === D.imgViewCloseBtn) return;
-  if (isDragging && e.touches.length === 1) {
-    translateX = e.touches[0].clientX - startX;
-    translateY = e.touches[0].clientY - startY;
-    updateTransform();
-  } else if (e.touches.length === 2) {
+  if (e.touches.length === 2) {
     const dist = getDistance(e.touches[0], e.touches[1]);
     const factor = dist / initialDistance;
     scale = Math.max(0.5, Math.min(5, scale * factor));
@@ -1482,39 +1478,12 @@ overlayEl.addEventListener('touchmove', (e) => {
   }
 }, { passive: true });
 
-overlayEl.addEventListener('touchend', (e) => {
-  isDragging = false;
-  if (e.touches.length === 1) {
-    isDragging = true;
-    startX = e.touches[0].clientX - translateX;
-    startY = e.touches[0].clientY - translateY;
-  }
-});
-
 overlayEl.addEventListener('wheel', (e) => {
   e.preventDefault();
   const delta = e.deltaY > 0 ? 0.9 : 1.1;
   scale = Math.max(0.5, Math.min(5, scale * delta));
   updateTransform();
 }, { passive: false });
-
-overlayEl.addEventListener('mousedown', (e) => {
-  if (e.target === D.imgViewCloseBtn) return;
-  isDragging = true;
-  startX = e.clientX - translateX;
-  startY = e.clientY - translateY;
-});
-
-window.addEventListener('mousemove', (e) => {
-  if (!isDragging) return;
-  translateX = e.clientX - startX;
-  translateY = e.clientY - startY;
-  updateTransform();
-});
-
-window.addEventListener('mouseup', () => {
-  isDragging = false;
-});
 
 function getDistance(t1, t2) {
   return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);

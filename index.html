@@ -140,7 +140,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 #waitBadge{display:none; background:var(--ro); color:#fff; font-size:8px; font-weight:900; padding:1px 4px; border-radius:6px; margin-left:-2px; animation:pulseGlow 2s infinite;}
 #waitBadge.show{display:inline-block;}
 
-/* 誤操作防止: モーダル内ボタンの左右分離用レイアウト（旧バージョンで未定義だったため追加） */
+/* 誤操作防止: ボタンの左右分離用レイアウト */
 .wait-btns{display:flex; gap:16px; margin-top:6px;}
 .wait-trip-box{background:var(--s2); border:1px solid var(--bd); border-radius:6px; padding:10px; text-align:center; margin:6px 0;}
 .del-modal-text{background:var(--s2); border:1px solid var(--bd); border-radius:6px; padding:8px; font-size:11px; color:var(--tx); max-height:120px; overflow-y:auto; word-break:break-all; white-space:pre-wrap; margin:4px 0;}
@@ -234,7 +234,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .clr-cancel{background:var(--bg);border:1px solid var(--bd);color:var(--tx)}
 .clr-ok{background:var(--in);color:#fff}
 
-#imgViewMod{background:rgba(0,0,0,0.92);backdrop-filter:blur(4px);padding:0;cursor:zoom-out;overflow:hidden;}
+#imgViewMod{background:rgba(0,0,0,0.92);backdrop-filter:blur(4px);padding:0;cursor:zoom-out;overflow:hidden;touch-action:none;}
 #imgViewSrc {
   max-width: 100%;
   max-height: 100%;
@@ -432,15 +432,15 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 
 <div id="toastContainer"></div>
 
-<!-- 発言削除確認モーダル -->
+<!-- 発言削除確認モーダル (左右分離・警告赤色最適化) -->
 <div id="delConfirmMod" class="mod-overlay">
   <div class="gc" style="max-width:320px;">
     <h3 style="font-size:13px; color:var(--ro);">⚠️ 発言の削除確認</h3>
     <div style="font-size:10px; color:var(--mu);">以下の発言を完全に消去しますか？（復元できません）</div>
     <div id="delConfirmPreview" class="del-modal-text"></div>
-    <div class="wait-btns">
+    <div class="wait-btns" style="display:flex; justify-content:space-between; gap:24px; margin-top:12px; width:100%;">
       <button class="btn bq" id="delCancelBtn" style="flex:1;">戻る</button>
-      <button class="btn bp" id="delExecuteBtn" style="flex:1; background:var(--ro);">完全に削除</button>
+      <button class="btn bp" id="delExecuteBtn" style="flex:1; background:var(--ro); border:1px solid rgba(244,63,94,0.4); color:#fda4af;">完全に削除</button>
     </div>
   </div>
 </div>
@@ -624,7 +624,6 @@ const copyToClip = (text) => {
 D.lbCopyTripBtn.onclick = () => copyToClip(`${D.ni.value || "名無し"} ${localStorage.getItem("nz_mytrip_styled")||""}`);
 D.waitCopyIdBtn.onclick = () => copyToClip(`${localStorage.getItem("nz_myname")} ${localStorage.getItem("nz_mytrip_styled")||""}`);
 D.copyUrlBtn.onclick = () => copyToClip(`${location.origin}${location.pathname}?r=${encodeURIComponent(rawR)}`);
-// 誤操作防止: 退室は取り返しがつかない操作のため確認ダイアログを挟む（以前はハンドラ自体が未接続だった）
 D.exBtn.onclick = () => { if (confirm("本当に退室しますか？")) doExit(); };
 
 const clampTimer = (val) => { let v = parseInt(val); if (isNaN(v)) return 30; return Math.max(1, Math.min(180, v)); };
@@ -843,8 +842,11 @@ function cMsg(msg) {
 D.delCancelBtn.onclick = () => { D.delConfirmMod.classList.remove("show"); targetDelId = null; };
 D.delExecuteBtn.onclick = async () => {
   if (curR && targetDelId) {
-    await remove(ref(db, `chat/${curR}/${targetDelId}`)).catch(()=>{});
-    showToast("✅ 削除完了");
+    // 誤操作防止のため確認ダイアログのダブルチェックを挟む
+    if (confirm("本当にこのメッセージを物理削除しますか？\nこの操作は元に戻せません。")) {
+      await remove(ref(db, `chat/${curR}/${targetDelId}`)).catch(()=>{});
+      showToast("✅ 削除完了");
+    }
   }
   D.delConfirmMod.classList.remove("show");
   targetDelId = null;
@@ -854,7 +856,8 @@ let curR = null, curN = null, rawR = null, myUid = null;
 let isW = false, _exitLock = false, isLiveMode = false, unreadCount = 0;
 let displayedMsgIds = new Set();
 let myPresRef = null, _roomExpireAt = null, _cOff = null, _pOff = null, _rOff = null, _crOff = null, _waitPresOff = null, _pendingOff = null;
-// リアルタイム受信メッセージのrAFバッチ描画用キュー（仕様1: パフォーマンス対応）
+
+// リアルタイム受信メッセージのMicroTaskバッチ描画用（仕様1,2: 高パフォーマンス＆遅延ゼロ）
 let _msgQueue = [], _flushScheduled = false;
 
 let keepKbOpen = localStorage.getItem("nz_keep_kb") === "true";
@@ -939,7 +942,7 @@ function trimTimeline() {
   }
 }
 
-// 自分の発言（楽観的表示）は即時描画。1件だけなのでrAFを介す必要はない
+// 自分の発言（楽観的表示）は即時描画
 function renderSingleMessage(m) {
   if (displayedMsgIds.has(m.id)) return;
   const el = cMsg(m); 
@@ -957,12 +960,13 @@ function renderSingleMessage(m) {
   }
 }
 
-// リアルタイム受信メッセージはrAF単位でバッチ描画し、連続受信時のブロッキングを回避（体感遅延は最大1フレーム）
+// リアルタイム受信メッセージはMicroTask（queueMicrotask）単位でバッチ描画。
+// 連続受信時のメインスレッド負荷を回避しつつ、次のレンダリング前のコールスタックに即反映するため遅延ゼロを達成（仕様1, 2）
 function queueIncomingMessage(m) {
   _msgQueue.push(m);
   if (!_flushScheduled) {
     _flushScheduled = true;
-    requestAnimationFrame(flushIncomingMessages);
+    queueMicrotask(flushIncomingMessages);
   }
 }
 function flushIncomingMessages() {
@@ -1015,7 +1019,7 @@ async function sendSysMsg(text) {
   await push(ref(db, `chat/${curR}`), { sys: true, m: enc(text, masterKey), t: serverTimestamp() });
 }
 
-// 退室ボタンクリックなど明示的な操作の場合のみプレゼンス等削除を伴い退出
+// 退室ボタンクリック等による明示的な退室
 window.doExit = async () => {
   _exitLock = true; 
   if (curR && masterKey && localStorage.getItem("nz_is_in_room") === "true") {
@@ -1036,7 +1040,7 @@ window.doExit = async () => {
 
 function clearAll() {
   if(typeof _cOff === "function"){ _cOff(); _cOff = null; }
-  if(typeof _crOff === "function"){ _crOff(); _crOff = null; }
+  if(typeof _crOff === "function"){ _crOff = null; }
   if(typeof _pOff === "function"){ _pOff(); _pOff = null; }
   if(typeof _rOff === "function"){ _rOff(); _rOff = null; }
   if(typeof _waitPresOff === "function"){ _waitPresOff(); _waitPresOff = null; }
@@ -1097,14 +1101,14 @@ async function checkCurrentRoomStatus() {
   } catch { D.roomResumeArea.style.display = "none"; }
 }
 
-// 承認処理の超高速化
+// 承認処理
 window.approveGuest = async (guestUid, guestKey) => {
   if (!isHost || !masterKey) return;
   try {
     const encryptedMasterKey = CryptoJS.AES.encrypt(masterKey, guestKey).toString();
     const guestMetaRef = ref(db, `presence/${curR}/${guestUid}`);
     await set(guestMetaRef, { status: "approved", mk: encryptedMasterKey });
-    // authorized_users: 永続的な権限管理（仕様3）。以後この端末は再入室時に承認をスキップできる
+    // authorized_usersによる永続的権限管理（仕様3）
     await set(ref(db, `authorized_users/${curR}/${guestUid}`), { mk: encryptedMasterKey, ts: serverTimestamp() });
     await remove(ref(db, `pending/${curR}/${guestUid}`));
     showToast("✅ 承認してメンバーに昇格しました");
@@ -1175,6 +1179,8 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
     }
 
     let roomData = null;
+    // 既存の入室履歴フラグを取得し、システムログ出力を抑制（サイレント復帰、仕様3）
+    const hasEnteredBefore = localStorage.getItem(`nz_entered_${hashId}`) === "true";
     
     if (!snap.exists()) {
       if (!pass) throw new Error("新規作成にはパスワードが必要です。");
@@ -1188,7 +1194,9 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
       await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey), isHost: true });
       
-      await sendSysMsg(`${trip ? trip + " " : ""}${name} が部屋を作成しました`);
+      if (!hasEnteredBefore) {
+        await sendSysMsg(`${trip ? trip + " " : ""}${name} が部屋を作成しました`);
+      }
       
       const freshSnap = await get(roomRef);
       if(freshSnap.exists()) { 
@@ -1211,7 +1219,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         await update(myPresRef, { status: "approved", meta: enc(metaStr, masterKey), isHost: true });
         enterChatUI(roomData);
       } else if (roomData.requireApproval) {
-        // 永続認可(authorized_users)の照合による無音再入室を先に試みる（仕様3: サイレント復帰）
+        // 永続認可(authorized_users)の照合による承認スキップ（仕様3: サイレント復帰）
         const authLocalKey = localStorage.getItem(`nz_authkey_${hashId}`);
         let silentResumed = false;
 
@@ -1224,7 +1232,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
                 masterKey = decryptedMk;
                 const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
                 await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey), isHost: false });
-                // サイレント復帰: 承認をスキップし、システムログも出力しない
                 enterChatUI(roomData);
                 silentResumed = true;
               }
@@ -1258,7 +1265,9 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
                  if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
                  
                  enterChatUI(roomData);
-                 sendSysMsg(`${trip ? trip + " " : ""}${name} が承認され入室しました`);
+                 if (!hasEnteredBefore) {
+                   sendSysMsg(`${trip ? trip + " " : ""}${name} が承認され入室しました`);
+                 }
               }
             }
           });
@@ -1271,12 +1280,15 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         masterKey = getMasterKey(roomId, pass);
         const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
         await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey) });
-        await sendSysMsg(`${trip ? trip + " " : ""}${name} が入室しました`);
+        if (!hasEnteredBefore) {
+          await sendSysMsg(`${trip ? trip + " " : ""}${name} が入室しました`);
+        }
         enterChatUI(roomData);
       }
       localStorage.setItem("nz_active_ri", roomId); 
       localStorage.setItem("nz_active_created", roomData.created);
       localStorage.setItem("nz_is_in_room", "true");
+      localStorage.setItem(`nz_entered_${hashId}`, "true");
     }
   } catch (e) { showLobby("エラー: " + e.message); }
 }
@@ -1317,7 +1329,7 @@ function enterChatUI(roomData) {
     if(isHost) { isRoomApproveMode = requireApproval; updateRoomModeBtnUI(); }
   });
 
-  // 在室者リストの描画（rAFでスロットリングし、連続presence更新時のDOM再構築を1フレームにまとめる：仕様1）
+  // 在室者リストの描画（rAFでスロットリングし連続更新をまとめて描画：仕様1）
   function renderPresenceList(s) {
     if (!curR) return;
     const fg = document.createDocumentFragment(); let count = 0;
@@ -1341,7 +1353,7 @@ function enterChatUI(roomData) {
       }
     };
 
-    // 自己生存キャッシュ: 自分自身の入室情報を強制的にリストの先頭にレンダリングする
+    // 自己生存キャッシュ: 自分自身の入室情報を強制的にリストの先頭にレンダリング
     if (myUid && localStorage.getItem("nz_is_in_room") === "true") {
       const myMetaStr = JSON.stringify({ n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor });
       renderMember(myUid, { status: "approved", meta: enc(myMetaStr, masterKey), isHost: isHost });
@@ -1356,7 +1368,7 @@ function enterChatUI(roomData) {
   }
   _pOff = onValue(ref(db, `presence/${curR}`), rafThrottle(renderPresenceList));
 
-  // ホスト専用の pending 監視（こちらもrAFスロットリング：仕様1）
+  // ホスト専用の pending 監視（rAFスロットリング：仕様1）
   if (isHost) {
     function renderPendingList(s) {
       if (!curR || !isHost) return;
@@ -1404,7 +1416,7 @@ function enterChatUI(roomData) {
   isLiveMode = true; hideSplash(); setTimeout(()=> scBottom(true), 300);
 }
 
-// 切断監視
+// 切断監視（システム通知は上部 connBanner に集約、トーストやアラート等による割込みを排除：仕様4）
 let _wasDisconnected = false;
 let _connBannerTimer = null;
 
@@ -1532,7 +1544,7 @@ D.gdBtn.onclick = () => D.gmod.classList.add("show");
 D.gcBtn.onclick = () => D.gmod.classList.remove("show");
 document.querySelectorAll(".mod-overlay").forEach(m => { m.onclick = e => { if(e.target === m || m.id === "imgViewMod") m.classList.remove("show"); }; });
 
-// ズームモーダル用ロジック（2本指ピンチによる拡大縮小 ＋ 1本指パンによる位置移動に対応：仕様4）
+// ズームモーダル用ロジック（2本指ピンチによる拡大縮小 ＋ 1本指パンによる位置移動に対応、親要素のtouch-action無効化による高滑らか性維持：仕様4）
 let scale = 1, panX = 0, panY = 0;
 let lastPanX = 0, lastPanY = 0, isPanning = false;
 const imgEl = D.imgViewSrc;
@@ -1610,7 +1622,7 @@ onAuthStateChanged(auth, async user => {
   
   const savedActiveRi = localStorage.getItem("nz_active_ri"), savedActiveCreated = localStorage.getItem("nz_active_created"), savedNi = localStorage.getItem("nz_ni"), savedPi = localStorage.getItem("nz_pi_val"), savedTripKey = localStorage.getItem("nz_tripi"), savedTimer = parseInt(localStorage.getItem("nz_timer_val")) || 30;
   
-  // 複窓対策およびリロード引き戻し自動再入室
+  // 複窓対策およびリロード引き戻し自動再入室 (堅牢性：仕様5)
   if (savedActiveRi && savedActiveCreated && savedNi && savedTripKey) {
     try {
       const hashId = getRoomHash(savedActiveRi);

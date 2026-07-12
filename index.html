@@ -725,9 +725,16 @@ function showToast(msg) {
   setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 2000);
 }
 
+// 絶対時刻（YYYY/MM/DD HH:mm:ss）の取得フォーマット
 const fDT = ts => {
   if(!ts) return ""; const d = new Date(ts);
-  return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}`;
+  const y = d.getFullYear();
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  const dy = String(d.getDate()).padStart(2, "0");
+  const h = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  const s = String(d.getSeconds()).padStart(2, "0");
+  return `${y}/${mo}/${dy} ${h}:${mi}:${s}`;
 };
 
 const UR = /(https?:\/\/[^\s\n<>"]+)/gi;
@@ -787,10 +794,41 @@ window.openZoomModal = (b64) => {
   resetZoom();
 };
 
+// 絶対時系列を維持し、DOMをソートされた位置に挿入する関数
+function insertMessageEl(el) {
+  const ts = parseInt(el.dataset.ts) || 0;
+  const children = Array.from(D.tli.children);
+  let inserted = false;
+  
+  // 後方から逆順で確認し、自分よりも古いまたは同等のメッセージが見つかったらその直後に挿入
+  for (let i = children.length - 1; i >= 0; i--) {
+    const child = children[i];
+    const childTs = parseInt(child.dataset.ts) || 0;
+    if (childTs <= ts) {
+      D.tli.insertBefore(el, child.nextSibling);
+      inserted = true;
+      break;
+    }
+  }
+  if (!inserted) {
+    // どのメッセージよりも古い場合は先頭に配置
+    D.tli.insertBefore(el, D.tli.firstChild);
+  }
+}
+
 function cMsg(msg) {
+  const msgTs = msg.timestamp || msg.t || srvNow();
+
   if (msg.sys) {
-    const d = document.createElement("div"); d.dataset.mid = msg.id;
-    d.className = "sys-msg"; d.textContent = dec(msg.m, masterKey) || "システムメッセージ(暗号化)";
+    const d = document.createElement("div"); 
+    d.dataset.mid = msg.id;
+    d.dataset.ts = msgTs;
+    d.className = "sys-msg"; 
+    
+    const sysText = dec(msg.m, masterKey) || "システムメッセージ(暗号化)";
+    const tsText = fDT(msgTs);
+    // システムメッセージ内にお知らせの絶対時刻（YYYY/MM/DD HH:mm:ss）をミニマルに統合
+    d.innerHTML = `<span style="opacity:0.5; font-size:7.5px; margin-right:4px; font-family:monospace;">[${tsText}]</span>${sysText}`;
     return d;
   }
 
@@ -802,6 +840,7 @@ function cMsg(msg) {
 
   const d = document.createElement("div"); 
   d.dataset.mid = msg.id;
+  d.dataset.ts = msgTs;
   if (msg.cid) {
     d.setAttribute("data-cid", msg.cid);
   }
@@ -816,14 +855,13 @@ function cMsg(msg) {
     rawTextPreview = "[画像ファイル]";
     const b64 = txt.substring(5);
     if (b64.match(/^data:image\/(jpeg|png|gif|webp);base64,[a-zA-Z0-9+/=]+$/)) {
-       // 最適サイズで即座にインライン表示
        contentHtml = `<img src="${b64}" class="inline-img" alt="画像" onclick="openZoomModal('${b64}')">`;
     } else { contentHtml = "<span style='color:red'>[不正な画像データ]</span>"; }
   } else { contentHtml = parseTxtSplit(txt).textHtml; }
   
   let nameSpan = `<span style="color:${esc(sC)};font-weight:700">${esc(sN)}</span>`;
   if(sT) nameSpan += ` <span style="color:${esc(sC)}; font-size:10px; font-weight:bold;">${sT}</span>`;
-  let timeSpan = `<span class="ts" style="color:${esc(sC)}; opacity:0.8">${fDT(msg.t)}</span>`;
+  let timeSpan = `<span class="ts" style="color:${esc(sC)}; opacity:0.8; font-family:monospace;">${fDT(msgTs)}</span>`;
 
   d.innerHTML = `<div class="mm">${nameSpan}${timeSpan}</div><div class="mb" style="border-color:${esc(sC)}">${contentHtml}</div>`;
   
@@ -843,7 +881,6 @@ function cMsg(msg) {
 D.delCancelBtn.onclick = () => { D.delConfirmMod.classList.remove("show"); targetDelId = null; };
 D.delExecuteBtn.onclick = async () => {
   if (curR && targetDelId) {
-    // 誤操作防止のため確認ダイアログのダブルチェックを挟む
     if (confirm("本当にこのメッセージを物理削除しますか？\nこの操作は元に戻せません。")) {
       await remove(ref(db, `chat/${curR}/${targetDelId}`)).catch(()=>{});
       showToast("✅ 削除完了");
@@ -858,7 +895,7 @@ let isW = false, _exitLock = false, isLiveMode = false, unreadCount = 0;
 let displayedMsgIds = new Set();
 let myPresRef = null, _roomExpireAt = null, _cOff = null, _pOff = null, _rOff = null, _crOff = null, _waitPresOff = null, _pendingOff = null;
 
-// リアルタイム受信メッセージのMicroTaskバッチ描画用（仕様1,2: 高パフォーマンス＆遅延ゼロ）
+// リアルタイム受信メッセージのMicroTaskバッチ描画用
 let _msgQueue = [], _flushScheduled = false;
 
 let keepKbOpen = localStorage.getItem("nz_keep_kb") === "true";
@@ -922,7 +959,7 @@ D.mi.addEventListener("focus", () => { isLiveMode = true; setTimeout(() => scBot
 D.jumpUpBtn.onclick = () => { D.tl.scrollTop = 0; isLiveMode = false; updateScrollBtnUI(); };
 D.jumpDownBtn.onclick = () => { isLiveMode = true; scBottom(true); updateScrollBtnUI(); };
 
-// DOM操作をrAFに介してメインスレッドのブロッキングを回避する軽量スロットラー（仕様1）
+// DOM操作をrAFに介してメインスレッドのブロッキングを回避する軽量スロットラー
 function rafThrottle(fn) {
   let scheduled = false, latestArgs = null;
   return (...args) => {
@@ -943,12 +980,12 @@ function trimTimeline() {
   }
 }
 
-// 自分の発言（楽観的表示）は即時描画
+// 自分の発言（楽観的表示）は即時、時系列を並び替えて描画
 function renderSingleMessage(m) {
   if (displayedMsgIds.has(m.id)) return;
   const el = cMsg(m); 
   if (el) {
-    D.tli.appendChild(el); 
+    insertMessageEl(el); // 厳密ソート順でDOM挿入
     displayedMsgIds.add(m.id); 
     if (m.u !== myUid && !m.sys) {
         if (!isLiveMode) { 
@@ -961,8 +998,7 @@ function renderSingleMessage(m) {
   }
 }
 
-// リアルタイム受信メッセージはMicroTask（queueMicrotask）単位でバッチ描画。
-// 連続受信時のメインスレッド負荷を回避しつつ、次のレンダリング前のコールスタックに即反映するため遅延ゼロを達成（仕様1, 2）
+// リアルタイム受信メッセージはMicroTask単位で一気に時系列順ソートの上バッチ描画
 function queueIncomingMessage(m) {
   _msgQueue.push(m);
   if (!_flushScheduled) {
@@ -974,20 +1010,22 @@ function flushIncomingMessages() {
   _flushScheduled = false;
   if (!curR || _msgQueue.length === 0) { _msgQueue = []; return; }
   const batch = _msgQueue; _msgQueue = [];
-  const frag = document.createDocumentFragment();
+  
+  // バッチ内のメッセージデータをあらかじめ時刻（timestamp）順にソート
+  batch.sort((a, b) => (a.timestamp || a.t || 0) - (b.timestamp || b.t || 0));
+
   let appended = 0, newUnread = 0;
   for (const m of batch) {
     if (displayedMsgIds.has(m.id)) continue;
     const el = cMsg(m);
     if (el) {
-      frag.appendChild(el);
+      insertMessageEl(el); // 厳密ソート順でDOM挿入
       displayedMsgIds.add(m.id);
       appended++;
       if (m.u !== myUid && !m.sys && !isLiveMode) newUnread++;
     }
   }
   if (appended > 0) {
-    D.tli.appendChild(frag);
     if (newUnread > 0) unreadCount += newUnread;
     trimTimeline();
     updateScrollBtnUI();
@@ -1011,13 +1049,19 @@ function removeMessageEl(id) {
 
 async function wipe(r) {
   if (!r) return;
+  // 追加されたtimestampを含む全てのデータを物理消去（一括 null セットで保証）
   const updates = { [`rooms/${r}`]: null, [`chat/${r}`]: null, [`presence/${r}`]: null, [`pending/${r}`]: null, [`authorized_users/${r}`]: null };
   try { await update(ref(db), updates); } catch (e) { }
 }
 
 async function sendSysMsg(text) {
   if (!curR || !masterKey) return;
-  await push(ref(db, `chat/${curR}`), { sys: true, m: enc(text, masterKey), t: serverTimestamp() });
+  await push(ref(db, `chat/${curR}`), { 
+    sys: true, 
+    m: enc(text, masterKey), 
+    t: serverTimestamp(),
+    timestamp: serverTimestamp() // UTCタイムスタンプ必須項目追加
+  });
 }
 
 // 退室ボタンクリック等による明示的な退室
@@ -1055,7 +1099,7 @@ function clearAll() {
   if(typeof _waitPresOff === "function"){ _waitPresOff(); _waitPresOff = null; }
   if(typeof _pendingOff === "function"){ _pendingOff(); _pendingOff = null; }
   masterKey = null; isLiveMode = false; displayedMsgIds.clear(); D.tli.innerHTML = "";
-  _msgQueue = []; _flushScheduled = false;
+  _msgQueue = []; _flushScheduled = false; // メモリ内データも物理消去として完全に破棄を保証
   stopTimerLoop(); D.hostTimerCtrl.style.display = "none"; D.hostApprovePanel.style.display = "none"; D.hostModeCtrl.style.display = "none";
   stopWaitTicker(); _seenWaitIds.clear(); D.waitBadge.classList.remove("show");
 }
@@ -1407,12 +1451,14 @@ function enterChatUI(roomData) {
     _pendingOff = onValue(ref(db, `pending/${curR}`), rafThrottle(renderPendingList));
   }
 
-  _cOff = onChildAdded(query(ref(db, `chat/${curR}`), orderByChild("t"), limitToLast(100)), snap => {
+  // サーバー時刻（timestamp）を基準とし、ソートして100件取得
+  _cOff = onChildAdded(query(ref(db, `chat/${curR}`), orderByChild("timestamp"), limitToLast(100)), snap => {
     if(!curR || !masterKey) return;
     const m = snap.val(); 
     if(m) { 
       m.id = snap.key; 
       if (!m.t) m.t = Date.now(); 
+      if (!m.timestamp) m.timestamp = m.t; // timestamp未対応の過去ログとの互換性
       if (m.cid && displayedMsgIds.has(m.cid)) { removeMessageEl(m.cid); }
       queueIncomingMessage(m);
     } 
@@ -1425,7 +1471,7 @@ function enterChatUI(roomData) {
   isLiveMode = true; hideSplash(); setTimeout(()=> scBottom(true), 300);
 }
 
-// 切断監視 (接続、再接続の表示処理を廃止し、バックグラウンドでの同期のみを行うサイレント仕様へ変更)
+// 切断監視 (接続、再接続の表示処理を廃止し、バックグラウンドでの同期のみを行うサイレント仕様)
 let _wasDisconnected = false;
 
 function initConnectionMonitor() {
@@ -1443,7 +1489,7 @@ function initConnectionMonitor() {
 }
 
 function showConnBanner(msg, cls, autoHideMs) {
-  // 接続・再接続通知の非表示化に伴い本機能はサイレント化
+  // 接続・再接続通知の非表示化
 }
 
 async function forceResync() {
@@ -1481,11 +1527,29 @@ async function sendMsg(overrideText = null, imgData = null) {
 
   const metaObj = { n: curN, p: localStorage.getItem("nz_mytrip_styled") || "", c: curColor };
   const cid = "opt_" + myUid + "_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
-  const tempObj = { id: cid, cid: cid, u: myUid, meta: enc(JSON.stringify(metaObj), masterKey), m: enc(imgData ? "IMG::" + imgData : txt, masterKey), t: Date.now() };
+  
+  // 楽観的表示用一時オブジェクト（同期したサーバー時刻を使用）
+  const nowSrv = srvNow();
+  const tempObj = { 
+    id: cid, 
+    cid: cid, 
+    u: myUid, 
+    meta: enc(JSON.stringify(metaObj), masterKey), 
+    m: enc(imgData ? "IMG::" + imgData : txt, masterKey), 
+    t: nowSrv,
+    timestamp: nowSrv 
+  };
   renderSingleMessage(tempObj);
 
   try {
-    await push(ref(db, `chat/${curR}`), { u: myUid, cid: cid, meta: enc(JSON.stringify(metaObj), masterKey), m: enc(imgData ? "IMG::" + imgData : txt, masterKey), t: serverTimestamp() });
+    await push(ref(db, `chat/${curR}`), { 
+      u: myUid, 
+      cid: cid, 
+      meta: enc(JSON.stringify(metaObj), masterKey), 
+      m: enc(imgData ? "IMG::" + imgData : txt, masterKey), 
+      t: serverTimestamp(),
+      timestamp: serverTimestamp() // UTCタイムスタンプ必須項目追加
+    });
   } catch (e) {
     removeMessageEl(cid);
     alert("送信に失敗しました");
@@ -1546,7 +1610,7 @@ D.gdBtn.onclick = () => D.gmod.classList.add("show");
 D.gcBtn.onclick = () => D.gmod.classList.remove("show");
 document.querySelectorAll(".mod-overlay").forEach(m => { m.onclick = e => { if(e.target === m || m.id === "imgViewMod") m.classList.remove("show"); }; });
 
-// ズームモーダル用ロジック（2本指ピンチによる拡大縮小 ＋ 1本指パンによる位置移動に対応、親要素のtouch-action無効化による高滑らか性維持：仕様4）
+// ズームモーダル用ロジック（2本指ピンチによる拡大縮小 ＋ 1本指パンによる位置移動に対応、親要素のtouch-action無効化による高滑らか性維持）
 let scale = 1, panX = 0, panY = 0;
 let lastPanX = 0, lastPanY = 0, isPanning = false;
 const imgEl = D.imgViewSrc;

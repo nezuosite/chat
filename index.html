@@ -25,7 +25,7 @@ html,body{
   background:var(--bg);color:var(--tx);
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Noto Sans JP",sans-serif;
   touch-action:pan-y;overscroll-behavior:none;-webkit-text-size-adjust:100%;
-  font-size:14px; /* ベース可読性の向上 */
+  font-size:15px; /* ベースサイズの視認性向上 */
 }
 input,textarea,select{font-family:inherit;-webkit-user-select:text;user-select:text;font-size:15px!important}
 button{cursor:pointer;font-family:inherit;border:none;background:none}
@@ -37,12 +37,12 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .spt{font-size:10px;font-weight:800;color:var(--m2);letter-spacing:.2em}
 
-/* 同意画面 (最前面・利用規約・セキュリティ仕様の網羅設計) */
+/* 同意画面 (最前面・利用規約・セキュリティ仕様・使い方網羅) */
 #consent{position:fixed;inset:0;background:var(--bg);z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;overflow-y:auto;}
 
 /* ロビーUI */
 #lobby{display:none;position:fixed;inset:0;background:var(--bg);z-index:100;overflow-y:auto;}
-.lbo{height:auto;min-height:100%;display:flex;flex-direction:column;padding:12px 16px calc(12px + var(--safe));gap:6px;justify-content:center;max-width:380px;margin:0 auto}
+.lbo{height:auto;min-height:100%;display:flex;flex-direction:column;padding:12px 16px calc(12px + var(--safe));gap:8px;justify-content:center;max-width:380px;margin:0 auto}
 .lbt{font-size:18px;font-weight:900;color:#818cf8;text-align:center;letter-spacing:.05em}
 .lbsub{font-size:11px;font-weight:700;color:var(--m2);text-align:center;letter-spacing:.1em;margin-top:-2px}
 .lbi{display:flex;flex-direction:column;gap:10px;width:100%}
@@ -157,10 +157,10 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 
 @keyframes slideInUp { 0% { opacity: 0; transform: translateY(4px); } 100% { opacity: 1; transform: translateY(0); } }
 .mw{position:relative; display:flex;flex-direction:column;width:100%;opacity:0;animation:slideInUp 0.1s cubic-bezier(0.22, 1, 0.36, 1) forwards; user-select:text; -webkit-user-select:text; padding:8px 12px; border-bottom:1px solid rgba(51,65,85,0.25);}
-.mm{display:flex;align-items:center;gap:6px;font-size:11px;margin-bottom:2px;}
-.ts{color:var(--m2);font-size:10px;margin-left:auto;font-family:monospace;}
-.mb{align-self:start;background:transparent;border:none;padding:0;font-size:14px;line-height:1.5;max-width:100%;word-break:break-all;white-space:pre-wrap;color:var(--tx);}
-.sys-msg{text-align:center;font-size:11.5px;font-weight:bold;color:var(--mu);margin:4px 0;background:rgba(255,255,255,0.02);padding:4px 8px;border-radius:3px;width:100%;align-self:center;border:1px solid rgba(255,255,255,0.04);}
+.mm{display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:4px;}
+.ts{color:var(--m2);font-size:11px;margin-left:auto;font-family:monospace;}
+.mb{align-self:start;background:transparent;border:none;padding:0;font-size:15px;line-height:1.55;max-width:100%;word-break:break-all;white-space:pre-wrap;color:var(--tx);}
+.sys-msg{text-align:center;font-size:12px;font-weight:bold;color:var(--mu);margin:6px 0;background:rgba(255,255,255,0.03);padding:6px 12px;border-radius:4px;width:100%;align-self:center;border:1px solid rgba(255,255,255,0.05);}
 .del-btn{position:absolute;right:4px;top:4px;display:none;background:rgba(244,63,94,0.12);color:#fda4af;border:1px solid rgba(244,63,94,0.2);padding:2px 6px;border-radius:3px;font-size:10.5px;font-weight:bold;cursor:pointer;z-index:10;}
 .mw:hover .del-btn{display:block;}
 @media (hover: none){ .del-btn{display:block;opacity:0.6;position:static;margin-top:4px;align-self:flex-end;} }
@@ -277,7 +277,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 <div id="splash"><div class="spin"></div><div class="spt">NEZU ONETIME CHAT PRO</div></div>
 <div id="connBanner"></div>
 
-<!-- 利用同意画面 (ワンクッションUI) -->
+<!-- 利用同意画面 (ワンクッションUI & 包括的な規約説明) -->
 <div id="consent">
   <div class="lbo" style="max-width:440px; padding:20px; background:var(--sf); border:1px solid var(--bd); border-radius:8px;">
     <h2 class="lbt" style="font-size:18px; color:#818cf8; margin-bottom:4px;">⚡ NEZU ONETIME CHAT - PRO</h2>
@@ -788,7 +788,7 @@ const fDT = ts => {
 
 const UR = /(https?:\/\/[^\s\n<>"]+)/gi;
 
-// URLリンクパース（プロパティ不整合による描画エラーを完全に防止）
+// URLをプレーンなリンクにする処理（変数不整合による描画エラーを完全に防止）
 function parseTxtSplit(txt) {
   const norm = txt.replace(/[\u3000]/g," "); const parts = []; let last = 0, m; UR.lastIndex = 0;
   while((m = UR.exec(norm)) !== null){
@@ -896,7 +896,7 @@ function cMsg(msg) {
 
   const metaStr = dec(msg.meta, masterKey);
   const txt = dec(msg.m, masterKey);
-  // 復号できないメッセージも非表示にしてノイズを排除
+  // 復号できないメッセージ（鍵の不整合、他セッションの残骸など）も非表示にする
   if (!metaStr || !txt) return null; 
   
   let meta; try { meta = JSON.parse(metaStr); } catch { return null; }
@@ -1102,7 +1102,7 @@ async function checkCurrentRoomStatus() {
   } catch { D.roomResumeArea.style.display = "none"; }
 }
 
-// 承認処理 (ホスト側が代理となってゲスト情報を暗号化・通知プッシュまでを即時完結)
+// 承認処理 (ホスト側が代理となってゲスト情報を暗号化・通知プッシュまでを即時完結。DBのヌル安全チェックを大幅に強化)
 window.approveGuest = async (guestUid, guestKey) => {
   if (!isHost || !masterKey) return;
   try {
@@ -1278,6 +1278,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
             const decryptedMk = CryptoJS.AES.decrypt(myPresSnap.val().mk, authLocalKey).toString(CryptoJS.enc.Utf8);
             if (decryptedMk) {
               masterKey = decryptedMk;
+              await update(myPresRef, { mk: null }); // mkを使い捨てクリーンアップ
               enterChatUI(roomData, pass);
               return;
             }
@@ -1322,10 +1323,10 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
             try {
               const decryptedMk = CryptoJS.AES.decrypt(val.mk, myGuestKey).toString(CryptoJS.enc.Utf8);
               if (decryptedMk) {
-                masterKey = decryptedMk;
-                D.waitMod.classList.remove("show");
-                if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
-                enterChatUI(roomData, pass);
+                 masterKey = decryptedMk;
+                 D.waitMod.classList.remove("show");
+                 if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
+                 enterChatUI(roomData, pass);
               }
             } catch(e){}
           }

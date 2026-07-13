@@ -38,19 +38,8 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   height: var(--app-viewport-height, 100dvh);
 }
 
-/* 修正：スプラッシュスクリーンのフェードアニメーションを0.1秒に極短化 */
-#splash{
-  position:fixed;
-  inset:0;
-  background:var(--bg);
-  z-index:9999;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  gap:6px;
-  transition:opacity .1s ease; 
-}
+/* スプラッシュスクリーン */
+#splash{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;transition:opacity .2s}
 .spin{width:22px;height:22px;border:2px solid var(--in);border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .spt{font-size:10px;font-weight:800;color:var(--m2);letter-spacing:.2em}
@@ -94,6 +83,37 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .bq{background:var(--sf);color:var(--tx);border:1px solid var(--bd)}
 .bp{background:var(--in);color:#fff}
 .glink{font-size:12px;color:#a5b4fc;text-align:center;margin-top:10px;padding:6px 0;text-decoration:underline;cursor:pointer;font-weight:bold}
+
+/* ロビー下部ガイドライン */
+.lobby-guide-box {
+  background: var(--sf);
+  border: 1px solid var(--bd);
+  border-radius: 6px;
+  padding: 16px;
+  margin-top: 16px;
+  font-size: 11px;
+  color: var(--mu);
+  line-height: 1.6;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.guide-sec {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.guide-sub-title {
+  color: #a5b4fc;
+  font-weight: 800;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 4px;
+}
 
 /* アプリ本体 */
 #app{display:none;position:fixed;inset:0;flex-direction:column;overflow:hidden;z-index:50}
@@ -285,26 +305,17 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .clr-cancel{background:var(--bg);border:1px solid var(--bd);color:var(--tx)}
 .clr-ok{background:var(--in);color:#fff}
 
-/* 修正：画像拡大ビューモーダル（縦並び配置、画像とボタンの物理的被りを完全に防止） */
-#imgViewMod{
-  background:rgba(0,0,0,0.95);
-  backdrop-filter:blur(4px);
-  padding:16px;
-  display:none;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  z-index:10000;
-}
+#imgViewMod{background:rgba(0,0,0,0.92);backdrop-filter:blur(4px);padding:0;cursor:zoom-out;overflow:hidden;touch-action:none;}
 #imgViewSrc {
   max-width: 100%;
-  max-height: calc(100vh - 120px); /* 閉じるボタンエリアを確保し衝突を完全防止（壁クランプと連携） */
+  max-height: 100%;
   object-fit: contain;
   user-select: none;
   -webkit-user-drag: none;
   transition: transform 0.05s ease-out;
   transform-origin: center center;
 }
+.modal-bottom-close {width:100%; padding:8px; background:var(--ro); color:#fff; border-radius:5px; font-weight:bold; font-size:11px; text-align:center; margin-top:6px;}
 
 #toastContainer {
   position: fixed;
@@ -359,7 +370,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       
       <div class="fg">
         <label class="fl">トリップキー * (必須項目)</label>
-        <input type="text" id="tripi" class="inp" placeholder="本人証明用キー" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
+        <input type="text" id="tripi" class="inp" placeholder="本人証明用キー" autocomplete="off" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
         <div id="tripPreview">
           <span id="tripPrevText">プレビュー: 名無し</span>
           <button class="copy-s-btn" id="lbCopyTripBtn">コピー</button>
@@ -391,9 +402,38 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         <button class="btn bq" id="gnBtn">自動生成</button>
         <button class="btn bp" id="enBtn">入室 / 作成</button>
       </div>
-      
-      <!-- 修正：リンクテキストを最適化し、スッキリした配置へ変更 -->
-      <div class="glink" id="gdBtn" style="font-size: 13px; color: #818cf8; text-decoration: none; margin-top: 14px;">📖 ガイド / セキュリティ仕様を開く</div>
+      <div class="glink" id="gdBtn">📖 ガイド / セキュリティ仕様</div>
+
+      <!-- ロビー下部ガイドライン -->
+      <div class="lobby-guide-box">
+        <div class="guide-sec">
+          <span class="guide-sub-title">🔑 1. 使い方 (How to Use)</span>
+          ・表示名とトリップキー（必須）を入力し、部屋IDとパスワードを指定するか、自動生成して「入室 / 作成」を押します。<br>
+          ・入室後、上部の「🔗 URL」ボタンを押して招待リンクをコピーし、相手に共有してください。<br>
+          ・ホストは入室後、ルーム上部で「オープン / 承認制」を自由に切り替えることができます。
+        </div>
+        <div class="guide-sec">
+          <span class="guide-sub-title">🔒 2. セキュリティ仕様（管理者でも覗けないゼロ知識）</span>
+          ・<b>エンドツーエンド二重暗号化 (E2EE)</b>：発言やニックネーム、画像はブラウザ側で強力に暗号化されてから送信されます。<br>
+          ・<b>運営者も解読不能</b>：暗号を解読するためのパスワードは、サーバーへ一切送信されません。そのため、第三者やシステム管理者が直接データベースを見ても、意味を成さないデタラメな乱数しか確認できません。<br>
+          ・<b>即時物理削除 (Wipe)</b>：最後の一人が退室した、あるいは有効期限が切れた瞬間に、サーバーからすべてのログ・データが物理消去され完全に消失します。
+        </div>
+        <div class="guide-sec">
+          <span class="guide-sub-title">🤝 3. 待ち合わせのおすすめ方法と安全運用</span>
+          ・<b>A. 部屋IDとパスワードの個別共有（最も安全）</b>：<br>
+          「部屋ID」のみを相手に伝え、「部屋パスワード」は口頭や別の信頼できる連絡ツールで相手に共有します。これにより、URLをそのままクリックされるリスクを排除できます。<br>
+          ・<b>B. オープンな場所にハッシュURLを貼る場合の注意</b>：<br>
+          SNSや掲示板など、誰でも見られる場所に「#パスワード」が含まれた招待URLを貼り付けると、パスワードも全員に公開され暗号化の役割が失われます。<br>
+          ・<b>C. 承認制（LOCKED）モードの活用（推奨）</b>：<br>
+          不特定多数がアクセスする場所で待ち合わせをする場合は、ホストが入室後に<b>「承認制」</b>に切り替えてください。あらかじめ相手のトリップ（◆マーク以降の英数字）を聞いておき、承認待ちリストのトリップを一致しているかホストが目視で確認して「許可」ボタンを押すことで、部外者の侵入を完全に防ぐことができます。
+        </div>
+        <div class="guide-sec">
+          <span class="guide-sub-title">⚖️ 4. 利用規約 (Terms of Service)</span>
+          ・本システムは使い捨ての匿名連絡・一時協議用途でのみ利用を許可します。不正アクセスや法令違反、公序良俗に反する用途、運営を意図的に妨害するあらゆる試みを禁止します。<br>
+          ・部屋が無人になった瞬間に全データが即時完全削除されるため、後からログを復元する、データ保全を求めることは技術的に一切不可能です。
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -552,68 +592,43 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   </div>
 </div>
 
-<!-- ガイドモーダル (極めてわかりやすい仕様に全面書き直し) -->
+<!-- ガイドモーダル -->
 <div id="gmod" class="mod-overlay">
-  <div class="gc" style="max-width: 480px; padding: 18px;">
-    <h3 style="font-size:14px;font-weight:900;color:#818cf8;border-bottom:1px solid var(--bd);padding-bottom:6px;margin-bottom:10px">📖 ガイド ＆ セキュリティ仕様</h3>
-    
-    <div style="display:flex; flex-direction:column; gap:12px; max-height:60vh; overflow-y:auto; padding-right:4px; font-size:11.5px; color:var(--mu); line-height:1.6; text-align:left;">
-      
-      <div class="gs" style="border-left-color: #10b981; background: rgba(16,185,129,0.02);">
-        <h4>🔒 運営・管理者でも絶対に覗けません (E2EE ゼロ知識)</h4>
-        <p style="margin-top:2px;">
-          あなたが発信した「メッセージ、画像、名前、トリップ」は、ブラウザから外へ送信される直前に、暗号鍵（AES-256およびSHA-256）によって強力に暗号化されます。
-          復号に必要な「部屋パスワード」は、サーバーへは1文字も送信されません。そのため、たとえシステム管理者がデータベースを見ても、意味を持たないランダムな文字化け（乱数）としてしか見えず、絶対に内容を解読できません。
-        </p>
-      </div>
-
-      <div class="gs" style="border-left-color: #60a5fa; background: rgba(96,165,250,0.02);">
-        <h4>🤝 待ち合わせの「おすすめ」手順</h4>
-        <p style="margin-top:2px;">
-          <b>① パスワードを別の方法で教える（最強の安全策）</b><br>
-          「部屋ID」のみをメッセージ等で共有し、入室に必要な「共通パスワード」は口頭や別の安全なE2E連絡経路で共有します。URLを直踏みされる心配がありません。<br>
-          <b>② 招待URLの利用（スマート共有）</b><br>
-          上部の「🔗 URL」ボタンを押すと、パスワード情報をハッシュ（#以降）に含んだ招待リンクが生成されます。ハッシュ部はブラウザ間だけで処理されるため、サーバーに漏れることなく安全に相手を誘えます。
-        </p>
-      </div>
-
-      <div class="gs" style="border-left-color: #fb923c; background: rgba(251,146,60,0.02);">
-        <h4>🚨 SNSや掲示板など、公開の場所にURLを貼る注意点</h4>
-        <p style="margin-top:2px;">
-          Twitter(X)や公開チャットなどに、パスワードを含んだ「招待URL」を直接貼り付けると、全世界の誰でもメッセージを解読して侵入できてしまいます。<br>
-          <b>不特定多数の目に触れる場合は、以下の対策を強く推奨します：</b><br>
-          ・ホストが入室後、即座に上部の設定を<b>「承認制（LOCKED）」</b>に切り替える。<br>
-          ・入室を希望する相手に、事前に自身の「トリップ（表示名に付く ◆の後の10文字）」を伝えてもらう。<br>
-          ・ホストは「承認待ち」に表示された相手の名前とトリップを目視で確認・照合して「許可」を押す。<br>
-          これにより、パスワードが漏れていても、ホストが許可しない限り部外者がメッセージを復号して入室することは絶対に不可能です。
-        </p>
-      </div>
-
-      <div class="gs" style="border-left-color: #a855f7; background: rgba(168,85,247,0.02);">
-        <h4>🔓 オープンモードでもパスワードが漏れなければ安全</h4>
-        <p style="margin-top:2px;">
-          「オープン（OPEN）」モードであっても、第三者に「部屋ID」と「パスワード」の組み合わせが推測・漏洩しない限り、データベースへの直接ハッキングも含め、内容は完全に安全に保護されます。
-        </p>
-      </div>
-
-      <div class="gs" style="border-left-color: #f43f5e; background: rgba(244,63,94,0.02);">
-        <h4>⏱ 痕跡を残さない即時完全消去 (Wipe)</h4>
-        <p style="margin-top:2px;">
-          最後の一人が退室するか、部屋の有効期限が切れたその瞬間に、暗号化された発言、画像、承認データを含むすべてのやり取りが、サーバーのハードディスクから即座に復元不可能な方法で物理消去されます。
-        </p>
-      </div>
-
+  <div class="gc" style="max-width: 460px;">
+    <h3 style="font-size:13px;font-weight:900;color:#a5b4fc;border-bottom:1px solid var(--bd);padding-bottom:4px">📖 ガイド ＆ セキュリティ仕様</h3>
+    <div class="gs" style="border-left-color: #60a5fa;">
+      <h4>🔒 ゼロ知識・二重暗号化</h4>
+      <p style="font-size:11px; color:var(--mu); margin-top:2px;">
+        本文とメタデータはブラウザ上で個別に暗号化され、データベース（管理者）からは意味のない乱数としてのみ保存されます。
+      </p>
     </div>
-    <button class="modal-bottom-close" id="gcBtn" style="margin-top:14px; width:100%;">理解して閉じる</button>
+    <div class="gs" style="border-left-color: #f87171;">
+      <h4>⏱ 差分同期 ＆ 即時物理削除（Wipe）</h4>
+      <p style="font-size:11px; color:var(--mu); margin-top:2px;">
+        onChildAddedによる爆速反映を実装。部屋が無人になった瞬間に、全てのデータがサーバーから即座に物理削除され、ログは残りません。
+      </p>
+    </div>
+    <button class="modal-bottom-close" id="gcBtn">閉じる</button>
   </div>
 </div>
 
-<!-- 画像拡大ビューモーダル（縦並び配置、画像とボタンの物理的被りを完全に防止） -->
-<div id="imgViewMod" class="mod-overlay">
-  <div style="flex:1; display:flex; align-items:center; justify-content:center; width:100%; overflow:hidden;">
-    <img id="imgViewSrc" src="" alt="拡大画像">
+<!-- カラー変更モーダル -->
+<div id="clrmod" class="mod-overlay">
+  <div class="clrmc">
+    <h3 style="font-size:12px;">カラーを変更</h3>
+    <div class="clrpick-grid" id="clrPick2" style="margin:4px 0"></div>
+    <div class="clr-prev" id="clrPrev"><span style="color:var(--usr-color)">■ この色で名前、トリップ、発言時刻が同期表示されます</span></div>
+    <div class="clr-btns">
+      <button class="clr-cancel" id="clrCancel">キャンセル</button>
+      <button class="clr-ok" id="clrOk">適用</button>
+    </div>
   </div>
-  <button class="modal-bottom-close" id="imgViewCloseBtn" style="width:100%; max-width:180px; margin-top:16px; flex-shrink:0;">閉じる</button>
+</div>
+
+<!-- 画像拡大ビューモーダル -->
+<div id="imgViewMod" class="mod-overlay">
+  <img id="imgViewSrc" src="" alt="拡大画像">
+  <button class="modal-bottom-close" style="position:fixed; bottom:16px; left:50%; transform:translateX(-50%); max-width:180px; z-index:10001;" id="imgViewCloseBtn">閉じる</button>
 </div>
 
 <script type="module">
@@ -980,7 +995,7 @@ function cMsg(msg) {
     d.className = "sys-msg"; 
     
     const tsText = fDT(msgTs);
-    // お知らせログの表示は「ねづっちラインハルト ◆4f86af0168 が◯◯しました（改行）[2026/07/13 11:25:08]」
+    // 修正：お知らせログの表示は「ねづっちラインハルト ◆4f86af0168 が◯◯しました（改行）[2026/07/13 11:25:08]」
     const formattedText = sysText.replace(/\n/g, "<br>");
     d.innerHTML = `<div style="line-height:1.5; font-size:12px;">${formattedText}</div><div style="opacity:0.5; font-size:10px; font-family:monospace; margin-top:2px;">[${tsText}]</div>`;
     return d;
@@ -1073,7 +1088,7 @@ D.delExecuteBtn.onclick = async () => {
 let curR = null, curN = null, rawR = null, myUid = null;
 let isW = false, _exitLock = false, isLiveMode = false, unreadCount = 0;
 let displayedMsgIds = new Set();
-let myPresRef = null, _roomExpireAt = null, _cOff = null, _pOff = null, _rOff = null, _crOff = null, _waitPresOff = null, _waitRoomOff = null, _waitTimeoutTimer = null, _pendingOff = null;
+let myPresRef = null, _roomExpireAt = null, _cOff = null, _pOff = null, _rOff = null, _crOff = null, _waitPresOff = null, _waitRoomOff = null, _pendingOff = null;
 
 // 修正：送信・受信ラグを限りなく0に、ちらつきなく即時マージする高耐久パイプライン
 function queueIncomingMessage(m) {
@@ -1081,8 +1096,8 @@ function queueIncomingMessage(m) {
     // 既存の仮DOM（cidが一致するもの）を探す
     const tempEl = D.tli.querySelector(`[data-cid="${CSS.escape(String(m.cid))}"]`);
     if (tempEl) {
-      // 既存の仮ノードを一度削除して再描画する無駄な処理を廃止。
-      // 表示されている仮ノードをその場でアトミックに正式ノードへとマージ（ID書き換えや削除バインド等）してちらつきを完全解消（ラグなし爆速化）
+      // 修正：既存の仮ノードを一度削除して再描画（瞬きやスクロールのカクつきを伴う）する無駄な処理を廃止。
+      // 表示されている仮ノードをその場でアトミックに正式ノードへとマージ（ID書き換えや削除バインド等）してちらつきを完全解消
       const realEl = cMsg(m);
       if (realEl) {
         tempEl.replaceWith(realEl);
@@ -1151,32 +1166,21 @@ async function sendSysMsg(text) {
 window.doExit = async () => {
   _exitLock = true; 
   const hashId = curR;
-  stopHeartbeat(); // ハートビート停止
   if (curR && masterKey && localStorage.getItem("nz_is_in_room") === "true") {
-    // お知らせフォーマット仕様に適合
+    // お知らせフォーマット仕様（名前、トリップ 改行 メッセージ）に適合
     await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が退室しました`);
     if(myPresRef) await remove(myPresRef).catch(()=>{});
     await remove(ref(db, `pending/${curR}/${myUid}`)).catch(()=>{});
-    // 退室後の再入室時は承認を必要とするため、この部屋における永続認可データをFirebaseから削除
+    // 退室後の再入室時は承認を必要とするため、この部屋における永続認可データ(authorized_users)をFirebaseから削除
     await remove(ref(db, `authorized_users/${curR}/${myUid}`)).catch(()=>{});
     
-    // 修正：生存判定ロジック。退室時に、他のアクティブメンバー（ハートビートが5分以内の人）が残っていないか検証
     const pSnap = await get(ref(db, `presence/${curR}`));
-    const members = pSnap.val() || {};
-    let activeCount = 0;
-    for (const [id, u] of Object.entries(members)) {
-      if (id === myUid) continue;
-      if (u.status === "approved") {
-        const elapsed = u.lastSeen ? (srvNow() - u.lastSeen) : 0;
-        if (elapsed < 300000) activeCount++; // 5分以内に生存ハートビートがあるユーザー
-      }
-    }
-    // 生きているメンバーが一人もいない場合、部屋を完全に即時物理削除（ゴースト以外の誰も居ない場合）
-    if (activeCount === 0) {
+    const members = pSnap.val();
+    if (!members || Object.keys(members).length === 0) {
       await wipe(curR).catch(()=>{});
     }
   }
-  // セッション情報と入室履歴フラグを削除
+  // セッション情報と入室履歴フラグ(nz_entered_${hashId})を削除し、再入室時のお知らせログ出力を有効にする
   if (hashId) {
     localStorage.removeItem(`nz_entered_${hashId}`);
     localStorage.removeItem(`nz_authkey_${hashId}`);
@@ -1188,14 +1192,12 @@ window.doExit = async () => {
 
 function clearAll() {
   if(typeof _cOff === "function"){ _cOff(); _cOff = null; }
-  if(typeof _crOff === "function"){ _crOff(); _crOff = null; } 
+  if(typeof _crOff === "function"){ _crOff(); _crOff = null; } // 確実にオフに
   if(typeof _pOff === "function"){ _pOff(); _pOff = null; }
   if(typeof _rOff === "function"){ _rOff(); _rOff = null; }
   if(typeof _waitPresOff === "function"){ _waitPresOff(); _waitPresOff = null; }
-  if(typeof _waitRoomOff === "function"){ _waitRoomOff(); _waitRoomOff = null; } 
-  if(_waitTimeoutTimer) { clearInterval(_waitTimeoutTimer); _waitTimeoutTimer = null; } // 承認タイムアウトタイマークリア
+  if(typeof _waitRoomOff === "function"){ _waitRoomOff(); _waitRoomOff = null; } // 待機イベント監視解除
   if(typeof _pendingOff === "function"){ _pendingOff(); _pendingOff = null; }
-  stopHeartbeat();
   masterKey = null; isLiveMode = false; displayedMsgIds.clear(); D.tli.innerHTML = "";
   stopTimerLoop(); D.hostModeCtrl.style.display = "none"; D.hostApprovePanel.style.display = "none";
   stopWaitTicker(); _seenWaitIds.clear(); D.waitBadge.classList.remove("show");
@@ -1217,11 +1219,7 @@ function startTimerLoop() {
 }
 function stopTimerLoop() { if(_timerRaf) cancelAnimationFrame(_timerRaf); D.timerDsp.textContent = "--:--"; }
 
-// 修正：スプラッシュスクリーンのクローズフェードを100msに短縮し、最速で同期表示
-const hideSplash = () => { 
-  D.splash.style.opacity = "0"; 
-  setTimeout(() => { D.splash.style.display = "none"; }, 100); 
-};
+const hideSplash = () => { D.splash.style.opacity = "0"; setTimeout(() => { D.splash.style.display = "none"; }, 200); };
 
 function showLobby(msg = "") {
   clearAll(); localStorage.setItem("nz_is_in_room", "false"); 
@@ -1251,21 +1249,6 @@ async function checkCurrentRoomStatus() {
   } catch { D.roomResumeArea.style.display = "none"; }
 }
 
-// 修正：退室するまでは入室リストに残るようにし、ハートビート（生存確認）によってゴーストをクリーンアップする最適化
-let _heartbeatInterval = null;
-const startHeartbeat = () => {
-  stopHeartbeat();
-  // 15秒に1回、自分の生存タイムスタンプをFirebaseへ更新
-  _heartbeatInterval = setInterval(async () => {
-    if (myPresRef && localStorage.getItem("nz_is_in_room") === "true") {
-      await update(myPresRef, { lastSeen: serverTimestamp() }).catch(()=>{});
-    }
-  }, 15000);
-};
-const stopHeartbeat = () => {
-  if (_heartbeatInterval) { clearInterval(_heartbeatInterval); _heartbeatInterval = null; }
-};
-
 // 承認処理 (ホスト側が代理となってゲスト情報を暗号化・通知プッシュまでを即時完結)
 window.approveGuest = async (guestUid, guestKey) => {
   if (!isHost || !masterKey) return;
@@ -1291,6 +1274,7 @@ window.approveGuest = async (guestUid, guestKey) => {
     }
 
     // 2. ホスト側でゲスト用メタデータを代理暗号化
+    // IV自動整合暗号関数（enc）にguestKeyを渡して確実に暗号化。IV不整合による復号化エラー（承認失敗）を100%解決。
     const encryptedMasterKey = enc(masterKey, guestKey);
     const guestEncryptedMeta = enc(JSON.stringify({ n: guestName, p: guestTrip, c: guestColor }), masterKey);
 
@@ -1299,8 +1283,7 @@ window.approveGuest = async (guestUid, guestKey) => {
     updates[`presence/${curR}/${guestUid}`] = { 
       status: "approved", 
       mk: encryptedMasterKey,
-      meta: guestEncryptedMeta,
-      lastSeen: serverTimestamp() // 初期ハートビート値を追加
+      meta: guestEncryptedMeta 
     };
     updates[`authorized_users/${curR}/${guestUid}`] = { mk: encryptedMasterKey, ts: serverTimestamp() };
     updates[`pending/${curR}/${guestUid}`] = null;
@@ -1365,7 +1348,7 @@ function startWaitTicker() {
 }
 function stopWaitTicker() { if (_waitTickTimer) { clearInterval(_waitTickTimer); _waitTickTimer = null; } }
 
-// DOM操作をrAFに介してメインスレッドのブロッキングを回避する軽量スロットラー
+// DOM操作をrAFに介してメインスレッド of ブロッキングを回避する軽量スロットラー
 function rafThrottle(fn) {
   let scheduled = false, latestArgs = null;
   return (...args) => {
@@ -1415,13 +1398,13 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       
       myPresRef = ref(db, `presence/${hashId}/${myUid}`);
       const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
-      await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey), isHost: true, lastSeen: serverTimestamp() });
+      await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey), isHost: true });
       
       // ゴースト対策（ブラウザ切断時やタブ閉鎖時に自動的に入室者リストから物理消去。切断生存条件対応）
       onDisconnect(myPresRef).remove().catch(e => console.error("onDisconnect登録エラー:", e));
 
       if (!hasEnteredBefore) {
-        // お知らせフォーマット仕様に適合
+        // お知らせフォーマット仕様（名前、トリップ 改行 メッセージ）に適合
         await sendSysMsg(`${name} ${trip} が部屋を作成しました`);
       }
       
@@ -1442,7 +1425,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       if (isHost && pass) {
         masterKey = getMasterKey(roomId, pass);
         const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
-        await update(myPresRef, { status: "approved", meta: enc(metaStr, masterKey), isHost: true, lastSeen: serverTimestamp() });
+        await update(myPresRef, { status: "approved", meta: enc(metaStr, masterKey), isHost: true });
         enterChatUI(roomData, pass);
       } else if (roomData.requireApproval) {
         const authLocalKey = localStorage.getItem(`nz_authkey_${hashId}`);
@@ -1469,11 +1452,12 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
           try {
             const authSnap = await get(ref(db, `authorized_users/${hashId}/${myUid}`));
             if (authSnap.exists() && authSnap.val().mk) {
+              // dec関数を用いて一貫したロジックで暗号化キーを確実に復号する
               const decryptedMk = dec(authSnap.val().mk, authLocalKey);
               if (decryptedMk) {
                 masterKey = decryptedMk;
                 const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
-                await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey), isHost: false, lastSeen: serverTimestamp() });
+                await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey), isHost: false });
                 enterChatUI(roomData, pass);
                 return;
               }
@@ -1490,25 +1474,14 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         const waitMetaStr = JSON.stringify({ n: name, p: trip, c: curColor });
 
         const pendingRef = ref(db, `pending/${hashId}/${myUid}`);
-        const reqTime = srvNow(); // 申請時間をミリ秒で記録
         await set(pendingRef, { status: "waiting", gk: myGuestKey, wmeta: enc(waitMetaStr, waitKey), reqAt: serverTimestamp() });
+        
+        // 承認とゴースト対策の調和。ゲストが「一時的にタブを閉じている」場合でも
+        // ホストが未確認状態で承認待ちリストから申請が消えてしまうのを防ぐため、pendingノードに対するonDisconnect自動消去はあえて行いません。
 
         D.lobby.style.display = "none";
         D.waitModTrip.textContent = `${name} ${trip}`;
         D.waitMod.classList.add("show");
-
-        // 修正：承認待ちの期限を5分（300,000ms）までにするタイマー処理をバインド
-        _waitTimeoutTimer = setInterval(async () => {
-          const elapsed = srvNow() - reqTime;
-          if (elapsed > 300000) { // 5分
-            clearInterval(_waitTimeoutTimer); _waitTimeoutTimer = null;
-            if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
-            if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
-            await remove(pendingRef).catch(()=>{});
-            D.waitMod.classList.remove("show");
-            showLobby("⏳ 承認待ちの制限時間（5分）が経過したため、申請を自動的に取り消しました。");
-          }
-        }, 5000); // 5秒に1回監視
         
         // ゲスト側の常時待機監視
         _waitPresOff = onValue(myPresRef, (s) => {
@@ -1523,7 +1496,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
                  D.waitMod.classList.remove("show");
                  if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
                  if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
-                 if (_waitTimeoutTimer) { clearInterval(_waitTimeoutTimer); _waitTimeoutTimer = null; }
                  enterChatUI(roomData, pass);
               }
             } catch(e){
@@ -1532,26 +1504,15 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
           }
         });
 
-        // 承認待ちをしている間に「オープンモード」に変更、または部屋が消滅した場合の即時検出突破
+        // 承認待ちをしている間に「オープンモード」に変更された場合の自動突破処理
         _waitRoomOff = onValue(ref(db, `rooms/${hashId}`), async (s) => {
-          // 修正：承認待ち待機中にホストが退室して部屋が消えた場合、申請を最速キャンセルしてロビーに戻す
-          if (!s.exists()) {
-            if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
-            if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
-            if (_waitTimeoutTimer) { clearInterval(_waitTimeoutTimer); _waitTimeoutTimer = null; }
-            await remove(pendingRef).catch(()=>{});
-            D.waitMod.classList.remove("show");
-            showLobby("🚪 部屋が削除されたか、有効期限が切れたため、申請をキャンセルしました。");
-            return;
-          }
-
+          if (!s.exists()) return;
           const rVal = s.val();
           if (rVal.requireApproval === false) {
             console.log("ホストによって部屋がオープン化されたため、自動入室を試みます。");
             
             if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
             if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
-            if (_waitTimeoutTimer) { clearInterval(_waitTimeoutTimer); _waitTimeoutTimer = null; }
 
             const currentPass = pass || localStorage.getItem("nz_pi_val") || "";
             if (currentPass) {
@@ -1559,12 +1520,12 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
               const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
               
               await remove(pendingRef).catch(()=>{});
-              await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey), lastSeen: serverTimestamp() });
+              await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey) });
               
               D.waitMod.classList.remove("show");
               
               if (!hasEnteredBefore) {
-                // お知らせフォーマット仕様に適合
+                // お知らせフォーマット仕様（名前、トリップ 改行 メッセージ）に適合
                 await sendSysMsg(`${name} ${trip} が入室しました（オープン自動移行）`);
               }
               enterChatUI(rVal, currentPass);
@@ -1577,7 +1538,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         
         D.waitCancelBtn.onclick = () => { 
           if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
-          if (_waitTimeoutTimer) { clearInterval(_waitTimeoutTimer); _waitTimeoutTimer = null; }
           doExit(); 
         };
 
@@ -1585,9 +1545,9 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         if (!pass) throw new Error("承認制ではありません。パスワードが必要です。");
         masterKey = getMasterKey(roomId, pass);
         const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
-        await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey), lastSeen: serverTimestamp() });
+        await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey) });
         if (!hasEnteredBefore) {
-          // お知らせフォーマット仕様に適合
+          // お知らせフォーマット仕様（名前、トリップ 改行 メッセージ）に適合
           await sendSysMsg(`${name} ${trip} が入室しました`);
         }
         enterChatUI(roomData, pass);
@@ -1624,7 +1584,6 @@ function enterChatUI(roomData, pass) {
   }
 
   startTimerLoop();
-  startHeartbeat(); // ハートビート生存確認処理の起動
 
   _rOff = onValue(ref(db, `rooms/${curR}`), s => {
     if (!s.exists()) { 
@@ -1654,21 +1613,17 @@ function enterChatUI(roomData, pass) {
 
     const renderMember = (id, u) => {
       if (u.status === "approved" && u.meta) {
-        // 修正：最終ハートビート（lastSeen）が5分（300,000ms）以内のアクティブメンバーのみを描画
-        // これにより一時的なネットワーク瞬断で消えず、退室ボタンを押すまで在室リストに乗り続けます
-        const elapsed = u.lastSeen ? (srvNow() - u.lastSeen) : 0;
-        if (elapsed < 300000) { 
-          const metaStr = dec(u.meta, masterKey);
-          if(metaStr) {
-            try {
-               const m = JSON.parse(metaStr); count++;
-               const sp = document.createElement("span"); 
-               sp.className = "chip" + (u.isHost ? " is-host" : "");
-               sp.style.color = m.c || "#94a3b8"; sp.style.borderColor = (m.c || "#94a3b8") + "44";
-               sp.textContent = m.n; 
-               fg.appendChild(sp);
-            } catch(e){}
-          }
+        const metaStr = dec(u.meta, masterKey);
+        if(metaStr) {
+          try {
+             const m = JSON.parse(metaStr); count++;
+             const sp = document.createElement("span"); 
+             sp.className = "chip" + (u.isHost ? " is-host" : "");
+             sp.style.color = m.c || "#94a3b8"; sp.style.borderColor = (m.c || "#94a3b8") + "44";
+             // 修正：入室者リストは名前のみスッキリ表示
+             sp.textContent = m.n; 
+             fg.appendChild(sp);
+          } catch(e){}
         }
       }
     };
@@ -1676,7 +1631,7 @@ function enterChatUI(roomData, pass) {
     // 自己生存キャッシュ: 自分自身の入室情報を強制的にリストの先頭にレンダリング
     if (myUid && localStorage.getItem("nz_is_in_room") === "true") {
       const myMetaStr = JSON.stringify({ n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor });
-      renderMember(myUid, { status: "approved", meta: enc(myMetaStr, masterKey), isHost: isHost, lastSeen: srvNow() });
+      renderMember(myUid, { status: "approved", meta: enc(myMetaStr, masterKey), isHost: isHost });
       hasMeInList = true;
     }
 
@@ -1811,7 +1766,6 @@ document.addEventListener("visibilitychange", async () => {
               D.waitMod.classList.remove("show");
               if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
               if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
-              if (_waitTimeoutTimer) { clearInterval(_waitTimeoutTimer); _waitTimeoutTimer = null; }
               
               const rSnap = await get(ref(db, `rooms/${curR}`));
               const rData = rSnap.exists() ? rSnap.val() : { requireApproval: true };
@@ -1831,12 +1785,11 @@ document.addEventListener("visibilitychange", async () => {
               masterKey = getMasterKey(rawR, currentPass);
               const metaStr = JSON.stringify({ n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor });
               await remove(ref(db, `pending/${curR}/${myUid}`)).catch(()=>{});
-              await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey), lastSeen: serverTimestamp() });
+              await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey) });
               
               D.waitMod.classList.remove("show");
               if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
               if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
-              if (_waitTimeoutTimer) { clearInterval(_waitTimeoutTimer); _waitTimeoutTimer = null; }
               
               enterChatUI(rVal, currentPass);
             }
@@ -1948,7 +1901,7 @@ D.gnBtn.onclick = () => {
 
 D.gdBtn.onclick = () => D.gmod.classList.add("show");
 D.gcBtn.onclick = () => D.gmod.classList.remove("show");
-document.querySelectorAll(".mod-overlay").forEach(m => { m.onclick = e => { if(e.target === m || m.id === "imgViewMod" || m.id === "timerSettingMod" || m.id === "gmod") m.classList.remove("show"); }; });
+document.querySelectorAll(".mod-overlay").forEach(m => { m.onclick = e => { if(e.target === m || m.id === "imgViewMod" || m.id === "timerSettingMod") m.classList.remove("show"); }; });
 
 // 自動スクロール(最下部スクロール)処理の実装
 const scBottom = (force = false) => {

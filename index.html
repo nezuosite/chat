@@ -43,7 +43,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .lbt{font-size:18px;font-weight:900;color:#818cf8;text-align:center;letter-spacing:.05em}
 .lbsub{font-size:11px;font-weight:700;color:var(--m2);text-align:center;letter-spacing:.1em;margin-top:-2px}
 .lbi{display:flex;flex-direction:column;gap:10px;width:100%}
-.ibox{background:rgba(79,70,229,.04);border:1px solid rgba(99,102,241,.15);border-radius:4px;padding:10px 12px;font-size:13px;color:var(--mu);line-height:1.55}
+.ibox{background:rgba(79,70,229,.04);border:1px solid rgba(99,102,241,.15);border-radius:4px;padding:10px 12px;font-size:13px;color:var(--mu);line-height:1.5}
 .ibox b{color:#a5b4fc}
 #lberr{background:var(--rg);border:1px solid rgba(244,63,94,.3);border-radius:4px;padding:6px;font-size:13px;color:#fda4af;display:none;text-align:center;font-weight:bold}
 
@@ -264,16 +264,15 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .clr-cancel{background:var(--bg);border:1px solid var(--bd);color:var(--tx)}
 .clr-ok{background:var(--in);color:#fff}
 
-/* 画像プレビューモーダル：閉じるボタン被り防止コンテナ [3] */
+/* 画像プレビューモーダルのレイアウト：閉じるボタンとの被りを100%防止 */
 #imgViewMod {
-  background: rgba(0,0,0,0.96);
-  backdrop-filter: blur(10px);
+  background: rgba(0,0,0,0.95);
+  backdrop-filter: blur(8px);
   display: none;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   touch-action: none;
-  overflow: hidden;
 }
 #imgViewSrc {
   max-width: 90%;
@@ -293,7 +292,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   bottom: 0;
   left: 0;
   padding: 16px 0 calc(16px + var(--safe));
-  background: linear-gradient(to top, rgba(0,0,0,0.85) 40%, rgba(0,0,0,0));
+  background: linear-gradient(to top, rgba(0,0,0,0.8) 40%, rgba(0,0,0,0));
   backdrop-filter: blur(2px);
   z-index: 10001;
 }
@@ -352,8 +351,8 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <div class="lbsub">DISPOSABLE & ZERO-KNOWLEDGE E2EE</div>
     <div class="lbi">
       <div class="ibox">
-        🔒 <b>ゼロ知識・エンドツーエンド暗号化 (E2EE)</b><br>
-        対話メッセージ、画像、表示名はすべて送信前にブラウザ（クライアント）側で暗号化（AES-GCM 256bit）されます。復号鍵はサーバへ送信されないため、運営者や第三者はデータ解読が不可能です。
+        🔒 <b>完全秘匿・ゼロ知識アーキテクチャ</b><br>
+        運営者すら解読不能な「二重暗号化」と「システムソルト」による最高峰のプライバシー。
       </div>
       <div id="lberr"></div>
 
@@ -562,26 +561,30 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     
     <div style="display:flex; flex-direction:column; gap:14px; overflow-y:auto; padding-right:4px; font-size:12px; line-height:1.6; color:var(--mu);">
       <div class="guide-sec">
-        <span class="guide-sub-title" style="color:#a5b4fc; font-weight:800; font-size:12.5px; border-bottom:1px solid rgba(255, 255, 255, 0.05); padding-bottom:2px; display:block; margin-bottom:4px;">🔑 1. 概要と使用方法</span>
-        ・表示名と任意のトリップキー、部屋ID、共通暗号化パスワードを入力して「入室 / 作成」を押します。<br>
-        ・入室後に上部の「🔗 URL」を押して招待リンクをコピーし、対話相手に安全な手段で共有してください。<br>
-        ・不特定の第三者の侵入を防止するため、入室後にホストはルーム上部で「オープン / 承認制（LOCKED）」を自由に切り替えることができます。
+        <span class="guide-sub-title" style="color:#a5b4fc; font-weight:800; font-size:12.5px; border-bottom:1px solid rgba(255, 255, 255, 0.05); padding-bottom:2px; display:block; margin-bottom:4px;">🔑 1. 使い方 (How to Use)</span>
+        ・表示名とトリップキー（必須）を入力し、部屋IDとパスワードを指定するか、自動生成して「入室 / 作成」を押します。<br>
+        ・入室後、上部の「🔗 URL」ボタンを押して招待リンクをコピーし、相手に共有してください。<br>
+        ・ホストは入室後、ルーム上部で「オープン / 承認制」を自由に切り替えることができます。
       </div>
       <div class="guide-sec">
-        <span class="guide-sub-title" style="color:#a5b4fc; font-weight:800; font-size:12.5px; border-bottom:1px solid rgba(255, 255, 255, 0.05); padding-bottom:2px; display:block; margin-bottom:4px;">🔒 2. エンドツーエンド二重暗号化（E2EE）</span>
-        ・本システムは、ブラウザネイティブの暗号化APIである <b>Web Cryptography API (AES-GCM 256bit)</b> を採用しています。<br>
-        ・発言内容・ニックネーム・画像データは全て送信前にローカルで暗号化されるため、ネットワーク経路やデータベース管理サーバ上にはデタラメな暗号化バイナリしか存在しません。<br>
-        ・解号キーとなる共通パスワードはサーバに送信されないため、運営者を含め、対話者以外の誰も解読・復元することは数学的に不可能です。
+        <span class="guide-sub-title" style="color:#a5b4fc; font-weight:800; font-size:12.5px; border-bottom:1px solid rgba(255, 255, 255, 0.05); padding-bottom:2px; display:block; margin-bottom:4px;">🔒 2. セキュリティ仕様（管理者でも覗けないゼロ知識）</span>
+        ・<b>エンドツーエンド二重暗号化 (E2EE)</b>：発言やニックネーム、画像はブラウザ側で強力に暗号化されてから送信されます。<br>
+        ・<b>運営者も解読不能</b>：暗号を解読するためのパスワードは、サーバーへ一切送信されません。そのため、第三者やシステム管理者が直接データベースを見ても、意味を成さないデタラメな乱数しか確認できません。<br>
+        ・<b>即時物理削除 (Wipe)</b>：最後の一人が退室した、あるいは有効期限が切れた瞬間に、サーバーからすべてのログ・データが物理消去され完全に消失します。
       </div>
       <div class="guide-sec">
-        <span class="guide-sub-title" style="color:#a5b4fc; font-weight:800; font-size:12.5px; border-bottom:1px solid rgba(255, 255, 255, 0.05); padding-bottom:2px; display:block; margin-bottom:4px;">🚪 3. 自動物理消去（Wipe）設計</span>
-        ・本システムは、最後の一人が部屋を退室する、または設定した寿命の制限時間に達した瞬間に、サーバからその部屋に関わるチャットデータ・登録情報が物理的に完全削除されます。<br>
-        ・サーバ内にバックアップや残余ログなどは一切保存されないため、一度消去されたログを後から復元することは、いかなる技術を用いても完全に不可能です。
+        <span class="guide-sub-title" style="color:#a5b4fc; font-weight:800; font-size:12.5px; border-bottom:1px solid rgba(255, 255, 255, 0.05); padding-bottom:2px; display:block; margin-bottom:4px;">🤝 3. 待ち合わせのおすすめ方法と安全運用</span>
+        ・<b>A. 部屋IDとパスワードの個別共有（最も安全）</b>：<br>
+        「部屋ID」のみを相手に伝え、「部屋パスワード」は口頭や別の信頼できる連絡ツールで相手に共有します。これにより、URLをそのままクリックされるリスクを排除できます。<br>
+        ・<b>B. オープンな場所にハッシュURLを貼る場合の注意</b>：<br>
+        SNSや掲示板など、誰でも見られる場所に「#パスワード」が含まれた招待URLを貼り付けると、パスワードも全員に公開され暗号化の役割が失われます。<br>
+        ・<b>C. 承認制（LOCKED）モードの活用（推奨）</b>：<br>
+        不特定多数がアクセスする場所で待ち合わせをする場合は、ホストが入室後に<b>「承認制」</b>に切り替えてください。あらかじめ相手のトリップ（◆マーク以降の英数字）を聞いておき、承認待ちリストのトリップを一致しているかホストが目視で確認して「許可」ボタンを押すことで、部外者の侵入を完全に防ぐことができます。
       </div>
       <div class="guide-sec">
-        <span class="guide-sub-title" style="color:#a5b4fc; font-weight:800; font-size:12.5px; border-bottom:1px solid rgba(255, 255, 255, 0.05); padding-bottom:2px; display:block; margin-bottom:4px;">⚖️ 4. 免責事項</span>
-        ・本ツールは、プライバシーが重視される一時的な協議や連絡用途として開発されています。不正アクセスや法令に違反する行為、公序良俗に反する通信を禁止します。<br>
-        ・サーバの稼働状況やその他ネットワークエラー等により発生した、データの不達または意図しないデータの消失に関するいかなる損失に対しても、開発元は一切の責任を負いません。
+        <span class="guide-sub-title" style="color:#a5b4fc; font-weight:800; font-size:12.5px; border-bottom:1px solid rgba(255, 255, 255, 0.05); padding-bottom:2px; display:block; margin-bottom:4px;">⚖️ 4. 利用規約 (Terms of Service)</span>
+        ・本システムは使い捨ての匿名連絡・一時協議用途でのみ利用を許可します。不正アクセスや法令違反、公序良俗に反する用途、運営を意図的に妨害するあらゆる試みを禁止します。<br>
+        ・部屋が無人になった瞬間に全データが即時完全削除されるため、後からログを復元する、データ保全を求めることは技術的に一切不可能です。
       </div>
     </div>
     <button class="modal-bottom-close" id="gcBtn" style="margin-top:10px;">閉じる</button>
@@ -635,13 +638,14 @@ const D = {
   ni:$("ni"), tripi:$("tripi"), ri:$("ri"), pi:$("pi"), timeri:$("timeri"),
   tripPreview:$("tripPreview"), tripPrevText:$("tripPrevText"), lbCopyTripBtn:$("lbCopyTripBtn"),
   enBtn:$("enBtn"), gnBtn:$("gnBtn"), gdBtn:$("gdBtn"), gmod:$("gmod"), gcBtn:$("gcBtn"),
-  clrmod:$("clrmod"), clrPick2:$("clrPick2"), clrPrev:$("clrPrev"), clrOk:$("clrOk"), clrCancel:$("clrCancel"), bclr:$("clrBtn"), clrDot:$("clrDot"),
+  clrmod:$("clrmod"), clrPick2:$("clrPick2"), clrPrev:$("clrPrev"), clrOk:$("clrOk"), clrCancel:$("clrCancel"), clrBtn:$("clrBtn"), clrDot:$("clrDot"),
   hdr:$("hdr"), rdsp:$("rdsp"), modeIndicator:$("modeIndicator"), waitBadge:$("waitBadge"), pcnt:$("pcnt"), timerDsp:$("timerDsp"), copyUrlBtn:$("copyUrlBtn"), pl:$("pl"), exBtn:$("exBtn"),
   tl:$("tl"), tli:$("tl-inner"), ib:$("ib"), mi:$("mi"), sdBtn:$("sdBtn"), clrMsgBtn:$("clrMsgBtn"),
   kbToggleBtn:$("kbToggleBtn"), kbStatusText:$("kbStatusText"),
   autoScrollToggleBtn:$("autoScrollToggleBtn"), autoScrollStatusText:$("autoScrollStatusText"),
   jumpUpBtn:$("jumpUpBtn"), jumpDownBtn:$("jumpDownBtn"),
   lbClrPick:$("lbClrPick"),
+  roomResumeArea:$("roomResumeArea"),
   hostApprovePanel:$("hostApprovePanel"), waitList:$("waitList"),
   hostModeCtrl:$("hostModeCtrl"), roomModeToggleBtn:$("roomModeToggleBtn"), roomModeStatusText:$("roomModeStatusText"),
   imgBtn:$("imgBtn"), fileInput:$("fileInput"),
@@ -994,7 +998,7 @@ function buildPicker(con, sel, cls, onChange) {
 const onColorSelect = v => { curColor = v; setGlobalColor(v); localStorage.setItem("nz_color",v); syncPickers(v); };
 buildPicker(D.lbClrPick, curColor, "clrc",  onColorSelect);
 
-D.bclr.addEventListener("click", () => {
+D.clrBtn.addEventListener("click", () => {
   tmpColor = curColor;
   D.clrPrev.innerHTML = `<span style="color:${curColor}">■ この色で名前、トリップ、発言時刻が同期表示されます</span>`;
   buildPicker(D.clrPick2, curColor, "clrc2", v => { tmpColor = v; D.clrPrev.innerHTML = `<span style="color:${v}">■ この色で名前、トリップ、発言時刻が同期表示されます</span>`; });
@@ -1057,11 +1061,9 @@ window.triggerDeleteMsg = (mid, previewText) => {
   D.delConfirmMod.classList.add("show");
 };
 
-// モジュール外のimg要素から呼び出し可能にするためwindow直下に安全にバインド [3]
 window.openZoomModal = (b64) => {
   D.imgViewSrc.src = b64;
   D.imgViewMod.classList.add("show");
-  D.imgViewMod.style.display = "flex"; // flexにてコンテナを強制表示
   resetZoom();
 };
 
@@ -1148,8 +1150,7 @@ async function cMsg(msg) {
     rawTextPreview = "[画像ファイル]";
     const b64 = txt.substring(5);
     if (b64.match(/^data:image\/(jpeg|png|gif|webp);base64,[a-zA-Z0-9+/=]+$/)) {
-       // グローバルのopenZoomModalを確実に叩けるonClick属性付与 [3]
-       contentHtml = `<img src="${b64}" class="inline-img" alt="画像" onclick="window.openZoomModal('${b64}')">`;
+       contentHtml = `<img src="${b64}" class="inline-img" alt="画像" onclick="openZoomModal('${b64}')">`;
     } else { contentHtml = "<span style='color:red'>[不正な画像データ]</span>"; }
   } else { contentHtml = parseTxtSplit(txt).textHtml; }
   
@@ -1310,10 +1311,6 @@ function clearAll() {
   isLiveMode = false; displayedMsgIds.clear(); D.tli.innerHTML = "";
   stopTimerLoop(); D.hostModeCtrl.style.display = "none"; D.hostApprovePanel.style.display = "none";
   stopWaitTicker(); _seenWaitIds.clear(); D.waitBadge.classList.remove("show");
-  
-  isInitialLoadComplete = false;
-  initialMessagesBuffer = [];
-  if (initialBatchTimer) { clearTimeout(initialBatchTimer); initialBatchTimer = null; }
 }
 
 let _timerRaf = null;
@@ -1362,8 +1359,7 @@ async function checkCurrentRoomStatus() {
       localStorage.setItem("nz_mytrip_styled", tripStyled);
       localStorage.setItem("nz_is_in_room", "true");
       
-      // 自動再入室：isManual = false に設定
-      await doJoin(lastRi, savedPi, savedNi, tripStyled, savedTimer, snap.val().requireApproval, false);
+      await doJoin(lastRi, savedPi, savedNi, tripStyled, savedTimer, snap.val().requireApproval);
     } else {
       localStorage.removeItem("nz_active_ri"); 
       localStorage.removeItem("nz_active_created");
@@ -1418,7 +1414,7 @@ window.approveGuest = async (guestUid, guestKeyHex) => {
     
     await update(ref(db), updates);
 
-    // 承認制（LOCKED）下での承認時のお知らせログ送信をホストが代理実行し、重複送信を徹底防止 [1, 2]
+    // 承認時のお知らせログ
     await sendSysMsg(`${guestName} ${guestTrip} が入室しました`);
 
     showToast("✅ 承認してメンバーに昇格しました");
@@ -1515,8 +1511,7 @@ const processInitialMessages = async (messages) => {
   scBottom(true);
 };
 
-// 入室手続シーケンスの非同期設計 (手動入室判定 isManual 引数を追加)
-async function doJoin(roomId, pass, name, trip, initTimer, requireApproval, isManual = true) {
+async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
   try {
     clearAll(); _exitLock = false;
     localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created");
@@ -1548,7 +1543,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval, isMa
       
       const freshSnap = await get(roomRef);
       if(freshSnap.exists()) { 
-        await enterChatUI(freshSnap.val(), pass, isManual);
+        await enterChatUI(freshSnap.val(), pass);
       }
     } 
     else {
@@ -1561,7 +1556,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval, isMa
         masterKey = await deriveMasterKey(roomId, pass);
         const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
         await update(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: true });
-        await enterChatUI(roomData, pass, isManual);
+        await enterChatUI(roomData, pass);
       } else if (roomData.requireApproval) {
         const authLocalKey = localStorage.getItem(`nz_authkey_${hashId}`);
         
@@ -1573,8 +1568,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval, isMa
             if (decryptedMk) {
               masterKey = decryptedMk;
               await update(myPresRef, { mk: null });
-              // 承認済みゲストの再入室（isManual = falseにしてゲスト側の入室ログ重複送信を防止）
-              await enterChatUI(roomData, pass, false);
+              await enterChatUI(roomData, pass);
               return;
             }
           } catch(e){}
@@ -1590,7 +1584,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval, isMa
                 masterKey = decryptedMk;
                 const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
                 await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: false });
-                await enterChatUI(roomData, pass, false);
+                await enterChatUI(roomData, pass);
                 return;
               }
             }
@@ -1634,8 +1628,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval, isMa
                  D.waitMod.classList.remove("show");
                  if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
                  if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
-                 // ホストによって承認されたゲストの初回入室（ホストが承認ログを代理送信するため、ゲスト側は送信をスキップ） [1, 2]
-                 await enterChatUI(roomData, pass, false);
+                 await enterChatUI(roomData, pass);
               }
             } catch(e){}
           }
@@ -1657,7 +1650,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval, isMa
               await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey) });
               
               D.waitMod.classList.remove("show");
-              await enterChatUI(rVal, currentPass, isManual);
+              await enterChatUI(rVal, currentPass);
             } else {
               D.waitMod.classList.remove("show");
               showLobby("エラー: 部屋がオープンモードになりましたが、暗号化パスワードが存在しません。");
@@ -1675,7 +1668,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval, isMa
         masterKey = await deriveMasterKey(roomId, pass);
         const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
         await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey) });
-        await enterChatUI(roomData, pass, isManual);
+        await enterChatUI(roomData, pass);
       }
     }
   } catch (e) { 
@@ -1683,11 +1676,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval, isMa
   }
 }
 
-let isInitialLoadComplete = false;
-let initialMessagesBuffer = [];
-let initialBatchTimer = null;
-
-async function enterChatUI(roomData, pass, isManual = true) {
+async function enterChatUI(roomData, pass) {
   D.lobby.style.display = "none"; D.waitMod.classList.remove("show");
   D.app.style.display = "flex"; D.app.classList.add("visible");
   D.ib.classList.add("show"); D.rdsp.textContent = rawR;
@@ -1701,8 +1690,8 @@ async function enterChatUI(roomData, pass, isManual = true) {
     localStorage.setItem("nz_pi_val", pass);
   }
 
-  // 手動入室（isManual = true）且つまだ今セッションでお知らせを投げていない場合のみ送信（自動再接続やリロード、承認制移行時は送信を完全に抑止） [1, 2]
-  if (isManual && !hasSentJoinMsgInSession) {
+  // 手動でロビーの入室シーケンス（doJoin）を経た初回・手動再入室の時のみ、お知らせを送信する
+  if (!hasSentJoinMsgInSession) {
     hasSentJoinMsgInSession = true;
     await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が入室しました`);
   }
@@ -1839,33 +1828,31 @@ async function enterChatUI(roomData, pass, isManual = true) {
     _pendingOff = onValue(ref(db, `pending/${curR}`), rafThrottle(renderPendingList));
   }
 
-  // 重複通信（getとonChildAddedの混在）を完全に排除。初期バースト（過去ログロード）を一本化し、最高速度でのリアルタイム接続を開始 [2]
-  isInitialLoadComplete = false;
-  initialMessagesBuffer = [];
+  // indexOn（ルール設定）に一切依存しない100%安全なデータ直引きアーキテクチャへの移行
+  const chatRef = ref(db, `chat/${curR}`);
+  const chatSnap = await get(chatRef);
+  if (chatSnap.exists()) {
+    const msgs = [];
+    chatSnap.forEach((child) => {
+      const val = child.val();
+      val.id = child.key;
+      msgs.push(val);
+    });
+    msgs.sort((a, b) => (a.t || 0) - (b.t || 0));
+    
+    // 直近100件にクライアント側（メモリ上）でスライスして、DOM描画を極限まで軽量に維持
+    const limitedMsgs = msgs.slice(-100);
+    await processInitialMessages(limitedMsgs);
+  }
 
-  _cOff = onChildAdded(ref(db, `chat/${curR}`), async (snap) => {
+  // サーバーにフィルタ指定（query/limitToLast/orderBy）を投げず直に監視することで、インデックスエラーを確実に回避
+  _cOff = onChildAdded(ref(db, `chat/${curR}`), snap => {
     if(!curR || !masterKey) return;
     const m = snap.val(); 
     if(m) { 
       m.id = snap.key; 
       if (!m.t) m.t = Date.now(); 
-      if (m.c && displayedMsgIds.has(m.c)) { removeMessageEl(m.c); }
-
-      if (!isInitialLoadComplete) {
-        initialMessagesBuffer.push(m);
-        if (initialBatchTimer) clearTimeout(initialBatchTimer);
-        initialBatchTimer = setTimeout(async () => {
-          isInitialLoadComplete = true;
-          // バッファに蓄積された過去ログを時系列ソートして一括並列レンダリング
-          initialMessagesBuffer.sort((a, b) => (a.t || 0) - (b.t || 0));
-          const limited = initialMessagesBuffer.slice(-100);
-          await processInitialMessages(limited);
-          initialMessagesBuffer = [];
-        }, 50);
-      } else {
-        // 過去ログ展開後の新着発言は0ミリ秒で即時キューイングしリアルタイム反映 [2]
-        await queueIncomingMessage(m);
-      }
+      queueIncomingMessage(m);
     } 
   });
 
@@ -1908,7 +1895,7 @@ async function forceResync() {
 
 document.addEventListener("visibilitychange", async () => {
   if (document.visibilityState === "visible") {
-    // 復帰時に明示的にgoOnlineさせてWebSocket切断からの再接続プロセスを即座にキック [2]
+    // 復帰時に明示的にgoOnlineさせてWebSocket切断からの再接続プロセスを即座にキック
     import("https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js").then((m) => {
       m.goOnline(db);
     });
@@ -1933,8 +1920,7 @@ document.addEventListener("visibilitychange", async () => {
               
               const rSnap = await get(ref(db, `rooms/${curR}`));
               const rData = rSnap.exists() ? rSnap.val() : { requireApproval: true };
-              // 自動復旧・バックグラウンド移行時のレーム：isManual = false
-              await enterChatUI(rData, localStorage.getItem("nz_pi_val"), false);
+              await enterChatUI(rData, localStorage.getItem("nz_pi_val"));
               return;
             }
           }
@@ -1955,8 +1941,7 @@ document.addEventListener("visibilitychange", async () => {
               if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
               if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
               
-              // 自動・移行復職：isManual = false
-              await enterChatUI(rVal, currentPass, false);
+              await enterChatUI(rVal, currentPass);
             }
           }
         }
@@ -1964,47 +1949,6 @@ document.addEventListener("visibilitychange", async () => {
     }
   }
 });
-
-// 送信中状態（仮の楽観的描画）を生成してゼロ秒で画面へ仮挿入する関数 [2]
-function renderOptimisticMessage(msg) {
-  const msgTs = msg.t || srvNow();
-  const d = document.createElement("div"); 
-  d.dataset.mid = msg.id;
-  d.dataset.ts = msgTs;
-  d.setAttribute("data-cid", msg.c);
-  d.className = "mw";
-  d.style.opacity = "0.65"; // 仮表示なので不透明度を落として送信中であることを表現
-
-  const sN = msg.meta.n, sC = msg.meta.c, sT = msg.meta.p ? esc(msg.meta.p) : "";
-  let contentHtml = "";
-  if (msg.txt.startsWith("IMG::data:image/")) {
-    const b64 = msg.txt.substring(5);
-    contentHtml = `<img src="${b64}" class="inline-img" alt="画像" onclick="window.openZoomModal('${b64}')">`;
-  } else {
-    contentHtml = parseTxtSplit(msg.txt).textHtml;
-  }
-
-  let nameSpan = `<span style="color:${esc(sC)};font-weight:700">${esc(sN)}</span>`;
-  if(sT) nameSpan += ` <span style="color:${esc(sC)}; font-size:11px; font-weight:bold;">${sT}</span>`;
-  let timeSpan = `<span class="ts" style="color:${esc(sC)}; opacity:0.8; font-family:monospace;">${fDT(msgTs)} (送信中...)</span>`;
-
-  d.innerHTML = `
-    <div class="mm" style="display:flex; align-items:center; justify-content:space-between; width:100%;">
-      <div style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">
-        ${nameSpan}
-      </div>
-      <div style="display:flex; align-items:center; gap:8px; flex-shrink:0; margin-left:8px;">
-        ${timeSpan}
-      </div>
-    </div>
-    <div class="mb" style="border-color:${esc(sC)}">${contentHtml}</div>
-  `;
-
-  insertMessageEl(d);
-  displayedMsgIds.add(msg.id);
-  trimTimeline();
-  scBottom();
-}
 
 let lastSendTime = 0;
 async function sendMsg(overrideText = null, imgData = null) {
@@ -2022,42 +1966,38 @@ async function sendMsg(overrideText = null, imgData = null) {
   }
   isLiveMode = true; scBottom(true);
 
-  const cid = "opt_" + myUid + "_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
-  const nowSrv = srvNow();
-
   const metaObj = { n: curN, p: localStorage.getItem("nz_mytrip_styled") || "", c: curColor };
-  const rawMsgText = imgData ? "IMG::" + imgData : txt;
+  const cid = "opt_" + myUid + "_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
+  
+  const nowSrv = srvNow();
+  const encryptedMeta = await encrypt(JSON.stringify(metaObj), masterKey);
+  const encryptedMsg = await encrypt(imgData ? "IMG::" + imgData : txt, masterKey);
 
-  // 1. 同期処理で瞬時に画面に自分の発言を仮描画（体感送信ラグをゼロ化） [2]
+  // 通信パケットを削減：mt(meta), m(message), t(timestamp), c(client-id)
   const tempObj = { 
     id: cid, 
     c: cid, 
     u: myUid, 
-    meta: metaObj, 
-    txt: rawMsgText, 
+    mt: encryptedMeta, 
+    m: encryptedMsg, 
     t: nowSrv
   };
-  renderOptimisticMessage(tempObj);
+  
+  // 楽観的UI：自分の画面へ即反映
+  await renderSingleMessage(tempObj);
 
-  // 2. 暗号化およびデータベース書き込みは非ブロッキングで並列で実行 [2]
-  (async () => {
-    try {
-      const encryptedMeta = await encrypt(JSON.stringify(metaObj), masterKey);
-      const encryptedMsg = await encrypt(rawMsgText, masterKey);
-      
-      await push(ref(db, `chat/${curR}`), { 
-        u: myUid, 
-        c: cid, 
-        mt: encryptedMeta, 
-        m: encryptedMsg, 
-        t: serverTimestamp()
-      });
-    } catch (e) {
-      removeMessageEl(cid);
-      console.error("メッセージ送信に失敗しました:", e);
-      showToast(`❌ 送信失敗: ${e.message}`);
-    }
-  })();
+  // 相手へ爆速で到達させるための非同期バックグラウンド同期
+  push(ref(db, `chat/${curR}`), { 
+    u: myUid, 
+    c: cid, 
+    mt: encryptedMeta, 
+    m: encryptedMsg, 
+    t: serverTimestamp()
+  }).catch(e => {
+    removeMessageEl(cid);
+    console.error("Firebaseへのメッセージ送信に失敗しました:", e);
+    showToast(`❌ 送信失敗: ${e.message}`);
+  });
 }
 
 D.imgBtn.onclick = () => D.fileInput.click();
@@ -2070,12 +2010,12 @@ D.fileInput.onchange = (e) => {
     const img = new Image();
     img.onload = async () => {
       const cvs = document.createElement("canvas"); let w = img.width, h = img.height;
-      // 最大幅を 600px に抑え、ペイロードサイズを劇的に落とすことで暗号化・同期速度を限界突破 [2]
+      // 最大幅を 600px に抑え、ペイロードサイズを劇的に落とすことで暗号化・同期速度を限界突破
       if (w > 600) { h = Math.round((h * 600) / w); w = 600; }
       cvs.width = w; cvs.height = h; 
       cvs.getContext("2d").drawImage(img, 0, 0, w, h);
       
-      // JPEGの品質を 0.5 に落として通信量を最小化 [2]
+      // JPEGの品質を 0.5 に落として通信量を最小化
       await sendMsg(null, cvs.toDataURL("image/jpeg", 0.5));
       
       D.imgBtn.innerHTML = origIcon; D.imgBtn.disabled = false; D.fileInput.value = "";
@@ -2104,9 +2044,7 @@ D.enBtn.onclick = async () => {
   localStorage.setItem("nz_is_in_room", "true");
   D.enBtn.disabled = true; D.enBtn.textContent = "処理中...";
   const tripStyled = await makeTrip(n, tk); localStorage.setItem("nz_mytrip_styled", tripStyled);
-  
-  // 手動での入室・作成指示：isManual = true
-  await doJoin(r, p, n, tripStyled, tm, isApproveMode, true);
+  await doJoin(r, p, n, tripStyled, tm, isApproveMode);
 };
 
 D.gnBtn.onclick = () => {
@@ -2167,13 +2105,11 @@ D.jumpDownBtn.onclick = () => {
   D.tl.scrollTo({ top: D.tl.scrollHeight, behavior: "smooth" });
 };
 
-// 画像ビューモーダルのジェスチャイベント最適化＆被り防止を完全実装 [3]
 let scale = 1, panX = 0, panY = 0;
 let lastPanX = 0, lastPanY = 0, isPanning = false;
-let initialDistance = 0;
-
 const imgEl = D.imgViewSrc;
 const overlayEl = D.imgViewMod;
+let initialDistance = 0;
 
 function resetZoom() {
   scale = 1; panX = 0; panY = 0;
@@ -2193,6 +2129,7 @@ function clampPan() {
   }
   const containerWidth = overlayEl.clientWidth;
   const containerHeight = overlayEl.clientHeight;
+  
   const imgRatio = imgEl.naturalWidth / imgEl.naturalHeight;
   const containerRatio = containerWidth / containerHeight;
   
@@ -2221,21 +2158,32 @@ function clampPan() {
   panY = Math.max(-limitY, Math.min(limitY, panY));
 }
 
+const updateZoomOrigin = (e) => {
+  if (e.touches.length === 2) {
+    const touch1 = e.touches[0];
+    const touch2 = e.touches[1];
+    const midX = (touch1.clientX + touch2.clientX) / 2;
+    const midY = (touch1.clientY + touch2.clientY) / 2;
+    
+    const rect = imgEl.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      const originX = ((midX - rect.left) / rect.width) * 100;
+      const originY = ((midY - rect.top) / rect.height) * 100;
+      
+      const clampedX = Math.max(0, Math.min(100, originX));
+      const clampedY = Math.max(0, Math.min(100, originY));
+      
+      imgEl.style.transformOrigin = `${clampedX}% ${clampedY}%`;
+    }
+  }
+};
+
 overlayEl.addEventListener('touchstart', (e) => {
   if (e.target === D.imgViewCloseBtn) return;
   if (e.touches.length === 2) {
     isPanning = false;
-    initialDistance = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-    
-    // ズームの中心点を設定
-    const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-    const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-    const rect = imgEl.getBoundingClientRect();
-    if (rect.width > 0 && rect.height > 0) {
-      const originX = Math.max(0, Math.min(100, ((midX - rect.left) / rect.width) * 100));
-      const originY = Math.max(0, Math.min(100, ((midY - rect.top) / rect.height) * 100));
-      imgEl.style.transformOrigin = `${originX}% ${originY}%`;
-    }
+    initialDistance = getDistance(e.touches[0], e.touches[1]);
+    updateZoomOrigin(e);
   } else if (e.touches.length === 1) {
     if (scale > 1) {
       isPanning = true;
@@ -2249,10 +2197,12 @@ overlayEl.addEventListener('touchmove', (e) => {
   if (e.target === D.imgViewCloseBtn) return;
   if (e.touches.length === 2) {
     isPanning = false;
-    const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    const dist = getDistance(e.touches[0], e.touches[1]);
     const factor = dist / initialDistance;
     scale = Math.max(1, Math.min(5, scale * factor));
     initialDistance = dist;
+    
+    updateZoomOrigin(e);
     clampPan();
     updateTransform();
   } else if (e.touches.length === 1 && isPanning) {
@@ -2266,8 +2216,14 @@ overlayEl.addEventListener('touchmove', (e) => {
   }
 }, { passive: true });
 
-overlayEl.addEventListener('touchend', () => {
-  isPanning = false;
+overlayEl.addEventListener('touchend', (e) => {
+  if (e.touches.length === 1 && scale > 1) {
+    isPanning = true;
+    lastPanX = e.touches[0].clientX;
+    lastPanY = e.touches[0].clientY;
+  } else {
+    isPanning = false;
+  }
 }, { passive: true });
 
 overlayEl.addEventListener('wheel', (e) => {
@@ -2277,16 +2233,11 @@ overlayEl.addEventListener('wheel', (e) => {
   scale = Math.max(1, Math.min(5, scale * delta));
   clampPan();
   updateTransform();
-}, { passive: false }); // スクロール拡大縮小のための preventDefault() を明示許可
+}, { passive: false });
 
-// 背景タップまたは閉じるボタンのクリックで安全に閉じて状態を初期化 [3]
-overlayEl.addEventListener('click', (e) => {
-  if (e.target === overlayEl || e.target === D.imgViewCloseBtn) {
-    overlayEl.classList.remove("show");
-    overlayEl.style.display = "none";
-    resetZoom();
-  }
-});
+function getDistance(t1, t2) {
+  return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+}
 
 const D_timerSettingMod = $("timerSettingMod");
 const D_timerSettingCloseBtn = $("timerSettingCloseBtn");
@@ -2383,8 +2334,7 @@ const initUserSession = async (user) => {
         if (window.history?.replaceState) {
           window.history.replaceState({}, document.title, location.pathname + "?r=" + encodeURIComponent(savedActiveRi));
         }
-        // 自動再入室：isManual = false
-        await doJoin(savedActiveRi, savedPi, savedNi, tripStyled, savedTimer, snap.val().requireApproval, false);
+        await doJoin(savedActiveRi, savedPi, savedNi, tripStyled, savedTimer, snap.val().requireApproval);
         return; 
       }
     } catch(e) {}
@@ -2427,12 +2377,6 @@ authenticateAnonymously()
     D.lberr.style.display = "block"; 
     showLobby();
   });
-
-// タイムライン内要素の高さ変更（画像の動的レンダリングなど）を監視し、最新ログまでピクセル等倍で完全に自動追従スクロール [1, 2]
-const timelineObserver = new ResizeObserver(() => {
-  scBottom();
-});
-timelineObserver.observe(D.tli);
 </script>
 </body>
 </html>

@@ -1,5 +1,3 @@
---- START OF FILE Paste July 13, 2026 - 10:25PM ---
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -279,7 +277,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 }
 #imgViewSrc {
   max-width: 90%;
-  max-height: calc(100dvh - 140px); /* 100dvhからボタン用のスペースを確実に減算 */
+  max-height: calc(100dvh - 140px); /* ボタン表示領域を100dvhから確実に除外 */
   object-fit: contain;
   user-select: none;
   -webkit-user-drag: none;
@@ -1060,9 +1058,11 @@ window.triggerDeleteMsg = (mid, previewText) => {
   D.delConfirmMod.classList.add("show");
 };
 
+// モジュール外のimg要素から呼び出し可能にするためwindow直下に安全にバインド [3]
 window.openZoomModal = (b64) => {
   D.imgViewSrc.src = b64;
   D.imgViewMod.classList.add("show");
+  D.imgViewMod.style.display = "flex"; // flexにてコンテナを強制表示
   resetZoom();
 };
 
@@ -1149,7 +1149,8 @@ async function cMsg(msg) {
     rawTextPreview = "[画像ファイル]";
     const b64 = txt.substring(5);
     if (b64.match(/^data:image\/(jpeg|png|gif|webp);base64,[a-zA-Z0-9+/=]+$/)) {
-       contentHtml = `<img src="${b64}" class="inline-img" alt="画像" onclick="openZoomModal('${b64}')">`;
+       // グローバルのopenZoomModalを確実に叩けるonClick属性付与 [3]
+       contentHtml = `<img src="${b64}" class="inline-img" alt="画像" onclick="window.openZoomModal('${b64}')">`;
     } else { contentHtml = "<span style='color:red'>[不正な画像データ]</span>"; }
   } else { contentHtml = parseTxtSplit(txt).textHtml; }
   
@@ -1418,7 +1419,7 @@ window.approveGuest = async (guestUid, guestKeyHex) => {
     
     await update(ref(db), updates);
 
-    // 承認時のお知らせログ
+    // 承認制（LOCKED）下での承認時のお知らせログ送信をホストが代理実行し、重複送信を徹底防止 [1, 2]
     await sendSysMsg(`${guestName} ${guestTrip} が入室しました`);
 
     showToast("✅ 承認してメンバーに昇格しました");
@@ -1573,7 +1574,8 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval, isMa
             if (decryptedMk) {
               masterKey = decryptedMk;
               await update(myPresRef, { mk: null });
-              await enterChatUI(roomData, pass, isManual);
+              // 承認済みゲストの再入室（isManual = falseにしてゲスト側の入室ログ重複送信を防止）
+              await enterChatUI(roomData, pass, false);
               return;
             }
           } catch(e){}
@@ -1589,7 +1591,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval, isMa
                 masterKey = decryptedMk;
                 const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
                 await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: false });
-                await enterChatUI(roomData, pass, isManual);
+                await enterChatUI(roomData, pass, false);
                 return;
               }
             }
@@ -1633,7 +1635,8 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval, isMa
                  D.waitMod.classList.remove("show");
                  if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
                  if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
-                 await enterChatUI(roomData, pass, isManual);
+                 // ホストによって承認されたゲストの初回入室（ホストが承認ログを代理送信するため、ゲスト側は送信をスキップ） [1, 2]
+                 await enterChatUI(roomData, pass, false);
               }
             } catch(e){}
           }
@@ -1655,6 +1658,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval, isMa
               await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey) });
               
               D.waitMod.classList.remove("show");
+              // 承認制が途中でオープンに切り替わった場合の自動入室
               await enterChatUI(rVal, currentPass, isManual);
             } else {
               D.waitMod.classList.remove("show");
@@ -1699,7 +1703,7 @@ async function enterChatUI(roomData, pass, isManual = true) {
     localStorage.setItem("nz_pi_val", pass);
   }
 
-  // 手動入室（isManual = true）且つまだ今セッションでお知らせを投げていない場合のみ送信（自動再接続やリロード時は送信を完全に抑止） [2]
+  // 手動入室（isManual = true）且つまだ今セッションでお知らせを投げていない場合のみ送信（自動再接続やリロード、承認制移行時は送信を完全に抑止） [1, 2]
   if (isManual && !hasSentJoinMsgInSession) {
     hasSentJoinMsgInSession = true;
     await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が入室しました`);
@@ -1837,7 +1841,7 @@ async function enterChatUI(roomData, pass, isManual = true) {
     _pendingOff = onValue(ref(db, `pending/${curR}`), rafThrottle(renderPendingList));
   }
 
-  // 1本のWebSocket（onChildAdded）のみに一本化。初期ロード時は50msのデバウンスで過去ログを一括高速バッチ描画 [2]
+  // 重複通信（getとonChildAddedの混在）を完全に排除。初期バースト（過去ログロード）を一本化し、最高速度でのリアルタイム接続を開始 [2]
   isInitialLoadComplete = false;
   initialMessagesBuffer = [];
 
@@ -1931,7 +1935,7 @@ document.addEventListener("visibilitychange", async () => {
               
               const rSnap = await get(ref(db, `rooms/${curR}`));
               const rData = rSnap.exists() ? rSnap.val() : { requireApproval: true };
-              // システム復帰・レーム時のチャット再構成：isManual = false
+              // 自動復旧・バックグラウンド移行時のレーム：isManual = false
               await enterChatUI(rData, localStorage.getItem("nz_pi_val"), false);
               return;
             }
@@ -1953,7 +1957,7 @@ document.addEventListener("visibilitychange", async () => {
               if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
               if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
               
-              // 自動復帰・バインド移行時：isManual = false
+              // 自動・移行復職：isManual = false
               await enterChatUI(rVal, currentPass, false);
             }
           }
@@ -1977,7 +1981,7 @@ function renderOptimisticMessage(msg) {
   let contentHtml = "";
   if (msg.txt.startsWith("IMG::data:image/")) {
     const b64 = msg.txt.substring(5);
-    contentHtml = `<img src="${b64}" class="inline-img" alt="画像" onclick="openZoomModal('${b64}')">`;
+    contentHtml = `<img src="${b64}" class="inline-img" alt="画像" onclick="window.openZoomModal('${b64}')">`;
   } else {
     contentHtml = parseTxtSplit(msg.txt).textHtml;
   }
@@ -2165,7 +2169,7 @@ D.jumpDownBtn.onclick = () => {
   D.tl.scrollTo({ top: D.tl.scrollHeight, behavior: "smooth" });
 };
 
-// 画像ビューモーダルのジェスチャイベント最適化＆被り防止を完全実装
+// 画像ビューモーダルのジェスチャイベント最適化＆被り防止を完全実装 [3]
 let scale = 1, panX = 0, panY = 0;
 let lastPanX = 0, lastPanY = 0, isPanning = false;
 let initialDistance = 0;
@@ -2277,10 +2281,11 @@ overlayEl.addEventListener('wheel', (e) => {
   updateTransform();
 }, { passive: false }); // スクロール拡大縮小のための preventDefault() を明示許可
 
-// 背景タップまたは閉じるボタンのクリックで安全に閉じて状態を初期化
+// 背景タップまたは閉じるボタンのクリックで安全に閉じて状態を初期化 [3]
 overlayEl.addEventListener('click', (e) => {
   if (e.target === overlayEl || e.target === D.imgViewCloseBtn) {
     overlayEl.classList.remove("show");
+    overlayEl.style.display = "none";
     resetZoom();
   }
 });

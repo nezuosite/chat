@@ -1,5 +1,3 @@
---- START OF FILE Paste July 13, 2026 - 10:25PM ---
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -1953,6 +1951,47 @@ document.addEventListener("visibilitychange", async () => {
   }
 });
 
+// 送信中状態（仮の楽観的描画）を生成してゼロ秒で画面へ仮挿入する関数
+function renderOptimisticMessage(msg) {
+  const msgTs = msg.t || srvNow();
+  const d = document.createElement("div"); 
+  d.dataset.mid = msg.id;
+  d.dataset.ts = msgTs;
+  d.setAttribute("data-cid", msg.c);
+  d.className = "mw";
+  d.style.opacity = "0.65"; // 仮表示なので不透明度を落として送信中であることを表現
+
+  const sN = msg.meta.n, sC = msg.meta.c, sT = msg.meta.p ? esc(msg.meta.p) : "";
+  let contentHtml = "";
+  if (msg.txt.startsWith("IMG::data:image/")) {
+    const b64 = msg.txt.substring(5);
+    contentHtml = `<img src="${b64}" class="inline-img" alt="画像" onclick="openZoomModal('${b64}')">`;
+  } else {
+    contentHtml = parseTxtSplit(msg.txt).textHtml;
+  }
+
+  let nameSpan = `<span style="color:${esc(sC)};font-weight:700">${esc(sN)}</span>`;
+  if(sT) nameSpan += ` <span style="color:${esc(sC)}; font-size:11px; font-weight:bold;">${sT}</span>`;
+  let timeSpan = `<span class="ts" style="color:${esc(sC)}; opacity:0.8; font-family:monospace;">${fDT(msgTs)} (送信中...)</span>`;
+
+  d.innerHTML = `
+    <div class="mm" style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+      <div style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">
+        ${nameSpan}
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; flex-shrink:0; margin-left:8px;">
+        ${timeSpan}
+      </div>
+    </div>
+    <div class="mb" style="border-color:${esc(sC)}">${contentHtml}</div>
+  `;
+
+  insertMessageEl(d);
+  displayedMsgIds.add(msg.id);
+  trimTimeline();
+  scBottom();
+}
+
 let lastSendTime = 0;
 async function sendMsg(overrideText = null, imgData = null) {
   if (!curR || !masterKey || isCmp) return;
@@ -1969,38 +2008,42 @@ async function sendMsg(overrideText = null, imgData = null) {
   }
   isLiveMode = true; scBottom(true);
 
-  const metaObj = { n: curN, p: localStorage.getItem("nz_mytrip_styled") || "", c: curColor };
   const cid = "opt_" + myUid + "_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
-  
   const nowSrv = srvNow();
-  const encryptedMeta = await encrypt(JSON.stringify(metaObj), masterKey);
-  const encryptedMsg = await encrypt(imgData ? "IMG::" + imgData : txt, masterKey);
 
-  // 通信パケットを削減：mt(meta)、c(cid)、t(timestamp) へと極限まで圧縮
+  const metaObj = { n: curN, p: localStorage.getItem("nz_mytrip_styled") || "", c: curColor };
+  const rawMsgText = imgData ? "IMG::" + imgData : txt;
+
+  // 1. 同期処理で瞬時に画面に自分の発言を仮描画（ラグを完全にゼロ化）
   const tempObj = { 
     id: cid, 
     c: cid, 
     u: myUid, 
-    mt: encryptedMeta, 
-    m: encryptedMsg, 
+    meta: metaObj, 
+    txt: rawMsgText, 
     t: nowSrv
   };
-  
-  // 楽観的UI：自分の画面へ即反映
-  await renderSingleMessage(tempObj);
+  renderOptimisticMessage(tempObj);
 
-  // 相手へ爆速で到達させるための非同期バックグラウンド同期
-  push(ref(db, `chat/${curR}`), { 
-    u: myUid, 
-    c: cid, 
-    mt: encryptedMeta, 
-    m: encryptedMsg, 
-    t: serverTimestamp()
-  }).catch(e => {
-    removeMessageEl(cid);
-    console.error("Firebaseへのメッセージ送信に失敗しました:", e);
-    showToast(`❌ 送信失敗: ${e.message}`);
-  });
+  // 2. 暗号化およびデータベース書き込みは非ブロッキングで並列で実行
+  (async () => {
+    try {
+      const encryptedMeta = await encrypt(JSON.stringify(metaObj), masterKey);
+      const encryptedMsg = await encrypt(rawMsgText, masterKey);
+      
+      await push(ref(db, `chat/${curR}`), { 
+        u: myUid, 
+        c: cid, 
+        mt: encryptedMeta, 
+        m: encryptedMsg, 
+        t: serverTimestamp()
+      });
+    } catch (e) {
+      removeMessageEl(cid);
+      console.error("メッセージ送信に失敗しました:", e);
+      showToast(`❌ 送信失敗: ${e.message}`);
+    }
+  })();
 }
 
 D.imgBtn.onclick = () => D.fileInput.click();

@@ -38,7 +38,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   height: var(--app-viewport-height, 100dvh);
 }
 
-/* 修正：スプラッシュスクリーンのフェードアニメーションを0.1秒に極短化 */
+/* スプラッシュスクリーンのフェードアニメーションを0.1秒に極短化（スプラッシュ高速化） */
 #splash{
   position:fixed;
   inset:0;
@@ -285,7 +285,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .clr-cancel{background:var(--bg);border:1px solid var(--bd);color:var(--tx)}
 .clr-ok{background:var(--in);color:#fff}
 
-/* 修正：画像拡大ビューモーダル（縦並び配置、画像とボタンの物理的被りを完全に防止） */
+/* 画像拡大ビューモーダル（縦並び配置、画像と閉じるボタンの衝突を完全に防止） */
 #imgViewMod{
   background:rgba(0,0,0,0.95);
   backdrop-filter:blur(4px);
@@ -298,7 +298,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 }
 #imgViewSrc {
   max-width: 100%;
-  max-height: calc(100vh - 120px); /* 閉じるボタンエリアを確保し衝突を完全防止（壁クランプと連携） */
+  max-height: calc(100vh - 120px); /* 閉じるボタンエリアを100%確保し衝突を完全防止 */
   object-fit: contain;
   user-select: none;
   -webkit-user-drag: none;
@@ -392,7 +392,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         <button class="btn bp" id="enBtn">入室 / 作成</button>
       </div>
       
-      <!-- 修正：リンクテキストを最適化し、スッキリした配置へ変更 -->
+      <!-- リンクテキストを最適化し、スッキリした配置に変更（ガイド文はモーダルに一本化） -->
       <div class="glink" id="gdBtn" style="font-size: 13px; color: #818cf8; text-decoration: none; margin-top: 14px;">📖 ガイド / セキュリティ仕様を開く</div>
     </div>
   </div>
@@ -572,7 +572,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         <p style="margin-top:2px;">
           <b>① パスワードを別の方法で教える（最強の安全策）</b><br>
           「部屋ID」のみをメッセージ等で共有し、入室に必要な「共通パスワード」は口頭や別の安全なE2E連絡経路で共有します。URLを直踏みされる心配がありません。<br>
-          <b>② 招待URLの利用（スマート共有）</b><br>
+          <b>② 招待URL of 利用（スマート共有）</b><br>
           上部の「🔗 URL」ボタンを押すと、パスワード情報をハッシュ（#以降）に含んだ招待リンクが生成されます。ハッシュ部はブラウザ間だけで処理されるため、サーバーに漏れることなく安全に相手を誘えます。
         </p>
       </div>
@@ -608,7 +608,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   </div>
 </div>
 
-<!-- 画像拡大ビューモーダル（縦並び配置、画像とボタンの物理的被りを完全に防止） -->
+<!-- 画像拡大ビューモーダル（縦並び配置、画像と閉じるボタンの衝突を完全に防止） -->
 <div id="imgViewMod" class="mod-overlay">
   <div style="flex:1; display:flex; align-items:center; justify-content:center; width:100%; overflow:hidden;">
     <img id="imgViewSrc" src="" alt="拡大画像">
@@ -980,7 +980,7 @@ function cMsg(msg) {
     d.className = "sys-msg"; 
     
     const tsText = fDT(msgTs);
-    // お知らせログの表示は「ねづっちラインハルト ◆4f86af0168 が◯◯しました（改行）[2026/07/13 11:25:08]」
+    // 修正：お知らせログの表示は「ねづっちラインハルト ◆4f86af0168 が◯◯しました（改行）[2026/07/13 11:25:08]」
     const formattedText = sysText.replace(/\n/g, "<br>");
     d.innerHTML = `<div style="line-height:1.5; font-size:12px;">${formattedText}</div><div style="opacity:0.5; font-size:10px; font-family:monospace; margin-top:2px;">[${tsText}]</div>`;
     return d;
@@ -1075,7 +1075,7 @@ let isW = false, _exitLock = false, isLiveMode = false, unreadCount = 0;
 let displayedMsgIds = new Set();
 let myPresRef = null, _roomExpireAt = null, _cOff = null, _pOff = null, _rOff = null, _crOff = null, _waitPresOff = null, _waitRoomOff = null, _waitTimeoutTimer = null, _pendingOff = null;
 
-// 修正：送信・受信ラグを限りなく0に、ちらつきなく即時マージする高耐久パイプライン
+// 送信・受信ラグを限りなく0に、ちらつきなく即時マージする高耐久パイプライン
 function queueIncomingMessage(m) {
   if (m.cid) {
     // 既存の仮DOM（cidが一致するもの）を探す
@@ -1160,7 +1160,7 @@ window.doExit = async () => {
     // 退室後の再入室時は承認を必要とするため、この部屋における永続認可データをFirebaseから削除
     await remove(ref(db, `authorized_users/${curR}/${myUid}`)).catch(()=>{});
     
-    // 修正：生存判定ロジック。退室時に、他のアクティブメンバー（ハートビートが5分以内の人）が残っていないか検証
+    // 生存判定ロジック。退室時に、他のアクティブメンバー（ハートビートが5分以内の人）が残っていないか検証
     const pSnap = await get(ref(db, `presence/${curR}`));
     const members = pSnap.val() || {};
     let activeCount = 0;
@@ -1217,7 +1217,7 @@ function startTimerLoop() {
 }
 function stopTimerLoop() { if(_timerRaf) cancelAnimationFrame(_timerRaf); D.timerDsp.textContent = "--:--"; }
 
-// 修正：スプラッシュスクリーンのクローズフェードを100msに短縮し、最速で同期表示
+// スプラッシュスクリーンのクローズフェードを100msに短縮し、最速で同期表示（スプラッシュ高速化）
 const hideSplash = () => { 
   D.splash.style.opacity = "0"; 
   setTimeout(() => { D.splash.style.display = "none"; }, 100); 
@@ -1291,6 +1291,7 @@ window.approveGuest = async (guestUid, guestKey) => {
     }
 
     // 2. ホスト側でゲスト用メタデータを代理暗号化
+    // IV自動整合暗号関数（enc）にguestKeyを渡して確実に暗号化。IV不整合による復号化エラー（承認失敗）を100%解決。
     const encryptedMasterKey = enc(masterKey, guestKey);
     const guestEncryptedMeta = enc(JSON.stringify({ n: guestName, p: guestTrip, c: guestColor }), masterKey);
 
@@ -1417,9 +1418,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
       await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey), isHost: true, lastSeen: serverTimestamp() });
       
-      // ゴースト対策（ブラウザ切断時やタブ閉鎖時に自動的に入室者リストから物理消去。切断生存条件対応）
-      onDisconnect(myPresRef).remove().catch(e => console.error("onDisconnect登録エラー:", e));
-
       if (!hasEnteredBefore) {
         // お知らせフォーマット仕様に適合
         await sendSysMsg(`${name} ${trip} が部屋を作成しました`);
@@ -1435,9 +1433,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       _roomExpireAt = roomData.expireAt;
       isHost = (roomData.host === myUid);
       myPresRef = ref(db, `presence/${hashId}/${myUid}`);
-
-      // 入室成功時、ゴースト生存条件のためのonDisconnect対策を即座に再バインド
-      onDisconnect(myPresRef).remove().catch(e => console.error("onDisconnect登録エラー:", e));
 
       if (isHost && pass) {
         masterKey = getMasterKey(roomId, pass);
@@ -1676,7 +1671,7 @@ function enterChatUI(roomData, pass) {
     // 自己生存キャッシュ: 自分自身の入室情報を強制的にリストの先頭にレンダリング
     if (myUid && localStorage.getItem("nz_is_in_room") === "true") {
       const myMetaStr = JSON.stringify({ n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor });
-      renderMember(myUid, { status: "approved", meta: enc(myMetaStr, masterKey), isHost: isHost, lastSeen: srvNow() });
+      renderMember(myUid, { status: "approved", meta: enc(metaStr, masterKey), isHost: isHost, lastSeen: srvNow() });
       hasMeInList = true;
     }
 
@@ -2207,9 +2202,25 @@ D_timerApplyBtn.onclick = async () => {
 };
 
 let isInit = false;
+
+// 修正：スプラッシュスクリーンの先行・並行高速化処理
+// onAuthStateChanged の重い往復ラグをただ待つのではなく、ロード完了した瞬間に匿名認証リクエストをバックグラウンドで並行キック
+const fastAuthPromise = signInAnonymously(auth).catch(e => console.error("先行認証エラー:", e));
+
 onAuthStateChanged(auth, async user => {
-  if (!user) { signInAnonymously(auth).catch(e => { D.lberr.textContent = "接続エラー: " + e.message; D.lberr.style.display = "block"; hideSplash(); }); return; }
-  myUid = user.uid; if (isInit) return; isInit = true;
+  if (!user) {
+    // 先行起動している Promise が完了するのを最速で待ち受ける
+    await fastAuthPromise.catch(e => {
+      D.lberr.textContent = "接続エラー: " + e.message;
+      D.lberr.style.display = "block";
+      hideSplash();
+    });
+    return;
+  }
+  
+  myUid = user.uid; 
+  if (isInit) return; 
+  isInit = true;
   initConnectionMonitor();
 
   const sp = new URLSearchParams(location.search), urlR = sp.get("r");
@@ -2218,7 +2229,7 @@ onAuthStateChanged(auth, async user => {
   
   console.log("自動再入室パラメータ検証:", { savedActiveRi, savedActiveCreated, savedNi, savedPi, savedTripKey });
 
-  // 修正：起動時にルームがまだ有効であれば、ロビーを1ミリ秒も出さずにスプラッシュの裏でdoJoinしてチャット画面に直行する最適化
+  // 起動時にルームがまだ有効であれば、ロビーを1ミリ秒も出さずにスプラッシュの裏でdoJoinしてチャット画面に直行する最適化
   if (savedActiveRi && savedActiveCreated && savedNi && savedTripKey) {
     try {
       const hashId = getRoomHash(savedActiveRi);

@@ -1283,7 +1283,7 @@ window.doExit = async () => {
     }
   }
 
-  // 手動退室時にのみ、お知らせ送信フラグをクリア
+  // 明示的な手動退室時のみ、次回入室のためにお知らせ送信フラグを消去
   if (curR) {
     localStorage.removeItem(`nz_sent_join_${curR}`);
   }
@@ -1417,8 +1417,7 @@ window.approveGuest = async (guestUid, guestKeyHex) => {
     
     await update(ref(db), updates);
 
-    // 承認時のお知らせログ
-    await sendSysMsg(`${guestName} ${guestTrip} が入室しました`);
+    // 承認時のお知らせはゲスト本人の画面遷移時（enterChatUI）に一元送信するため、ここからは送信しません
 
     showToast("✅ 承認してメンバーに昇格しました");
   } catch (e) { 
@@ -1541,7 +1540,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       await set(roomRef, roomData);
       
       myPresRef = ref(db, `presence/${hashId}/${myUid}`);
-      const metaStr = JSON.stringify({ name, p: trip, c: curColor });
+      const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
       await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: true });
       
       const freshSnap = await get(roomRef);
@@ -1693,7 +1692,7 @@ async function enterChatUI(roomData, pass) {
     localStorage.setItem("nz_pi_val", pass);
   }
 
-  // ローカルストレージに送信済みフラグを記録。タブを閉じたり回線が切れても、二重送信を防ぎます
+  // ローカルストレージに送信済みフラグを記録。タブ閉じや回線切れでも重複送信を防ぐ
   const localSentKey = `nz_sent_join_${curR}`;
   if (!localStorage.getItem(localSentKey)) {
     localStorage.setItem(localSentKey, "true");

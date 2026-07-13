@@ -351,8 +351,9 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <div class="lbsub">DISPOSABLE & ZERO-KNOWLEDGE E2EE</div>
     <div class="lbi">
       <div class="ibox">
-        ⏱ <b>完全使い捨て・即時物理削除システム</b><br>
-        最後の一人が部屋を退室する、または有効期限が切れた瞬間に、暗号化ログ、部屋情報、認証鍵データを含む<b>すべての情報がサーバーから物理消去され、完全に消滅</b>します。運営者や管理者でも後からデータを復元・開示することは技術的に100%不可能です。
+        🔒 <b>システム管理者でも絶対に覗けません</b><br>
+        発言、プロフィール、画像はすべてブラウザ側で解読不能に二重暗号化（E2EE）されて送信されます。暗号を解くキー（部屋パスワード）はサーバーへ送信されないため、<b>システム管理者やサーバー運営者でも会話内容を覗き見することは物理的に不可能</b>です。<br>
+        最後の一人が退室、または寿命が切れた瞬間にすべてのデータは自動で完全物理消去され消滅します。
       </div>
       <div id="lberr"></div>
 
@@ -817,7 +818,7 @@ const importRawKeyFromHex = async (hex) => {
   );
 };
 
-// 対称鍵のエクスポート / インポート処理 (sessionStorageキャッシュ用)
+// 对称鍵のエクスポート / インポート処理 (sessionStorageキャッシュ用)
 const exportKeyToHex = async (key) => {
   const exported = await window.crypto.subtle.exportKey("raw", key);
   return bytesToHex(new Uint8Array(exported));
@@ -2189,6 +2190,30 @@ D.gnBtn.onclick = () => {
 D.gdBtn.onclick = () => D.gmod.classList.add("show");
 D.gcBtn.onclick = () => D.gmod.classList.remove("show");
 document.querySelectorAll(".mod-overlay").forEach(m => { m.onclick = e => { if(e.target === m || m.id === "imgViewMod" || m.id === "timerSettingMod") m.classList.remove("show"); }; });
+
+D.kbToggleBtn.onclick = () => {
+  keepKbOpen = !keepKbOpen;
+  D.kbToggleBtn.classList.toggle("active", keepKbOpen);
+  D.kbStatusText.textContent = keepKbOpen ? "KB:開" : "KB:閉";
+  D.kbStatusText.style.color = keepKbOpen ? "#fff" : "var(--tx)";
+  
+  // KBボタンの操作に追従して仮想キーボード自体の開閉（フォーカス制御）を即時実行
+  if (keepKbOpen) {
+    D.mi.focus();
+  } else {
+    D.mi.blur();
+  }
+  
+  showToast(keepKbOpen ? "⌨️ 送信後も入力欄にフォーカスを維持します" : "⌨️ 送信後に入力フォーカスを外します");
+};
+
+D.autoScrollToggleBtn.onclick = () => {
+  isAutoScroll = !isAutoScroll;
+  D.autoScrollToggleBtn.classList.toggle("active", isAutoScroll);
+  D.autoScrollStatusText.textContent = isAutoScroll ? "追従:ON" : "追従:OFF";
+  D.autoScrollStatusText.style.color = isAutoScroll ? "#fff" : "var(--tx)";
+  showToast(isAutoScroll ? "📜 新着ログに追従スクロールします" : "📜 スクロール追従をオフにしました");
+};
 
 const updateScrollBtnUI = () => {
   // スクロール追従の非活性・活性時の微調整

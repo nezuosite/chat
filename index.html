@@ -1,5 +1,3 @@
---- START OF FILE Paste July 13, 2026 - 10:25PM ---
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -267,17 +265,57 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .clr-cancel{background:var(--bg);border:1px solid var(--bd);color:var(--tx)}
 .clr-ok{background:var(--in);color:#fff}
 
-#imgViewMod{background:rgba(0,0,0,0.92);backdrop-filter:blur(4px);padding:0;cursor:zoom-out;overflow:hidden;touch-action:none;}
+/* 画像プレビューモーダルのレイアウト最適化：被り防止を徹底 */
+#imgViewMod {
+  background: rgba(0,0,0,0.95);
+  backdrop-filter: blur(8px);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+}
 #imgViewSrc {
-  max-width: 100%;
-  max-height: 100%;
+  max-width: 90%;
+  max-height: calc(100dvh - 140px); /* 100dvhからボタン用のスペースを確実に減算 */
   object-fit: contain;
   user-select: none;
   -webkit-user-drag: none;
   transition: transform 0.05s ease-out;
   transform-origin: center center;
+  margin-bottom: 20px; /* ボタンとの距離を定義 */
 }
-.modal-bottom-close {width:100%; padding:8px; background:var(--ro); color:#fff; border-radius:5px; font-weight:bold; font-size:11px; text-align:center; margin-top:6px;}
+.modal-bottom-close-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  padding: 16px 0 calc(16px + var(--safe));
+  background: linear-gradient(to top, rgba(0,0,0,0.8) 40%, rgba(0,0,0,0));
+  backdrop-filter: blur(2px);
+  z-index: 10001;
+}
+.modal-bottom-close {
+  width: auto;
+  min-width: 160px;
+  padding: 10px 24px;
+  background: var(--ro);
+  color: #fff;
+  border-radius: 24px;
+  font-weight: bold;
+  font-size: 13px;
+  text-align: center;
+  border: none;
+  box-shadow: 0 4px 12px rgba(244, 63, 94, 0.4);
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.modal-bottom-close:active {
+  background: #e11d48;
+  transform: scale(0.96);
+}
 
 #toastContainer {
   position: fixed;
@@ -569,10 +607,12 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   </div>
 </div>
 
-<!-- 画像拡大ビューモーダル -->
+<!-- 画像拡大ビューモーダル：閉じるボタン被り防止コンテナ -->
 <div id="imgViewMod" class="mod-overlay">
   <img id="imgViewSrc" src="" alt="拡大画像">
-  <button class="modal-bottom-close" style="position:fixed; bottom:16px; left:50%; transform:translateX(-50%); max-width:180px; z-index:10001;" id="imgViewCloseBtn">閉じる</button>
+  <div class="modal-bottom-close-container">
+    <button class="modal-bottom-close" id="imgViewCloseBtn">閉じる</button>
+  </div>
 </div>
 
 <script type="module">
@@ -649,11 +689,10 @@ const initHashPass = () => {
 };
 initHashPass();
 
-/* ==========================================
-   Web Cryptography API (AES-GCM 256) 実装
-   ========================================== */
+/* =========================================================
+   Web Cryptography API (AES-GCM 256) 高速・セキュア実装
+   ========================================================= */
 
-// バッファ変換ヘルパー
 const hexToBytes = (hex) => {
   const bytes = new Uint8Array(hex.length / 2);
   for (let i = 0; i < bytes.length; i++) {
@@ -666,14 +705,13 @@ const bytesToHex = (bytes) => {
   return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
 };
 
-// SHA-256 非同期ハッシュ生成
 const sha256 = async (text) => {
   const msgUint8 = new TextEncoder().encode(text);
   const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgUint8);
   return bytesToHex(new Uint8Array(hashBuffer));
 };
 
-// PBKDF2 によるAES-GCM用 CryptoKey 導出（ルーム入室時に1度だけ導出してメモリ保持）
+// PBKDF2 から AES-GCM CryptoKey を安全に導出
 const deriveMasterKey = async (roomId, pass) => {
   const enc = new TextEncoder();
   const passwordBuffer = enc.encode(pass);
@@ -699,12 +737,12 @@ const deriveMasterKey = async (roomId, pass) => {
       name: "AES-GCM",
       length: 256
     },
-    true, // ラッピング/ラッピング解除可能にする
+    true, // ラッピングを有効に設定
     ["encrypt", "decrypt", "wrapKey", "unwrapKey"]
   );
 };
 
-// 鍵をラッピング（AES-GCMを用いた暗号化エクスポート）
+// 鍵配布用ラッピング（メモリ露出のない暗号化エクスポート）
 const wrapMasterKey = async (keyToWrap, wrappingKey) => {
   const iv = window.crypto.getRandomValues(new Uint8Array(12));
   const wrapped = await window.crypto.subtle.wrapKey(
@@ -727,7 +765,7 @@ const wrapMasterKey = async (keyToWrap, wrappingKey) => {
   return ivHex + ":" + btoa(binary);
 };
 
-// 鍵をアンラッピング（AES-GCMを用いた復号インポート）
+// 鍵配布用ラッピング解除（インポート）
 const unwrapMasterKey = async (wrappedStr, unwrappingKey) => {
   try {
     const parts = wrappedStr.split(":");
@@ -753,7 +791,7 @@ const unwrapMasterKey = async (wrappedStr, unwrappingKey) => {
       {
         name: "AES-GCM"
       },
-      true, // 派生後のエクスポート/再ラッピング対応
+      true,
       ["encrypt", "decrypt", "wrapKey", "unwrapKey"]
     );
   } catch (e) {
@@ -762,7 +800,6 @@ const unwrapMasterKey = async (wrappedStr, unwrappingKey) => {
   }
 };
 
-// 対称鍵（AES-GCM）をHexからインポート
 const importRawKeyFromHex = async (hex) => {
   const bytes = hexToBytes(hex);
   return await window.crypto.subtle.importKey(
@@ -774,26 +811,24 @@ const importRawKeyFromHex = async (hex) => {
   );
 };
 
-// トリップ生成
 const makeTrip = async (name, tripKey) => {
   if (!tripKey) return "";
   const hash = await sha256(SYSTEM_SALT + name + tripKey);
   return "◆" + hash.substring(0, 10);
 };
 
-// 部屋IDのハッシュ
 const getRoomHash = async (roomId) => {
   return await sha256(SYSTEM_SALT + roomId);
 };
 
-let masterKey = null; // メモリ上で保持する AES-GCM CryptoKey オブジェクト
+let masterKey = null; // メモリ内キャッシュ対称鍵 (CryptoKey)
 let isHost = false;
 let myGuestKey = null;
 let targetDelId = null;
-let hasSentJoinMsgInSession = false; // 入室お知らせログのセッション送信状況
+let hasSentJoinMsgInSession = false; // 手動入室時のみお知らせを出すためセッション単位で追跡
 
-// 暗号化
-const enc = async (t, key = masterKey) => {
+// メッセージ暗号化
+const encrypt = async (t, key = masterKey) => {
   if (!t || !key) return "";
   try {
     const encoder = new TextEncoder();
@@ -818,14 +853,14 @@ const enc = async (t, key = masterKey) => {
     }
     return ivHex + ":" + btoa(binary);
   } catch (e) {
-    console.error("暗号化に失敗しました:", e);
+    console.error("暗号化失敗:", e);
     return "";
   }
 };
 
-// 復号
-const decCache = new Map(); // メモリ上に復号結果をキャッシュし処理を爆速化
-const dec = async (c, key = masterKey) => {
+// メッセージ復号
+const decCache = new Map(); // 再レンダリング時の復号コストをゼロにするためのローカルキャッシュ
+const decrypt = async (c, key = masterKey) => {
   if (!c || !key) return null;
   if (decCache.has(c)) return decCache.get(c);
 
@@ -975,7 +1010,7 @@ D.clrBtn.addEventListener("click", () => {
 D.clrOk.addEventListener("click", async () => {
   curColor = tmpColor; setGlobalColor(curColor); localStorage.setItem("nz_color",curColor); syncPickers(curColor);
   if (curR && myPresRef && masterKey) { 
-    try { const metaStr = JSON.stringify({n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor}); await update(myPresRef, {meta: await enc(metaStr, masterKey)}); } catch {} 
+    try { const metaStr = JSON.stringify({n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor}); await update(myPresRef, {meta: await encrypt(metaStr, masterKey)}); } catch {} 
   }
   D.clrmod.classList.remove("show");
 });
@@ -1065,12 +1100,12 @@ function insertMessageEl(el) {
   }
 }
 
-// 描画ブロッキングを完全に排除した非同期DOM構築
+// レンダリングを一切ブロックしない、AES-GCM 完全非同期DOM生成処理
 async function cMsg(msg) {
-  const msgTs = msg.timestamp || msg.t || srvNow();
+  const msgTs = msg.t || srvNow();
 
   if (msg.sys) {
-    const sysText = await dec(msg.m, masterKey);
+    const sysText = await decrypt(msg.m, masterKey);
     if (!sysText) return null; 
 
     const d = document.createElement("div"); 
@@ -1084,8 +1119,9 @@ async function cMsg(msg) {
     return d;
   }
 
-  const metaStr = await dec(msg.meta, masterKey);
-  const txt = await dec(msg.m, masterKey);
+  // 軽量化されたフィールド mt / m からの非同期復号
+  const metaStr = await decrypt(msg.mt, masterKey);
+  const txt = await decrypt(msg.m, masterKey);
   
   if (!metaStr || !txt) {
     const d = document.createElement("div");
@@ -1103,8 +1139,8 @@ async function cMsg(msg) {
   const d = document.createElement("div"); 
   d.dataset.mid = msg.id;
   d.dataset.ts = msgTs;
-  if (msg.cid) {
-    d.setAttribute("data-cid", msg.cid);
+  if (msg.c) {
+    d.setAttribute("data-cid", msg.c);
   }
   d.className = "mw";
   
@@ -1167,16 +1203,16 @@ let isW = false, _exitLock = false, isLiveMode = false, unreadCount = 0;
 let displayedMsgIds = new Set();
 let myPresRef = null, _roomExpireAt = null, _cOff = null, _pOff = null, _rOff = null, _crOff = null, _waitPresOff = null, _waitRoomOff = null, _pendingOff = null;
 
-// 仮要素と正式な受信要素のアトミック置換により、同期のガタつき・ラグをゼロ化
+// 一時仮メッセージ要素を差し替え、描画ガタつきを無くして相手への即時反映を実現
 async function queueIncomingMessage(m) {
-  if (m.cid) {
-    const tempEl = D.tli.querySelector(`[data-cid="${CSS.escape(String(m.cid))}"]`);
+  if (m.c) {
+    const tempEl = D.tli.querySelector(`[data-cid="${CSS.escape(String(m.c))}"]`);
     if (tempEl) {
       const realEl = await cMsg(m);
       if (realEl) {
         tempEl.replaceWith(realEl);
         displayedMsgIds.add(m.id);
-        displayedMsgIds.delete(m.cid);
+        displayedMsgIds.delete(m.c);
         trimTimeline();
         scBottom();
         return;
@@ -1226,9 +1262,8 @@ async function sendSysMsg(text) {
   if (!curR || !masterKey) return;
   await push(ref(db, `chat/${curR}`), { 
     sys: true, 
-    m: await enc(text, masterKey), 
-    t: serverTimestamp(),
-    timestamp: serverTimestamp()
+    m: await encrypt(text, masterKey), 
+    t: serverTimestamp()
   }).catch(e => {
     console.error("システムメッセージ送信失敗:", e);
   });
@@ -1251,7 +1286,7 @@ window.doExit = async () => {
     }
   }
 
-  // フラグをリセット（次回再入室時にお知らせを出すため）
+  // 手動退室時にフラグをリセット。次回手動入室時にまたお知らせが出力される
   hasSentJoinMsgInSession = false;
 
   if (hashId) {
@@ -1272,7 +1307,7 @@ function clearAll() {
   if(typeof _waitRoomOff === "function"){ _waitRoomOff(); _waitRoomOff = null; }
   if(typeof _pendingOff === "function"){ _pendingOff = null; }
 
-  // セキュリティ要件: メモリ上のキーおよび復号キャッシュの即時物理破棄
+  // セキュリティ要件：鍵情報と過去復号テキストキャッシュの徹底的なゼロ物理破棄
   masterKey = null; 
   decCache.clear();
 
@@ -1342,7 +1377,7 @@ window.approveGuest = async (guestUid, guestKeyHex) => {
         false,
         ["decrypt"]
       );
-      const metaStr = await dec(pVal.wmeta, waitCryptoKey);
+      const metaStr = await decrypt(pVal.wmeta, waitCryptoKey);
       if (metaStr) {
         try {
           const wm = JSON.parse(metaStr);
@@ -1354,9 +1389,9 @@ window.approveGuest = async (guestUid, guestKeyHex) => {
     }
 
     const guestCryptoKey = await importRawKeyFromHex(guestKeyHex);
-    // メモリ外へ露出させずにセキュアに CryptoKey をラッピングして配布
+    // メモリ露出を完全に防ぐ wrapKey 導出配布
     const encryptedMasterKey = await wrapMasterKey(masterKey, guestCryptoKey);
-    const guestEncryptedMeta = await enc(JSON.stringify({ n: guestName, p: guestTrip, c: guestColor }), masterKey);
+    const guestEncryptedMeta = await encrypt(JSON.stringify({ n: guestName, p: guestTrip, c: guestColor }), masterKey);
 
     const updates = {};
     updates[`presence/${curR}/${guestUid}`] = { 
@@ -1445,6 +1480,22 @@ function trimTimeline() {
   }
 }
 
+// 過去ログの一括バッチ追加：リフローを完全に排除し最速描画
+const processInitialMessages = async (messages) => {
+  const fragment = document.createDocumentFragment();
+  for (const m of messages) {
+    if (displayedMsgIds.has(m.id)) continue;
+    const el = await cMsg(m);
+    if (el) {
+      fragment.appendChild(el);
+      displayedMsgIds.add(m.id);
+    }
+  }
+  D.tli.appendChild(fragment);
+  trimTimeline();
+  scBottom(true);
+};
+
 async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
   try {
     clearAll(); _exitLock = false;
@@ -1473,7 +1524,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       
       myPresRef = ref(db, `presence/${hashId}/${myUid}`);
       const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
-      await set(myPresRef, { status: "approved", meta: await enc(metaStr, masterKey), isHost: true });
+      await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: true });
       
       const freshSnap = await get(roomRef);
       if(freshSnap.exists()) { 
@@ -1489,7 +1540,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       if (isHost && pass) {
         masterKey = await deriveMasterKey(roomId, pass);
         const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
-        await update(myPresRef, { status: "approved", meta: await enc(metaStr, masterKey), isHost: true });
+        await update(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: true });
         await enterChatUI(roomData, pass);
       } else if (roomData.requireApproval) {
         const authLocalKey = localStorage.getItem(`nz_authkey_${hashId}`);
@@ -1517,7 +1568,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
               if (decryptedMk) {
                 masterKey = decryptedMk;
                 const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
-                await set(myPresRef, { status: "approved", meta: await enc(metaStr, masterKey), isHost: false });
+                await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: false });
                 await enterChatUI(roomData, pass);
                 return;
               }
@@ -1542,7 +1593,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         await set(pendingRef, { 
           status: "waiting", 
           gk: myGuestKey, 
-          wmeta: await enc(waitMetaStr, waitCryptoKey), 
+          wmeta: await encrypt(waitMetaStr, waitCryptoKey), 
           reqAt: serverTimestamp() 
         });
 
@@ -1581,7 +1632,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
               const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
               
               await remove(pendingRef).catch(()=>{});
-              await set(myPresRef, { status: "approved", meta: await enc(metaStr, masterKey) });
+              await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey) });
               
               D.waitMod.classList.remove("show");
               await enterChatUI(rVal, currentPass);
@@ -1601,7 +1652,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         if (!pass) throw new Error("承認制ではありません。パスワードが必要です。");
         masterKey = await deriveMasterKey(roomId, pass);
         const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
-        await set(myPresRef, { status: "approved", meta: await enc(metaStr, masterKey) });
+        await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey) });
         await enterChatUI(roomData, pass);
       }
     }
@@ -1624,7 +1675,7 @@ async function enterChatUI(roomData, pass) {
     localStorage.setItem("nz_pi_val", pass);
   }
 
-  // 今回の接続・セッションで入室お知らせログがまだ送信されていなければ送信
+  // 手動でロビーの入室シーケンス（doJoin）を経た初回・手動再入室の時のみ、お知らせを送信する
   if (!hasSentJoinMsgInSession) {
     hasSentJoinMsgInSession = true;
     await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が入室しました`);
@@ -1668,7 +1719,7 @@ async function enterChatUI(roomData, pass) {
 
     const renderMember = async (id, u) => {
       if (u.status === "approved" && u.meta) {
-        const metaStr = await dec(u.meta, masterKey);
+        const metaStr = await decrypt(u.meta, masterKey);
         if(metaStr) {
           try {
              const m = JSON.parse(metaStr); count++;
@@ -1684,7 +1735,7 @@ async function enterChatUI(roomData, pass) {
 
     if (myUid && localStorage.getItem("nz_is_in_room") === "true") {
       const myMetaStr = JSON.stringify({ n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor });
-      await renderMember(myUid, { status: "approved", meta: await enc(myMetaStr, masterKey), isHost: isHost });
+      await renderMember(myUid, { status: "approved", meta: await encrypt(myMetaStr, masterKey), isHost: isHost });
       hasMeInList = true;
     }
 
@@ -1712,7 +1763,7 @@ async function enterChatUI(roomData, pass) {
             false,
             ["decrypt"]
           );
-          const metaStr = await dec(u.wmeta, waitCryptoKey);
+          const metaStr = await decrypt(u.wmeta, waitCryptoKey);
           if (metaStr) {
             try {
                const wm = JSON.parse(metaStr);
@@ -1731,14 +1782,28 @@ async function enterChatUI(roomData, pass) {
     _pendingOff = onValue(ref(db, `pending/${curR}`), rafThrottle(renderPendingList));
   }
 
-  _cOff = onChildAdded(query(ref(db, `chat/${curR}`), orderByChild("timestamp"), limitToLast(100)), snap => {
+  // 過去メッセージの一括爆速事前バッチ取得とロード
+  const chatQuery = query(ref(db, `chat/${curR}`), orderByChild("t"), limitToLast(100));
+  const chatSnap = await get(chatQuery);
+  if (chatSnap.exists()) {
+    const msgs = [];
+    chatSnap.forEach((child) => {
+      const val = child.val();
+      val.id = child.key;
+      msgs.push(val);
+    });
+    msgs.sort((a, b) => (a.t || 0) - (b.t || 0));
+    await processInitialMessages(msgs);
+  }
+
+  // バッチ描画完了後に、それ以降の新着ログ（差分）だけを最速で描画するために監視登録
+  _cOff = onChildAdded(query(ref(db, `chat/${curR}`), orderByChild("t"), limitToLast(100)), snap => {
     if(!curR || !masterKey) return;
     const m = snap.val(); 
     if(m) { 
       m.id = snap.key; 
       if (!m.t) m.t = Date.now(); 
-      if (!m.timestamp) m.timestamp = m.t; 
-      if (m.cid && displayedMsgIds.has(m.cid)) { removeMessageEl(m.cid); }
+      if (m.c && displayedMsgIds.has(m.c)) { removeMessageEl(m.c); }
       queueIncomingMessage(m);
     } 
   });
@@ -1766,7 +1831,7 @@ function initConnectionMonitor() {
   });
 }
 
-// 接続復帰時など、データが壊れたり重複したりする重い全件再クエリを廃止し、生存チェックのみに超軽量化
+// 自動再接続・スリープ復帰時のお知らせログ（システム通知）重複送信を防ぐため生存監視のみにスリム化
 async function forceResync() {
   if (!curR || !masterKey) return;
   try {
@@ -1782,7 +1847,7 @@ async function forceResync() {
 
 document.addEventListener("visibilitychange", async () => {
   if (document.visibilityState === "visible") {
-    // 画面がアクティブになった際、Firebase接続を能動的に即時オンラインにすることで、相手の発言検知・受信を爆速化
+    // 復帰時に明示的にgoOnlineさせてWebSocket切断からの再接続プロセスを即座にキック
     import("https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js").then((m) => {
       m.goOnline(db);
     });
@@ -1822,7 +1887,7 @@ document.addEventListener("visibilitychange", async () => {
               masterKey = await deriveMasterKey(rawR, currentPass);
               const metaStr = JSON.stringify({ n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor });
               await remove(ref(db, `pending/${curR}/${myUid}`)).catch(()=>{});
-              await set(myPresRef, { status: "approved", meta: await enc(metaStr, masterKey) });
+              await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey) });
               
               D.waitMod.classList.remove("show");
               if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
@@ -1857,30 +1922,29 @@ async function sendMsg(overrideText = null, imgData = null) {
   const cid = "opt_" + myUid + "_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
   
   const nowSrv = srvNow();
-  const encryptedMeta = await enc(JSON.stringify(metaObj), masterKey);
-  const encryptedMsg = await enc(imgData ? "IMG::" + imgData : txt, masterKey);
+  const encryptedMeta = await encrypt(JSON.stringify(metaObj), masterKey);
+  const encryptedMsg = await encrypt(imgData ? "IMG::" + imgData : txt, masterKey);
 
+  // 通信パケットを削減：mt(meta)、c(cid)、t(timestamp) へと極限まで圧縮
   const tempObj = { 
     id: cid, 
-    cid: cid, 
+    c: cid, 
     u: myUid, 
-    meta: encryptedMeta, 
+    mt: encryptedMeta, 
     m: encryptedMsg, 
-    t: nowSrv,
-    timestamp: nowSrv 
+    t: nowSrv
   };
   
-  // 自分の発言を画面に即反映（楽観的UI表示）
+  // 楽観的UI：自分の画面へ即反映
   await renderSingleMessage(tempObj);
 
-  // 相手へ即反映させるため非ブロッキングでバックグラウンド送信を即時キック
+  // 相手へ爆速で到達させるための非同期バックグラウンド同期
   push(ref(db, `chat/${curR}`), { 
     u: myUid, 
-    cid: cid, 
-    meta: encryptedMeta, 
+    c: cid, 
+    mt: encryptedMeta, 
     m: encryptedMsg, 
-    t: serverTimestamp(),
-    timestamp: serverTimestamp()
+    t: serverTimestamp()
   }).catch(e => {
     removeMessageEl(cid);
     console.error("Firebaseへのメッセージ送信に失敗しました:", e);
@@ -1967,7 +2031,7 @@ D.autoScrollToggleBtn.onclick = () => {
 };
 
 const updateScrollBtnUI = () => {
-  // 自動追従ボタンのUIを必要に応じて更新（未読表示用）
+  // スクロール追従の非活性・活性時の微調整
 };
 
 const updateJumpBtns = () => {
@@ -2190,7 +2254,7 @@ D_timerApplyBtn.onclick = async () => {
 
 let isInit = false;
 
-// 認証・セッション復旧を最速でトリガーするメイン処理
+// 認証・初期接続を最速で進行させるためのメイン処理
 const initUserSession = async (user) => {
   myUid = user.uid; 
   if (isInit) return; 
@@ -2230,22 +2294,36 @@ const initUserSession = async (user) => {
   showLobby();
 };
 
-// 既にキャッシュログイン情報がある場合は非同期監視の前に即実行（待機時間をゼロにする）
-if (auth.currentUser) {
-  initUserSession(auth.currentUser);
-} else {
-  onAuthStateChanged(auth, async user => {
-    if (user) {
-      await initUserSession(user);
-    } else {
-      signInAnonymously(auth).catch(e => { 
-        D.lberr.textContent = "接続エラー: " + e.message; 
-        D.lberr.style.display = "block"; 
-        showLobby();
-      }); 
+// 匿名サインインを最速で行うためのプロミス並列同期処理
+const authenticateAnonymously = () => {
+  return new Promise((resolve, reject) => {
+    if (auth.currentUser) {
+      resolve(auth.currentUser);
+      return;
     }
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        unsubscribe();
+        resolve(user);
+      }
+    });
+    signInAnonymously(auth).catch((err) => {
+      unsubscribe();
+      reject(err);
+    });
   });
-}
+};
+
+// 初期ログイン確認・実行
+authenticateAnonymously()
+  .then(async (user) => {
+    await initUserSession(user);
+  })
+  .catch((e) => {
+    D.lberr.textContent = "接続エラー: " + e.message; 
+    D.lberr.style.display = "block"; 
+    showLobby();
+  });
 </script>
 </body>
 </html>

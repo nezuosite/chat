@@ -43,7 +43,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .lbt{font-size:18px;font-weight:900;color:#818cf8;text-align:center;letter-spacing:.05em}
 .lbsub{font-size:11px;font-weight:700;color:var(--m2);text-align:center;letter-spacing:.1em;margin-top:-2px}
 .lbi{display:flex;flex-direction:column;gap:10px;width:100%}
-.ibox{background:rgba(79,70,229,.04);border:1px solid rgba(99,102,241,.15);border-radius:4px;padding:10px 12px;font-size:13px;color:var(--mu);line-height:1.5}
+.ibox{background:rgba(79,70,229,.04);border:1px solid rgba(99,102,241,.15);border-radius:4px;padding:10px 12px;font-size:13px;color:var(--mu);line-height:1.55}
 .ibox b{color:#a5b4fc}
 #lberr{background:var(--rg);border:1px solid rgba(244,63,94,.3);border-radius:4px;padding:6px;font-size:13px;color:#fda4af;display:none;text-align:center;font-weight:bold}
 
@@ -351,8 +351,8 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <div class="lbsub">DISPOSABLE & ZERO-KNOWLEDGE E2EE</div>
     <div class="lbi">
       <div class="ibox">
-        🔒 <b>完全秘匿・ゼロ知識アーキテクチャ</b><br>
-        運営者すら解読不能な「二重暗号化」と「システムソルト」による最高峰のプライバシー。
+        🔒 <b>ゼロ知識・エンドツーエンド暗号化 (E2EE)</b><br>
+        データはブラウザ側で暗号化（AES-GCM 256bit）されてから送信され、復号用パスワードはサーバーに一切送信されません。
       </div>
       <div id="lberr"></div>
 
@@ -561,30 +561,26 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     
     <div style="display:flex; flex-direction:column; gap:14px; overflow-y:auto; padding-right:4px; font-size:12px; line-height:1.6; color:var(--mu);">
       <div class="guide-sec">
-        <span class="guide-sub-title" style="color:#a5b4fc; font-weight:800; font-size:12.5px; border-bottom:1px solid rgba(255, 255, 255, 0.05); padding-bottom:2px; display:block; margin-bottom:4px;">🔑 1. 使い方 (How to Use)</span>
-        ・表示名とトリップキー（必須）を入力し、部屋IDとパスワードを指定するか、自動生成して「入室 / 作成」を押します。<br>
-        ・入室後、上部の「🔗 URL」ボタンを押して招待リンクをコピーし、相手に共有してください。<br>
-        ・ホストは入室後、ルーム上部で「オープン / 承認制」を自由に切り替えることができます。
+        <span class="guide-sub-title" style="color:#a5b4fc; font-weight:800; font-size:12.5px; border-bottom:1px solid rgba(255, 255, 255, 0.05); padding-bottom:2px; display:block; margin-bottom:4px;">🔑 1. 概要と使用方法</span>
+        ・表示名と任意のトリップキー、部屋ID、共通暗号化パスワードを入力して「入室 / 作成」を押します。<br>
+        ・入室後に上部の「🔗 URL」を押して招待リンクをコピーし、対話相手に安全な手段で共有してください。<br>
+        ・不特定の第三者の侵入を防止するため、入室後にホストはルーム上部で「オープン / 承認制（LOCKED）」を自由に切り替えることができます。
       </div>
       <div class="guide-sec">
-        <span class="guide-sub-title" style="color:#a5b4fc; font-weight:800; font-size:12.5px; border-bottom:1px solid rgba(255, 255, 255, 0.05); padding-bottom:2px; display:block; margin-bottom:4px;">🔒 2. セキュリティ仕様（管理者でも覗けないゼロ知識）</span>
-        ・<b>エンドツーエンド二重暗号化 (E2EE)</b>：発言やニックネーム、画像はブラウザ側で強力に暗号化されてから送信されます。<br>
-        ・<b>運営者も解読不能</b>：暗号を解読するためのパスワードは、サーバーへ一切送信されません。そのため、第三者やシステム管理者が直接データベースを見ても、意味を成さないデタラメな乱数しか確認できません。<br>
-        ・<b>即時物理削除 (Wipe)</b>：最後の一人が退室した、あるいは有効期限が切れた瞬間に、サーバーからすべてのログ・データが物理消去され完全に消失します。
+        <span class="guide-sub-title" style="color:#a5b4fc; font-weight:800; font-size:12.5px; border-bottom:1px solid rgba(255, 255, 255, 0.05); padding-bottom:2px; display:block; margin-bottom:4px;">🔒 2. エンドツーエンド二重暗号化（E2EE）</span>
+        ・本システムは、ブラウザネイティブの暗号化APIである <b>Web Cryptography API (AES-GCM 256bit)</b> を採用しています。<br>
+        ・発言内容・ニックネーム・画像データは全て送信前にローカルで暗号化されるため、ネットワーク経路やデータベース管理サーバ上にはデタラメな暗号化バイナリしか存在しません。<br>
+        ・解号キーとなる共通パスワードはサーバに送信されないため、運営者を含め、対話者以外の誰も解読・復元することは数学的に不可能です。
       </div>
       <div class="guide-sec">
-        <span class="guide-sub-title" style="color:#a5b4fc; font-weight:800; font-size:12.5px; border-bottom:1px solid rgba(255, 255, 255, 0.05); padding-bottom:2px; display:block; margin-bottom:4px;">🤝 3. 待ち合わせのおすすめ方法と安全運用</span>
-        ・<b>A. 部屋IDとパスワードの個別共有（最も安全）</b>：<br>
-        「部屋ID」のみを相手に伝え、「部屋パスワード」は口頭や別の信頼できる連絡ツールで相手に共有します。これにより、URLをそのままクリックされるリスクを排除できます。<br>
-        ・<b>B. オープンな場所にハッシュURLを貼る場合の注意</b>：<br>
-        SNSや掲示板など、誰でも見られる場所に「#パスワード」が含まれた招待URLを貼り付けると、パスワードも全員に公開され暗号化の役割が失われます。<br>
-        ・<b>C. 承認制（LOCKED）モードの活用（推奨）</b>：<br>
-        不特定多数がアクセスする場所で待ち合わせをする場合は、ホストが入室後に<b>「承認制」</b>に切り替えてください。あらかじめ相手のトリップ（◆マーク以降の英数字）を聞いておき、承認待ちリストのトリップを一致しているかホストが目視で確認して「許可」ボタンを押すことで、部外者の侵入を完全に防ぐことができます。
+        <span class="guide-sub-title" style="color:#a5b4fc; font-weight:800; font-size:12.5px; border-bottom:1px solid rgba(255, 255, 255, 0.05); padding-bottom:2px; display:block; margin-bottom:4px;">🚪 3. 自動物理消去（Wipe）設計</span>
+        ・本システムは、最後の一人が部屋を退室する、または設定した寿命の制限時間に達した瞬間に、サーバからその部屋に関わるチャットデータ・登録情報が物理的に完全削除されます。<br>
+        ・サーバ内にバックアップや残余ログなどは一切保存されないため、一度消去されたログを後から復元することは、いかなる技術を用いても完全に不可能です。
       </div>
       <div class="guide-sec">
-        <span class="guide-sub-title" style="color:#a5b4fc; font-weight:800; font-size:12.5px; border-bottom:1px solid rgba(255, 255, 255, 0.05); padding-bottom:2px; display:block; margin-bottom:4px;">⚖️ 4. 利用規約 (Terms of Service)</span>
-        ・本システムは使い捨ての匿名連絡・一時協議用途でのみ利用を許可します。不正アクセスや法令違反、公序良俗に反する用途、運営を意図的に妨害するあらゆる試みを禁止します。<br>
-        ・部屋が無人になった瞬間に全データが即時完全削除されるため、後からログを復元する、データ保全を求めることは技術的に一切不可能です。
+        <span class="guide-sub-title" style="color:#a5b4fc; font-weight:800; font-size:12.5px; border-bottom:1px solid rgba(255, 255, 255, 0.05); padding-bottom:2px; display:block; margin-bottom:4px;">⚖️ 4. 免責事項</span>
+        ・本ツールは、プライバシーが重視される一時的な協議や連絡用途として開発されています。不正アクセスや法令に違反する行為、公序良俗に反する通信を禁止します。<br>
+        ・サーバの稼働状況やその他ネットワークエラー等により発生した、データの不達または意図しないデータの消失に関するいかなる損失に対しても、開発元は一切の責任を負いません。
       </div>
     </div>
     <button class="modal-bottom-close" id="gcBtn" style="margin-top:10px;">閉じる</button>
@@ -1359,7 +1355,8 @@ async function checkCurrentRoomStatus() {
       localStorage.setItem("nz_mytrip_styled", tripStyled);
       localStorage.setItem("nz_is_in_room", "true");
       
-      await doJoin(lastRi, savedPi, savedNi, tripStyled, savedTimer, snap.val().requireApproval);
+      // 自動・再接続時の入室：isManual = false
+      await doJoin(lastRi, savedPi, savedNi, tripStyled, savedTimer, snap.val().requireApproval, false);
     } else {
       localStorage.removeItem("nz_active_ri"); 
       localStorage.removeItem("nz_active_created");
@@ -1511,7 +1508,8 @@ const processInitialMessages = async (messages) => {
   scBottom(true);
 };
 
-async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
+// 入室手続シーケンスの非同期設計 (手動入室判定 isManual 引数を追加)
+async function doJoin(roomId, pass, name, trip, initTimer, requireApproval, isManual = true) {
   try {
     clearAll(); _exitLock = false;
     localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created");
@@ -1543,7 +1541,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       
       const freshSnap = await get(roomRef);
       if(freshSnap.exists()) { 
-        await enterChatUI(freshSnap.val(), pass);
+        await enterChatUI(freshSnap.val(), pass, isManual);
       }
     } 
     else {
@@ -1556,7 +1554,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         masterKey = await deriveMasterKey(roomId, pass);
         const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
         await update(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: true });
-        await enterChatUI(roomData, pass);
+        await enterChatUI(roomData, pass, isManual);
       } else if (roomData.requireApproval) {
         const authLocalKey = localStorage.getItem(`nz_authkey_${hashId}`);
         
@@ -1568,7 +1566,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
             if (decryptedMk) {
               masterKey = decryptedMk;
               await update(myPresRef, { mk: null });
-              await enterChatUI(roomData, pass);
+              await enterChatUI(roomData, pass, isManual);
               return;
             }
           } catch(e){}
@@ -1584,7 +1582,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
                 masterKey = decryptedMk;
                 const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
                 await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: false });
-                await enterChatUI(roomData, pass);
+                await enterChatUI(roomData, pass, isManual);
                 return;
               }
             }
@@ -1628,7 +1626,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
                  D.waitMod.classList.remove("show");
                  if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
                  if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
-                 await enterChatUI(roomData, pass);
+                 await enterChatUI(roomData, pass, isManual);
               }
             } catch(e){}
           }
@@ -1650,7 +1648,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
               await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey) });
               
               D.waitMod.classList.remove("show");
-              await enterChatUI(rVal, currentPass);
+              await enterChatUI(rVal, currentPass, isManual);
             } else {
               D.waitMod.classList.remove("show");
               showLobby("エラー: 部屋がオープンモードになりましたが、暗号化パスワードが存在しません。");
@@ -1668,7 +1666,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         masterKey = await deriveMasterKey(roomId, pass);
         const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
         await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey) });
-        await enterChatUI(roomData, pass);
+        await enterChatUI(roomData, pass, isManual);
       }
     }
   } catch (e) { 
@@ -1676,7 +1674,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
   }
 }
 
-async function enterChatUI(roomData, pass) {
+async function enterChatUI(roomData, pass, isManual = true) {
   D.lobby.style.display = "none"; D.waitMod.classList.remove("show");
   D.app.style.display = "flex"; D.app.classList.add("visible");
   D.ib.classList.add("show"); D.rdsp.textContent = rawR;
@@ -1690,8 +1688,8 @@ async function enterChatUI(roomData, pass) {
     localStorage.setItem("nz_pi_val", pass);
   }
 
-  // 手動でロビーの入室シーケンス（doJoin）を経た初回・手動再入室の時のみ、お知らせを送信する
-  if (!hasSentJoinMsgInSession) {
+  // 手動入室（isManual = true）且つまだ今セッションでお知らせを投げていない場合のみ送信（自動再接続やリロード時は完全無視）
+  if (isManual && !hasSentJoinMsgInSession) {
     hasSentJoinMsgInSession = true;
     await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が入室しました`);
   }
@@ -1921,7 +1919,8 @@ document.addEventListener("visibilitychange", async () => {
               
               const rSnap = await get(ref(db, `rooms/${curR}`));
               const rData = rSnap.exists() ? rSnap.val() : { requireApproval: true };
-              await enterChatUI(rData, localStorage.getItem("nz_pi_val"));
+              // 自動復帰・バックグラウンド移行時のレーム：isManual = false
+              await enterChatUI(rData, localStorage.getItem("nz_pi_val"), false);
               return;
             }
           }
@@ -1942,7 +1941,8 @@ document.addEventListener("visibilitychange", async () => {
               if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
               if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
               
-              await enterChatUI(rVal, currentPass);
+              // 自動・移行復職：isManual = false
+              await enterChatUI(rVal, currentPass, false);
             }
           }
         }
@@ -2090,7 +2090,9 @@ D.enBtn.onclick = async () => {
   localStorage.setItem("nz_is_in_room", "true");
   D.enBtn.disabled = true; D.enBtn.textContent = "処理中...";
   const tripStyled = await makeTrip(n, tk); localStorage.setItem("nz_mytrip_styled", tripStyled);
-  await doJoin(r, p, n, tripStyled, tm, isApproveMode);
+  
+  // 手動入室ボタンからの実行：isManual = true
+  await doJoin(r, p, n, tripStyled, tm, isApproveMode, true);
 };
 
 D.gnBtn.onclick = () => {
@@ -2380,7 +2382,8 @@ const initUserSession = async (user) => {
         if (window.history?.replaceState) {
           window.history.replaceState({}, document.title, location.pathname + "?r=" + encodeURIComponent(savedActiveRi));
         }
-        await doJoin(savedActiveRi, savedPi, savedNi, tripStyled, savedTimer, snap.val().requireApproval);
+        // 自動再入室：isManual = false
+        await doJoin(savedActiveRi, savedPi, savedNi, tripStyled, savedTimer, snap.val().requireApproval, false);
         return; 
       }
     } catch(e) {}

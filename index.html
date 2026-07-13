@@ -47,9 +47,8 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .ibox b{color:#a5b4fc}
 #lberr{background:var(--rg);border:1px solid rgba(244,63,94,.3);border-radius:4px;padding:6px;font-size:13px;color:#fda4af;display:none;text-align:center;font-weight:bold}
 
-#roomResumeArea{display:none;background:rgba(0,255,102,0.04);border:1px solid rgba(0,255,102,0.25);border-radius:4px;padding:8px 12px;flex-direction:column;gap:4px}
-.res-title{font-size:12px;font-weight:bold;color:var(--em)}
-.res-btn{width:100%;padding:8px;background:var(--em);color:#000;border-radius:3px;font-size:12px;font-weight:bold;text-align:center}
+/* 自動的に再入室するため、表示要素は非表示に設定 */
+#roomResumeArea{display:none!important;}
 
 .fg{display:flex;flex-direction:column;gap:2px}
 .fl{font-size:12px;font-weight:700;color:var(--mu)}
@@ -357,10 +356,8 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       </div>
       <div id="lberr"></div>
 
-      <div id="roomResumeArea">
-        <div class="res-title">前回の部屋が継続中：</div>
-        <button class="res-btn" id="resumeBtn">前回の部屋へ自動再入室</button>
-      </div>
+      <!-- 自動的に再入室するため、表示要素は非表示に設定 -->
+      <div id="roomResumeArea" style="display: none !important;"></div>
 
       <div class="fg">
         <label class="fl">表示名 *</label>
@@ -618,7 +615,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { getDatabase, ref, push, onValue, set, update, remove, query, orderByChild, limitToLast, get, serverTimestamp, onChildAdded, onChildRemoved }
+import { getDatabase, ref, push, onValue, set, update, remove, get, serverTimestamp, onChildAdded, onChildRemoved }
   from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -648,7 +645,7 @@ const D = {
   autoScrollToggleBtn:$("autoScrollToggleBtn"), autoScrollStatusText:$("autoScrollStatusText"),
   jumpUpBtn:$("jumpUpBtn"), jumpDownBtn:$("jumpDownBtn"),
   lbClrPick:$("lbClrPick"),
-  roomResumeArea:$("roomResumeArea"), resumeBtn:$("resumeBtn"),
+  roomResumeArea:$("roomResumeArea"),
   hostApprovePanel:$("hostApprovePanel"), waitList:$("waitList"),
   hostModeCtrl:$("hostModeCtrl"), roomModeToggleBtn:$("roomModeToggleBtn"), roomModeStatusText:$("roomModeStatusText"),
   imgBtn:$("imgBtn"), fileInput:$("fileInput"),
@@ -1345,19 +1342,32 @@ function showLobby(msg = "") {
   updateTripPreview(); syncPickers(curColor); checkCurrentRoomStatus();
 }
 
+// ボタンをクリックさせることなく、継続中であれば自動的かつシームレスに再入室を完了させる
 async function checkCurrentRoomStatus() {
   const lastRi = localStorage.getItem("nz_active_ri"), lastCreated = localStorage.getItem("nz_active_created");
-  if (!lastRi || !lastCreated) { D.roomResumeArea.style.display = "none"; return; }
+  if (!lastRi || !lastCreated) return;
   try {
     const hashId = await getRoomHash(lastRi);
     const snap = await get(ref(db, `rooms/${hashId}`));
     if (snap.exists() && snap.val().created === parseInt(lastCreated) && snap.val().expireAt > srvNow()) {
-      D.roomResumeArea.style.display = "flex";
-      D.resumeBtn.onclick = () => { D.ri.value = lastRi; D.enBtn.click(); };
+      const savedNi = localStorage.getItem("nz_ni") || "名無し";
+      const savedTripKey = localStorage.getItem("nz_tripi") || "";
+      const savedPi = localStorage.getItem("nz_pi_val") || "";
+      const savedTimer = parseInt(localStorage.getItem("nz_timer_val")) || 30;
+      
+      const tripStyled = await makeTrip(savedNi, savedTripKey);
+      localStorage.setItem("nz_mytrip_styled", tripStyled);
+      localStorage.setItem("nz_is_in_room", "true");
+      
+      await doJoin(lastRi, savedPi, savedNi, tripStyled, savedTimer, snap.val().requireApproval);
     } else {
-      localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created"); D.roomResumeArea.style.display = "none";
+      localStorage.removeItem("nz_active_ri"); 
+      localStorage.removeItem("nz_active_created");
     }
-  } catch { D.roomResumeArea.style.display = "none"; }
+  } catch(e) {
+    localStorage.removeItem("nz_active_ri"); 
+    localStorage.removeItem("nz_active_created");
+  }
 }
 
 window.approveGuest = async (guestUid, guestKeyHex) => {
@@ -1818,9 +1828,9 @@ async function enterChatUI(roomData, pass) {
     _pendingOff = onValue(ref(db, `pending/${curR}`), rafThrottle(renderPendingList));
   }
 
-  // indexOnルールによるエラーを100%排除：デフォルトのプッシュキー順（実質的な時系列）を活用
-  const chatQuery = query(ref(db, `chat/${curR}`), limitToLast(100));
-  const chatSnap = await get(chatQuery);
+  // indexOn（ルール設定）に一切依存しない100%安全なデータ直引きアーキテクチャへの移行
+  const chatRef = ref(db, `chat/${curR}`);
+  const chatSnap = await get(chatRef);
   if (chatSnap.exists()) {
     const msgs = [];
     chatSnap.forEach((child) => {
@@ -1829,11 +1839,14 @@ async function enterChatUI(roomData, pass) {
       msgs.push(val);
     });
     msgs.sort((a, b) => (a.t || 0) - (b.t || 0));
-    await processInitialMessages(msgs);
+    
+    // 直近100件にクライアント側（メモリ上）でスライスして、DOM描画を極限まで軽量に維持
+    const limitedMsgs = msgs.slice(-100);
+    await processInitialMessages(limitedMsgs);
   }
 
-  // サーバー側のインデックス制限に関わらず、新着メッセージだけを最速受信して描画
-  _cOff = onChildAdded(query(ref(db, `chat/${curR}`), limitToLast(100)), snap => {
+  // サーバーにフィルタ指定（query/limitToLast/orderBy）を投げず直に監視することで、インデックスエラーを確実に回避
+  _cOff = onChildAdded(ref(db, `chat/${curR}`), snap => {
     if(!curR || !masterKey) return;
     const m = snap.val(); 
     if(m) { 
@@ -1918,7 +1931,7 @@ document.addEventListener("visibilitychange", async () => {
         if (roomSnap.exists()) {
           const rVal = roomSnap.val();
           if (rVal.requireApproval === false) {
-            const currentPass = localStorage.getItem("nz_pi_val") || "";
+            const currentPass = localStorage.getItem("nz_pi_val";) || "";
             if (currentPass) {
               masterKey = await deriveMasterKey(rawR, currentPass);
               const metaStr = JSON.stringify({ n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor });

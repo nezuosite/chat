@@ -264,7 +264,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .clr-cancel{background:var(--bg);border:1px solid var(--bd);color:var(--tx)}
 .clr-ok{background:var(--in);color:#fff}
 
-/* 画像プレビューモーダル：閉じるボタン被り防止コンテナ */
+/* 画像プレビューモーダル：閉じるボタン被り防止コンテナ [3] */
 #imgViewMod {
   background: rgba(0,0,0,0.96);
   backdrop-filter: blur(10px);
@@ -635,14 +635,13 @@ const D = {
   ni:$("ni"), tripi:$("tripi"), ri:$("ri"), pi:$("pi"), timeri:$("timeri"),
   tripPreview:$("tripPreview"), tripPrevText:$("tripPrevText"), lbCopyTripBtn:$("lbCopyTripBtn"),
   enBtn:$("enBtn"), gnBtn:$("gnBtn"), gdBtn:$("gdBtn"), gmod:$("gmod"), gcBtn:$("gcBtn"),
-  clrmod:$("clrmod"), clrPick2:$("clrPick2"), clrPrev:$("clrPrev"), clrOk:$("clrOk"), clrCancel:$("clrCancel"), clrBtn:$("clrBtn"), clrDot:$("clrDot"),
+  clrmod:$("clrmod"), clrPick2:$("clrPick2"), clrPrev:$("clrPrev"), clrOk:$("clrOk"), clrCancel:$("clrCancel"), bclr:$("clrBtn"), clrDot:$("clrDot"),
   hdr:$("hdr"), rdsp:$("rdsp"), modeIndicator:$("modeIndicator"), waitBadge:$("waitBadge"), pcnt:$("pcnt"), timerDsp:$("timerDsp"), copyUrlBtn:$("copyUrlBtn"), pl:$("pl"), exBtn:$("exBtn"),
   tl:$("tl"), tli:$("tl-inner"), ib:$("ib"), mi:$("mi"), sdBtn:$("sdBtn"), clrMsgBtn:$("clrMsgBtn"),
   kbToggleBtn:$("kbToggleBtn"), kbStatusText:$("kbStatusText"),
   autoScrollToggleBtn:$("autoScrollToggleBtn"), autoScrollStatusText:$("autoScrollStatusText"),
   jumpUpBtn:$("jumpUpBtn"), jumpDownBtn:$("jumpDownBtn"),
   lbClrPick:$("lbClrPick"),
-  roomResumeArea:$("roomResumeArea"),
   hostApprovePanel:$("hostApprovePanel"), waitList:$("waitList"),
   hostModeCtrl:$("hostModeCtrl"), roomModeToggleBtn:$("roomModeToggleBtn"), roomModeStatusText:$("roomModeStatusText"),
   imgBtn:$("imgBtn"), fileInput:$("fileInput"),
@@ -995,7 +994,7 @@ function buildPicker(con, sel, cls, onChange) {
 const onColorSelect = v => { curColor = v; setGlobalColor(v); localStorage.setItem("nz_color",v); syncPickers(v); };
 buildPicker(D.lbClrPick, curColor, "clrc",  onColorSelect);
 
-D.clrBtn.addEventListener("click", () => {
+D.bclr.addEventListener("click", () => {
   tmpColor = curColor;
   D.clrPrev.innerHTML = `<span style="color:${curColor}">■ この色で名前、トリップ、発言時刻が同期表示されます</span>`;
   buildPicker(D.clrPick2, curColor, "clrc2", v => { tmpColor = v; D.clrPrev.innerHTML = `<span style="color:${v}">■ この色で名前、トリップ、発言時刻が同期表示されます</span>`; });
@@ -1658,7 +1657,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval, isMa
               await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey) });
               
               D.waitMod.classList.remove("show");
-              // 承認制が途中でオープンに切り替わった場合の自動入室
               await enterChatUI(rVal, currentPass, isManual);
             } else {
               D.waitMod.classList.remove("show");
@@ -2429,6 +2427,12 @@ authenticateAnonymously()
     D.lberr.style.display = "block"; 
     showLobby();
   });
+
+// タイムライン内要素の高さ変更（画像の動的レンダリングなど）を監視し、最新ログまでピクセル等倍で完全に自動追従スクロール [1, 2]
+const timelineObserver = new ResizeObserver(() => {
+  scBottom();
+});
+timelineObserver.observe(D.tli);
 </script>
 </body>
 </html>

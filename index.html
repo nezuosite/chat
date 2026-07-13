@@ -120,14 +120,14 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 #app.visible{display:flex}
 #cp{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;background:#0d1117;position:relative}
 
-/* 修正：ヘッダーの各種ボタンの押しやすさ・縦幅サイズを38pxに拡大（誤タップ防止の最適な配置） */
+/* ヘッダーの最適化（部屋名の右側に招待URLコピー、色、退室ボタンを1行配置） */
 #hdr{background:var(--sf);border-bottom:1px solid var(--bd);padding:6px 12px;flex-shrink:0}
 .hr{display:flex;align-items:center;justify-content:space-between;gap:8px;height:auto;padding:4px 0}
 .rn{font-weight:800;font-size:14px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
 .hbs{display:flex;gap:8px;align-items:center;flex-shrink:0;}
 .hbs button{
   padding:6px 14px;
-  height:38px; /* 30pxから38pxに拡大し、押しやすさを大幅向上 */
+  height:38px; /* 押しやすさを大幅向上 */
   border-radius:6px;
   font-size:12px;
   font-weight:700;
@@ -157,14 +157,14 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 /* 1. 入室者リスト */
 #pl{display:flex;gap:4px;overflow-x:auto;padding:6px 4px;white-space:nowrap;scrollbar-width:none;border-bottom:1px solid rgba(255,255,255,0.03);background:var(--s2);flex-shrink:0;}
 #pl::-webkit-scrollbar{display:none;}
-/* 修正：入室者リスト（名前のみ・スッキリした文字サイズ） */
+/* 入室者リスト（名前のみ・スッキリした文字サイズ） */
 .chip{
-  font-size:10px; /* 11pxから10pxに変更してスッキリ化 */
+  font-size:10px; /* スッキリ化 */
   font-weight:700;
-  padding:3px 6px;
+  padding: 3px 6px;
   border-radius:4px;
-  background:var(--bg);
-  border:1px solid var(--bd);
+  background: var(--bg);
+  border: 1px solid var(--bd);
   display:inline-flex;
   align-items:center;
 }
@@ -195,7 +195,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 #tl-inner{display:flex;flex-direction:column;justify-content:flex-end;gap:0;width:100%;max-width:600px;margin:0 auto;min-height:100%}
 
 @keyframes slideInUp { 0% { opacity: 0; transform: translateY(4px); } 100% { opacity: 1; transform: translateY(0); } }
-/* 修正：爆速同期化・CPU描画軽量化のため will-change 属性によるハードウェアアクセラレーションを有効化 */
+/* 爆速同期化・CPU描画軽量化のため will-change 属性によるハードウェアアクセラレーションを有効化 */
 .mw{
   position:relative; 
   display:flex;
@@ -214,7 +214,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .mb{align-self:start;background:transparent;border:none;padding:0;font-size:15px;line-height:1.55;max-width:100%;word-break:break-all;white-space:pre-wrap;color:var(--tx);}
 .sys-msg{text-align:center;font-size:12px;font-weight:bold;color:var(--mu);margin:6px 0;background:rgba(255,255,255,0.03);padding:6px 12px;border-radius:4px;width:100%;align-self:center;border:1px solid rgba(255,255,255,0.05);}
 
-/* 修正：右上の時刻表示との被りを100%回避するインライン削除ボタンのスタイル */
+/* スマホでのコピー誤操作を防ぐ「×」削除ボタンの常時配置スタイル */
 .del-btn-inline {
   background: rgba(244, 63, 94, 0.15);
   color: #fda4af;
@@ -995,7 +995,7 @@ function cMsg(msg) {
     d.className = "sys-msg"; 
     
     const tsText = fDT(msgTs);
-    // 改行をbrに置換し、最後に時刻を配置
+    // 修正：お知らせログの表示は「ねづっちラインハルト ◆4f86af0168 が◯◯しました（改行）[2026/07/13 11:25:08]」
     const formattedText = sysText.replace(/\n/g, "<br>");
     d.innerHTML = `<div style="line-height:1.5; font-size:12px;">${formattedText}</div><div style="opacity:0.5; font-size:10px; font-family:monospace; margin-top:2px;">[${tsText}]</div>`;
     return d;
@@ -1045,7 +1045,7 @@ function cMsg(msg) {
   if(sT) nameSpan += ` <span style="color:${esc(sC)}; font-size:11px; font-weight:bold;">${sT}</span>`;
   let timeSpan = `<span class="ts" style="color:${esc(sC)}; opacity:0.8; font-family:monospace;">${fDT(msgTs)}</span>`;
 
-  // 修正：スマホでの長押し誤操作を防ぐため、時刻のすぐ右隣にインライン形式で削除（×）ボタンを配置
+  // スマホでのコピー誤操作を防ぐため、時刻のすぐ右隣にインライン形式で削除（×）ボタンを配置
   let delBtnHtml = "";
   if (msg.u === myUid) {
     const escPreview = rawTextPreview.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -1090,8 +1090,25 @@ let isW = false, _exitLock = false, isLiveMode = false, unreadCount = 0;
 let displayedMsgIds = new Set();
 let myPresRef = null, _roomExpireAt = null, _cOff = null, _pOff = null, _rOff = null, _crOff = null, _waitPresOff = null, _waitRoomOff = null, _pendingOff = null;
 
-// リアルタイム受信メッセージの即時描画（待機バッファ排除）のための直コール化
+// 修正：送信・受信ラグを限りなく0に、ちらつきなく即時マージする高耐久パイプライン
 function queueIncomingMessage(m) {
+  if (m.cid) {
+    // 既存の仮DOM（cidが一致するもの）を探す
+    const tempEl = D.tli.querySelector(`[data-cid="${CSS.escape(String(m.cid))}"]`);
+    if (tempEl) {
+      // 修正：既存の仮ノードを一度削除して再描画（瞬きやスクロールのカクつきを伴う）する無駄な処理を廃止。
+      // 表示されている仮ノードをその場でアトミックに正式ノードへとマージ（ID書き換えや削除バインド等）してちらつきを完全解消
+      const realEl = cMsg(m);
+      if (realEl) {
+        tempEl.replaceWith(realEl);
+        displayedMsgIds.add(m.id);
+        displayedMsgIds.delete(m.cid); // 仮IDはマージのため削除
+        trimTimeline();
+        scBottom();
+        return;
+      }
+    }
+  }
   renderSingleMessage(m);
 }
 
@@ -1331,7 +1348,7 @@ function startWaitTicker() {
 }
 function stopWaitTicker() { if (_waitTickTimer) { clearInterval(_waitTickTimer); _waitTickTimer = null; } }
 
-// DOM操作をrAFに介してメインスレッドのブロッキングを回避する軽量スロットラー
+// DOM操作をrAFに介してメインスレッド of ブロッキングを回避する軽量スロットラー
 function rafThrottle(fn) {
   let scheduled = false, latestArgs = null;
   return (...args) => {
@@ -1931,7 +1948,7 @@ D.jumpDownBtn.onclick = () => {
   D.tl.scrollTo({ top: D.tl.scrollHeight, behavior: "smooth" });
 };
 
-// ズームモーダル用ロジック（ズーム基準点2指中間追従・拡大時のみパン移動許可・限界はみ出しクランプ）
+// ズームモーダル用ロジック（アスペクト比対応壁クランプ・等倍固定）
 let scale = 1, panX = 0, panY = 0;
 let lastPanX = 0, lastPanY = 0, isPanning = false;
 const imgEl = D.imgViewSrc;
@@ -1948,7 +1965,7 @@ function updateTransform() {
   imgEl.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
 }
 
-// 修正：ズーム中の限界はみ出し制限（壁のクランプ）の算出
+// 修正：画像の内側だけが画面を埋め尽くすようにバウンダリ（はみ出し壁）をクランプ
 function clampPan() {
   if (scale <= 1) {
     panX = 0;
@@ -1958,9 +1975,32 @@ function clampPan() {
   const containerWidth = overlayEl.clientWidth;
   const containerHeight = overlayEl.clientHeight;
   
-  // 画面端でピタッと止まるための移動限界（壁）
-  const limitX = Math.max(0, (containerWidth * (scale - 1)) / 2);
-  const limitY = Math.max(0, (containerHeight * (scale - 1)) / 2);
+  // object-fit: contain 時の初期表示画像サイズを正しく算出
+  const imgRatio = imgEl.naturalWidth / imgEl.naturalHeight;
+  const containerRatio = containerWidth / containerHeight;
+  
+  let initialWidth, initialHeight;
+  if (imgRatio > containerRatio) {
+    initialWidth = containerWidth;
+    initialHeight = containerWidth / imgRatio;
+  } else {
+    initialHeight = containerHeight;
+    initialWidth = containerHeight * imgRatio;
+  }
+
+  // ズーム展開後の画像の実寸法
+  const currentWidth = initialWidth * scale;
+  const currentHeight = initialHeight * scale;
+
+  // 余白（黒帯）を絶対に見せないためのバウンダリ最大値
+  let limitX = 0;
+  if (currentWidth > containerWidth) {
+    limitX = (currentWidth - containerWidth) / 2;
+  }
+  let limitY = 0;
+  if (currentHeight > containerHeight) {
+    limitY = (currentHeight - containerHeight) / 2;
+  }
 
   panX = Math.max(-limitX, Math.min(limitX, panX));
   panY = Math.max(-limitY, Math.min(limitY, panY));
@@ -1994,7 +2034,7 @@ overlayEl.addEventListener('touchstart', (e) => {
     initialDistance = getDistance(e.touches[0], e.touches[1]);
     updateZoomOrigin(e);
   } else if (e.touches.length === 1) {
-    // 修正：画像を拡大している状態（scale > 1）のみ、ドラッグによる好きな場所へのスクロール移動を許可
+    // 拡大している状態（scale > 1）のみ、ドラッグによる好きな場所へのスクロール移動を許可
     if (scale > 1) {
       isPanning = true;
       lastPanX = e.touches[0].clientX;
@@ -2016,7 +2056,7 @@ overlayEl.addEventListener('touchmove', (e) => {
     clampPan();
     updateTransform();
   } else if (e.touches.length === 1 && isPanning) {
-    // 修正：1指ドラッグで拡大している状態の中をスムーズに平行移動
+    // 1指ドラッグで拡大している状態の中をスムーズに平行移動
     const dx = e.touches[0].clientX - lastPanX;
     const dy = e.touches[0].clientY - lastPanY;
     panX += dx; panY += dy;
@@ -2131,7 +2171,7 @@ onAuthStateChanged(auth, async user => {
   
   console.log("自動再入室パラメータ検証:", { savedActiveRi, savedActiveCreated, savedNi, savedPi, savedTripKey });
 
-  // 複窓対策およびリロード引き戻し自動再入室
+  // 修正：起動時にルームがまだ有効であれば、ロビーを1ミリ秒も出さずにスプラッシュの裏でdoJoinしてチャット画面に直行する最適化
   if (savedActiveRi && savedActiveCreated && savedNi && savedTripKey) {
     try {
       const hashId = getRoomHash(savedActiveRi);
@@ -2143,7 +2183,7 @@ onAuthStateChanged(auth, async user => {
         if (window.history?.replaceState) {
           window.history.replaceState({}, document.title, location.pathname + "?r=" + encodeURIComponent(savedActiveRi));
         }
-        
+        // スプラッシュ解除も doJoin 内の enterChatUI が行います
         await doJoin(savedActiveRi, savedPi, savedNi, tripStyled, savedTimer, snap.val().requireApproval);
         return; 
       }
@@ -2157,6 +2197,7 @@ onAuthStateChanged(auth, async user => {
     localStorage.setItem("nz_ri_val", urlR); 
   }
   
+  // 有効な部屋がない場合に限り、スプラッシュを消してロビーを表示
   showLobby();
 });
 </script>

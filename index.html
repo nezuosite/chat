@@ -120,12 +120,57 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 #app.visible{display:flex}
 #cp{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;background:#0d1117;position:relative}
 
-/* ヘッダーの最適化（部屋名の右側に招待URLコピー、色、退室ボタンを1行配置） */
+/* 修正：ヘッダーの各種ボタンの押しやすさ・縦幅サイズを38pxに拡大（誤タップ防止の最適な配置） */
 #hdr{background:var(--sf);border-bottom:1px solid var(--bd);padding:6px 12px;flex-shrink:0}
 .hr{display:flex;align-items:center;justify-content:space-between;gap:8px;height:auto;padding:4px 0}
 .rn{font-weight:800;font-size:14px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.hbs{display:flex;gap:8px;align-items:center;flex-shrink:0;}
+.hbs button{
+  padding:6px 14px;
+  height:38px; /* 30pxから38pxに拡大し、押しやすさを大幅向上 */
+  border-radius:6px;
+  font-size:12px;
+  font-weight:700;
+  background:var(--bg);
+  border:1px solid var(--bd);
+  color:var(--tx);
+  display:flex;
+  align-items:center;
+  gap:6px;
+  transition:background 0.15s, border-color 0.15s;
+}
+.hbs button:active{background:rgba(255,255,255,0.08);}
+.bclr-dot{width:6px;height:6px;border-radius:50%;display:inline-block}
 
-/* 状態・参加人数エリア */
+/* 退室ボタン */
+.bx{
+  background:rgba(244,63,94,.16)!important; 
+  border-color:rgba(244,63,94,.4)!important; 
+  color:#fda4af!important; 
+  font-weight:900!important;
+  padding:6px 16px!important;
+}
+.bx:active{
+  background:rgba(244,63,94,.3)!important;
+}
+
+/* 1. 入室者リスト */
+#pl{display:flex;gap:4px;overflow-x:auto;padding:6px 4px;white-space:nowrap;scrollbar-width:none;border-bottom:1px solid rgba(255,255,255,0.03);background:var(--s2);flex-shrink:0;}
+#pl::-webkit-scrollbar{display:none;}
+/* 修正：入室者リスト（名前のみ・スッキリした文字サイズ） */
+.chip{
+  font-size:10px; /* 11pxから10pxに変更してスッキリ化 */
+  font-weight:700;
+  padding:3px 6px;
+  border-radius:4px;
+  background:var(--bg);
+  border:1px solid var(--bd);
+  display:inline-flex;
+  align-items:center;
+}
+.chip.is-host::before {content:"★ ";color:var(--em);margin-right:1px;font-weight:bold;}
+
+/* 2. 状態・参加人数エリア */
 #roomStatusArea{background:var(--s2); border-bottom:1px solid var(--bd); padding:6px 12px; display:flex; align-items:center; justify-content:space-between; gap:8px; flex-shrink:0;}
 #hostModeCtrl{display:none; align-items:center; gap:8px;}
 .htc-lbl{font-size:12px; font-weight:bold; color:var(--mu); white-space:nowrap}
@@ -133,7 +178,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .mode-open { background: rgba(0,255,102,0.1); color: var(--em); border: 1px solid rgba(0,255,102,0.25); }
 .mode-locked { background: var(--rg); color: #fda4af; border: 1px solid rgba(244,63,94,0.2); }
 
-/* 承認申請パネル */
+/* 3. 承認申請パネル */
 #hostApprovePanel{display:none; background:var(--s2); border-bottom:1px solid var(--bd); padding:6px 4px; align-items:center; gap:8px; flex-shrink:0; overflow-x:auto;}
 .wait-card-v2{background:var(--sf); border:1px solid var(--em); padding:6px; border-radius:4px; display:flex; align-items:center; gap:8px; font-size:12px; flex-shrink:0; animation:slideInUp 0.15s ease forwards;}
 .wait-card-v2.is-new{animation:pulseGlow 1.2s ease-in-out 2;}
@@ -150,31 +195,43 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 #tl-inner{display:flex;flex-direction:column;justify-content:flex-end;gap:0;width:100%;max-width:600px;margin:0 auto;min-height:100%}
 
 @keyframes slideInUp { 0% { opacity: 0; transform: translateY(4px); } 100% { opacity: 1; transform: translateY(0); } }
-.mw{position:relative; display:flex;flex-direction:column;width:100%;opacity:0;animation:slideInUp 0.1s cubic-bezier(0.22, 1, 0.36, 1) forwards; user-select:text; -webkit-user-select:text; padding:8px 12px; border-bottom:1px solid rgba(51,65,85,0.25);}
+/* 修正：爆速同期化・CPU描画軽量化のため will-change 属性によるハードウェアアクセラレーションを有効化 */
+.mw{
+  position:relative; 
+  display:flex;
+  flex-direction:column;
+  width:100%;
+  opacity:0;
+  animation:slideInUp 0.1s cubic-bezier(0.22, 1, 0.36, 1) forwards; 
+  user-select:text; 
+  -webkit-user-select:text; 
+  padding:8px 12px; 
+  border-bottom:1px solid rgba(51, 65, 85, 0.25);
+  will-change: transform, opacity;
+}
 .mm{display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:4px;}
 .ts{color:var(--m2);font-size:11px;margin-left:auto;font-family:monospace;}
 .mb{align-self:start;background:transparent;border:none;padding:0;font-size:15px;line-height:1.55;max-width:100%;word-break:break-all;white-space:pre-wrap;color:var(--tx);}
 .sys-msg{text-align:center;font-size:12px;font-weight:bold;color:var(--mu);margin:6px 0;background:rgba(255,255,255,0.03);padding:6px 12px;border-radius:4px;width:100%;align-self:center;border:1px solid rgba(255,255,255,0.05);}
 
-/* スマホでのコピー誤操作を防ぐ「×」削除ボタンの常時配置スタイル */
-.del-btn{
-  position:absolute;
-  right:6px;
-  top:6px;
-  display:block;
-  background:rgba(244,63,94,0.16);
-  color:#fda4af;
-  border:1px solid rgba(244,63,94,0.3);
-  padding:4px 8px;
-  border-radius:4px;
-  font-size:11px;
-  font-weight:bold;
-  cursor:pointer;
-  z-index:10;
-  transition:background 0.15s;
+/* 修正：右上の時刻表示との被りを100%回避するインライン削除ボタンのスタイル */
+.del-btn-inline {
+  background: rgba(244, 63, 94, 0.15);
+  color: #fda4af;
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: bold;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  transition: background 0.1s;
 }
-.del-btn:active{
-  background:rgba(244,63,94,0.3);
+.del-btn-inline:active {
+  background: rgba(244, 63, 94, 0.3);
 }
 
 /* インライン画像 (角丸を完全に無効化) */
@@ -313,7 +370,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       
       <div class="fg">
         <label class="fl">トリップキー * (必須項目)</label>
-        <input type="text" id="tripi" class="inp" placeholder="本人証明用キー" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
+        <input type="text" id="tripi" class="inp" placeholder="本人証明用キー" autocomplete="off" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
         <div id="tripPreview">
           <span id="tripPrevText">プレビュー: 名無し</span>
           <button class="copy-s-btn" id="lbCopyTripBtn">コピー</button>
@@ -388,17 +445,17 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       <div class="hr">
         <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1;">
           <span class="rn" id="rdsp"></span>
-          <!-- 修正：タイマー設定およびタイマー表示をヘッダーの部屋名の下に配置 -->
+          <!-- タイマー設定およびタイマー表示をヘッダーの部屋名の下に配置 -->
           <div style="display: flex; align-items: center; gap: 4px;">
             <span id="timerDsp" style="cursor: pointer; font-family: monospace; font-weight: bold; color: #f87171; font-size: 11px; background: rgba(244,63,94,0.08); padding: 1px 4px; border-radius: 3px; border: 1px solid rgba(244,63,94,0.2);" title="クリックして残り時間を調整">--:--</span>
             <span id="timerBtnIcon" style="cursor: pointer; font-size: 9.5px; color: var(--mu); font-weight: bold;" title="寿命を調整">⏱ 寿命設定</span>
           </div>
         </div>
-        <!-- 修正：部屋名の右側に招待URLコピー、色、退室を最適配置 -->
-        <div class="hbs" style="display: flex; gap: 6px; align-items: center; flex-shrink: 0;">
-          <button id="copyUrlBtn" style="padding: 4px 8px; height: 30px; border-radius: 4px; font-size: 11px;" title="招待URLをコピー">🔗 URL</button>
-          <button class="bclr" id="clrBtn" style="padding: 4px 8px; height: 30px; border-radius: 4px; font-size: 11px;"><span class="bclr-dot" id="clrDot"></span> 色</button>
-          <button class="bx" id="exBtn" style="padding: 4px 10px; height: 30px; border-radius: 4px; font-size: 11px; margin-left: 0;" title="退室">退室</button>
+        <!-- 部屋名の右側に招待URLコピー、色、退室を最適配置（タップのしやすさを向上） -->
+        <div class="hbs">
+          <button id="copyUrlBtn" title="招待URLをコピー">🔗 URL</button>
+          <button class="bclr" id="clrBtn"><span class="bclr-dot" id="clrDot"></span> 色</button>
+          <button class="bx" id="exBtn" title="退室">退室</button>
         </div>
       </div>
     </div>
@@ -498,7 +555,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       </div>
     </div>
     
-    <!-- 修正：タイマー設定は適用ボタンを押したら反映するよう設計変更 -->
+    <!-- タイマー設定は適用ボタンを押したら反映するよう設計変更 -->
     <div style="display:flex; gap:8px; margin-top:14px; width:100%;">
       <button class="btn bq" id="timerSettingCloseBtn" style="flex:1;">キャンセル</button>
       <button class="btn bp" id="timerApplyBtn" style="flex:1; background:var(--in); color:#fff; font-weight:bold;">適用する</button>
@@ -938,7 +995,7 @@ function cMsg(msg) {
     d.className = "sys-msg"; 
     
     const tsText = fDT(msgTs);
-    // 修正：お知らせログの表示は「ねづっちラインハルト ◆4f86af0168 が◯◯しました（改行）[2026/07/13 11:25:08]」
+    // 改行をbrに置換し、最後に時刻を配置
     const formattedText = sysText.replace(/\n/g, "<br>");
     d.innerHTML = `<div style="line-height:1.5; font-size:12px;">${formattedText}</div><div style="opacity:0.5; font-size:10px; font-family:monospace; margin-top:2px;">[${tsText}]</div>`;
     return d;
@@ -988,16 +1045,25 @@ function cMsg(msg) {
   if(sT) nameSpan += ` <span style="color:${esc(sC)}; font-size:11px; font-weight:bold;">${sT}</span>`;
   let timeSpan = `<span class="ts" style="color:${esc(sC)}; opacity:0.8; font-family:monospace;">${fDT(msgTs)}</span>`;
 
-  d.innerHTML = `<div class="mm">${nameSpan}${timeSpan}</div><div class="mb" style="border-color:${esc(sC)}">${contentHtml}</div>`;
-  
-  // スマホでのコピー誤操作を防ぐため長押し判定を完全に廃止し、「×」削除ボタンのタップのみで確実に削除確認を起動
+  // 修正：スマホでの長押し誤操作を防ぐため、時刻のすぐ右隣にインライン形式で削除（×）ボタンを配置
+  let delBtnHtml = "";
   if (msg.u === myUid) {
-    const dbn = document.createElement("button");
-    dbn.className = "del-btn"; dbn.textContent = "×";
     const escPreview = rawTextPreview.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    dbn.setAttribute("onclick", `triggerDeleteMsg('${msg.id}', '${escPreview}')`);
-    d.appendChild(dbn);
+    delBtnHtml = `<button class="del-btn-inline" onclick="triggerDeleteMsg('${msg.id}', '${escPreview}')" title="削除">×</button>`;
   }
+
+  d.innerHTML = `
+    <div class="mm" style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+      <div style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">
+        ${nameSpan}
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; flex-shrink:0; margin-left:8px;">
+        ${timeSpan}
+        ${delBtnHtml}
+      </div>
+    </div>
+    <div class="mb" style="border-color:${esc(sC)}">${contentHtml}</div>
+  `;
 
   d._meta = meta;
   return d;
@@ -1209,7 +1275,7 @@ window.approveGuest = async (guestUid, guestKey) => {
 
     // 4. ホストが代理人となって即座に入室アナウンスを通知プッシュ
     // お知らせフォーマット仕様（名前、トリップ 改行 メッセージ）に適合
-    await sendSysMsg(`${guestName} ${guestTrip} が承認され入室しました`);
+    await sendSysMsg(`${guestName} ${guestTrip} が入室しました`);
 
     showToast("✅ 承認してメンバーに昇格しました");
   } catch (e) { 
@@ -1537,7 +1603,8 @@ function enterChatUI(roomData, pass) {
              const sp = document.createElement("span"); 
              sp.className = "chip" + (u.isHost ? " is-host" : "");
              sp.style.color = m.c || "#94a3b8"; sp.style.borderColor = (m.c || "#94a3b8") + "44";
-             sp.textContent = m.p ? `${m.n} ${m.p}` : m.n;
+             // 修正：入室者リストは名前のみスッキリ表示
+             sp.textContent = m.n; 
              fg.appendChild(sp);
           } catch(e){}
         }
@@ -1589,7 +1656,7 @@ function enterChatUI(roomData, pass) {
     _pendingOff = onValue(ref(db, `pending/${curR}`), rafThrottle(renderPendingList));
   }
 
-  // 修正：WebSocketコールバックへのダイレクト描画処理（表示の超リアルタイム・爆速化）
+  // WebSocketコールバックへのダイレクト描画処理（表示の超リアルタイム・爆速化）
   _cOff = onChildAdded(query(ref(db, `chat/${curR}`), orderByChild("timestamp"), limitToLast(100)), snap => {
     if(!curR || !masterKey) return;
     const m = snap.val(); 
@@ -1864,23 +1931,42 @@ D.jumpDownBtn.onclick = () => {
   D.tl.scrollTo({ top: D.tl.scrollHeight, behavior: "smooth" });
 };
 
-// ズームモーダル用ロジック（ズーム基準点2指中間追従・パン移動完全排除・バウンダリスケール制限）
-let scale = 1;
+// ズームモーダル用ロジック（ズーム基準点2指中間追従・拡大時のみパン移動許可・限界はみ出しクランプ）
+let scale = 1, panX = 0, panY = 0;
+let lastPanX = 0, lastPanY = 0, isPanning = false;
 const imgEl = D.imgViewSrc;
 const overlayEl = D.imgViewMod;
 let initialDistance = 0;
 
 function resetZoom() {
-  scale = 1;
-  imgEl.style.transformOrigin = "center center"; // 等倍復帰時は中央基準に戻す
+  scale = 1; panX = 0; panY = 0;
+  imgEl.style.transformOrigin = "center center";
   updateTransform();
 }
 
 function updateTransform() {
-  imgEl.style.transform = `scale(${scale})`;
+  imgEl.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
 }
 
-// 修正：2本指でピンチアウトする際、タッチ中間点を動的に再計算してoriginを追従させるヘルパー（好きな場所をズームイン）
+// 修正：ズーム中の限界はみ出し制限（壁のクランプ）の算出
+function clampPan() {
+  if (scale <= 1) {
+    panX = 0;
+    panY = 0;
+    return;
+  }
+  const containerWidth = overlayEl.clientWidth;
+  const containerHeight = overlayEl.clientHeight;
+  
+  // 画面端でピタッと止まるための移動限界（壁）
+  const limitX = Math.max(0, (containerWidth * (scale - 1)) / 2);
+  const limitY = Math.max(0, (containerHeight * (scale - 1)) / 2);
+
+  panX = Math.max(-limitX, Math.min(limitX, panX));
+  panY = Math.max(-limitY, Math.min(limitY, panY));
+}
+
+// ズーム開始・移動時の中間点Origin算出ヘルパー
 const updateZoomOrigin = (e) => {
   if (e.touches.length === 2) {
     const touch1 = e.touches[0];
@@ -1904,22 +1990,50 @@ const updateZoomOrigin = (e) => {
 overlayEl.addEventListener('touchstart', (e) => {
   if (e.target === D.imgViewCloseBtn) return;
   if (e.touches.length === 2) {
+    isPanning = false;
     initialDistance = getDistance(e.touches[0], e.touches[1]);
     updateZoomOrigin(e);
+  } else if (e.touches.length === 1) {
+    // 修正：画像を拡大している状態（scale > 1）のみ、ドラッグによる好きな場所へのスクロール移動を許可
+    if (scale > 1) {
+      isPanning = true;
+      lastPanX = e.touches[0].clientX;
+      lastPanY = e.touches[0].clientY;
+    }
   }
 }, { passive: true });
 
 overlayEl.addEventListener('touchmove', (e) => {
   if (e.target === D.imgViewCloseBtn) return;
   if (e.touches.length === 2) {
+    isPanning = false;
     const dist = getDistance(e.touches[0], e.touches[1]);
     const factor = dist / initialDistance;
     scale = Math.max(1, Math.min(5, scale * factor));
     initialDistance = dist;
     
-    // 修正：ズーム中の手のスライド移動を検知して拡大の中心位置を動的に書き換える（画像自体は動かない仕様）
     updateZoomOrigin(e);
+    clampPan();
     updateTransform();
+  } else if (e.touches.length === 1 && isPanning) {
+    // 修正：1指ドラッグで拡大している状態の中をスムーズに平行移動
+    const dx = e.touches[0].clientX - lastPanX;
+    const dy = e.touches[0].clientY - lastPanY;
+    panX += dx; panY += dy;
+    lastPanX = e.touches[0].clientX;
+    lastPanY = e.touches[0].clientY;
+    clampPan(); // 移動限界（壁）のクランプ
+    updateTransform();
+  }
+}, { passive: true });
+
+overlayEl.addEventListener('touchend', (e) => {
+  if (e.touches.length === 1 && scale > 1) {
+    isPanning = true;
+    lastPanX = e.touches[0].clientX;
+    lastPanY = e.touches[0].clientY;
+  } else {
+    isPanning = false;
   }
 }, { passive: true });
 
@@ -1928,6 +2042,7 @@ overlayEl.addEventListener('wheel', (e) => {
   imgEl.style.transformOrigin = "center center";
   const delta = e.deltaY > 0 ? 0.9 : 1.1;
   scale = Math.max(1, Math.min(5, scale * delta));
+  clampPan();
   updateTransform();
 }, { passive: false });
 
@@ -1944,7 +2059,7 @@ const D_modTimerM5 = $("modTimerM5");
 const D_modTimerP5 = $("modTimerP5");
 const D_timerApplyBtn = $("timerApplyBtn");
 
-let tempTimerVal = 30; // 修正：一時調整用の時間変数を定義
+let tempTimerVal = 30; // 一時調整用の時間変数
 
 const syncTimerInputAndSlider = (val) => {
   tempTimerVal = val;
@@ -1992,7 +2107,7 @@ D_modTimerP5.onclick = () => {
   syncTimerInputAndSlider(val);
 };
 
-// 修正：タイマー設定は「適用」ボタンを押した際、初めてFirebaseへ更新をかける仕様に変更
+// タイマー設定は「適用」ボタンを押した際、初めてFirebaseへ更新をかける仕様
 D_timerApplyBtn.onclick = async () => {
   if (isHost && curR) {
     D_timerApplyBtn.disabled = true;

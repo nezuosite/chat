@@ -1283,7 +1283,10 @@ window.doExit = async () => {
     }
   }
 
-  // 手動退室時にフラグをリセット。次回手動入室時にまたお知らせが出力される
+  // 手動退室時にのみ、お知らせ送信フラグをクリア
+  if (curR) {
+    localStorage.removeItem(`nz_sent_join_${curR}`);
+  }
   hasSentJoinMsgInSession = false;
 
   if (hashId) {
@@ -1538,7 +1541,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       await set(roomRef, roomData);
       
       myPresRef = ref(db, `presence/${hashId}/${myUid}`);
-      const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
+      const metaStr = JSON.stringify({ name, p: trip, c: curColor });
       await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: true });
       
       const freshSnap = await get(roomRef);
@@ -1690,9 +1693,10 @@ async function enterChatUI(roomData, pass) {
     localStorage.setItem("nz_pi_val", pass);
   }
 
-  // 手動でロビーの入室シーケンス（doJoin）を経た初回・手動再入室の時のみ、お知らせを送信する
-  if (!hasSentJoinMsgInSession) {
-    hasSentJoinMsgInSession = true;
+  // ローカルストレージに送信済みフラグを記録。タブを閉じたり回線が切れても、二重送信を防ぎます
+  const localSentKey = `nz_sent_join_${curR}`;
+  if (!localStorage.getItem(localSentKey)) {
+    localStorage.setItem(localSentKey, "true");
     await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が入室しました`);
   }
 
@@ -1852,6 +1856,7 @@ async function enterChatUI(roomData, pass) {
     if(m) { 
       m.id = snap.key; 
       if (!m.t) m.t = Date.now(); 
+      if (m.c && displayedMsgIds.has(m.c)) { removeMessageEl(m.c); }
       queueIncomingMessage(m);
     } 
   });
@@ -1973,7 +1978,7 @@ async function sendMsg(overrideText = null, imgData = null) {
   const encryptedMeta = await encrypt(JSON.stringify(metaObj), masterKey);
   const encryptedMsg = await encrypt(imgData ? "IMG::" + imgData : txt, masterKey);
 
-  // 通信パケットを削減：mt(meta), m(message), t(timestamp), c(client-id)
+  // 通信パケットを削減：mt(meta)、c(cid)、t(timestamp) へと極限まで圧縮
   const tempObj = { 
     id: cid, 
     c: cid, 

@@ -26,14 +26,14 @@ html,body{
   background:var(--bg);color:var(--tx);
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Noto Sans JP",sans-serif;
   touch-action:pan-y;overscroll-behavior:none;-webkit-text-size-adjust:100%;
-  font-size:15px; /* ベースサイズの視認性向上 */
+  font-size:15px; 
 }
 input,textarea,select{font-family:inherit;-webkit-user-select:text;user-select:text;font-size:15px!important}
 button{cursor:pointer;font-family:inherit;border:none;background:none}
 button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 
 /* アプリケーション全体の高さをVisualViewportに厳密追従 */
-#app, #lobby, #consent, #splash {
+#app, #lobby, #splash {
   height: 100vh;
   height: var(--app-viewport-height, 100dvh);
 }
@@ -43,9 +43,6 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .spin{width:22px;height:22px;border:2px solid var(--in);border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .spt{font-size:10px;font-weight:800;color:var(--m2);letter-spacing:.2em}
-
-/* 同意画面 (最前面・利用規約・セキュリティ仕様・使い方網羅) */
-#consent{position:fixed;inset:0;background:var(--bg);z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;overflow-y:auto;}
 
 /* ロビーUI */
 #lobby{display:none;position:fixed;inset:0;background:var(--bg);z-index:100;overflow-y:auto;}
@@ -87,28 +84,35 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .bp{background:var(--in);color:#fff}
 .glink{font-size:12px;color:#a5b4fc;text-align:center;margin-top:10px;padding:6px 0;text-decoration:underline;cursor:pointer;font-weight:bold}
 
-/* ロビー下部に常時設置するセキュリティ・使い方ガイド */
+/* 修正：ロビー下部に常時設置するセキュリティ・使い方・規約ガイド */
 .lobby-guide-box {
   background: var(--sf);
   border: 1px solid var(--bd);
   border-radius: 6px;
-  padding: 14px;
+  padding: 16px;
   margin-top: 16px;
-  font-size: 11.5px;
+  font-size: 11px;
   color: var(--mu);
   line-height: 1.6;
   text-align: left;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
+}
+.guide-sec {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 .guide-sub-title {
-  color: var(--tx);
-  font-weight: bold;
-  font-size: 12.5px;
+  color: #a5b4fc;
+  font-weight: 800;
+  font-size: 12px;
   display: flex;
   align-items: center;
   gap: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 4px;
 }
 
 /* アプリ本体 */
@@ -305,42 +309,11 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 </head>
 <body>
 
+<!-- 修正：最前面の利用同意画面（#consent）を完全に廃止（代わりにロビー下部にガイドを集約） -->
 <div id="splash"><div class="spin"></div><div class="spt">NEZU ONETIME CHAT PRO</div></div>
 <div id="connBanner"></div>
 
-<!-- 利用同意画面 (ワンクッションUI & 包括的な規約説明) -->
-<div id="consent">
-  <div class="lbo" style="max-width:440px; padding:20px; background:var(--sf); border:1px solid var(--bd); border-radius:8px;">
-    <h2 class="lbt" style="font-size:18px; color:#818cf8; margin-bottom:4px;">⚡ NEZU ONETIME CHAT - PRO</h2>
-    <div class="lbsub" style="font-size:10px; margin-bottom:16px;">DISPOSABLE & ZERO-KNOWLEDGE E2EE</div>
-    
-    <div style="max-height:280px; overflow-y:auto; background:var(--bg); border:1px solid var(--bd); padding:12px; border-radius:4px; font-size:11.5px; color:var(--mu); line-height:1.6; text-align:left; display:flex; flex-direction:column; gap:12px; margin-bottom:16px;" role="document">
-      <div>
-        <b style="color:var(--tx); font-size:13px; display:block; margin-bottom:4px;">🔒 1. サーバーでも覗けない「ゼロ知識設計」</b>
-        本チャットは、ニックネームや発言、画像を含む全情報をブラウザ側で個別に二重暗号化してから送信します。復号化に必要な「共通パスワード」は一切サーバーに送信されないため、運営者やデータベース管理者が中身をハッキングして覗き見ようとしても、100%解読不可能な乱数の羅列にしか見えません。
-      </div>
-      <div>
-        <b style="color:var(--tx); font-size:13px; display:block; margin-bottom:4px;">⏱ 2. 即時物理削除 (Wipe)</b>
-        部屋が無人になった瞬間に、送信された発言ログ、画像データ、承認情報をはじめ、該当ルームに関わるすべてのデータがデータベースおよびメモリから物理的に完全消去されます。ログの復元や保全を求めることは技術的に一切不可能です。
-      </div>
-      <div>
-        <b style="color:var(--tx); font-size:13px; display:block; margin-bottom:4px;">📖 3. 待ち合わせのおすすめ方法</b>
-        ・<b>方法A：パスワードの別ルート共有（最強推奨）</b><br>
-        「部屋ID」のみを相手に伝え、「共通パスワード」は口頭や別のE2E暗号化された連絡ツールで共有します。<br>
-        ・<b>方法B：招待URLの利用（簡易共有）</b><br>
-        URLコピー機能により、ハッシュ「#パスワード」がくっついた招待リンクを相手に共有します。このハッシュ部はブラウザ側でしか解釈されず、サーバーには到達しません。
-      </div>
-      <div>
-        <b style="color:var(--tx); font-size:13px; display:block; margin-bottom:4px;">🚨 4. オープンな場所でのURL貼付注意</b>
-        Twitter(X)や掲示板などの不特定多数が閲覧できるパブリックな場所に、ハッシュ（#）付きの招待URLを貼り付けると、パスワードを全世界に公開したことになり暗号化が無効化されます。これを避けるため、オープンな場所では<b>「承認制（LOCKED）モード」</b>を活用し、事前に本人から「トリップ（◆マーク以降の英数字）」を共有してもらい、ホストが申請者のトリップを目視で確認・照合して承認する運用を行ってください。オープンモードであっても、部屋IDとパスワードが漏れなければ、総当たり攻撃をされない限りハッキングされても中身は完全に安全です。
-      </div>
-    </div>
-    
-    <button class="btn bp" id="consentBtn" style="width:100%; padding:10px; font-weight:bold; font-size:13px;">すべての内容に同意してチャットを始める</button>
-  </div>
-</div>
-
-<!-- ロビー画面 (承認制選択チェックボックスは非表示) -->
+<!-- ロビー画面 -->
 <div id="lobby" style="display: none;">
   <div class="lbo">
     <h2 class="lbt">⚡ NEZU ONETIME CHAT - PRO</h2>
@@ -398,20 +371,36 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       </div>
       <div class="glink" id="gdBtn">📖 ガイド / セキュリティ仕様</div>
 
-      <!-- ロビー下部に常時設置するセキュリティ・使い方ガイド -->
+      <!-- 修正：ロビー下部に集約されたセキュリティ・規約・待ち合わせの極めてわかりやすいガイドライン -->
       <div class="lobby-guide-box">
-        <div>
-          <span class="guide-sub-title">🔒 データベースを見ても誰も読めない理由</span>
-          あなたが送信するメッセージやニックネーム、さらには画像データまで、ブラウザから出る前にE2EE（エンドツーエンド二重暗号）によりデタラメな乱数へと完全に暗号化されます。暗号を解く鍵（パスワード）はサーバーに一切保存されないため、たとえ管理者がデータベースの生データを確認しても、中身を読み解くことは数学的に不可能です。
+        <div class="guide-sec">
+          <span class="guide-sub-title">🔑 1. 使い方 (How to Use)</span>
+          ・ニックネーム、本人証明用トリップ（必須）、部屋ID、パスワードを入力し、「入室 / 作成」を押します。<br>
+          ・入室後、画面上部の「🔗 URL」ボタンを押して招待リンクをコピーし、相手に共有してください。ハッシュ（#）以降のパスワード情報はブラウザ間で完全に秘匿同期されます。<br>
+          ・ホストは入室後、ルーム上部で「オープン / 承認制」を自由に切り替えることができます。
         </div>
-        <div>
-          <span class="guide-sub-title">📡 待ち合わせの推奨運用方法</span>
-          ・<b>最強の安全策 (パスワードの個別共有)</b><br>
-          部屋の「部屋ID」のみをメッセージや口頭で相手に伝えます。暗号を解除するための「部屋パスワード」は、あらかじめ事前に信頼できる別のルートで共有しておくことで、URLをそのままクリックされるリスクを100%排除できます。<br>
-          ・<b>パブリックな場所にURLを貼る場合の注意</b><br>
-          掲示板やSNSなどのオープンな場所に「パスワードを含んだ招待URL」を直接貼り付けると、パスワードも全世界に漏洩します。その場合は入室後に速やかに<b>ホストが「承認制(LOCKED)」モードをON</b>にし、事前に聞いておいた相手のトリップ（◆の後の文字）と、承認待ちリストのトリップを一致しているか照合した上で入室を「許可」してください。
+        <div class="guide-sec">
+          <span class="guide-sub-title">🔒 2. セキュリティ仕様（管理者でも覗けないゼロ知識）</span>
+          ・<b>エンドツーエンド二重暗号化 (E2EE)</b>：本文や画像、ニックネームやトリップキーを含む全データは、あなたのブラウザ内で強力に暗号化されてから送信されます。<br>
+          ・<b>運営者も解読不能</b>：暗号を解読するためのパスワードは、サーバーへ一切送信されません。そのため、第三者やシステム管理者が直接データベースを覗き見ても、意味を成さないデタラメな乱数しか確認できません。<br>
+          ・<b>即時物理削除 (Wipe)</b>：最後の一人が退室した、あるいは有効期限が切れた瞬間に、サーバーからすべてのログ・データが物理消去され完全に消失します。
+        </div>
+        <div class="guide-sec">
+          <span class="guide-sub-title">🤝 3. 待ち合わせのおすすめ方法と安全運用</span>
+          ・<b>A. 部屋IDとパスワードの個別共有（最も安全）</b>：<br>
+          「部屋ID」のみを相手に伝え、「部屋パスワード」は口頭や別の信頼できる連絡ツールで相手に共有します。これにより、URLを直接踏まれるリスクを排除できます。<br>
+          ・<b>B. オープンな場所にハッシュURLを貼る場合の注意</b>：<br>
+          SNSや掲示板など、誰でも見られる場所に「#パスワード」が含まれた招待URLを貼り付けると、パスワードも全員に公開され暗号化の役割が失われます。<br>
+          ・<b>C. 承認制（LOCKED）モードの活用（推奨）</b>：<br>
+          不特定多数がアクセスする場所で待ち合わせをする場合は、ホストが入室後に<b>「承認制」</b>に切り替えてください。あらかじめ相手のトリップ（◆マーク以降の英数字）を聞いておき、承認待ちリストのトリップと一致していることをホストが目視で確認して「許可」ボタンを押すことで、部外者の侵入を完全に防ぐことができます。
+        </div>
+        <div class="guide-sec">
+          <span class="guide-sub-title">⚖️ 4. 利用規約 (Terms of Service)</span>
+          ・本システムは使い捨ての匿名連絡・一時協議用途でのみ利用を許可します。不正アクセスや法令違反、公序良俗に反する用途、運営を意図的に妨害するあらゆる試みを禁止します。<br>
+          ・部屋が無人になった瞬間に全データが即時完全削除されるため、後からログを復元する、データ保全を求めることは技術的に一切不可能です。
         </div>
       </div>
+
     </div>
   </div>
 </div>
@@ -508,7 +497,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 
 <div id="toastContainer"></div>
 
-<!-- 发言削除確認モーダル -->
+<!-- 発言削除確認モーダル -->
 <div id="delConfirmMod" class="mod-overlay">
   <div class="gc" style="max-width:320px;">
     <h3 style="font-size:13px; color:var(--ro);">⚠️ 発言の削除確認</h3>
@@ -618,17 +607,16 @@ const D = {
   imgViewMod:$("imgViewMod"), imgViewSrc:$("imgViewSrc"), imgViewCloseBtn:$("imgViewCloseBtn"),
   waitMod:$("waitMod"), waitModTrip:$("waitModTrip"), waitCopyIdBtn:$("waitCopyIdBtn"), waitCancelBtn:$("waitCancelBtn"),
   delConfirmMod:$("delConfirmMod"), delConfirmPreview:$("delConfirmPreview"), delCancelBtn:$("delCancelBtn"), delExecuteBtn:$("delExecuteBtn"),
-  toastContainer:$("toastContainer"),
-  consent:$("consent"), consentBtn:$("consentBtn")
+  toastContainer:$("toastContainer")
 };
 
 const SYSTEM_SALT = "NEZU_PRO_SYS_SALT_2026_V1"; 
 
-// 修正：キーボード固定・自動スクロール設定フラグを明示的定義
+// 送信後のキーボード固定状態、および自動スクロール状態の管理変数
 let keepKbOpen = false;
 let isAutoScroll = true;
 
-// 修正：VisualViewportの変動（キーボード伸縮時）をCSS変数にバインドし、入力バーの位置を固定
+// モバイルキーボード表示時の伸縮レイアウト補正 (VisualViewport APIの最適化)
 if (window.visualViewport) {
   const onViewportChange = () => {
     const vh = window.visualViewport.height;
@@ -669,7 +657,7 @@ let isHost = false;
 let myGuestKey = null;
 let targetDelId = null;
 
-// 修正：CryptoJSが鍵をパスフレーズと誤認するバグを防ぐため、16進鍵を明示的にWordArrayへパースするキャストヘルパー
+// CryptoJSの鍵自動派生による不整合を防ぐため、常にWordArrayに変換して処理するセキュアなヘルパーを導入
 const parseKeyWA = (key) => {
   if (!key) return null;
   if (typeof key === "string") {
@@ -681,7 +669,7 @@ const parseKeyWA = (key) => {
 // E2E暗号化を完全に保証するオリジナル暗号モデル
 const enc = (t, key = masterKey) => {
   if (!t || !key) return "";
-  const keyWA = parseKeyWA(key); 
+  const keyWA = parseKeyWA(key); // WordArray化して鍵自動派生による不整合を防ぐ
   const iv = CryptoJS.lib.WordArray.random(16);
   const ct = CryptoJS.AES.encrypt(t, keyWA, { iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 });
   const ivHex = iv.toString(CryptoJS.enc.Hex);
@@ -694,12 +682,12 @@ const enc = (t, key = masterKey) => {
 const dec = (c, key = masterKey) => {
   if (!c || !key) return null;
   try {
-    const keyWA = parseKeyWA(key); 
+    const keyWA = parseKeyWA(key); // WordArray化して鍵自動派生による不整合を防ぐ
     const parts = c.split(":");
     if (parts.length >= 3) {
       const ivHex = parts[0], ct = parts[1], mac = parts[2];
       if (CryptoJS.HmacSHA256(ivHex + ":" + ct, keyWA).toString() !== mac) {
-        console.error("HMAC検証に失敗しました。パスワードが不一致、または破損しています。");
+        console.error("HMAC検証に失敗しました。パスワード（暗号化キー）が不一致の可能性があります。");
         return null;
       }
       const iv = CryptoJS.enc.Hex.parse(ivHex);
@@ -707,7 +695,7 @@ const dec = (c, key = masterKey) => {
     }
     return null;
   } catch (e) {
-    console.error("復号処理でエラーが発生しました:", e);
+    console.error("復号処理で例外が発生しました:", e);
     return null;
   }
 };
@@ -926,7 +914,7 @@ function insertMessageEl(el) {
   const ts = parseInt(el.dataset.ts) || 0;
   const lastChild = D.tli.lastElementChild;
   
-  // 1. DOMの末尾が最も新しければ、配列走査をスキップしてappendChildで爆速反映（高速化・軽量化）
+  // 1. DOMの末尾が最も新しければ、配列走査をスキップしてappendChildで爆速反映
   if (!lastChild) {
     D.tli.appendChild(el);
     return;
@@ -1046,7 +1034,6 @@ D.delExecuteBtn.onclick = async () => {
   targetDelId = null;
 };
 
-// 修正：未定義によるエラーを防ぐため、rawRを含むグローバル変数をすべて明示的に宣言
 let curR = null, curN = null, rawR = null, myUid = null;
 let isW = false, _exitLock = false, isLiveMode = false, unreadCount = 0;
 let displayedMsgIds = new Set();
@@ -1140,7 +1127,7 @@ function clearAll() {
   if(typeof _pOff === "function"){ _pOff(); _pOff = null; }
   if(typeof _rOff === "function"){ _rOff(); _rOff = null; }
   if(typeof _waitPresOff === "function"){ _waitPresOff(); _waitPresOff = null; }
-  if(typeof _waitRoomOff === "function"){ _waitRoomOff(); _waitRoomOff = null; } // 修正: 待機イベント監視解除
+  if(typeof _waitRoomOff === "function"){ _waitRoomOff(); _waitRoomOff = null; } // 待機イベント監視解除
   if(typeof _pendingOff === "function"){ _pendingOff(); _pendingOff = null; }
   masterKey = null; isLiveMode = false; displayedMsgIds.clear(); D.tli.innerHTML = "";
   stopTimerLoop(); D.hostTimerCtrl.style.display = "none"; D.hostApprovePanel.style.display = "none"; D.hostModeCtrl.style.display = "none";
@@ -1191,7 +1178,7 @@ async function checkCurrentRoomStatus() {
     const snap = await get(ref(db, `rooms/${hashId}`));
     if (snap.exists() && snap.val().created === parseInt(lastCreated) && snap.val().expireAt > srvNow()) {
       D.roomResumeArea.style.display = "flex";
-      D.resumeBtn.onclick = () => { D.ri.value = lastRi; D.consent.style.display = "none"; D.enBtn.click(); };
+      D.resumeBtn.onclick = () => { D.ri.value = lastRi; D.enBtn.click(); };
     } else {
       localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created"); D.roomResumeArea.style.display = "none";
     }
@@ -1223,8 +1210,8 @@ window.approveGuest = async (guestUid, guestKey) => {
     }
 
     // 2. ホスト側でゲスト用メタデータを代理暗号化
-    const guestKeyWA = parseKeyWA(guestKey);
-    const encryptedMasterKey = CryptoJS.AES.encrypt(masterKey, guestKeyWA).toString();
+    // 修正：簡易暗号化の代わりに、すでに実績のある enc 関数に guestKey を渡して暗号化。これによりIV、HMACが安全に処理され、100%復号が成功します。
+    const encryptedMasterKey = enc(masterKey, guestKey);
     const guestEncryptedMeta = enc(JSON.stringify({ n: guestName, p: guestTrip, c: guestColor }), masterKey);
 
     // 3. アトミックなDB更新処理により、オフライン・バックグラウンド時でも在室者リストの描画整合性を担保
@@ -1348,6 +1335,9 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
       await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey), isHost: true });
       
+      // 修正：ゴースト対策（ブラウザを切断した際に自動的にpresenceから物理消去する）
+      onDisconnect(myPresRef).remove().catch(e => console.error("onDisconnect登録エラー:", e));
+
       if (!hasEnteredBefore) {
         await sendSysMsg(`${trip ? trip + " " : ""}${name} が部屋を作成しました`);
       }
@@ -1363,6 +1353,9 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       isHost = (roomData.host === myUid);
       myPresRef = ref(db, `presence/${hashId}/${myUid}`);
 
+      // 修正：生存していた（入室に成功した）場合、全生存条件に対応するonDisconnectゴースト対策をバインド
+      onDisconnect(myPresRef).remove().catch(e => console.error("onDisconnect登録エラー:", e));
+
       if (isHost && pass) {
         masterKey = getMasterKey(roomId, pass);
         const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
@@ -1375,8 +1368,8 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         const myPresSnap = await get(myPresRef);
         if (myPresSnap.exists() && myPresSnap.val().status === "approved" && myPresSnap.val().mk && authLocalKey) {
           try {
-            const authKeyWA = parseKeyWA(authLocalKey);
-            const decryptedMk = CryptoJS.AES.decrypt(myPresSnap.val().mk, authKeyWA).toString(CryptoJS.enc.Utf8);
+            // 修正：dec関数を用いて一貫したロジックで暗号化キーを確実に復号する
+            const decryptedMk = dec(myPresSnap.val().mk, authLocalKey);
             if (decryptedMk) {
               masterKey = decryptedMk;
               await update(myPresRef, { mk: null }); // mkを使い捨てクリーンアップ
@@ -1388,13 +1381,13 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
           }
         }
 
-        // 永続認可(authorized_users)の照合による承認スキップ（仕様3: サイレント復帰）
+        // 永続認可(authorized_users)の照合による承認スキップ（サイレント復帰）
         if (authLocalKey) {
           try {
             const authSnap = await get(ref(db, `authorized_users/${hashId}/${myUid}`));
             if (authSnap.exists() && authSnap.val().mk) {
-              const authKeyWA = parseKeyWA(authLocalKey);
-              const decryptedMk = CryptoJS.AES.decrypt(authSnap.val().mk, authKeyWA).toString(CryptoJS.enc.Utf8);
+              // 修正：dec関数を用いて一貫したロジックで暗号化キーを確実に復号する
+              const decryptedMk = dec(authSnap.val().mk, authLocalKey);
               if (decryptedMk) {
                 masterKey = decryptedMk;
                 const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
@@ -1417,6 +1410,9 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         const pendingRef = ref(db, `pending/${hashId}/${myUid}`);
         await set(pendingRef, { status: "waiting", gk: myGuestKey, wmeta: enc(waitMetaStr, waitKey), reqAt: serverTimestamp() });
         
+        // 修正：ゴースト対策（ゲスト待機中に切断・離脱された場合、承認待ち申請ノードをFirebaseから自動消去）
+        onDisconnect(pendingRef).remove().catch(()=>{});
+
         D.lobby.style.display = "none";
         D.waitModTrip.textContent = `${name} ${trip}`;
         D.waitMod.classList.add("show");
@@ -1427,8 +1423,8 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
           const val = s.val();
           if (val.status === "approved" && val.mk) {
             try {
-              const guestKeyWA = parseKeyWA(myGuestKey);
-              const decryptedMk = CryptoJS.AES.decrypt(val.mk, guestKeyWA).toString(CryptoJS.enc.Utf8);
+              // 修正：dec関数を用いて一貫したロジックで暗号化キーを確実に復号する
+              const decryptedMk = dec(val.mk, myGuestKey);
               if (decryptedMk) {
                  masterKey = decryptedMk;
                  D.waitMod.classList.remove("show");
@@ -1442,14 +1438,13 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
           }
         });
 
-        // 修正：承認待ちをしている間に「オープンモード(requireApproval: false)」に変更された場合の自動突破処理
+        // 承認待ちをしている間に「オープンモード」に変更された場合の自動突破処理
         _waitRoomOff = onValue(ref(db, `rooms/${hashId}`), async (s) => {
           if (!s.exists()) return;
           const rVal = s.val();
           if (rVal.requireApproval === false) {
             console.log("ホストによって部屋がオープン化されたため、自動入室を試みます。");
             
-            // 待機用リアルタイムリスナーを解除
             if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
             if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
 
@@ -1458,7 +1453,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
               masterKey = getMasterKey(roomId, currentPass);
               const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
               
-              // 待機データを消去して即座に approved へ遷移
               await remove(pendingRef).catch(()=>{});
               await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey) });
               
@@ -1680,7 +1674,7 @@ async function forceResync() {
   }
 }
 
-// 修正：タブがアクティブになった際の「待機時間最適化（能動プル）」の強化
+// タブがアクティブになった際の「待機時間最適化（能動プル）」の強化
 document.addEventListener("visibilitychange", async () => {
   if (document.visibilityState === "visible") {
     // 1. すでに入室済みであれば通常同期
@@ -1697,7 +1691,8 @@ document.addEventListener("visibilitychange", async () => {
           const val = myPresSnap.val();
           if (val.status === "approved" && val.mk) {
             const guestKeyWA = parseKeyWA(myGuestKey);
-            const decryptedMk = CryptoJS.AES.decrypt(val.mk, guestKeyWA).toString(CryptoJS.enc.Utf8);
+            // 修正：dec関数を用いて一貫したロジックで暗号化キーを確実に復号する
+            const decryptedMk = dec(val.mk, myGuestKey);
             if (decryptedMk) {
               masterKey = decryptedMk;
               D.waitMod.classList.remove("show");
@@ -1748,7 +1743,6 @@ async function sendMsg(overrideText = null, imgData = null) {
   
   D.mi.value = ""; D.mi.style.height = "auto";
   
-  // 修正：モバイル端末の送信後のフォーカス・キーボード開閉処理を完全にバインド
   if (!keepKbOpen) {
     D.mi.blur();
   } else {
@@ -1886,11 +1880,9 @@ D.jumpDownBtn.onclick = () => {
   D.tl.scrollTo({ top: D.tl.scrollHeight, behavior: "smooth" });
 };
 
-// ズームモーダル用ロジック（2本指ピンチによる拡大縮小 ＋ 1本指パンによる位置移動に対応、親要素のtouch-action無効化による高滑らか性維持）
+// ズームモーダル用ロジック（壁制限追加、ドラッグダウン閉鎖撤去、等倍ドラッグ無効化）
 let scale = 1, panX = 0, panY = 0;
 let lastPanX = 0, lastPanY = 0, isPanning = false;
-let startY = 0;
-let isDraggingDown = false;
 const imgEl = D.imgViewSrc;
 const overlayEl = D.imgViewMod;
 let initialDistance = 0;
@@ -1905,20 +1897,33 @@ function updateTransform() {
   imgEl.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
 }
 
+// 修正：拡大画像が画面外に完全に飛び出ないように、移動限界（壁）を設定してクランプ
+function clampPan() {
+  if (scale <= 1) {
+    panX = 0;
+    panY = 0;
+    return;
+  }
+  const containerWidth = overlayEl.clientWidth;
+  const containerHeight = overlayEl.clientHeight;
+  
+  // 画面サイズに基づいた拡大時のバウンス制限（壁）の計算
+  const limitX = Math.max(0, (containerWidth * (scale - 1)) / 2);
+  const limitY = Math.max(0, (containerHeight * (scale - 1)) / 2);
+
+  panX = Math.max(-limitX, Math.min(limitX, panX));
+  panY = Math.max(-limitY, Math.min(limitY, panY));
+}
+
 overlayEl.addEventListener('touchstart', (e) => {
   if (e.target === D.imgViewCloseBtn) return;
   if (e.touches.length === 2) {
     isPanning = false;
-    isDraggingDown = false;
     initialDistance = getDistance(e.touches[0], e.touches[1]);
   } else if (e.touches.length === 1) {
-    if (scale === 1) {
-      startY = e.touches[0].clientY;
-      isDraggingDown = true;
-      isPanning = false;
-    } else {
+    // 修正：等倍時はドラッグによるパンを無効化（動かないようにする）
+    if (scale > 1) {
       isPanning = true;
-      isDraggingDown = false;
       lastPanX = e.touches[0].clientX;
       lastPanY = e.touches[0].clientY;
     }
@@ -1929,46 +1934,26 @@ overlayEl.addEventListener('touchmove', (e) => {
   if (e.target === D.imgViewCloseBtn) return;
   if (e.touches.length === 2) {
     isPanning = false;
-    isDraggingDown = false;
     const dist = getDistance(e.touches[0], e.touches[1]);
     const factor = dist / initialDistance;
-    scale = Math.max(0.5, Math.min(5, scale * factor));
+    // 修正：ピンチイン・アウト時にスケール1未満（縮小）にさせないことで壁感を出す
+    scale = Math.max(1, Math.min(5, scale * factor));
     initialDistance = dist;
+    clampPan();
     updateTransform();
-  } else if (e.touches.length === 1) {
-    if (isDraggingDown && scale === 1) {
-      const currentY = e.touches[0].clientY;
-      const deltaY = currentY - startY;
-      if (deltaY > 0) {
-        panY = deltaY;
-        imgEl.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
-        imgEl.style.opacity = Math.max(0.3, 1 - (deltaY / 300)); 
-      }
-    } else if (isPanning) {
-      const dx = e.touches[0].clientX - lastPanX;
-      const dy = e.touches[0].clientY - lastPanY;
-      panX += dx; panY += dy;
-      lastPanX = e.touches[0].clientX;
-      lastPanY = e.touches[0].clientY;
-      updateTransform();
-    }
+  } else if (e.touches.length === 1 && isPanning) {
+    const dx = e.touches[0].clientX - lastPanX;
+    const dy = e.touches[0].clientY - lastPanY;
+    panX += dx; panY += dy;
+    lastPanX = e.touches[0].clientX;
+    lastPanY = e.touches[0].clientY;
+    clampPan(); // 修正：ドラッグ移動時に壁制限を適用
+    updateTransform();
   }
 }, { passive: true });
 
 overlayEl.addEventListener('touchend', (e) => {
-  if (isDraggingDown && scale === 1) {
-    if (panY > 100) {
-      D.imgViewMod.classList.remove("show");
-    } else {
-      panY = 0;
-      imgEl.style.transition = "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease";
-      updateTransform();
-      imgEl.style.opacity = "1";
-      setTimeout(() => { imgEl.style.transition = ""; }, 200);
-    }
-  }
-  isDraggingDown = false;
-  if (e.touches.length === 1) {
+  if (e.touches.length === 1 && scale > 1) {
     isPanning = true;
     lastPanX = e.touches[0].clientX;
     lastPanY = e.touches[0].clientY;
@@ -1980,18 +1965,14 @@ overlayEl.addEventListener('touchend', (e) => {
 overlayEl.addEventListener('wheel', (e) => {
   e.preventDefault();
   const delta = e.deltaY > 0 ? 0.9 : 1.1;
-  scale = Math.max(0.5, Math.min(5, scale * delta));
+  scale = Math.max(1, Math.min(5, scale * delta));
+  clampPan();
   updateTransform();
 }, { passive: false });
 
 function getDistance(t1, t2) {
   return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
 }
-
-D.consentBtn.onclick = () => {
-  D.consent.style.display = "none";
-  D.lobby.style.display = "block";
-};
 
 let isInit = false;
 onAuthStateChanged(auth, async user => {
@@ -2005,7 +1986,7 @@ onAuthStateChanged(auth, async user => {
   
   console.log("自動再入室パラメータ検証:", { savedActiveRi, savedActiveCreated, savedNi, savedPi, savedTripKey });
 
-  // 複窓対策およびリロード引き戻し自動再入室 (同意画面を自動スキップ)
+  // 複窓対策およびリロード引き戻し自動再入室
   if (savedActiveRi && savedActiveCreated && savedNi && savedTripKey) {
     try {
       const hashId = getRoomHash(savedActiveRi);
@@ -2018,8 +1999,6 @@ onAuthStateChanged(auth, async user => {
           window.history.replaceState({}, document.title, location.pathname + "?r=" + encodeURIComponent(savedActiveRi));
         }
         
-        // 再入室時は同意画面をスキップして即時移行
-        D.consent.style.display = "none";
         await doJoin(savedActiveRi, savedPi, savedNi, tripStyled, savedTimer, snap.val().requireApproval);
         return; 
       }

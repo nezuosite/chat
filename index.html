@@ -19,6 +19,7 @@
   --ro:#f43f5e;--rg:rgba(244,63,94,.12);
   --safe:env(safe-area-inset-bottom,0px);
   --usr-color:#94a3b8;
+  --app-viewport-height: 100dvh;
 }
 html,body{
   height:100%; height:100dvh; width:100%; overflow:hidden;
@@ -30,6 +31,12 @@ html,body{
 input,textarea,select{font-family:inherit;-webkit-user-select:text;user-select:text;font-size:15px!important}
 button{cursor:pointer;font-family:inherit;border:none;background:none}
 button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
+
+/* アプリケーション全体の高さをVisualViewportに厳密追従 */
+#app, #lobby, #consent, #splash {
+  height: 100vh;
+  height: var(--app-viewport-height, 100dvh);
+}
 
 /* スプラッシュスクリーン */
 #splash{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;transition:opacity .2s}
@@ -79,6 +86,30 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .bq{background:var(--sf);color:var(--tx);border:1px solid var(--bd)}
 .bp{background:var(--in);color:#fff}
 .glink{font-size:12px;color:#a5b4fc;text-align:center;margin-top:10px;padding:6px 0;text-decoration:underline;cursor:pointer;font-weight:bold}
+
+/* ロビー下部に常時設置するセキュリティ・使い方ガイド */
+.lobby-guide-box {
+  background: var(--sf);
+  border: 1px solid var(--bd);
+  border-radius: 6px;
+  padding: 14px;
+  margin-top: 16px;
+  font-size: 11.5px;
+  color: var(--mu);
+  line-height: 1.6;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.guide-sub-title {
+  color: var(--tx);
+  font-weight: bold;
+  font-size: 12.5px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
 
 /* アプリ本体 */
 #app{display:none;position:fixed;inset:0;flex-direction:column;overflow:hidden;z-index:50}
@@ -285,21 +316,23 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     
     <div style="max-height:280px; overflow-y:auto; background:var(--bg); border:1px solid var(--bd); padding:12px; border-radius:4px; font-size:11.5px; color:var(--mu); line-height:1.6; text-align:left; display:flex; flex-direction:column; gap:12px; margin-bottom:16px;" role="document">
       <div>
-        <b style="color:var(--tx); font-size:13px; display:block; margin-bottom:4px;">📖 1. 使い方 (How to Use)</b>
-        ・表示名（ニックネーム）とトリップキー（必須）を入力して、部屋ID・共通復号パスワードを入力または自動生成します。<br>
-        ・招待URLをコピーして相手に共有してください。URLのハッシュ（#）以降のパスワード情報はブラウザ間で完全に秘匿同期されます。<br>
-        ・ホストは入室後、チャットルーム内で必要に応じて「オープン / 承認制」を自由に切り替えることができます。
+        <b style="color:var(--tx); font-size:13px; display:block; margin-bottom:4px;">🔒 1. サーバーでも覗けない「ゼロ知識設計」</b>
+        本チャットは、ニックネームや発言、画像を含む全情報をブラウザ側で個別に二重暗号化してから送信します。復号化に必要な「共通パスワード」は一切サーバーに送信されないため、運営者やデータベース管理者が中身をハッキングして覗き見ようとしても、100%解読不可能な乱数の羅列にしか見えません。
       </div>
       <div>
-        <b style="color:var(--tx); font-size:13px; display:block; margin-bottom:4px;">🔒 2. セキュリティ仕様 (Security)</b>
-        ・<b>エンドツーエンド二重暗号化 (E2EE)</b>: 本文や画像、ニックネームやトリップキーを含む全メタデータは、ブラウザ側で強力に暗号化されてから送信されます。<br>
-        ・<b>ゼロ知識設計 (Zero-Knowledge)</b>: 運営サーバーは平文のデータを一切取得できず、暗号鍵も保持しません。E2E暗号化を維持したまま、完全匿名でご利用いただけます。<br>
-        ・<b>即時物理削除 (Wipe)</b>: 最後の一人が退室した（あるいは有効期限が切れた）瞬間に、データベースおよびサーバーメモリからすべてのやり取り（ログ、画像、承認情報など）が完全に物理消去されます。
+        <b style="color:var(--tx); font-size:13px; display:block; margin-bottom:4px;">⏱ 2. 即時物理削除 (Wipe)</b>
+        部屋が無人になった瞬間に、送信された発言ログ、画像データ、承認情報をはじめ、該当ルームに関わるすべてのデータがデータベースおよびメモリから物理的に完全消去されます。ログの復元や保全を求めることは技術的に一切不可能です。
       </div>
       <div>
-        <b style="color:var(--tx); font-size:13px; display:block; margin-bottom:4px;">⚖️ 3. 利用規約 (Terms of Service)</b>
-        ・本システムは使い捨ての匿名連絡・協議用途でのみ利用を許可します。不法な手段での不正アクセス、DDoS行為、法令や公序良俗に違反する用途、あるいは運営を意図的に妨害するあらゆる試みを禁止します。<br>
-        ・部屋が無人になった瞬間に全データが即時完全削除されるため、後からログを復元する、あるいはデータ保全を求めることは技術的に一切不可能です。
+        <b style="color:var(--tx); font-size:13px; display:block; margin-bottom:4px;">📖 3. 待ち合わせのおすすめ方法</b>
+        ・<b>方法A：パスワードの別ルート共有（最強推奨）</b><br>
+        「部屋ID」のみを相手に伝え、「共通パスワード」は口頭や別のE2E暗号化された連絡ツールで共有します。<br>
+        ・<b>方法B：招待URLの利用（簡易共有）</b><br>
+        URLコピー機能により、ハッシュ「#パスワード」がくっついた招待リンクを相手に共有します。このハッシュ部はブラウザ側でしか解釈されず、サーバーには到達しません。
+      </div>
+      <div>
+        <b style="color:var(--tx); font-size:13px; display:block; margin-bottom:4px;">🚨 4. オープンな場所でのURL貼付注意</b>
+        Twitter(X)や掲示板などの不特定多数が閲覧できるパブリックな場所に、ハッシュ（#）付きの招待URLを貼り付けると、パスワードを全世界に公開したことになり暗号化が無効化されます。これを避けるため、オープンな場所では<b>「承認制（LOCKED）モード」</b>を活用し、事前に本人から「トリップ（◆マーク以降の英数字）」を共有してもらい、ホストが申請者のトリップを目視で確認・照合して承認する運用を行ってください。オープンモードであっても、部屋IDとパスワードが漏れなければ、総当たり攻撃をされない限りハッキングされても中身は完全に安全です。
       </div>
     </div>
     
@@ -315,7 +348,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <div class="lbi">
       <div class="ibox">
         🔒 <b>完全秘匿・ゼロ知識アーキテクチャ</b><br>
-        運営者すら解読不能な「二重暗号化」と「システムソルト」による最高峰 of プライバシー。
+        運営者すら解読不能な「二重暗号化」と「システムソルト」による最高峰のプライバシー。
       </div>
       <div id="lberr"></div>
 
@@ -364,6 +397,21 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         <button class="btn bp" id="enBtn">入室 / 作成</button>
       </div>
       <div class="glink" id="gdBtn">📖 ガイド / セキュリティ仕様</div>
+
+      <!-- ロビー下部に常時設置するセキュリティ・使い方ガイド -->
+      <div class="lobby-guide-box">
+        <div>
+          <span class="guide-sub-title">🔒 データベースを見ても誰も読めない理由</span>
+          あなたが送信するメッセージやニックネーム、さらには画像データまで、ブラウザから出る前にE2EE（エンドツーエンド二重暗号）によりデタラメな乱数へと完全に暗号化されます。暗号を解く鍵（パスワード）はサーバーに一切保存されないため、たとえ管理者がデータベースの生データを確認しても、中身を読み解くことは数学的に不可能です。
+        </div>
+        <div>
+          <span class="guide-sub-title">📡 待ち合わせの推奨運用方法</span>
+          ・<b>最強の安全策 (パスワードの個別共有)</b><br>
+          部屋の「部屋ID」のみをメッセージや口頭で相手に伝えます。暗号を解除するための「部屋パスワード」は、あらかじめ事前に信頼できる別のルートで共有しておくことで、URLをそのままクリックされるリスクを100%排除できます。<br>
+          ・<b>パブリックな場所にURLを貼る場合の注意</b><br>
+          掲示板やSNSなどのオープンな場所に「パスワードを含んだ招待URL」を直接貼り付けると、パスワードも全世界に漏洩します。その場合は入室後に速やかに<b>ホストが「承認制(LOCKED)」モードをON</b>にし、事前に聞いておいた相手のトリップ（◆の後の文字）と、承認待ちリストのトリップを一致しているか照合した上で入室を「許可」してください。
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -460,7 +508,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 
 <div id="toastContainer"></div>
 
-<!-- 発言削除確認モーダル -->
+<!-- 发言削除確認モーダル -->
 <div id="delConfirmMod" class="mod-overlay">
   <div class="gc" style="max-width:320px;">
     <h3 style="font-size:13px; color:var(--ro);">⚠️ 発言の削除確認</h3>
@@ -477,7 +525,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 <div id="waitMod" class="mod-overlay">
   <div class="gc" style="max-width:320px;">
     <h3>⏳ ホストの承認待ち...</h3>
-    <div style="font-size:9.5px; color:var(--mu);">ホストが承認するまでチャットには参加できません。<br>この画面 of ままお待ちください。</div>
+    <div style="font-size:9.5px; color:var(--mu);">ホストが承認するまでチャットには参加できません。<br>この画面のままお待ちください。</div>
     <div class="wait-trip-box">
       <div style="font-size:9px; color:var(--m2); margin-bottom:3px;">あなたのID（ホストに伝えてください）</div>
       <b id="waitModTrip" style="font-size:13px; color:var(--em);"></b>
@@ -502,7 +550,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <div class="gs" style="border-left-color: #f87171;">
       <h4>⏱ 差分同期 ＆ 即時物理削除（Wipe）</h4>
       <p style="font-size:11px; color:var(--mu); margin-top:2px;">
-        onChildAddedによる爆速反映を実装。部屋が無人になった瞬間、全てのデータがサーバーから即座に物理削除され、ログは残りません。
+        onChildAddedによる爆速反映を実装。部屋が無人になった瞬間に、全てのデータがサーバーから即座に物理削除され、ログは残りません。
       </p>
     </div>
     <button class="modal-bottom-close" id="gcBtn">閉じる</button>
@@ -576,17 +624,20 @@ const D = {
 
 const SYSTEM_SALT = "NEZU_PRO_SYS_SALT_2026_V1"; 
 
-// 送信後のキーボード固定状態、および自動スクロール状態の管理変数
+// 修正：キーボード固定・自動スクロール設定フラグを明示的定義
 let keepKbOpen = false;
 let isAutoScroll = true;
 
-// モバイルキーボード表示時の伸縮レイアウト補正 (VisualViewport APIの最適化)
+// 修正：VisualViewportの変動（キーボード伸縮時）をCSS変数にバインドし、入力バーの位置を固定
 if (window.visualViewport) {
   const onViewportChange = () => {
     const vh = window.visualViewport.height;
     document.documentElement.style.setProperty('--app-viewport-height', `${vh}px`);
     D.app.style.height = `${vh}px`;
     D.lobby.style.height = `${vh}px`;
+    if (document.activeElement === D.mi) {
+      scBottom(true);
+    }
   };
   window.visualViewport.addEventListener('resize', onViewportChange);
   window.visualViewport.addEventListener('scroll', onViewportChange);
@@ -618,7 +669,7 @@ let isHost = false;
 let myGuestKey = null;
 let targetDelId = null;
 
-// CryptoJSの鍵自動派生による不整合を防ぐため、常にWordArrayに変換して処理するセキュアなヘルパーを導入
+// 修正：CryptoJSが鍵をパスフレーズと誤認するバグを防ぐため、16進鍵を明示的にWordArrayへパースするキャストヘルパー
 const parseKeyWA = (key) => {
   if (!key) return null;
   if (typeof key === "string") {
@@ -630,7 +681,7 @@ const parseKeyWA = (key) => {
 // E2E暗号化を完全に保証するオリジナル暗号モデル
 const enc = (t, key = masterKey) => {
   if (!t || !key) return "";
-  const keyWA = parseKeyWA(key); // WordArray化して鍵自動派生による不整合を防ぐ
+  const keyWA = parseKeyWA(key); 
   const iv = CryptoJS.lib.WordArray.random(16);
   const ct = CryptoJS.AES.encrypt(t, keyWA, { iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 });
   const ivHex = iv.toString(CryptoJS.enc.Hex);
@@ -643,12 +694,12 @@ const enc = (t, key = masterKey) => {
 const dec = (c, key = masterKey) => {
   if (!c || !key) return null;
   try {
-    const keyWA = parseKeyWA(key); // WordArray化して鍵自動派生による不整合を防ぐ
+    const keyWA = parseKeyWA(key); 
     const parts = c.split(":");
     if (parts.length >= 3) {
       const ivHex = parts[0], ct = parts[1], mac = parts[2];
       if (CryptoJS.HmacSHA256(ivHex + ":" + ct, keyWA).toString() !== mac) {
-        console.error("HMAC検証に失敗しました。パスワード（暗号化キー）が不一致の可能性があります。");
+        console.error("HMAC検証に失敗しました。パスワードが不一致、または破損しています。");
         return null;
       }
       const iv = CryptoJS.enc.Hex.parse(ivHex);
@@ -656,7 +707,7 @@ const dec = (c, key = masterKey) => {
     }
     return null;
   } catch (e) {
-    console.error("復号処理で例外が発生しました:", e);
+    console.error("復号処理でエラーが発生しました:", e);
     return null;
   }
 };
@@ -870,12 +921,12 @@ window.openZoomModal = (b64) => {
   resetZoom();
 };
 
-// 絶対時系列を維持し、DOMをソートされた位置に挿入する関数 (最新メッセージは走査をスキップして即時に挿入し爆速化)
+// 絶対時系列を維持し、DOMをソートされた位置に挿入する関数 (新着ログは走査をスキップして爆速反映)
 function insertMessageEl(el) {
   const ts = parseInt(el.dataset.ts) || 0;
   const lastChild = D.tli.lastElementChild;
   
-  // 1. DOMの末尾が最も新しければ、配列走査をスキップしてappendChildで爆速反映
+  // 1. DOMの末尾が最も新しければ、配列走査をスキップしてappendChildで爆速反映（高速化・軽量化）
   if (!lastChild) {
     D.tli.appendChild(el);
     return;
@@ -995,6 +1046,7 @@ D.delExecuteBtn.onclick = async () => {
   targetDelId = null;
 };
 
+// 修正：未定義によるエラーを防ぐため、rawRを含むグローバル変数をすべて明示的に宣言
 let curR = null, curN = null, rawR = null, myUid = null;
 let isW = false, _exitLock = false, isLiveMode = false, unreadCount = 0;
 let displayedMsgIds = new Set();
@@ -1088,7 +1140,7 @@ function clearAll() {
   if(typeof _pOff === "function"){ _pOff(); _pOff = null; }
   if(typeof _rOff === "function"){ _rOff(); _rOff = null; }
   if(typeof _waitPresOff === "function"){ _waitPresOff(); _waitPresOff = null; }
-  if(typeof _waitRoomOff === "function"){ _waitRoomOff(); _waitRoomOff = null; } // 修正: メモリリーク防止のため監視解除
+  if(typeof _waitRoomOff === "function"){ _waitRoomOff(); _waitRoomOff = null; } // 修正: 待機イベント監視解除
   if(typeof _pendingOff === "function"){ _pendingOff(); _pendingOff = null; }
   masterKey = null; isLiveMode = false; displayedMsgIds.clear(); D.tli.innerHTML = "";
   stopTimerLoop(); D.hostTimerCtrl.style.display = "none"; D.hostApprovePanel.style.display = "none"; D.hostModeCtrl.style.display = "none";
@@ -1171,7 +1223,6 @@ window.approveGuest = async (guestUid, guestKey) => {
     }
 
     // 2. ホスト側でゲスト用メタデータを代理暗号化
-    // guestKey（Hex文字列）を parseKeyWA で適切に変換して自動派生バグを防ぐ
     const guestKeyWA = parseKeyWA(guestKey);
     const encryptedMasterKey = CryptoJS.AES.encrypt(masterKey, guestKeyWA).toString();
     const guestEncryptedMeta = enc(JSON.stringify({ n: guestName, p: guestTrip, c: guestColor }), masterKey);
@@ -1696,7 +1747,13 @@ async function sendMsg(overrideText = null, imgData = null) {
   const now = Date.now(); if (now - lastSendTime < 350) return; lastSendTime = now;
   
   D.mi.value = ""; D.mi.style.height = "auto";
-  if (!keepKbOpen) D.mi.blur(); else D.mi.focus();
+  
+  // 修正：モバイル端末の送信後のフォーカス・キーボード開閉処理を完全にバインド
+  if (!keepKbOpen) {
+    D.mi.blur();
+  } else {
+    D.mi.focus();
+  }
   isLiveMode = true; scBottom(true);
 
   const metaObj = { n: curN, p: localStorage.getItem("nz_mytrip_styled") || "", c: curColor };

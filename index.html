@@ -1,3 +1,5 @@
+--- START OF FILE Paste July 13, 2026 - 10:25PM ---
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -264,19 +266,20 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .clr-cancel{background:var(--bg);border:1px solid var(--bd);color:var(--tx)}
 .clr-ok{background:var(--in);color:#fff}
 
-/* 画像プレビューモーダルのレイアウト：閉じるボタンとの被りを100%防止 */
+/* 画像プレビューモーダル：閉じるボタン被り防止コンテナ */
 #imgViewMod {
-  background: rgba(0,0,0,0.95);
-  backdrop-filter: blur(8px);
+  background: rgba(0,0,0,0.96);
+  backdrop-filter: blur(10px);
   display: none;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   touch-action: none;
+  overflow: hidden;
 }
 #imgViewSrc {
   max-width: 90%;
-  max-height: calc(100dvh - 140px); /* ボタン表示領域を100dvhから確実に除外 */
+  max-height: calc(100dvh - 140px); /* 100dvhからボタン用のスペースを確実に減算 */
   object-fit: contain;
   user-select: none;
   -webkit-user-drag: none;
@@ -292,7 +295,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   bottom: 0;
   left: 0;
   padding: 16px 0 calc(16px + var(--safe));
-  background: linear-gradient(to top, rgba(0,0,0,0.8) 40%, rgba(0,0,0,0));
+  background: linear-gradient(to top, rgba(0,0,0,0.85) 40%, rgba(0,0,0,0));
   backdrop-filter: blur(2px);
   z-index: 10001;
 }
@@ -352,7 +355,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <div class="lbi">
       <div class="ibox">
         🔒 <b>ゼロ知識・エンドツーエンド暗号化 (E2EE)</b><br>
-        データはブラウザ側で暗号化（AES-GCM 256bit）されてから送信され、復号用パスワードはサーバーに一切送信されません。
+        対話メッセージ、画像、表示名はすべて送信前にブラウザ（クライアント）側で暗号化（AES-GCM 256bit）されます。復号鍵はサーバへ送信されないため、運営者や第三者はデータ解読が不可能です。
       </div>
       <div id="lberr"></div>
 
@@ -1307,6 +1310,10 @@ function clearAll() {
   isLiveMode = false; displayedMsgIds.clear(); D.tli.innerHTML = "";
   stopTimerLoop(); D.hostModeCtrl.style.display = "none"; D.hostApprovePanel.style.display = "none";
   stopWaitTicker(); _seenWaitIds.clear(); D.waitBadge.classList.remove("show");
+  
+  isInitialLoadComplete = false;
+  initialMessagesBuffer = [];
+  if (initialBatchTimer) { clearTimeout(initialBatchTimer); initialBatchTimer = null; }
 }
 
 let _timerRaf = null;
@@ -1355,7 +1362,7 @@ async function checkCurrentRoomStatus() {
       localStorage.setItem("nz_mytrip_styled", tripStyled);
       localStorage.setItem("nz_is_in_room", "true");
       
-      // 自動・再接続時の入室：isManual = false
+      // 自動再入室：isManual = false に設定
       await doJoin(lastRi, savedPi, savedNi, tripStyled, savedTimer, snap.val().requireApproval, false);
     } else {
       localStorage.removeItem("nz_active_ri"); 
@@ -1674,6 +1681,10 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval, isMa
   }
 }
 
+let isInitialLoadComplete = false;
+let initialMessagesBuffer = [];
+let initialBatchTimer = null;
+
 async function enterChatUI(roomData, pass, isManual = true) {
   D.lobby.style.display = "none"; D.waitMod.classList.remove("show");
   D.app.style.display = "flex"; D.app.classList.add("visible");
@@ -1688,7 +1699,7 @@ async function enterChatUI(roomData, pass, isManual = true) {
     localStorage.setItem("nz_pi_val", pass);
   }
 
-  // 手動入室（isManual = true）且つまだ今セッションでお知らせを投げていない場合のみ送信（自動再接続やリロード時は完全無視）
+  // 手動入室（isManual = true）且つまだ今セッションでお知らせを投げていない場合のみ送信（自動再接続やリロード時は送信を完全に抑止） [2]
   if (isManual && !hasSentJoinMsgInSession) {
     hasSentJoinMsgInSession = true;
     await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が入室しました`);
@@ -1826,32 +1837,33 @@ async function enterChatUI(roomData, pass, isManual = true) {
     _pendingOff = onValue(ref(db, `pending/${curR}`), rafThrottle(renderPendingList));
   }
 
-  // indexOn（ルール設定）に一切依存しない100%安全なデータ直引きアーキテクチャへの移行
-  const chatRef = ref(db, `chat/${curR}`);
-  const chatSnap = await get(chatRef);
-  if (chatSnap.exists()) {
-    const msgs = [];
-    chatSnap.forEach((child) => {
-      const val = child.val();
-      val.id = child.key;
-      msgs.push(val);
-    });
-    msgs.sort((a, b) => (a.t || 0) - (b.t || 0));
-    
-    // 直近100件にクライアント側（メモリ上）でスライスして、DOM描画を極限まで軽量に維持
-    const limitedMsgs = msgs.slice(-100);
-    await processInitialMessages(limitedMsgs);
-  }
+  // 1本のWebSocket（onChildAdded）のみに一本化。初期ロード時は50msのデバウンスで過去ログを一括高速バッチ描画 [2]
+  isInitialLoadComplete = false;
+  initialMessagesBuffer = [];
 
-  // サーバーにフィルタ指定（query/limitToLast/orderBy）を投げず直に監視することで、インデックスエラーを確実に回避
-  _cOff = onChildAdded(ref(db, `chat/${curR}`), snap => {
+  _cOff = onChildAdded(ref(db, `chat/${curR}`), async (snap) => {
     if(!curR || !masterKey) return;
     const m = snap.val(); 
     if(m) { 
       m.id = snap.key; 
       if (!m.t) m.t = Date.now(); 
       if (m.c && displayedMsgIds.has(m.c)) { removeMessageEl(m.c); }
-      queueIncomingMessage(m);
+
+      if (!isInitialLoadComplete) {
+        initialMessagesBuffer.push(m);
+        if (initialBatchTimer) clearTimeout(initialBatchTimer);
+        initialBatchTimer = setTimeout(async () => {
+          isInitialLoadComplete = true;
+          // バッファに蓄積された過去ログを時系列ソートして一括並列レンダリング
+          initialMessagesBuffer.sort((a, b) => (a.t || 0) - (b.t || 0));
+          const limited = initialMessagesBuffer.slice(-100);
+          await processInitialMessages(limited);
+          initialMessagesBuffer = [];
+        }, 50);
+      } else {
+        // 過去ログ展開後の新着発言は0ミリ秒で即時キューイングしリアルタイム反映 [2]
+        await queueIncomingMessage(m);
+      }
     } 
   });
 
@@ -1894,7 +1906,7 @@ async function forceResync() {
 
 document.addEventListener("visibilitychange", async () => {
   if (document.visibilityState === "visible") {
-    // 復帰時に明示的にgoOnlineさせてWebSocket切断からの再接続プロセスを即座にキック
+    // 復帰時に明示的にgoOnlineさせてWebSocket切断からの再接続プロセスを即座にキック [2]
     import("https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js").then((m) => {
       m.goOnline(db);
     });
@@ -1919,7 +1931,7 @@ document.addEventListener("visibilitychange", async () => {
               
               const rSnap = await get(ref(db, `rooms/${curR}`));
               const rData = rSnap.exists() ? rSnap.val() : { requireApproval: true };
-              // 自動復帰・バックグラウンド移行時のレーム：isManual = false
+              // システム復帰・レーム時のチャット再構成：isManual = false
               await enterChatUI(rData, localStorage.getItem("nz_pi_val"), false);
               return;
             }
@@ -1941,7 +1953,7 @@ document.addEventListener("visibilitychange", async () => {
               if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
               if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
               
-              // 自動・移行復職：isManual = false
+              // 自動復帰・バインド移行時：isManual = false
               await enterChatUI(rVal, currentPass, false);
             }
           }
@@ -1951,7 +1963,7 @@ document.addEventListener("visibilitychange", async () => {
   }
 });
 
-// 送信中状態（仮の楽観的描画）を生成してゼロ秒で画面へ仮挿入する関数
+// 送信中状態（仮の楽観的描画）を生成してゼロ秒で画面へ仮挿入する関数 [2]
 function renderOptimisticMessage(msg) {
   const msgTs = msg.t || srvNow();
   const d = document.createElement("div"); 
@@ -2014,7 +2026,7 @@ async function sendMsg(overrideText = null, imgData = null) {
   const metaObj = { n: curN, p: localStorage.getItem("nz_mytrip_styled") || "", c: curColor };
   const rawMsgText = imgData ? "IMG::" + imgData : txt;
 
-  // 1. 同期処理で瞬時に画面に自分の発言を仮描画（ラグを完全にゼロ化）
+  // 1. 同期処理で瞬時に画面に自分の発言を仮描画（体感送信ラグをゼロ化） [2]
   const tempObj = { 
     id: cid, 
     c: cid, 
@@ -2025,7 +2037,7 @@ async function sendMsg(overrideText = null, imgData = null) {
   };
   renderOptimisticMessage(tempObj);
 
-  // 2. 暗号化およびデータベース書き込みは非ブロッキングで並列で実行
+  // 2. 暗号化およびデータベース書き込みは非ブロッキングで並列で実行 [2]
   (async () => {
     try {
       const encryptedMeta = await encrypt(JSON.stringify(metaObj), masterKey);
@@ -2056,12 +2068,12 @@ D.fileInput.onchange = (e) => {
     const img = new Image();
     img.onload = async () => {
       const cvs = document.createElement("canvas"); let w = img.width, h = img.height;
-      // 最大幅を 600px に抑え、ペイロードサイズを劇的に落とすことで暗号化・同期速度を限界突破
+      // 最大幅を 600px に抑え、ペイロードサイズを劇的に落とすことで暗号化・同期速度を限界突破 [2]
       if (w > 600) { h = Math.round((h * 600) / w); w = 600; }
       cvs.width = w; cvs.height = h; 
       cvs.getContext("2d").drawImage(img, 0, 0, w, h);
       
-      // JPEGの品質を 0.5 に落として通信量を最小化
+      // JPEGの品質を 0.5 に落として通信量を最小化 [2]
       await sendMsg(null, cvs.toDataURL("image/jpeg", 0.5));
       
       D.imgBtn.innerHTML = origIcon; D.imgBtn.disabled = false; D.fileInput.value = "";
@@ -2091,7 +2103,7 @@ D.enBtn.onclick = async () => {
   D.enBtn.disabled = true; D.enBtn.textContent = "処理中...";
   const tripStyled = await makeTrip(n, tk); localStorage.setItem("nz_mytrip_styled", tripStyled);
   
-  // 手動入室ボタンからの実行：isManual = true
+  // 手動での入室・作成指示：isManual = true
   await doJoin(r, p, n, tripStyled, tm, isApproveMode, true);
 };
 
@@ -2153,11 +2165,13 @@ D.jumpDownBtn.onclick = () => {
   D.tl.scrollTo({ top: D.tl.scrollHeight, behavior: "smooth" });
 };
 
+// 画像ビューモーダルのジェスチャイベント最適化＆被り防止を完全実装
 let scale = 1, panX = 0, panY = 0;
 let lastPanX = 0, lastPanY = 0, isPanning = false;
+let initialDistance = 0;
+
 const imgEl = D.imgViewSrc;
 const overlayEl = D.imgViewMod;
-let initialDistance = 0;
 
 function resetZoom() {
   scale = 1; panX = 0; panY = 0;
@@ -2177,7 +2191,6 @@ function clampPan() {
   }
   const containerWidth = overlayEl.clientWidth;
   const containerHeight = overlayEl.clientHeight;
-  
   const imgRatio = imgEl.naturalWidth / imgEl.naturalHeight;
   const containerRatio = containerWidth / containerHeight;
   
@@ -2206,32 +2219,21 @@ function clampPan() {
   panY = Math.max(-limitY, Math.min(limitY, panY));
 }
 
-const updateZoomOrigin = (e) => {
-  if (e.touches.length === 2) {
-    const touch1 = e.touches[0];
-    const touch2 = e.touches[1];
-    const midX = (touch1.clientX + touch2.clientX) / 2;
-    const midY = (touch1.clientY + touch2.clientY) / 2;
-    
-    const rect = imgEl.getBoundingClientRect();
-    if (rect.width > 0 && rect.height > 0) {
-      const originX = ((midX - rect.left) / rect.width) * 100;
-      const originY = ((midY - rect.top) / rect.height) * 100;
-      
-      const clampedX = Math.max(0, Math.min(100, originX));
-      const clampedY = Math.max(0, Math.min(100, originY));
-      
-      imgEl.style.transformOrigin = `${clampedX}% ${clampedY}%`;
-    }
-  }
-};
-
 overlayEl.addEventListener('touchstart', (e) => {
   if (e.target === D.imgViewCloseBtn) return;
   if (e.touches.length === 2) {
     isPanning = false;
-    initialDistance = getDistance(e.touches[0], e.touches[1]);
-    updateZoomOrigin(e);
+    initialDistance = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    
+    // ズームの中心点を設定
+    const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+    const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+    const rect = imgEl.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      const originX = Math.max(0, Math.min(100, ((midX - rect.left) / rect.width) * 100));
+      const originY = Math.max(0, Math.min(100, ((midY - rect.top) / rect.height) * 100));
+      imgEl.style.transformOrigin = `${originX}% ${originY}%`;
+    }
   } else if (e.touches.length === 1) {
     if (scale > 1) {
       isPanning = true;
@@ -2245,12 +2247,10 @@ overlayEl.addEventListener('touchmove', (e) => {
   if (e.target === D.imgViewCloseBtn) return;
   if (e.touches.length === 2) {
     isPanning = false;
-    const dist = getDistance(e.touches[0], e.touches[1]);
+    const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
     const factor = dist / initialDistance;
     scale = Math.max(1, Math.min(5, scale * factor));
     initialDistance = dist;
-    
-    updateZoomOrigin(e);
     clampPan();
     updateTransform();
   } else if (e.touches.length === 1 && isPanning) {
@@ -2264,14 +2264,8 @@ overlayEl.addEventListener('touchmove', (e) => {
   }
 }, { passive: true });
 
-overlayEl.addEventListener('touchend', (e) => {
-  if (e.touches.length === 1 && scale > 1) {
-    isPanning = true;
-    lastPanX = e.touches[0].clientX;
-    lastPanY = e.touches[0].clientY;
-  } else {
-    isPanning = false;
-  }
+overlayEl.addEventListener('touchend', () => {
+  isPanning = false;
 }, { passive: true });
 
 overlayEl.addEventListener('wheel', (e) => {
@@ -2281,11 +2275,15 @@ overlayEl.addEventListener('wheel', (e) => {
   scale = Math.max(1, Math.min(5, scale * delta));
   clampPan();
   updateTransform();
-}, { passive: false });
+}, { passive: false }); // スクロール拡大縮小のための preventDefault() を明示許可
 
-function getDistance(t1, t2) {
-  return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
-}
+// 背景タップまたは閉じるボタンのクリックで安全に閉じて状態を初期化
+overlayEl.addEventListener('click', (e) => {
+  if (e.target === overlayEl || e.target === D.imgViewCloseBtn) {
+    overlayEl.classList.remove("show");
+    resetZoom();
+  }
+});
 
 const D_timerSettingMod = $("timerSettingMod");
 const D_timerSettingCloseBtn = $("timerSettingCloseBtn");

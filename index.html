@@ -9,7 +9,6 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0f172a">
 <title>NEZU ONETIME CHAT</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 <style>
 /* 共通リセット＆変数 */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -491,7 +490,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   </div>
 </div>
 
-<!-- 发言删除确认モーダル -->
+<!-- 発言削除確認モーダル -->
 <div id="delConfirmMod" class="mod-overlay">
   <div class="gc" style="max-width:320px;">
     <h3 style="font-size:13px; color:var(--ro);">⚠️ 発言の削除確認</h3>
@@ -650,71 +649,211 @@ const initHashPass = () => {
 };
 initHashPass();
 
-const makeTrip = (name, tripKey) => {
+/* ==========================================
+   Web Cryptography API (AES-GCM 256) 実装
+   ========================================== */
+
+// バッファ変換ヘルパー
+const hexToBytes = (hex) => {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+  }
+  return bytes;
+};
+
+const bytesToHex = (bytes) => {
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+};
+
+// SHA-256 非同期ハッシュ生成
+const sha256 = async (text) => {
+  const msgUint8 = new TextEncoder().encode(text);
+  const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgUint8);
+  return bytesToHex(new Uint8Array(hashBuffer));
+};
+
+// PBKDF2 によるAES-GCM用 CryptoKey 導出（ルーム入室時に1度だけ導出してメモリ保持）
+const deriveMasterKey = async (roomId, pass) => {
+  const enc = new TextEncoder();
+  const passwordBuffer = enc.encode(pass);
+  const saltBuffer = enc.encode(SYSTEM_SALT + roomId);
+
+  const baseKey = await window.crypto.subtle.importKey(
+    "raw",
+    passwordBuffer,
+    "PBKDF2",
+    false,
+    ["deriveKey"]
+  );
+
+  return await window.crypto.subtle.deriveKey(
+    {
+      name: "PBKDF2",
+      salt: saltBuffer,
+      iterations: 10000,
+      hash: "SHA-256"
+    },
+    baseKey,
+    {
+      name: "AES-GCM",
+      length: 256
+    },
+    true, // ラッピング/ラッピング解除可能にする
+    ["encrypt", "decrypt", "wrapKey", "unwrapKey"]
+  );
+};
+
+// 鍵をラッピング（AES-GCMを用いた暗号化エクスポート）
+const wrapMasterKey = async (keyToWrap, wrappingKey) => {
+  const iv = window.crypto.getRandomValues(new Uint8Array(12));
+  const wrapped = await window.crypto.subtle.wrapKey(
+    "raw",
+    keyToWrap,
+    wrappingKey,
+    {
+      name: "AES-GCM",
+      iv: iv
+    }
+  );
+
+  const ivHex = bytesToHex(iv);
+  const wrappedBytes = new Uint8Array(wrapped);
+  let binary = "";
+  const len = wrappedBytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(wrappedBytes[i]);
+  }
+  return ivHex + ":" + btoa(binary);
+};
+
+// 鍵をアンラッピング（AES-GCMを用いた復号インポート）
+const unwrapMasterKey = async (wrappedStr, unwrappingKey) => {
+  try {
+    const parts = wrappedStr.split(":");
+    if (parts.length < 2) return null;
+    const ivHex = parts[0];
+    const wrappedBase64 = parts[1];
+
+    const iv = hexToBytes(ivHex);
+    const binary = atob(wrappedBase64);
+    const wrappedBytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      wrappedBytes[i] = binary.charCodeAt(i);
+    }
+
+    return await window.crypto.subtle.unwrapKey(
+      "raw",
+      wrappedBytes,
+      unwrappingKey,
+      {
+        name: "AES-GCM",
+        iv: iv
+      },
+      {
+        name: "AES-GCM"
+      },
+      true, // 派生後のエクスポート/再ラッピング対応
+      ["encrypt", "decrypt", "wrapKey", "unwrapKey"]
+    );
+  } catch (e) {
+    console.error("MasterKeyのアンラップに失敗しました:", e);
+    return null;
+  }
+};
+
+// 対称鍵（AES-GCM）をHexからインポート
+const importRawKeyFromHex = async (hex) => {
+  const bytes = hexToBytes(hex);
+  return await window.crypto.subtle.importKey(
+    "raw",
+    bytes,
+    "AES-GCM",
+    false,
+    ["encrypt", "decrypt", "wrapKey", "unwrapKey"]
+  );
+};
+
+// トリップ生成
+const makeTrip = async (name, tripKey) => {
   if (!tripKey) return "";
-  const hash = CryptoJS.SHA256(SYSTEM_SALT + name + tripKey).toString();
+  const hash = await sha256(SYSTEM_SALT + name + tripKey);
   return "◆" + hash.substring(0, 10);
 };
 
-const getRoomHash = (roomId) => CryptoJS.SHA256(SYSTEM_SALT + roomId).toString();
-
-// PBKDF2の計算結果をセッション間でキャッシュし、処理を著しく高速化
-const getMasterKey = (roomId, pass) => {
-  const cacheKey = `nz_mkcache_${roomId}_${CryptoJS.SHA256(pass).toString().substring(0, 8)}`;
-  const cached = sessionStorage.getItem(cacheKey);
-  if (cached) return cached;
-  const mk = CryptoJS.PBKDF2(pass + roomId, SYSTEM_SALT, {keySize: 256/32, iterations: 10000}).toString();
-  sessionStorage.setItem(cacheKey, mk);
-  return mk;
+// 部屋IDのハッシュ
+const getRoomHash = async (roomId) => {
+  return await sha256(SYSTEM_SALT + roomId);
 };
 
-let masterKey = null; 
+let masterKey = null; // メモリ上で保持する AES-GCM CryptoKey オブジェクト
 let isHost = false;
 let myGuestKey = null;
 let targetDelId = null;
-let hasSentJoinMsgInSession = false; // 今回の入室におけるシステムログ送信状態管理
+let hasSentJoinMsgInSession = false; // 入室お知らせログのセッション送信状況
 
-const parseKeyWA = (key) => {
-  if (!key) return null;
-  if (typeof key === "string") {
-    return /^[0-9a-fA-F]+$/.test(key) ? CryptoJS.enc.Hex.parse(key) : CryptoJS.enc.Utf8.parse(key);
-  }
-  return key;
-};
-
-const enc = (t, key = masterKey) => {
+// 暗号化
+const enc = async (t, key = masterKey) => {
   if (!t || !key) return "";
-  const keyWA = parseKeyWA(key);
-  const iv = CryptoJS.lib.WordArray.random(16);
-  const ct = CryptoJS.AES.encrypt(t, keyWA, { iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 });
-  const ivHex = iv.toString(CryptoJS.enc.Hex);
-  const ctStr = ct.toString();
-  const mac = CryptoJS.HmacSHA256(ivHex + ":" + ctStr, keyWA).toString();
-  return ivHex + ":" + ctStr + ":" + mac;
+  try {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(t);
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+
+    const encrypted = await window.crypto.subtle.encrypt(
+      {
+        name: "AES-GCM",
+        iv: iv
+      },
+      key,
+      data
+    );
+
+    const ivHex = bytesToHex(iv);
+    const ctBytes = new Uint8Array(encrypted);
+    let binary = "";
+    const len = ctBytes.byteLength;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(ctBytes[i]);
+    }
+    return ivHex + ":" + btoa(binary);
+  } catch (e) {
+    console.error("暗号化に失敗しました:", e);
+    return "";
+  }
 };
 
-// 復号結果をメモリ上にキャッシュし、タイムライン同期や再描画、スクロール時の計算コストを徹底排除
-const decCache = new Map();
-const dec = (c, key = masterKey) => {
+// 復号
+const decCache = new Map(); // メモリ上に復号結果をキャッシュし処理を爆速化
+const dec = async (c, key = masterKey) => {
   if (!c || !key) return null;
-  const keyPart = typeof key === "string" ? key.substring(0, 16) : "";
-  const cacheKey = c + "_" + keyPart;
-  if (decCache.has(cacheKey)) return decCache.get(cacheKey);
+  if (decCache.has(c)) return decCache.get(c);
 
   try {
-    const keyWA = parseKeyWA(key);
     const parts = c.split(":");
-    if (parts.length >= 3) {
-      const ivHex = parts[0], ct = parts[1], mac = parts[2];
-      if (CryptoJS.HmacSHA256(ivHex + ":" + ct, keyWA).toString() !== mac) {
-        return null;
-      }
-      const iv = CryptoJS.enc.Hex.parse(ivHex);
-      const decVal = CryptoJS.AES.decrypt(ct, keyWA, { iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }).toString(CryptoJS.enc.Utf8) || null;
-      decCache.set(cacheKey, decVal);
-      return decVal;
+    if (parts.length < 2) return null;
+    const ivHex = parts[0];
+    const ctBase64 = parts[1];
+
+    const iv = hexToBytes(ivHex);
+    const binary = atob(ctBase64);
+    const ct = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      ct[i] = binary.charCodeAt(i);
     }
-    return null;
+
+    const decrypted = await window.crypto.subtle.decrypt(
+      {
+        name: "AES-GCM",
+        iv: iv
+      },
+      key,
+      ct
+    );
+
+    const plainText = new TextDecoder().decode(decrypted);
+    decCache.set(c, plainText);
+    return plainText;
   } catch (e) {
     return null;
   }
@@ -725,16 +864,16 @@ onValue(ref(db, ".info/serverTimeOffset"), s => { _srvOff = s.val() || 0; });
 const srvNow = () => Date.now() + _srvOff;
 const esc = t => (t||"").replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const updateTripPreview = () => {
+const updateTripPreview = async () => {
   const n = D.ni.value || "名無し";
   const tk = D.tripi.value;
-  const t = tk ? makeTrip(n, tk) : "";
+  const t = tk ? await makeTrip(n, tk) : "";
   D.tripPrevText.textContent = `プレビュー: ${n} ${t}`;
   localStorage.setItem("nz_mytrip_styled", t);
   localStorage.setItem("nz_myname", n);
 };
-D.ni.addEventListener("input", () => { localStorage.setItem("nz_ni", D.ni.value); updateTripPreview(); });
-D.tripi.addEventListener("input", () => { localStorage.setItem("nz_tripi", D.tripi.value); updateTripPreview(); });
+D.ni.addEventListener("input", async () => { localStorage.setItem("nz_ni", D.ni.value); await updateTripPreview(); });
+D.tripi.addEventListener("input", async () => { localStorage.setItem("nz_tripi", D.tripi.value); await updateTripPreview(); });
 
 D.ri.addEventListener("input",  ()=>{ localStorage.setItem("nz_ri_val", D.ri.value); });
 D.pi.addEventListener("input",  ()=>{ localStorage.setItem("nz_pi_val", D.pi.value); });
@@ -836,7 +975,7 @@ D.clrBtn.addEventListener("click", () => {
 D.clrOk.addEventListener("click", async () => {
   curColor = tmpColor; setGlobalColor(curColor); localStorage.setItem("nz_color",curColor); syncPickers(curColor);
   if (curR && myPresRef && masterKey) { 
-    try { const metaStr = JSON.stringify({n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor}); await update(myPresRef, {meta: enc(metaStr, masterKey)}); } catch {} 
+    try { const metaStr = JSON.stringify({n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor}); await update(myPresRef, {meta: await enc(metaStr, masterKey)}); } catch {} 
   }
   D.clrmod.classList.remove("show");
 });
@@ -926,11 +1065,12 @@ function insertMessageEl(el) {
   }
 }
 
-function cMsg(msg) {
+// 描画ブロッキングを完全に排除した非同期DOM構築
+async function cMsg(msg) {
   const msgTs = msg.timestamp || msg.t || srvNow();
 
   if (msg.sys) {
-    const sysText = dec(msg.m, masterKey);
+    const sysText = await dec(msg.m, masterKey);
     if (!sysText) return null; 
 
     const d = document.createElement("div"); 
@@ -944,8 +1084,8 @@ function cMsg(msg) {
     return d;
   }
 
-  const metaStr = dec(msg.meta, masterKey);
-  const txt = dec(msg.m, masterKey);
+  const metaStr = await dec(msg.meta, masterKey);
+  const txt = await dec(msg.m, masterKey);
   
   if (!metaStr || !txt) {
     const d = document.createElement("div");
@@ -1027,12 +1167,12 @@ let isW = false, _exitLock = false, isLiveMode = false, unreadCount = 0;
 let displayedMsgIds = new Set();
 let myPresRef = null, _roomExpireAt = null, _cOff = null, _pOff = null, _rOff = null, _crOff = null, _waitPresOff = null, _waitRoomOff = null, _pendingOff = null;
 
-// 一時仮メッセージ要素をアトミックに差し替えることで同期のガタつきを無くし、相手への反映を爆速化
-function queueIncomingMessage(m) {
+// 仮要素と正式な受信要素のアトミック置換により、同期のガタつき・ラグをゼロ化
+async function queueIncomingMessage(m) {
   if (m.cid) {
     const tempEl = D.tli.querySelector(`[data-cid="${CSS.escape(String(m.cid))}"]`);
     if (tempEl) {
-      const realEl = cMsg(m);
+      const realEl = await cMsg(m);
       if (realEl) {
         tempEl.replaceWith(realEl);
         displayedMsgIds.add(m.id);
@@ -1043,12 +1183,12 @@ function queueIncomingMessage(m) {
       }
     }
   }
-  renderSingleMessage(m);
+  await renderSingleMessage(m);
 }
 
-function renderSingleMessage(m) {
+async function renderSingleMessage(m) {
   if (displayedMsgIds.has(m.id)) return;
-  const el = cMsg(m); 
+  const el = await cMsg(m); 
   if (el) {
     insertMessageEl(el);
     displayedMsgIds.add(m.id); 
@@ -1086,7 +1226,7 @@ async function sendSysMsg(text) {
   if (!curR || !masterKey) return;
   await push(ref(db, `chat/${curR}`), { 
     sys: true, 
-    m: enc(text, masterKey), 
+    m: await enc(text, masterKey), 
     t: serverTimestamp(),
     timestamp: serverTimestamp()
   }).catch(e => {
@@ -1111,7 +1251,7 @@ window.doExit = async () => {
     }
   }
 
-  // フラグをリセットすることで退室後の再入室時に再度お知らせを出力可能にする
+  // フラグをリセット（次回再入室時にお知らせを出すため）
   hasSentJoinMsgInSession = false;
 
   if (hashId) {
@@ -1131,7 +1271,12 @@ function clearAll() {
   if(typeof _waitPresOff === "function"){ _waitPresOff(); _waitPresOff = null; }
   if(typeof _waitRoomOff === "function"){ _waitRoomOff(); _waitRoomOff = null; }
   if(typeof _pendingOff === "function"){ _pendingOff = null; }
-  masterKey = null; isLiveMode = false; displayedMsgIds.clear(); D.tli.innerHTML = "";
+
+  // セキュリティ要件: メモリ上のキーおよび復号キャッシュの即時物理破棄
+  masterKey = null; 
+  decCache.clear();
+
+  isLiveMode = false; displayedMsgIds.clear(); D.tli.innerHTML = "";
   stopTimerLoop(); D.hostModeCtrl.style.display = "none"; D.hostApprovePanel.style.display = "none";
   stopWaitTicker(); _seenWaitIds.clear(); D.waitBadge.classList.remove("show");
 }
@@ -1169,7 +1314,7 @@ async function checkCurrentRoomStatus() {
   const lastRi = localStorage.getItem("nz_active_ri"), lastCreated = localStorage.getItem("nz_active_created");
   if (!lastRi || !lastCreated) { D.roomResumeArea.style.display = "none"; return; }
   try {
-    const hashId = getRoomHash(lastRi);
+    const hashId = await getRoomHash(lastRi);
     const snap = await get(ref(db, `rooms/${hashId}`));
     if (snap.exists() && snap.val().created === parseInt(lastCreated) && snap.val().expireAt > srvNow()) {
       D.roomResumeArea.style.display = "flex";
@@ -1180,7 +1325,7 @@ async function checkCurrentRoomStatus() {
   } catch { D.roomResumeArea.style.display = "none"; }
 }
 
-window.approveGuest = async (guestUid, guestKey) => {
+window.approveGuest = async (guestUid, guestKeyHex) => {
   if (!isHost || !masterKey) return;
   try {
     const pendingSnap = await get(ref(db, `pending/${curR}/${guestUid}`));
@@ -1190,8 +1335,14 @@ window.approveGuest = async (guestUid, guestKey) => {
     
     const pVal = pendingSnap.exists() ? pendingSnap.val() : null;
     if (pVal && pVal.wmeta) {
-      const waitKey = CryptoJS.SHA256(SYSTEM_SALT + rawR).toString();
-      const metaStr = dec(pVal.wmeta, waitKey);
+      const waitCryptoKey = await window.crypto.subtle.importKey(
+        "raw",
+        await window.crypto.subtle.digest("SHA-256", new TextEncoder().encode(SYSTEM_SALT + rawR)),
+        "AES-GCM",
+        false,
+        ["decrypt"]
+      );
+      const metaStr = await dec(pVal.wmeta, waitCryptoKey);
       if (metaStr) {
         try {
           const wm = JSON.parse(metaStr);
@@ -1202,8 +1353,10 @@ window.approveGuest = async (guestUid, guestKey) => {
       }
     }
 
-    const encryptedMasterKey = enc(masterKey, guestKey);
-    const guestEncryptedMeta = enc(JSON.stringify({ n: guestName, p: guestTrip, c: guestColor }), masterKey);
+    const guestCryptoKey = await importRawKeyFromHex(guestKeyHex);
+    // メモリ外へ露出させずにセキュアに CryptoKey をラッピングして配布
+    const encryptedMasterKey = await wrapMasterKey(masterKey, guestCryptoKey);
+    const guestEncryptedMeta = await enc(JSON.stringify({ n: guestName, p: guestTrip, c: guestColor }), masterKey);
 
     const updates = {};
     updates[`presence/${curR}/${guestUid}`] = { 
@@ -1297,7 +1450,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
     clearAll(); _exitLock = false;
     localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created");
 
-    const hashId = getRoomHash(roomId);
+    const hashId = await getRoomHash(roomId);
     curR = hashId; rawR = roomId; curN = name;
     
     const roomRef = ref(db, `rooms/${hashId}`);
@@ -1312,7 +1465,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
     
     if (!snap.exists()) {
       if (!pass) throw new Error("新規作成にはパスワードが必要です。");
-      masterKey = getMasterKey(roomId, pass);
+      masterKey = await deriveMasterKey(roomId, pass);
       isHost = true;
       _roomExpireAt = srvNow() + (initTimer * 60000);
       roomData = { created: serverTimestamp(), host: myUid, expireAt: _roomExpireAt, requireApproval };
@@ -1320,11 +1473,11 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       
       myPresRef = ref(db, `presence/${hashId}/${myUid}`);
       const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
-      await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey), isHost: true });
+      await set(myPresRef, { status: "approved", meta: await enc(metaStr, masterKey), isHost: true });
       
       const freshSnap = await get(roomRef);
       if(freshSnap.exists()) { 
-        enterChatUI(freshSnap.val(), pass);
+        await enterChatUI(freshSnap.val(), pass);
       }
     } 
     else {
@@ -1334,21 +1487,22 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       myPresRef = ref(db, `presence/${hashId}/${myUid}`);
 
       if (isHost && pass) {
-        masterKey = getMasterKey(roomId, pass);
+        masterKey = await deriveMasterKey(roomId, pass);
         const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
-        await update(myPresRef, { status: "approved", meta: enc(metaStr, masterKey), isHost: true });
-        enterChatUI(roomData, pass);
+        await update(myPresRef, { status: "approved", meta: await enc(metaStr, masterKey), isHost: true });
+        await enterChatUI(roomData, pass);
       } else if (roomData.requireApproval) {
         const authLocalKey = localStorage.getItem(`nz_authkey_${hashId}`);
         
         const myPresSnap = await get(myPresRef);
         if (myPresSnap.exists() && myPresSnap.val().status === "approved" && myPresSnap.val().mk && authLocalKey) {
           try {
-            const decryptedMk = dec(myPresSnap.val().mk, authLocalKey);
+            const guestCryptoKey = await importRawKeyFromHex(authLocalKey);
+            const decryptedMk = await unwrapMasterKey(myPresSnap.val().mk, guestCryptoKey);
             if (decryptedMk) {
               masterKey = decryptedMk;
               await update(myPresRef, { mk: null });
-              enterChatUI(roomData, pass);
+              await enterChatUI(roomData, pass);
               return;
             }
           } catch(e){}
@@ -1358,42 +1512,57 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
           try {
             const authSnap = await get(ref(db, `authorized_users/${hashId}/${myUid}`));
             if (authSnap.exists() && authSnap.val().mk) {
-              const decryptedMk = dec(authSnap.val().mk, authLocalKey);
+              const guestCryptoKey = await importRawKeyFromHex(authLocalKey);
+              const decryptedMk = await unwrapMasterKey(authSnap.val().mk, guestCryptoKey);
               if (decryptedMk) {
                 masterKey = decryptedMk;
                 const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
-                await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey), isHost: false });
-                enterChatUI(roomData, pass);
+                await set(myPresRef, { status: "approved", meta: await enc(metaStr, masterKey), isHost: false });
+                await enterChatUI(roomData, pass);
                 return;
               }
             }
           } catch (e) {}
         }
 
-        myGuestKey = CryptoJS.lib.WordArray.random(16).toString();
+        const randomBytes = window.crypto.getRandomValues(new Uint8Array(16));
+        myGuestKey = bytesToHex(randomBytes);
         localStorage.setItem(`nz_authkey_${hashId}`, myGuestKey);
-        const waitKey = CryptoJS.SHA256(SYSTEM_SALT + roomId).toString();
+
+        const waitCryptoKey = await window.crypto.subtle.importKey(
+          "raw",
+          await window.crypto.subtle.digest("SHA-256", new TextEncoder().encode(SYSTEM_SALT + roomId)),
+          "AES-GCM",
+          false,
+          ["encrypt"]
+        );
         const waitMetaStr = JSON.stringify({ n: name, p: trip, c: curColor });
 
         const pendingRef = ref(db, `pending/${hashId}/${myUid}`);
-        await set(pendingRef, { status: "waiting", gk: myGuestKey, wmeta: enc(waitMetaStr, waitKey), reqAt: serverTimestamp() });
+        await set(pendingRef, { 
+          status: "waiting", 
+          gk: myGuestKey, 
+          wmeta: await enc(waitMetaStr, waitCryptoKey), 
+          reqAt: serverTimestamp() 
+        });
 
         D.lobby.style.display = "none";
         D.waitModTrip.textContent = `${name} ${trip}`;
         D.waitMod.classList.add("show");
         
-        _waitPresOff = onValue(myPresRef, (s) => {
+        _waitPresOff = onValue(myPresRef, async (s) => {
           if (!s.exists()) return;
           const val = s.val();
           if (val.status === "approved" && val.mk) {
             try {
-              const decryptedMk = dec(val.mk, myGuestKey);
+              const guestCryptoKey = await importRawKeyFromHex(myGuestKey);
+              const decryptedMk = await unwrapMasterKey(val.mk, guestCryptoKey);
               if (decryptedMk) {
                  masterKey = decryptedMk;
                  D.waitMod.classList.remove("show");
                  if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
                  if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
-                 enterChatUI(roomData, pass);
+                 await enterChatUI(roomData, pass);
               }
             } catch(e){}
           }
@@ -1408,14 +1577,14 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
 
             const currentPass = pass || localStorage.getItem("nz_pi_val") || "";
             if (currentPass) {
-              masterKey = getMasterKey(roomId, currentPass);
+              masterKey = await deriveMasterKey(roomId, currentPass);
               const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
               
               await remove(pendingRef).catch(()=>{});
-              await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey) });
+              await set(myPresRef, { status: "approved", meta: await enc(metaStr, masterKey) });
               
               D.waitMod.classList.remove("show");
-              enterChatUI(rVal, currentPass);
+              await enterChatUI(rVal, currentPass);
             } else {
               D.waitMod.classList.remove("show");
               showLobby("エラー: 部屋がオープンモードになりましたが、暗号化パスワードが存在しません。");
@@ -1430,10 +1599,10 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
 
       } else {
         if (!pass) throw new Error("承認制ではありません。パスワードが必要です。");
-        masterKey = getMasterKey(roomId, pass);
+        masterKey = await deriveMasterKey(roomId, pass);
         const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
-        await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey) });
-        enterChatUI(roomData, pass);
+        await set(myPresRef, { status: "approved", meta: await enc(metaStr, masterKey) });
+        await enterChatUI(roomData, pass);
       }
     }
   } catch (e) { 
@@ -1455,10 +1624,10 @@ async function enterChatUI(roomData, pass) {
     localStorage.setItem("nz_pi_val", pass);
   }
 
-  // 今回の接続・セッションで入室お知らせログがまだ送信されていなければ送信（退室後の再入室でも確実に出力）
+  // 今回の接続・セッションで入室お知らせログがまだ送信されていなければ送信
   if (!hasSentJoinMsgInSession) {
     hasSentJoinMsgInSession = true;
-    sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が入室しました`);
+    await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が入室しました`);
   }
 
   if (isHost) {
@@ -1490,16 +1659,16 @@ async function enterChatUI(roomData, pass) {
     if(isHost) { isRoomApproveMode = requireApproval; updateRoomModeBtnUI(); }
   });
 
-  function renderPresenceList(s) {
+  async function renderPresenceList(s) {
     if (!curR) return;
     const fg = document.createDocumentFragment(); let count = 0;
     
     const list = s.val() || {};
     let hasMeInList = false;
 
-    const renderMember = (id, u) => {
+    const renderMember = async (id, u) => {
       if (u.status === "approved" && u.meta) {
-        const metaStr = dec(u.meta, masterKey);
+        const metaStr = await dec(u.meta, masterKey);
         if(metaStr) {
           try {
              const m = JSON.parse(metaStr); count++;
@@ -1515,20 +1684,20 @@ async function enterChatUI(roomData, pass) {
 
     if (myUid && localStorage.getItem("nz_is_in_room") === "true") {
       const myMetaStr = JSON.stringify({ n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor });
-      renderMember(myUid, { status: "approved", meta: enc(myMetaStr, masterKey), isHost: isHost });
+      await renderMember(myUid, { status: "approved", meta: await enc(myMetaStr, masterKey), isHost: isHost });
       hasMeInList = true;
     }
 
     for (const [id, u] of Object.entries(list)) {
       if (!u || (id === myUid && hasMeInList)) continue;
-      renderMember(id, u);
+      await renderMember(id, u);
     }
     D.pl.innerHTML = ""; D.pl.appendChild(fg); D.pcnt.textContent = `[${count}人]`;
   }
   _pOff = onValue(ref(db, `presence/${curR}`), rafThrottle(renderPresenceList));
 
   if (isHost) {
-    function renderPendingList(s) {
+    async function renderPendingList(s) {
       if (!curR || !isHost) return;
       D.waitList.innerHTML = "";
       let waitCount = 0;
@@ -1536,8 +1705,14 @@ async function enterChatUI(roomData, pass) {
       for (const [id, u] of Object.entries(s.val() || {})) {
         if (!u) continue;
         if (u.status === "waiting" && u.wmeta && u.gk) {
-          const waitKey = CryptoJS.SHA256(SYSTEM_SALT + rawR).toString();
-          const metaStr = dec(u.wmeta, waitKey);
+          const waitCryptoKey = await window.crypto.subtle.importKey(
+            "raw",
+            await window.crypto.subtle.digest("SHA-256", new TextEncoder().encode(SYSTEM_SALT + rawR)),
+            "AES-GCM",
+            false,
+            ["decrypt"]
+          );
+          const metaStr = await dec(u.wmeta, waitCryptoKey);
           if (metaStr) {
             try {
                const wm = JSON.parse(metaStr);
@@ -1622,7 +1797,8 @@ document.addEventListener("visibilitychange", async () => {
         if (myPresSnap.exists()) {
           const val = myPresSnap.val();
           if (val.status === "approved" && val.mk) {
-            const decryptedMk = dec(val.mk, myGuestKey);
+            const guestCryptoKey = await importRawKeyFromHex(myGuestKey);
+            const decryptedMk = await unwrapMasterKey(val.mk, guestCryptoKey);
             if (decryptedMk) {
               masterKey = decryptedMk;
               D.waitMod.classList.remove("show");
@@ -1631,7 +1807,7 @@ document.addEventListener("visibilitychange", async () => {
               
               const rSnap = await get(ref(db, `rooms/${curR}`));
               const rData = rSnap.exists() ? rSnap.val() : { requireApproval: true };
-              enterChatUI(rData, localStorage.getItem("nz_pi_val"));
+              await enterChatUI(rData, localStorage.getItem("nz_pi_val"));
               return;
             }
           }
@@ -1643,16 +1819,16 @@ document.addEventListener("visibilitychange", async () => {
           if (rVal.requireApproval === false) {
             const currentPass = localStorage.getItem("nz_pi_val") || "";
             if (currentPass) {
-              masterKey = getMasterKey(rawR, currentPass);
+              masterKey = await deriveMasterKey(rawR, currentPass);
               const metaStr = JSON.stringify({ n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor });
               await remove(ref(db, `pending/${curR}/${myUid}`)).catch(()=>{});
-              await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey) });
+              await set(myPresRef, { status: "approved", meta: await enc(metaStr, masterKey) });
               
               D.waitMod.classList.remove("show");
               if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
               if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
               
-              enterChatUI(rVal, currentPass);
+              await enterChatUI(rVal, currentPass);
             }
           }
         }
@@ -1662,7 +1838,7 @@ document.addEventListener("visibilitychange", async () => {
 });
 
 let lastSendTime = 0;
-function sendMsg(overrideText = null, imgData = null) {
+async function sendMsg(overrideText = null, imgData = null) {
   if (!curR || !masterKey || isCmp) return;
   const txt = overrideText !== null ? overrideText : D.mi.value.trim();
   if (!txt && !imgData) return;
@@ -1681,25 +1857,28 @@ function sendMsg(overrideText = null, imgData = null) {
   const cid = "opt_" + myUid + "_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
   
   const nowSrv = srvNow();
+  const encryptedMeta = await enc(JSON.stringify(metaObj), masterKey);
+  const encryptedMsg = await enc(imgData ? "IMG::" + imgData : txt, masterKey);
+
   const tempObj = { 
     id: cid, 
     cid: cid, 
     u: myUid, 
-    meta: enc(JSON.stringify(metaObj), masterKey), 
-    m: enc(imgData ? "IMG::" + imgData : txt, masterKey), 
+    meta: encryptedMeta, 
+    m: encryptedMsg, 
     t: nowSrv,
     timestamp: nowSrv 
   };
   
   // 自分の発言を画面に即反映（楽観的UI表示）
-  renderSingleMessage(tempObj);
+  await renderSingleMessage(tempObj);
 
   // 相手へ即反映させるため非ブロッキングでバックグラウンド送信を即時キック
   push(ref(db, `chat/${curR}`), { 
     u: myUid, 
     cid: cid, 
-    meta: enc(JSON.stringify(metaObj), masterKey), 
-    m: enc(imgData ? "IMG::" + imgData : txt, masterKey), 
+    meta: encryptedMeta, 
+    m: encryptedMsg, 
     t: serverTimestamp(),
     timestamp: serverTimestamp()
   }).catch(e => {
@@ -1747,7 +1926,7 @@ D.enBtn.onclick = async () => {
   
   localStorage.setItem("nz_is_in_room", "true");
   D.enBtn.disabled = true; D.enBtn.textContent = "処理中...";
-  const tripStyled = makeTrip(n, tk); localStorage.setItem("nz_mytrip_styled", tripStyled);
+  const tripStyled = await makeTrip(n, tk); localStorage.setItem("nz_mytrip_styled", tripStyled);
   await doJoin(r, p, n, tripStyled, tm, isApproveMode);
 };
 
@@ -1785,6 +1964,10 @@ D.autoScrollToggleBtn.onclick = () => {
   D.autoScrollStatusText.textContent = isAutoScroll ? "追従:ON" : "追従:OFF";
   D.autoScrollStatusText.style.color = isAutoScroll ? "#fff" : "var(--tx)";
   showToast(isAutoScroll ? "📜 新着ログに追従スクロールします" : "📜 スクロール追従をオフにしました");
+};
+
+const updateScrollBtnUI = () => {
+  // 自動追従ボタンのUIを必要に応じて更新（未読表示用）
 };
 
 const updateJumpBtns = () => {
@@ -2007,7 +2190,7 @@ D_timerApplyBtn.onclick = async () => {
 
 let isInit = false;
 
-// 認証・初期接続を最速で進行させるためのメイン初期化処理
+// 認証・セッション復旧を最速でトリガーするメイン処理
 const initUserSession = async (user) => {
   myUid = user.uid; 
   if (isInit) return; 
@@ -2022,14 +2205,13 @@ const initUserSession = async (user) => {
   const savedTripKey = localStorage.getItem("nz_tripi");
   const savedTimer = parseInt(localStorage.getItem("nz_timer_val")) || 30;
   
-  // 有効な継続セッション情報がある場合は即自動再入室を実行
   if (savedActiveRi && savedActiveCreated && savedNi && savedTripKey) {
     try {
-      const hashId = getRoomHash(savedActiveRi);
+      const hashId = await getRoomHash(savedActiveRi);
       const snap = await get(ref(db, `rooms/${hashId}`));
       if (snap.exists() && snap.val().created === parseInt(savedActiveCreated) && snap.val().expireAt > srvNow()) {
         localStorage.setItem("nz_is_in_room", "true");
-        const tripStyled = makeTrip(savedNi, savedTripKey); 
+        const tripStyled = await makeTrip(savedNi, savedTripKey); 
         localStorage.setItem("nz_mytrip_styled", tripStyled);
         
         if (window.history?.replaceState) {
@@ -2048,13 +2230,13 @@ const initUserSession = async (user) => {
   showLobby();
 };
 
-// キャッシュされたログイン情報が既に存在する場合は、Authロードリスナーの完了を待たずに即時セッションを復旧（待機時間0）
+// 既にキャッシュログイン情報がある場合は非同期監視の前に即実行（待機時間をゼロにする）
 if (auth.currentUser) {
   initUserSession(auth.currentUser);
 } else {
   onAuthStateChanged(auth, async user => {
     if (user) {
-      initUserSession(user);
+      await initUserSession(user);
     } else {
       signInAnonymously(auth).catch(e => { 
         D.lberr.textContent = "接続エラー: " + e.message; 

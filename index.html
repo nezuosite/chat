@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0f172a">
-<title>☆</title>
+<title>NEZU ONETIME CHAT</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 <style>
 /* 共通リセット＆変数 */
@@ -93,16 +93,45 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .btn:disabled{opacity:0.5;cursor:not-allowed}
 .bq{background:var(--sf);color:var(--tx);border:1px solid var(--bd)}
 .bp{background:var(--in);color:#fff}
+.glink{font-size:12px;color:#a5b4fc;text-align:center;margin-top:10px;padding:6px 0;text-decoration:underline;cursor:pointer;font-weight:bold}
 
-/* 修正：ロビー下部説明リンクを最適化し、スッキリした配置に変更（ガイド・仕様モーダル起動ボタン） */
-.glink{font-size:13px;color:#818cf8;text-align:center;margin-top:14px;padding:6px 0;text-decoration:none;cursor:pointer;font-weight:bold}
+/* ロビー下部ガイドライン */
+.lobby-guide-box {
+  background: var(--sf);
+  border: 1px solid var(--bd);
+  border-radius: 6px;
+  padding: 16px;
+  margin-top: 16px;
+  font-size: 11px;
+  color: var(--mu);
+  line-height: 1.6;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.guide-sec {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.guide-sub-title {
+  color: #a5b4fc;
+  font-weight: 800;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 4px;
+}
 
 /* アプリ本体 */
 #app{display:none;position:fixed;inset:0;flex-direction:column;overflow:hidden;z-index:50}
 #app.visible{display:flex}
 #cp{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;background:#0d1117;position:relative}
 
-/* ヘッダーの最適化（部屋名の右側に招待URLコピー、色、退室ボタンを1行配置。押しやすい高さ38px） */
+/* ヘッダーの最適化（部屋名の右側に招待URLコピー、色、退室ボタンを1行配置。タップサイズ38px） */
 #hdr{background:var(--sf);border-bottom:1px solid var(--bd);padding:6px 12px;flex-shrink:0}
 .hr{display:flex;align-items:center;justify-content:space-between;gap:8px;height:auto;padding:4px 0}
 .rn{font-weight:800;font-size:14px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
@@ -287,7 +316,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .clr-cancel{background:var(--bg);border:1px solid var(--bd);color:var(--tx)}
 .clr-ok{background:var(--in);color:#fff}
 
-/* 修正：画像拡大ビューモーダル。フレックス縦並びにし、閉じるボタン位置を画像外（下部）に完全に確保し、被り・衝突を完全防止 */
+/* 修正：画像拡大ビューモーダル。フレックス縦並びにし、閉じるボタン位置を画像外（下部）に確保、絶対に衝突しない設計へ改修（余白見せないバウンドクランプと連動） */
 #imgViewMod{
   background:rgba(0,0,0,0.95);
   backdrop-filter:blur(4px);
@@ -300,7 +329,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 }
 #imgViewSrc {
   max-width: 100%;
-  max-height: calc(100vh - 120px); /* 閉じるボタンエリアを100%確保し衝突を完全防止（余白見せないバウンドクランプと連動） */
+  max-height: calc(100vh - 120px); /* 閉じるボタンエリアを100%確保し衝突を完全防止 */
   object-fit: contain;
   user-select: none;
   -webkit-user-drag: none;
@@ -394,7 +423,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         <button class="btn bp" id="enBtn">入室 / 作成</button>
       </div>
       
-      <!-- 修正：リンクテキストを最適化し、スッキリした配置に変更（ガイド文はモーダルに一本化） -->
+      <!-- 修正：ロビー下部説明リンクを最適化し、スッキリした配置に変更（ガイド文はモーダルに一本化） -->
       <div class="glink" id="gdBtn" style="font-size: 13px; color: #818cf8; text-decoration: none; margin-top: 14px;">📖 ガイド / セキュリティ仕様を開く</div>
     </div>
   </div>
@@ -413,7 +442,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
             <span id="timerBtnIcon" style="cursor: pointer; font-size: 9.5px; color: var(--mu); font-weight: bold;" title="寿命を調整">⏱ 寿命設定</span>
           </div>
         </div>
-        <!-- 部屋名の右側に招待URLコピー、色、退室を最適配置（タップのしやすさを向上、誤タップ防止） -->
+        <!-- 部屋名の右側に招待URLコピー、色、退室を最適配置（タップのしやすさを向上） -->
         <div class="hbs">
           <button id="copyUrlBtn" title="招待URLをコピー">🔗 URL</button>
           <button class="bclr" id="clrBtn"><span class="bclr-dot" id="clrDot"></span> 色</button>
@@ -525,7 +554,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   </div>
 </div>
 
-<!-- 发言削除確認モーダル -->
+<!-- 発言削除確認モーダル -->
 <div id="delConfirmMod" class="mod-overlay">
   <div class="gc" style="max-width:320px;">
     <h3 style="font-size:13px; color:var(--ro);">⚠️ 発言の削除確認</h3>
@@ -1487,8 +1516,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
     // ネットワークネゴシエーションに依存したスプラッシュフリーズを完全に防止します。
     console.log("[Debug] 非同期並行タスク(PBKDF2鍵導出 / 部屋データ事前取得)を同時にキックします...");
     
-    // 修正: 承認制で共通鍵(derivedKey)を使わない場合は、重いPBKDF2計算を完全にスキップして超高速化
-    const keyPromise = pass ? getMasterKeyAsync(roomId, pass) : Promise.resolve(null);
+    const keyPromise = getMasterKeyAsync(roomId, pass);
     const roomRef = ref(db, `rooms/${hashId}`);
     const roomDataPromise = get(roomRef);
 
@@ -1502,10 +1530,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       throw new Error("部屋の読み込みに失敗しました。接続環境を確認してください。");
     });
     
-    // 修正: 導出された鍵をマスターキーに代入（同期PBKDF2の重複呼び出しは完全に排除）
-    if (derivedKey) {
-      masterKey = derivedKey;
-    }
+    masterKey = derivedKey;
     console.log("[Debug] 鍵導出およびFirebase接続が100%成功。レンダリングを開始します。");
 
     let roomData = null;
@@ -1514,7 +1539,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
     if (!snap.exists()) {
       console.log("[Debug] 部屋が存在しないため、新規ルーム作成フローへ移行します。");
       if (!pass) throw new Error("新規作成にはパスワードが必要です。");
-      
+      masterKey = getMasterKey(roomId, pass);
       isHost = true;
       _roomExpireAt = srvNow() + (initTimer * 60000);
       roomData = { created: serverTimestamp(), host: myUid, expireAt: _roomExpireAt, requireApproval };
@@ -1550,7 +1575,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         console.log("[Debug] 部屋は承認制(LOCKED)モードです。承認検証シーケンスを実行します。");
         const authLocalKey = localStorage.getItem(`nz_authkey_${hashId}`);
         
-        // 【オフライン承認引き戻し】相手がタブを閉じていた場合でも、presence of mkが存在すれば即座に復号して入室
+        // 【オフライン承認引き戻し】相手がタブを閉じていた場合でも、presenceのmkが存在すれば即座に復号して入室
         const myPresSnap = await get(myPresRef);
         if (myPresSnap.exists() && myPresSnap.val().status === "approved" && myPresSnap.val().mk && authLocalKey) {
           try {
@@ -1602,9 +1627,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         D.lobby.style.display = "none";
         D.waitModTrip.textContent = `${name} ${trip}`;
         D.waitMod.classList.add("show");
-
-        // 修正：承認待機中にもスタックせず画面が正しく出るよう、ここで確実にスプラッシュを解除
-        hideSplash();
 
         // 承認待ちの期限を5分（300,000ms）までにするタイマー処理をバインド
         _waitTimeoutTimer = setInterval(async () => {
@@ -1663,7 +1685,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
 
             const currentPass = pass || localStorage.getItem("nz_pi_val") || "";
             if (currentPass) {
-              masterKey = await getMasterKeyAsync(roomId, currentPass); // 修正: 非同期で安全に再算出
+              masterKey = getMasterKey(roomId, currentPass);
               const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
               await remove(pendingRef).catch(()=>{});
               await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey), lastSeen: serverTimestamp() });
@@ -1689,6 +1711,12 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       } else {
         console.log("[Debug] オープン(OPEN)モードでの通常入室を試みます。");
         if (!pass) throw new Error("承認制ではありません。パスワードが必要です。");
+        masterKey = getMasterKey(roomId, pass);
+        const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
+        await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey), lastSeen: serverTimestamp() });
+        if (!hasEnteredBefore) {
+          await sendSysMsg(`${name} ${trip} が入室しました`);
+        }
         enterChatUI(roomData, pass);
       }
     }
@@ -2307,21 +2335,22 @@ D_timerApplyBtn.onclick = async () => {
 
 let isInit = false;
 
-// 修正：スプラッシュフリーズバグを安全に解決する、並行高速ログインシーケンスの初期化
-console.log("[Debug] 起動時に非同期で匿名認証を裏で最速キックします...");
+// 修正：起動時のスプラッシュフリーズを完全に防ぐ、最速並行匿名認証処理
+console.log("[Debug] スプラッシュ画面の裏で、匿名認証タスクをバックグラウンド並行発行します...");
 const fastAuthPromise = signInAnonymously(auth).catch(e => {
-  console.error("[Debug] 匿名ログインエラー:", e);
+  console.error("[Debug] 先行匿名認証エラー:", e);
 });
 
 onAuthStateChanged(auth, async user => {
-  // 修正：初回のユーザー未ログイン（user === null）の発火時、フリーズせずにPromiseを最速待機して復帰
+  // 修正：初回起動時のログイン状態がない（user === null）場合を安全にバイパス
   if (!user) {
-    console.log("[Debug] ユーザー状態なし。先行匿名認証プロミスの完了を待機します...");
+    console.log("[Debug] 初回発火：匿名ログイン処理の完了を最速待機中...");
+    // 先行してキックしているプロミスの解決を待ち受ける
     await fastAuthPromise;
     return;
   }
   
-  console.log("[Debug] 認証完了。UID:", user.uid);
+  console.log("[Debug] Firebase 匿名認証成功。ユーザーUID:", user.uid);
   myUid = user.uid; 
   if (isInit) return; 
   isInit = true;

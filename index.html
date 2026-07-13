@@ -1,3 +1,5 @@
+--- START OF FILE Paste July 13, 2026 - 10:25PM ---
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -489,7 +491,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   </div>
 </div>
 
-<!-- 発言削除確認モーダル -->
+<!-- 发言删除确认モーダル -->
 <div id="delConfirmMod" class="mod-overlay">
   <div class="gc" style="max-width:320px;">
     <h3 style="font-size:13px; color:var(--ro);">⚠️ 発言の削除確認</h3>
@@ -670,6 +672,7 @@ let masterKey = null;
 let isHost = false;
 let myGuestKey = null;
 let targetDelId = null;
+let hasSentJoinMsgInSession = false; // 今回の入室におけるシステムログ送信状態管理
 
 const parseKeyWA = (key) => {
   if (!key) return null;
@@ -690,8 +693,14 @@ const enc = (t, key = masterKey) => {
   return ivHex + ":" + ctStr + ":" + mac;
 };
 
+// 復号結果をメモリ上にキャッシュし、タイムライン同期や再描画、スクロール時の計算コストを徹底排除
+const decCache = new Map();
 const dec = (c, key = masterKey) => {
   if (!c || !key) return null;
+  const keyPart = typeof key === "string" ? key.substring(0, 16) : "";
+  const cacheKey = c + "_" + keyPart;
+  if (decCache.has(cacheKey)) return decCache.get(cacheKey);
+
   try {
     const keyWA = parseKeyWA(key);
     const parts = c.split(":");
@@ -701,7 +710,9 @@ const dec = (c, key = masterKey) => {
         return null;
       }
       const iv = CryptoJS.enc.Hex.parse(ivHex);
-      return CryptoJS.AES.decrypt(ct, keyWA, { iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }).toString(CryptoJS.enc.Utf8) || null;
+      const decVal = CryptoJS.AES.decrypt(ct, keyWA, { iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }).toString(CryptoJS.enc.Utf8) || null;
+      decCache.set(cacheKey, decVal);
+      return decVal;
     }
     return null;
   } catch (e) {
@@ -1016,7 +1027,7 @@ let isW = false, _exitLock = false, isLiveMode = false, unreadCount = 0;
 let displayedMsgIds = new Set();
 let myPresRef = null, _roomExpireAt = null, _cOff = null, _pOff = null, _rOff = null, _crOff = null, _waitPresOff = null, _waitRoomOff = null, _pendingOff = null;
 
-// 仮要素と正式な受信要素のアトミック置換により、同期のガタつき・ラグをゼロ化
+// 一時仮メッセージ要素をアトミックに差し替えることで同期のガタつきを無くし、相手への反映を爆速化
 function queueIncomingMessage(m) {
   if (m.cid) {
     const tempEl = D.tli.querySelector(`[data-cid="${CSS.escape(String(m.cid))}"]`);
@@ -1099,6 +1110,10 @@ window.doExit = async () => {
       await wipe(curR).catch(()=>{});
     }
   }
+
+  // フラグをリセットすることで退室後の再入室時に再度お知らせを出力可能にする
+  hasSentJoinMsgInSession = false;
+
   if (hashId) {
     localStorage.removeItem(`nz_entered_${hashId}`);
     localStorage.removeItem(`nz_authkey_${hashId}`);
@@ -1294,7 +1309,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
     }
 
     let roomData = null;
-    const hasEnteredBefore = localStorage.getItem(`nz_entered_${hashId}`) === "true";
     
     if (!snap.exists()) {
       if (!pass) throw new Error("新規作成にはパスワードが必要です。");
@@ -1307,11 +1321,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       myPresRef = ref(db, `presence/${hashId}/${myUid}`);
       const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
       await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey), isHost: true });
-
-      // 部屋新規作成時のお知らせログ
-      if (!hasEnteredBefore) {
-        await sendSysMsg(`${name} ${trip} が部屋を作成しました`);
-      }
       
       const freshSnap = await get(roomRef);
       if(freshSnap.exists()) { 
@@ -1406,11 +1415,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
               await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey) });
               
               D.waitMod.classList.remove("show");
-              
-              if (!hasEnteredBefore) {
-                await sendSysMsg(`${name} ${trip} が入室しました（オープン自動移行）`);
-                localStorage.setItem(`nz_entered_${hashId}`, "true");
-              }
               enterChatUI(rVal, currentPass);
             } else {
               D.waitMod.classList.remove("show");
@@ -1429,12 +1433,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         masterKey = getMasterKey(roomId, pass);
         const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
         await set(myPresRef, { status: "approved", meta: enc(metaStr, masterKey) });
-        
-        // 承認不要部屋への新規入室時のお知らせログ
-        if (!hasEnteredBefore) {
-          await sendSysMsg(`${name} ${trip} が入室しました`);
-          localStorage.setItem(`nz_entered_${hashId}`, "true");
-        }
         enterChatUI(roomData, pass);
       }
     }
@@ -1443,7 +1441,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
   }
 }
 
-function enterChatUI(roomData, pass) {
+async function enterChatUI(roomData, pass) {
   D.lobby.style.display = "none"; D.waitMod.classList.remove("show");
   D.app.style.display = "flex"; D.app.classList.add("visible");
   D.ib.classList.add("show"); D.rdsp.textContent = rawR;
@@ -1455,6 +1453,12 @@ function enterChatUI(roomData, pass) {
   
   if (pass) {
     localStorage.setItem("nz_pi_val", pass);
+  }
+
+  // 今回の接続・セッションで入室お知らせログがまだ送信されていなければ送信（退室後の再入室でも確実に出力）
+  if (!hasSentJoinMsgInSession) {
+    hasSentJoinMsgInSession = true;
+    sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が入室しました`);
   }
 
   if (isHost) {
@@ -1587,38 +1591,27 @@ function initConnectionMonitor() {
   });
 }
 
+// 接続復帰時など、データが壊れたり重複したりする重い全件再クエリを廃止し、生存チェックのみに超軽量化
 async function forceResync() {
   if (!curR || !masterKey) return;
   try {
     const roomSnap = await get(ref(db, `rooms/${curR}`));
-    if (roomSnap.exists()) {
-      const rVal = roomSnap.val();
-      _roomExpireAt = rVal.expireAt;
-      const requireApproval = rVal.requireApproval === true;
-      D.modeIndicator.textContent = requireApproval ? "🔒 LOCKED" : "🔓 OPEN";
-      D.modeIndicator.className = requireApproval ? "mode-locked" : "mode-open";
-      if (isHost) { isRoomApproveMode = requireApproval; updateRoomModeBtnUI(); }
-
-      const chatSnap = await get(query(ref(db, `chat/${curR}`), orderByChild("timestamp"), limitToLast(100)));
-      if (chatSnap.exists()) {
-        const msgs = chatSnap.val();
-        for (const [id, m] of Object.entries(msgs)) {
-          if (!displayedMsgIds.has(id)) {
-            m.id = id;
-            if (!m.timestamp) m.timestamp = m.t || Date.now();
-            queueIncomingMessage(m);
-          }
-        }
-      }
-    } else if (!_exitLock) {
-      _exitLock = true; showLobby("部屋が削除されました。"); return;
+    if (!roomSnap.exists() && !_exitLock) {
+      _exitLock = true; 
+      localStorage.removeItem("nz_active_ri"); 
+      localStorage.removeItem("nz_active_created"); 
+      showLobby("部屋が削除されました。"); 
     }
-    if (isLiveMode) scBottom(true);
   } catch (e) {}
 }
 
 document.addEventListener("visibilitychange", async () => {
   if (document.visibilityState === "visible") {
+    // 画面がアクティブになった際、Firebase接続を能動的に即時オンラインにすることで、相手の発言検知・受信を爆速化
+    import("https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js").then((m) => {
+      m.goOnline(db);
+    });
+
     if (curR && masterKey) { 
       forceResync(); 
     }
@@ -1698,10 +1691,10 @@ function sendMsg(overrideText = null, imgData = null) {
     timestamp: nowSrv 
   };
   
-  // 楽観的UI表示を即時実行
+  // 自分の発言を画面に即反映（楽観的UI表示）
   renderSingleMessage(tempObj);
 
-  // 送信の同期待ちを無くし、バックグラウンド処理に逃がすことで送信ラグを完全排除（爆速化）
+  // 相手へ即反映させるため非ブロッキングでバックグラウンド送信を即時キック
   push(ref(db, `chat/${curR}`), { 
     u: myUid, 
     cid: cid, 
@@ -2013,30 +2006,31 @@ D_timerApplyBtn.onclick = async () => {
 };
 
 let isInit = false;
-onAuthStateChanged(auth, async user => {
-  if (!user) { 
-    signInAnonymously(auth).catch(e => { 
-      D.lberr.textContent = "接続エラー: " + e.message; 
-      D.lberr.style.display = "block"; 
-      showLobby();
-    }); 
-    return; 
-  }
-  myUid = user.uid; if (isInit) return; isInit = true;
+
+// 認証・初期接続を最速で進行させるためのメイン初期化処理
+const initUserSession = async (user) => {
+  myUid = user.uid; 
+  if (isInit) return; 
+  isInit = true;
   initConnectionMonitor();
 
   const sp = new URLSearchParams(location.search), urlR = sp.get("r");
+  const savedActiveRi = localStorage.getItem("nz_active_ri");
+  const savedActiveCreated = localStorage.getItem("nz_active_created");
+  const savedNi = localStorage.getItem("nz_ni");
+  const savedPi = localStorage.getItem("nz_pi_val");
+  const savedTripKey = localStorage.getItem("nz_tripi");
+  const savedTimer = parseInt(localStorage.getItem("nz_timer_val")) || 30;
   
-  const savedActiveRi = localStorage.getItem("nz_active_ri"), savedActiveCreated = localStorage.getItem("nz_active_created"), savedNi = localStorage.getItem("nz_ni"), savedPi = localStorage.getItem("nz_pi_val"), savedTripKey = localStorage.getItem("nz_tripi"), savedTimer = parseInt(localStorage.getItem("nz_timer_val")) || 30;
-  
-  // 有効な継続セッションがある場合は、ロビーを経由せず爆速で直接再接続を試行
+  // 有効な継続セッション情報がある場合は即自動再入室を実行
   if (savedActiveRi && savedActiveCreated && savedNi && savedTripKey) {
     try {
       const hashId = getRoomHash(savedActiveRi);
       const snap = await get(ref(db, `rooms/${hashId}`));
       if (snap.exists() && snap.val().created === parseInt(savedActiveCreated) && snap.val().expireAt > srvNow()) {
         localStorage.setItem("nz_is_in_room", "true");
-        const tripStyled = makeTrip(savedNi, savedTripKey); localStorage.setItem("nz_mytrip_styled", tripStyled);
+        const tripStyled = makeTrip(savedNi, savedTripKey); 
+        localStorage.setItem("nz_mytrip_styled", tripStyled);
         
         if (window.history?.replaceState) {
           window.history.replaceState({}, document.title, location.pathname + "?r=" + encodeURIComponent(savedActiveRi));
@@ -2051,9 +2045,25 @@ onAuthStateChanged(auth, async user => {
     D.ri.value = urlR; 
     localStorage.setItem("nz_ri_val", urlR); 
   }
-  
   showLobby();
-});
+};
+
+// キャッシュされたログイン情報が既に存在する場合は、Authロードリスナーの完了を待たずに即時セッションを復旧（待機時間0）
+if (auth.currentUser) {
+  initUserSession(auth.currentUser);
+} else {
+  onAuthStateChanged(auth, async user => {
+    if (user) {
+      initUserSession(user);
+    } else {
+      signInAnonymously(auth).catch(e => { 
+        D.lberr.textContent = "接続エラー: " + e.message; 
+        D.lberr.style.display = "block"; 
+        showLobby();
+      }); 
+    }
+  });
+}
 </script>
 </body>
 </html>

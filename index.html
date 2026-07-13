@@ -808,6 +808,23 @@ const importRawKeyFromHex = async (hex) => {
   );
 };
 
+// 対称鍵のエクスポート / インポート処理 (sessionStorageキャッシュ用)
+const exportKeyToHex = async (key) => {
+  const exported = await window.crypto.subtle.exportKey("raw", key);
+  return bytesToHex(new Uint8Array(exported));
+};
+
+const importKeyFromHex = async (hex) => {
+  const bytes = hexToBytes(hex);
+  return await window.crypto.subtle.importKey(
+    "raw",
+    bytes,
+    "AES-GCM",
+    true,
+    ["encrypt", "decrypt", "wrapKey", "unwrapKey"]
+  );
+};
+
 const makeTrip = async (name, tripKey) => {
   if (!tripKey) return "";
   const hash = await sha256(SYSTEM_SALT + name + tripKey);
@@ -1033,26 +1050,32 @@ const fDT = ts => {
 
 const UR = /(https?:\/\/[^\s\n<>"]+)/gi;
 
+// URLリンク化処理を高速化し、DOM要素の配列として返すように最適化
 function parseTxtSplit(txt) {
-  const norm = txt.replace(/[\u3000]/g," "); const parts = []; let last = 0, m; UR.lastIndex = 0;
-  while((m = UR.exec(norm)) !== null){
-    if(m.index > last) parts.push({t:"t", v:norm.slice(last, m.index)});
-    parts.push({t:"u", v:m[0]}); last = m.index + m[0].length;
-  }
-  if(last < norm.length) parts.push({t:"t", v:norm.slice(last)});
-  
-  const textParts = [];
-  for(let i=0; i<parts.length; i++){
-    const p = parts[i];
-    if(p.t === "t"){
-      const h = esc(p.v).replace(/\n/g,"<br>");
-      if(h) textParts.push(h);
-    } else {
-      const su = esc(p.v); 
-      textParts.push(`<a href="${su}" target="_blank" rel="noopener noreferrer" style="color:#60a5fa; text-decoration:underline;">${su}</a>`);
+  const norm = txt.replace(/[\u3000]/g, " ");
+  const elements = [];
+  let last = 0, m;
+  UR.lastIndex = 0;
+
+  while ((m = UR.exec(norm)) !== null) {
+    if (m.index > last) {
+      const textNode = document.createTextNode(norm.slice(last, m.index));
+      elements.push(textNode);
     }
+    const a = document.createElement("a");
+    a.href = m[0];
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.style.color = "#60a5fa";
+    a.style.textDecoration = "underline";
+    a.textContent = m[0];
+    elements.push(a);
+    last = m.index + m[0].length;
   }
-  return { textHtml: textParts.join("") };
+  if (last < norm.length) {
+    elements.push(document.createTextNode(norm.slice(last)));
+  }
+  return elements;
 }
 
 window.triggerDeleteMsg = (mid, previewText) => {
@@ -1097,10 +1120,11 @@ function insertMessageEl(el) {
   }
 }
 
-// レンダリングを一切ブロックしない、AES-GCM 完全非同期DOM生成処理
+// innerHTMLを完全に廃止し、ブラウザの描画負荷を最小化した超高速DOM生成
 async function cMsg(msg) {
   const msgTs = msg.t || srvNow();
 
+  // 1. システムメッセージの高速描画
   if (msg.sys) {
     const sysText = await decrypt(msg.m, masterKey);
     if (!sysText) return null; 
@@ -1110,13 +1134,30 @@ async function cMsg(msg) {
     d.dataset.ts = msgTs;
     d.className = "sys-msg"; 
     
-    const tsText = fDT(msgTs);
-    const formattedText = sysText.replace(/\n/g, "<br>");
-    d.innerHTML = `<div style="line-height:1.5; font-size:12px;">${formattedText}</div><div style="opacity:0.5; font-size:10px; font-family:monospace; margin-top:2px;">[${tsText}]</div>`;
+    const msgDiv = document.createElement("div");
+    msgDiv.style.lineHeight = "1.5";
+    msgDiv.style.fontSize = "12px";
+    
+    // 改行処理を安全かつ高速に
+    const lines = sysText.split("\n");
+    lines.forEach((line, i) => {
+      if (i > 0) msgDiv.appendChild(document.createElement("br"));
+      msgDiv.appendChild(document.createTextNode(line));
+    });
+
+    const tsDiv = document.createElement("div");
+    tsDiv.style.opacity = "0.5";
+    tsDiv.style.fontSize = "10px";
+    tsDiv.style.fontFamily = "monospace";
+    tsDiv.style.marginTop = "2px";
+    tsDiv.textContent = `[${fDT(msgTs)}]`;
+
+    d.appendChild(msgDiv);
+    d.appendChild(tsDiv);
     return d;
   }
 
-  // 軽量化されたフィールド mt / m からの非同期復号
+  // 2. 通常メッセージの高速描画
   const metaStr = await decrypt(msg.mt, masterKey);
   const txt = await decrypt(msg.m, masterKey);
   
@@ -1127,7 +1168,7 @@ async function cMsg(msg) {
     d.className = "sys-msg";
     d.style.borderColor = "rgba(244, 63, 94, 0.3)";
     d.style.color = "#fda4af";
-    d.innerHTML = `⚠️ 復号エラー (ID: ${msg.id ? msg.id.substring(0,8) : '???'})`;
+    d.textContent = `⚠️ 復号エラー (ID: ${msg.id ? msg.id.substring(0,8) : '???'})`;
     return d;
   }
   
@@ -1141,42 +1182,113 @@ async function cMsg(msg) {
   }
   d.className = "mw";
   
-  const sN = meta.n || "???", sC = meta.c || "#94a3b8", sT = meta.p ? esc(meta.p) : "";
-  
-  let contentHtml = "";
-  let rawTextPreview = txt;
-  
-  if (txt.startsWith("IMG::data:image/")) {
-    rawTextPreview = "[画像ファイル]";
-    const b64 = txt.substring(5);
-    if (b64.match(/^data:image\/(jpeg|png|gif|webp);base64,[a-zA-Z0-9+/=]+$/)) {
-       contentHtml = `<img src="${b64}" class="inline-img" alt="画像" onclick="openZoomModal('${b64}')">`;
-    } else { contentHtml = "<span style='color:red'>[不正な画像データ]</span>"; }
-  } else { contentHtml = parseTxtSplit(txt).textHtml; }
-  
-  let nameSpan = `<span style="color:${esc(sC)};font-weight:700">${esc(sN)}</span>`;
-  if(sT) nameSpan += ` <span style="color:${esc(sC)}; font-size:11px; font-weight:bold;">${sT}</span>`;
-  let timeSpan = `<span class="ts" style="color:${esc(sC)}; opacity:0.8; font-family:monospace;">${fDT(msgTs)}</span>`;
+  const sN = meta.n || "???", sC = meta.c || "#94a3b8", sT = meta.p || "";
 
-  let delBtnHtml = "";
-  if (msg.u === myUid) {
-    const escPreview = rawTextPreview.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    delBtnHtml = `<button class="del-btn-inline" onclick="triggerDeleteMsg('${msg.id}', '${escPreview}')" title="削除">×</button>`;
+  // mm (ヘッダーコンテナ) の構築
+  const mm = document.createElement("div");
+  mm.className = "mm";
+  mm.style.display = "flex";
+  mm.style.alignItems = "center";
+  mm.style.justifyContent = "space-between";
+  mm.style.width = "100%";
+
+  // 名前とトリップ
+  const nameWrap = document.createElement("div");
+  nameWrap.style.minWidth = "0";
+  nameWrap.style.overflow = "hidden";
+  nameWrap.style.textOverflow = "ellipsis";
+  nameWrap.style.whiteSpace = "nowrap";
+  nameWrap.style.flex = "1";
+
+  const nameSpan = document.createElement("span");
+  nameSpan.style.color = sC;
+  nameSpan.style.fontWeight = "700";
+  nameSpan.textContent = sN;
+  nameWrap.appendChild(nameSpan);
+
+  if (sT) {
+    const space = document.createTextNode(" ");
+    const tripSpan = document.createElement("span");
+    tripSpan.style.color = sC;
+    tripSpan.style.fontSize = "11px";
+    tripSpan.style.fontWeight = "bold";
+    tripSpan.textContent = sT;
+    nameWrap.appendChild(space);
+    nameWrap.appendChild(tripSpan);
   }
 
-  d.innerHTML = `
-    <div class="mm" style="display:flex; align-items:center; justify-content:space-between; width:100%;">
-      <div style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">
-        ${nameSpan}
-      </div>
-      <div style="display:flex; align-items:center; gap:8px; flex-shrink:0; margin-left:8px;">
-        ${timeSpan}
-        ${delBtnHtml}
-      </div>
-    </div>
-    <div class="mb" style="border-color:${esc(sC)}">${contentHtml}</div>
-  `;
+  // 時間と削除ボタン
+  const rightWrap = document.createElement("div");
+  rightWrap.style.display = "flex";
+  rightWrap.style.alignItems = "center";
+  rightWrap.style.gap = "8px";
+  rightWrap.style.flexShrink = "0";
+  rightWrap.style.marginLeft = "8px";
 
+  const timeSpan = document.createElement("span");
+  timeSpan.className = "ts";
+  timeSpan.style.color = sC;
+  timeSpan.style.opacity = "0.8";
+  timeSpan.style.fontFamily = "monospace";
+  timeSpan.textContent = fDT(msgTs);
+  rightWrap.appendChild(timeSpan);
+
+  let rawTextPreview = txt;
+
+  if (msg.u === myUid) {
+    if (txt.startsWith("IMG::data:image/")) {
+      rawTextPreview = "[画像ファイル]";
+    }
+    const escPreview = rawTextPreview.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const delBtn = document.createElement("button");
+    delBtn.className = "del-btn-inline";
+    delBtn.title = "削除";
+    delBtn.textContent = "×";
+    delBtn.setAttribute("onclick", `triggerDeleteMsg('${msg.id}', '${escPreview}')`);
+    rightWrap.appendChild(delBtn);
+  }
+
+  mm.appendChild(nameWrap);
+  mm.appendChild(rightWrap);
+
+  // mb (メッセージ本文コンテナ) の構築
+  const mb = document.createElement("div");
+  mb.className = "mb";
+  mb.style.borderColor = sC;
+
+  if (txt.startsWith("IMG::data:image/")) {
+    const b64 = txt.substring(5);
+    if (b64.match(/^data:image\/(jpeg|png|gif|webp);base64,[a-zA-Z0-9+/=]+$/)) {
+      const img = document.createElement("img");
+      img.src = b64;
+      img.className = "inline-img";
+      img.alt = "画像";
+      img.decoding = "async"; // 非同期デコード
+      img.setAttribute("onclick", `openZoomModal('${b64}')`);
+      mb.appendChild(img);
+    } else {
+      const errSpan = document.createElement("span");
+      errSpan.style.color = "red";
+      errSpan.textContent = "[不正な画像データ]";
+      mb.appendChild(errSpan);
+    }
+  } else {
+    const splitElements = parseTxtSplit(txt);
+    splitElements.forEach(el => {
+      if (el.nodeType === Node.TEXT_NODE) {
+        const textLines = el.textContent.split("\n");
+        textLines.forEach((line, i) => {
+          if (i > 0) mb.appendChild(document.createElement("br"));
+          mb.appendChild(document.createTextNode(line));
+        });
+      } else {
+        mb.appendChild(el);
+      }
+    });
+  }
+
+  d.appendChild(mm);
+  d.appendChild(mb);
   d._meta = meta;
   return d;
 }
@@ -1283,9 +1395,10 @@ window.doExit = async () => {
     }
   }
 
-  // 明示的な手動退室時のみ、次回入室のためにお知らせ送信フラグを消去
+  // 明示的な手動退室時のみ、次回入室のためにお知らせ送信フラグおよび暗号化対称鍵キャッシュを破棄
   if (curR) {
     localStorage.removeItem(`nz_sent_join_${curR}`);
+    sessionStorage.removeItem(`nz_mkey_${curR}`);
   }
   hasSentJoinMsgInSession = false;
 
@@ -1521,6 +1634,18 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
     const hashId = await getRoomHash(roomId);
     curR = hashId; rawR = roomId; curN = name;
     
+    // sessionStorageからキャッシュされた導出済みキーの取得を試みる（PBKDF2計算のスキップ）
+    let cachedKeyHex = sessionStorage.getItem(`nz_mkey_${hashId}`);
+    if (cachedKeyHex) {
+      masterKey = await importKeyFromHex(cachedKeyHex); // 1ms以下でロード
+    } else if (pass) {
+      masterKey = await deriveMasterKey(roomId, pass); // 通常導出
+      const exportedHex = await exportKeyToHex(masterKey);
+      sessionStorage.setItem(`nz_mkey_${hashId}`, exportedHex); // キャッシュ保存
+    } else {
+      throw new Error("パスワード情報が見つかりません。");
+    }
+
     const roomRef = ref(db, `rooms/${hashId}`);
     let snap = await get(roomRef);
 
@@ -1532,11 +1657,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
     let roomData = null;
     
     if (!snap.exists()) {
-      if (!pass) throw new Error("新規作成にはパスワードが必要です。");
-      masterKey = await deriveMasterKey(roomId, pass);
-      isHost = true;
-      _roomExpireAt = srvNow() + (initTimer * 60000);
-      roomData = { created: serverTimestamp(), host: myUid, expireAt: _roomExpireAt, requireApproval };
+      roomData = { created: serverTimestamp(), host: myUid, expireAt: srvNow() + (initTimer * 60000), requireApproval };
       await set(roomRef, roomData);
       
       myPresRef = ref(db, `presence/${hashId}/${myUid}`);
@@ -1554,8 +1675,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       isHost = (roomData.host === myUid);
       myPresRef = ref(db, `presence/${hashId}/${myUid}`);
 
-      if (isHost && pass) {
-        masterKey = await deriveMasterKey(roomId, pass);
+      if (isHost) {
         const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
         await update(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: true });
         await enterChatUI(roomData, pass);
@@ -1666,8 +1786,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         };
 
       } else {
-        if (!pass) throw new Error("承認制ではありません。パスワードが必要です。");
-        masterKey = await deriveMasterKey(roomId, pass);
         const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
         await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey) });
         await enterChatUI(roomData, pass);
@@ -1692,7 +1810,7 @@ async function enterChatUI(roomData, pass) {
     localStorage.setItem("nz_pi_val", pass);
   }
 
-  // ローカルストレージに送信済みフラグを記録。タブ閉じや回線切れでも重複送信を防ぐ
+  // ローカルストレージに送信済みフラグを記録。タブを閉じたり回線が切れても、お知らせログの二重送信を防ぎます
   const localSentKey = `nz_sent_join_${curR}`;
   if (!localStorage.getItem(localSentKey)) {
     localStorage.setItem(localSentKey, "true");
@@ -2316,7 +2434,6 @@ const initUserSession = async (user) => {
   myUid = user.uid; 
   if (isInit) return; 
   isInit = true;
-  initConnectionMonitor();
 
   const sp = new URLSearchParams(location.search), urlR = sp.get("r");
   const savedActiveRi = localStorage.getItem("nz_active_ri");
@@ -2351,27 +2468,46 @@ const initUserSession = async (user) => {
   showLobby();
 };
 
-// 匿名サインインを最速で行うためのプロミス並列同期処理
+// 匿名サインインを最速で行うためのプロミス並列同期処理（ローカルセッションの優先評価）
 const authenticateAnonymously = () => {
   return new Promise((resolve, reject) => {
     if (auth.currentUser) {
       resolve(auth.currentUser);
       return;
     }
+    
+    let isResolved = false;
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         unsubscribe();
-        resolve(user);
+        if (!isResolved) {
+          isResolved = true;
+          resolve(user);
+        }
+      } else {
+        unsubscribe();
+        signInAnonymously(auth)
+          .then((cred) => {
+            if (!isResolved) {
+              isResolved = true;
+              resolve(cred.user);
+            }
+          })
+          .catch((err) => {
+            if (!isResolved) {
+              isResolved = true;
+              reject(err);
+            }
+          });
       }
-    });
-    signInAnonymously(auth).catch((err) => {
-      unsubscribe();
-      reject(err);
     });
   });
 };
 
-// 初期ログイン確認・実行
+// 1. 認証を待たずに即時WebSocket接続を開始（認証フローとの並行ウォームアップ）
+initConnectionMonitor();
+
+// 2. 匿名認証・セッション復元
 authenticateAnonymously()
   .then(async (user) => {
     await initUserSession(user);

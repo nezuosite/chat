@@ -245,7 +245,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .jump-btn:disabled{opacity:0.3; cursor:not-allowed;}
 
 /* カスタマイズされた補助トグルボタンサイズ：テキスト崩れの完全な防止 */
-.switch-kb { width: 110px !important; height: 32px !important; position:relative; border-radius:16px!important; background:var(--s2)!important; border:1px solid var(--bd)!important; padding:0 2px!important; overflow:hidden; transition:all 0.25s ease; cursor:pointer; display: flex; align-items: center;}
+.switch-kb { width: 110px !important; height: 32px !important; position:relative; border-radius:16px!important; background:var(--s2)!important; border:1px solid var(--bd); padding:0 2px!important; overflow:hidden; transition:all 0.25s ease; cursor:pointer; display: flex; align-items: center;}
 .switch-kb::after { content:""; position:absolute; top:2px; left:2px; width:26px; height:26px; background:rgba(255,255,255,0.25); border:1px solid rgba(255,255,255,0.45); backdrop-filter:blur(1px); border-radius:50%; transition:transform 0.25s ease; z-index:1; }
 .switch-kb.active { background:var(--in)!important; border-color:var(--i2)!important; }
 .switch-kb.active::after { transform: translateX(78px) !important; }
@@ -1611,6 +1611,7 @@ window.doExit = async () => {
 
     let isLast = false;
     try {
+      // データベースから現在の参加者数情報を安全に引き出す
       const pSnap = await get(ref(db, `presence/${curR}`)).catch(() => null);
       const members = pSnap ? pSnap.val() : null;
       // 自分以外に参加者がいない場合は「最後の1人」と見なす
@@ -1786,7 +1787,7 @@ window.approveGuest = async (guestUid, guestKeyHex) => {
     updates[`pending/${curR}/${guestUid}`] = null;
     
     await update(ref(db), updates);
-    await sendSysMsg(`${guestName} ${guestTrip} が入室しました`);
+    await sendSysMsg(`${guestName} ${guestTrip} が入室しました`).catch(()=>{});
 
     showToast("✅ 承認してメンバーに昇格しました");
   } catch (e) { 

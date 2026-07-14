@@ -638,7 +638,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       <div class="guide-sec">
         <span class="guide-sub-title" style="color:#a5b4fc; font-weight:800; font-size:12.5px; border-bottom:1px solid rgba(255, 255, 255, 0.05); padding-bottom:2px; display:block; margin-bottom:4px;">🔑 1. 使い方（かんたん3ステップ）</span>
         <b>① 部屋情報の入力:</b> 「表示名」「本人証明用のトリップキー」「部屋ID」「部屋パスワード」を入力します（「自動生成」を押すと、安全なIDと複雑なパスワードをワンタップで作れます）。<br>
-        <b>② リンク of 共有:</b> 「入室 / 作成」を押してチャットに入り、画面右上にある「🔗 URL」ボタンを押して招待用リンクをコピーし、相手に共有します。<br>
+        <b>② リンクの共有:</b> 「入室 / 作成」を押してチャットに入り、画面右上にある「🔗 URL」ボタンを押して招待用リンクをコピーし、相手に共有します。<br>
         <b>③ 安全な退室:</b> 会話が終わったら「退室」を押します。全員が退室するか、制限時間が切れた瞬間に、チャットルームとすべての履歴は自動消滅します。
       </div>
 
@@ -1603,30 +1603,33 @@ window.doExit = async () => {
   if (pendingTimeoutTimer) { clearInterval(pendingTimeoutTimer); pendingTimeoutTimer = null; }
   
   if (curR && masterKey && localStorage.getItem("nz_is_in_room") === "true") {
-    // 確実なお知らせ送出のため、各処理を個別にtry-catch化して堅牢性を最大化
+    // 権限剥奪の前に最優先でお知らせ退室メッセージを即時送信
     try {
       await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が退室しました`).catch(()=>{});
     } catch (e) {}
 
+    let isLast = false;
     try {
-      if (myPresRef) await remove(myPresRef).catch(()=>{});
-    } catch (e) {}
-
-    try {
-      await remove(ref(db, `pending/${curR}/${myUid}`)).catch(()=>{});
-    } catch (e) {}
-
-    try {
-      await remove(ref(db, `authorized_users/${curR}/${myUid}`)).catch(()=>{});
-    } catch (e) {}
-    
-    try {
+      // データベースから現在の参加者数情報を安全に引き出す
       const pSnap = await get(ref(db, `presence/${curR}`)).catch(() => null);
       const members = pSnap ? pSnap.val() : null;
-      if (!members || Object.keys(members).length === 0) {
-        await wipe(curR).catch(()=>{});
+      // 自分以外に参加者がいない場合は「最後の1人」と見なす
+      if (!members || Object.keys(members).length === 0 || (Object.keys(members).length === 1 && members[myUid])) {
+        isLast = true;
       }
     } catch (e) {}
+
+    if (isLast) {
+      // 最後の1人の場合は自分自身を名簿に乗せたまま部屋ごとクリーンアップ（一括消去のなかで自分の名簿も完全に消える）
+      await wipe(curR).catch(()=>{});
+    } else {
+      // 他に参加者が残っている場合は通常通り自分のプレゼンスのみ削除して退出
+      try {
+        if (myPresRef) await remove(myPresRef).catch(()=>{});
+        await remove(ref(db, `pending/${curR}/${myUid}`)).catch(()=>{});
+        await remove(ref(db, `authorized_users/${curR}/${myUid}`)).catch(()=>{});
+      } catch (e) {}
+    }
   }
 
   if (curR) {
@@ -1923,7 +1926,11 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
   try {
     const hashId = await getRoomHash(roomId);
 
-    // 1. 最優先で鍵(masterKey)を絶対に復元/解決 (復号エラーを完全に防止)
+    // 1. 古い接続・リスナー・DOMの状態をここで安全に初期化 (同じ部屋へのサイレント接続ならDOM破壊しない)
+    clearAll(hashId); _exitLock = false;
+    localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created");
+
+    // 2. 最優先で鍵(masterKey)を絶対に復元/解決 (復号エラーを完全に回避)
     let cachedKeyHex = localStorage.getItem(`nz_mkey_${hashId}`);
     if (cachedKeyHex) {
       masterKey = await importKeyFromHex(cachedKeyHex);
@@ -1940,7 +1947,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       localStorage.setItem("nz_pi_val", pass);
     }
 
-    // 2. 鍵の用意が100%完了したあとに、キャッシュから画面構築
+    // 3. 鍵の用意が100%完了したあとに、キャッシュから画面構築
     const previouslyEntered = localStorage.getItem(`nz_entered_${hashId}`) === "true";
     if (previouslyEntered) {
       await renderCachedState(hashId);
@@ -1949,10 +1956,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       D.enBtn.disabled = true;
       D.enBtn.textContent = "処理中...";
     }
-
-    // 3. 古い接続をクリア
-    clearAll(hashId); _exitLock = false;
-    localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created");
 
     curR = hashId; rawR = roomId; curN = name;
     

@@ -594,7 +594,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <h3 style="font-size:13px; color:var(--ro);">⚠️ 発言の削除確認</h3>
     <div style="font-size:10px; color:var(--mu);">以下の発言を完全に消去しますか？（復元できません）</div>
     <div id="delConfirmPreview" class="del-modal-text"></div>
-    <div class="wait-btns" style="display:flex; flex-direction:column; gap:8px; margin-top:12px; width:100%;">
+    <div class="wait-btns" style="display:flex; justify-content:space-between; gap:8px; margin-top:12px; width:100%;">
       <button class="btn bp" id="delExecuteBtn" style="width:100%; background:var(--ro); border:1px solid rgba(244, 63, 94, 0.4); color:#fda4af;">完全に削除</button>
       <button class="btn bq" id="delCancelBtn" style="width:100%;">戻る</button>
     </div>
@@ -605,7 +605,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 <div id="waitMod" class="mod-overlay">
   <div class="gc" style="max-width:320px;">
     <h3>⏳ ホストの承認待ち...</h3>
-    <div style="font-size:9.5px; color:var(--mu);">ホストが承認するまでチャットには参加できません。<br>この画面のままお待ちください。</div>
+    <div style="font-size:9.5px; color:var(--mu);">ホストが承認するまでチャットには参加できません。<br>この画面의ままお待ちください。</div>
     <div class="wait-trip-box">
       <div style="font-size:9px; color:var(--m2); margin-bottom:3px;">あなたのID（ホストに伝えてください）</div>
       <b id="waitModTrip" style="font-size:12px; color:var(--em);"></b>
@@ -1528,6 +1528,7 @@ window.doExit = async () => {
   if (hashId) {
     localStorage.removeItem(`nz_entered_${hashId}`);
     localStorage.removeItem(`nz_authkey_${hashId}`);
+    localStorage.removeItem("nz_pending_req_at"); // 申請開始時間を確実に破棄
   }
   localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created"); localStorage.setItem("nz_is_in_room", "false");
   if (window.history?.replaceState) window.history.replaceState({}, document.title, location.pathname);
@@ -1657,7 +1658,8 @@ window.approveGuest = async (guestUid, guestKeyHex) => {
     
     await update(ref(db), updates);
 
-    // 承認時のお知らせはゲスト本人の画面遷移時（enterChatUI）に一元送信するため、ここからは送信しません
+    // 承認時のお知らせをホスト側から代わりに即書き込む（ゲスト側のバックグラウンド自動入室を完全にサポート）
+    await sendSysMsg(`${guestName} ${guestTrip} が入室しました`);
 
     showToast("✅ 承認してメンバーに昇格しました");
   } catch (e) { 
@@ -1849,6 +1851,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
             if (decryptedMk) {
               masterKey = decryptedMk;
               await update(myPresRef, { mk: null });
+              localStorage.removeItem("nz_pending_req_at"); // 申請成功時は開始時間を初期化
               
               // タイマーの秒ズレを完全に防ぐため、入室前に最新ルームデータをサーバーから裏取りする
               const freshSnap = await get(roomRef);
@@ -1869,6 +1872,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
                 masterKey = decryptedMk;
                 const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
                 await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: false });
+                localStorage.removeItem("nz_pending_req_at"); // 申請成功時は開始時間を初期化
                 
                 // 待機中にずれたタイマー同期を修正するための部屋情報再取得
                 const freshSnap = await get(roomRef);
@@ -1881,7 +1885,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         }
 
         const randomBytes = window.crypto.getRandomValues(new Uint8Array(16));
-        myGuestKey = bytesToHex(randomBytes);
+        myGuestKey = authLocalKey || bytesToHex(randomBytes);
         localStorage.setItem(`nz_authkey_${hashId}`, myGuestKey);
 
         const waitCryptoKey = await window.crypto.subtle.importKey(
@@ -1894,14 +1898,33 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         const waitMetaStr = JSON.stringify({ n: name, p: trip, c: curColor });
 
         const pendingRef = ref(db, `pending/${hashId}/${myUid}`);
-        const requestTime = srvNow(); // 申請時間をローカル取得
+        
+        // 待機開始時間の取得（ストレージに無ければ新規、あれば経過時間引き継ぎ）
+        let requestTime = parseInt(localStorage.getItem("nz_pending_req_at"));
+        if (!requestTime || isNaN(requestTime)) {
+          requestTime = srvNow();
+          localStorage.setItem("nz_pending_req_at", requestTime);
+        }
 
-        await set(pendingRef, { 
-          status: "waiting", 
-          gk: myGuestKey, 
-          wmeta: await encrypt(waitMetaStr, waitCryptoKey), 
-          reqAt: serverTimestamp() 
-        });
+        // バックグラウンドなど別スレッドで既に5分以上経っているか瞬時にチェック
+        const elapsed = srvNow() - requestTime;
+        if (elapsed >= 5 * 60 * 1000) {
+          showToast("⏳ 承認待ちの有効期限（5分）が切れました。");
+          await remove(pendingRef).catch(()=>{});
+          doExit();
+          return;
+        }
+
+        // DBに申請データが存在しない場合のみ登録
+        const pendingSnap = await get(pendingRef);
+        if (!pendingSnap.exists()) {
+          await set(pendingRef, { 
+            status: "waiting", 
+            gk: myGuestKey, 
+            wmeta: await encrypt(waitMetaStr, waitCryptoKey), 
+            reqAt: serverTimestamp() 
+          });
+        }
 
         // タブ開いてなくても「先に入室（バックグラウンド維持）」させるために情報を即保存！
         localStorage.setItem("nz_active_ri", rawR);
@@ -1914,7 +1937,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         D.waitModTrip.textContent = `${name} ${trip} (同期中...)`;
         D.waitMod.classList.add("show");
 
-        // 承認待ち5分間の有効期限カウントダウンを即時稼働
+        // タイムアウト進行を引き継いで開始
         startPendingTimeout(requestTime, name, trip);
         
         _waitPresOff = onValue(myPresRef, async (s) => {
@@ -1930,6 +1953,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
                  if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
                  if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
                  if (pendingTimeoutTimer) { clearInterval(pendingTimeoutTimer); pendingTimeoutTimer = null; }
+                 localStorage.removeItem("nz_pending_req_at"); // 待機成功時はクリーンアップ
                  
                  // 承認後のタイマー秒ズレを正す最新データの同期
                  const freshSnap = await get(roomRef);
@@ -1957,6 +1981,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
             if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
             if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
             if (pendingTimeoutTimer) { clearInterval(pendingTimeoutTimer); pendingTimeoutTimer = null; }
+            localStorage.removeItem("nz_pending_req_at"); // 待機成功時はクリーンアップ
 
             const currentPass = pass || localStorage.getItem("nz_pi_val") || "";
             if (currentPass) {
@@ -2014,7 +2039,10 @@ async function enterChatUI(roomData, pass) {
   const localSentKey = `nz_sent_join_${curR}`;
   if (!localStorage.getItem(localSentKey)) {
     localStorage.setItem(localSentKey, "true");
-    await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が入室しました`);
+    // ホスト側が承認時にお知らせログを代わりに送信するため、承認制部屋（LOCKED）ではゲスト側からのシステム送信をパスする
+    if (roomData && roomData.requireApproval !== true) {
+      await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が入室しました`);
+    }
   }
 
   if (isHost) {

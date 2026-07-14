@@ -1289,12 +1289,25 @@ async function cMsg(msg) {
   }
 
   // 2. 通常メッセージ
-  const pMeta = metaCache.has(msg.mt) ? metaCache.get(msg.mt) : (async () => {
-    const metaStr = await decrypt(msg.mt, masterKey);
-    if (!metaStr) return null;
-    try { return JSON.parse(metaStr); } catch { return null; }
-  })();
-  metaCache.set(msg.mt, pMeta);
+  let pMeta;
+  if (metaCache.has(msg.mt)) {
+    pMeta = metaCache.get(msg.mt);
+  } else {
+    pMeta = (async () => {
+      const metaStr = await decrypt(msg.mt, masterKey);
+      if (!metaStr) {
+        metaCache.delete(msg.mt);
+        return null;
+      }
+      try {
+        return JSON.parse(metaStr);
+      } catch (e) {
+        metaCache.delete(msg.mt);
+        return null;
+      }
+    })();
+    metaCache.set(msg.mt, pMeta);
+  }
 
   const pTxt = decrypt(msg.m, masterKey);
   const [meta, txt] = await Promise.all([pMeta, pTxt]);
@@ -1733,7 +1746,7 @@ async function checkCurrentRoomStatus() {
   try {
     const hashId = await getRoomHash(lastRi);
     const snap = await get(ref(db, `rooms/${hashId}`));
-    if (snap.exists() && snap.val().created === parseInt(lastCreated) && snap.val().expireAt > srvNow()) {
+    if (snap.exists() && (lastCreated === "pending" || snap.val().created === parseInt(lastCreated)) && snap.val().expireAt > srvNow()) {
       const savedNi = localStorage.getItem("nz_ni") || "名無し";
       const savedTripKey = localStorage.getItem("nz_tripi") || "";
       const savedPi = localStorage.getItem(`nz_pi_${hashId}`) || localStorage.getItem("nz_pi_val") || "";
@@ -3061,7 +3074,8 @@ const initUserSession = async (user) => {
       
       // バックグラウンドでデータベースの確認を行い、セッションを完全接続
       const snap = await get(ref(db, `rooms/${hashId}`));
-      if (snap.exists() && (savedActiveCreated === "pending" || snap.val().created === parseInt(savedActiveCreated)) && snap.val().expireAt > srvNow()) {
+      const isCreatedMatch = (savedActiveCreated === "pending") || (snap.exists() && snap.val().created === parseInt(savedActiveCreated));
+      if (snap.exists() && isCreatedMatch && snap.val().expireAt > srvNow()) {
         localStorage.setItem("nz_is_in_room", "true");
         const tripStyled = await makeTrip(savedNi, savedTripKey); 
         localStorage.setItem("nz_mytrip_styled", tripStyled);

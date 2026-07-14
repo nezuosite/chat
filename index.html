@@ -419,7 +419,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 <!-- ロビー画面 -->
 <div id="lobby" style="display: none;">
   <div class="lbo">
-    <h2 class="lbt">⚡ NEZU ONETIME CHAT</h2>
+    <h2 class="lbt">⚡ NEZU ONETIME CHAT - PRO</h2>
     <div class="lbsub">DISPOSABLE & ZERO-KNOWLEDGE E2EE</div>
     <div class="lbi">
       <div class="ibox">
@@ -644,7 +644,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 
       <div class="guide-sec">
         <span class="guide-sub-title" style="color:#a5b4fc; font-weight:800; font-size:12.5px; border-bottom:1px solid rgba(255, 255, 255, 0.05); padding-bottom:2px; display:block; margin-bottom:4px;">🔒 2. セキュリティと消滅の仕組み</span>
-        ・<b>ブラウザ内での暗号化 (E2EE):</b> AES-GCM (256bit) を採用。メッセージや画像、プロフィール情報は、あなたの端末内で強力に暗号化されてから送信されます。<br>
+        ・<b>ブラウザ内での暗号化 (E2EE):</b> AES-GCM (256bit) を採用 [2]。メッセージや画像、プロフィール情報は、あなたの端末内で強力に暗号化されてから送信されます。<br>
         ・<b>ゼロ知識（Zero-Knowledge）:</b> 暗号を解読するためのパスワードはサーバーに一切保存されないため、第三者が通信やデータを解析しても元の会話を復元できません。<br>
         ・<b>即時一括物理消去:</b> ルームの終了に伴い、メッセージ、認証鍵などのすべてのデータがサーバーのディスク上から完全に消去され消失します。
       </div>
@@ -897,7 +897,7 @@ const importRawKeyFromHex = async (hex) => {
   );
 };
 
-// 对称鍵のエクスポート / インポート処理
+// 対称鍵のエクスポート / インポート処理
 const exportKeyToHex = async (key) => {
   const exported = await window.crypto.subtle.exportKey("raw", key);
   return bytesToHex(new Uint8Array(exported));
@@ -1603,17 +1603,32 @@ window.doExit = async () => {
   if (pendingTimeoutTimer) { clearInterval(pendingTimeoutTimer); pendingTimeoutTimer = null; }
   
   if (curR && masterKey && localStorage.getItem("nz_is_in_room") === "true") {
-    // 権限剥奪の前に最優先でお知らせ退室メッセージを即時送信
-    await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が退室しました`).catch(()=>{});
-    if(myPresRef) await remove(myPresRef).catch(()=>{});
-    await remove(ref(db, `pending/${curR}/${myUid}`)).catch(()=>{});
-    await remove(ref(db, `authorized_users/${curR}/${myUid}`)).catch(()=>{});
+    // 全体の整合性を守るため、各DBクリーンアップ操作を個別のtry-catchで囲みます。
+    // これにより、ゲストが権限のないノード（authorized_usersなど）を操作して失敗しても
+    // ロビーへの退室・遷移処理（UI操作）が絶対にストップしません。
+    try {
+      await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が退室しました`).catch(()=>{});
+    } catch (e) {}
+
+    try {
+      if (myPresRef) await remove(myPresRef).catch(()=>{});
+    } catch (e) {}
+
+    try {
+      await remove(ref(db, `pending/${curR}/${myUid}`)).catch(()=>{});
+    } catch (e) {}
+
+    try {
+      await remove(ref(db, `authorized_users/${curR}/${myUid}`)).catch(()=>{});
+    } catch (e) {}
     
-    const pSnap = await get(ref(db, `presence/${curR}`));
-    const members = pSnap.val();
-    if (!members || Object.keys(members).length === 0) {
-      await wipe(curR).catch(()=>{});
-    }
+    try {
+      const pSnap = await get(ref(db, `presence/${curR}`)).catch(() => null);
+      const members = pSnap ? pSnap.val() : null;
+      if (!members || Object.keys(members).length === 0) {
+        await wipe(curR).catch(()=>{});
+      }
+    } catch (e) {}
   }
 
   if (curR) {
@@ -1627,9 +1642,16 @@ window.doExit = async () => {
     localStorage.removeItem(`nz_authkey_${hashId}`);
     localStorage.removeItem("nz_pending_req_at");
   }
-  localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created"); localStorage.setItem("nz_is_in_room", "false");
-  if (window.history?.replaceState) window.history.replaceState({}, document.title, location.pathname);
-  clearAll(); showLobby();
+  localStorage.removeItem("nz_active_ri"); 
+  localStorage.removeItem("nz_active_created"); 
+  localStorage.setItem("nz_is_in_room", "false");
+  
+  if (window.history?.replaceState) {
+    window.history.replaceState({}, document.title, location.pathname);
+  }
+  
+  clearAll(); 
+  showLobby();
 };
 
 // 同一の部屋へ「サイレント復帰」する際はDOM、暗号化資産を破壊しない仕様
@@ -1930,7 +1952,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       D.enBtn.textContent = "処理中...";
     }
 
-    // 3. 古い接続をクリア (同じ部屋ならDOMはクリアしない)
+    // 3. 古い接続をクリア
     clearAll(hashId); _exitLock = false;
     localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created");
 

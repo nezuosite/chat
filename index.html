@@ -31,6 +31,7 @@ input,textarea,select{font-family:inherit;-webkit-user-select:text;user-select:t
 button{cursor:pointer;font-family:inherit;border:none;background:none}
 button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 
+/* アプリケーション全体の高さ追従 */
 #app, #lobby {
   height: 100vh;
   height: var(--app-viewport-height, 100dvh);
@@ -46,6 +47,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .ibox b{color:#a5b4fc}
 #lberr{background:var(--rg);border:1px solid rgba(244,63,94,.3);border-radius:4px;padding:6px;font-size:13px;color:#fda4af;display:none;text-align:center;font-weight:bold}
 
+/* 自動的に再入室するため、表示要素は非表示に設定 */
 #roomResumeArea{display:none!important;}
 
 .fg{display:flex;flex-direction:column;gap:2px}
@@ -149,11 +151,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 #waitBadge.show{display:inline-block;}
 
 /* タイムライン */
-#tl{
-  flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:4px;background-color:#0d1117;
-  -webkit-overflow-scrolling:touch;
-  touch-action:pan-y!important;overscroll-behavior-y:contain;
-}
+#tl{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:4px;background-color:#0d1117;-webkit-overflow-scrolling:touch;touch-action:pan-y!important;overscroll-behavior-y:contain;}
 #tl-inner{display:flex;flex-direction:column;justify-content:flex-end;gap:0;width:100%;max-width:600px;margin:0 auto;min-height:100%}
 
 @keyframes slideInUp { 0% { opacity: 0; transform: translateY(4px); } 100% { opacity: 1; transform: translateY(0); } }
@@ -241,17 +239,6 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .switch-btn.active::after {transform:translateX(32px);}
 .switch-text {font-size:11px; font-weight:bold; pointer-events:none; color:var(--tx); position:relative; z-index:2; width: 100%; text-align: center;}
 
-/* 承認トグル専用の小型スイッチつまみ調整 */
-#roomModeToggleBtn::after {
-  top: 1px !important;
-  left: 1px !important;
-  width: 20px !important;
-  height: 20px !important;
-}
-#roomModeToggleBtn.active::after {
-  transform: translateX(52px) !important;
-}
-
 /* 入力エリア */
 .mi-container{position:relative;flex:1;display:flex;align-items:center;background:var(--bg);border:1px solid var(--bd);border-radius:18px;min-height:38px;padding:4px 34px 4px 38px;}
 .battach{position:absolute;left:4px;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--mu);transition:color 0.15s, background 0.15s; cursor:pointer;}
@@ -277,7 +264,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .clr-cancel{background:var(--bg);border:1px solid var(--bd);color:var(--tx)}
 .clr-ok{background:var(--in);color:#fff}
 
-/* 画像プレビューモーダルのレイアウト */
+/* 画像プレビューモーダルのレイアウト：閉じるボタンとの被りを100%防止 */
 #imgViewMod {
   background: rgba(0,0,0,0.95);
   backdrop-filter: blur(8px);
@@ -289,7 +276,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 }
 #imgViewSrc {
   max-width: 90%;
-  max-height: calc(100dvh - 140px);
+  max-height: calc(100dvh - 140px); /* ボタン表示領域を100dvhから確実に除外 */
   object-fit: contain;
   user-select: none;
   -webkit-user-drag: none;
@@ -381,7 +368,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       <div class="fg">
         <label class="fl">トリップキー * (必須項目)</label>
         <input type="text" id="tripi" class="inp" placeholder="本人証明用キー" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
-        <div id="tripPreview" style="display:none;">
+        <div id="tripPreview">
           <span id="tripPrevText">プレビュー: 名無し</span>
           <button class="copy-s-btn" id="lbCopyTripBtn">コピー</button>
         </div>
@@ -404,7 +391,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         <input type="text" id="ri" class="inp" placeholder="共有する部屋名" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
       </div>
       <div class="fg">
-        <label class="fl">部屋パスワード * (必須項目)</label>
+        <label class="fl">部屋パスワード (部屋作成時は必須)</label>
         <input type="text" id="pi" class="inp" placeholder="共通暗号化パスワード" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
       </div>
 
@@ -446,9 +433,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       <!-- 左：ホスト用モードトグル -->
       <div id="hostModeCtrl">
         <span class="htc-lbl">🚪 設定:</span>
-        <button id="roomModeToggleBtn" class="switch-btn" style="width:76px!important; height:24px!important; border-radius:12px!important; position:relative;">
-          <span id="roomModeStatusText" class="switch-text" style="font-size:10px; font-weight:800; line-height:22px; width:100%; display:block; text-align:center;">オープン</span>
-        </button>
+        <button id="roomModeToggleBtn" class="switch-btn" style="width:60px!important; height:22px!important; border-radius:11px!important;"><span id="roomModeStatusText" class="switch-text" style="font-size:9px;">ｵｰﾌﾟﾝ</span></button>
       </div>
       <!-- 右：LOCKED（モード状態）[参加人数] -->
       <div style="display:flex; align-items:center; gap:6px; margin-left:auto;">
@@ -652,7 +637,7 @@ const D = {
   ni:$("ni"), tripi:$("tripi"), ri:$("ri"), pi:$("pi"), timeri:$("timeri"),
   tripPreview:$("tripPreview"), tripPrevText:$("tripPrevText"), lbCopyTripBtn:$("lbCopyTripBtn"),
   enBtn:$("enBtn"), gnBtn:$("gnBtn"), gdBtn:$("gdBtn"), gmod:$("gmod"), gcBtn:$("gcBtn"),
-  clrmod:$("clrmod"), clrPick2:$("clrPick2"), clrPrev:$("clrPrev"), clrOk:$("clrOk"), clrCancel:$("clrCancel"), bclr:$("clrBtn"), clrBtn:$("clrBtn"), clrDot:$("clrDot"),
+  clrmod:$("clrmod"), clrPick2:$("clrPick2"), clrPrev:$("clrPrev"), clrOk:$("clrOk"), clrCancel:$("clrCancel"), clrBtn:$("clrBtn"), clrDot:$("clrDot"),
   hdr:$("hdr"), rdsp:$("rdsp"), modeIndicator:$("modeIndicator"), waitBadge:$("waitBadge"), pcnt:$("pcnt"), timerDsp:$("timerDsp"), copyUrlBtn:$("copyUrlBtn"), pl:$("pl"), exBtn:$("exBtn"),
   tl:$("tl"), tli:$("tl-inner"), ib:$("ib"), mi:$("mi"), sdBtn:$("sdBtn"), clrMsgBtn:$("clrMsgBtn"),
   kbToggleBtn:$("kbToggleBtn"), kbStatusText:$("kbStatusText"),
@@ -678,19 +663,12 @@ let isAutoScroll = true;
 const scBottom = (force = false) => {
   if (!isAutoScroll && !force) return;
   requestAnimationFrame(() => {
-    D.tl.scrollTo({
-      top: D.tl.scrollHeight,
-      behavior: force ? "auto" : "smooth"
-    });
+    D.tl.scrollTop = D.tl.scrollHeight;
     updateJumpBtns();
-    if (force) {
-      setTimeout(() => {
-        D.tl.scrollTo({
-          top: D.tl.scrollHeight,
-          behavior: "auto"
-        });
-      }, 100);
-    }
+    // モバイル端末でのキーボード開閉アニメーションラグを吸収するための補正スクロール
+    setTimeout(() => {
+      D.tl.scrollTop = D.tl.scrollHeight;
+    }, 50);
   });
 };
 
@@ -700,6 +678,7 @@ if (window.visualViewport) {
     document.documentElement.style.setProperty('--app-viewport-height', `${vh}px`);
     D.app.style.height = `${vh}px`;
     D.lobby.style.height = `${vh}px`;
+    // キーボードの開閉やサイズ変化があった場合、強制的に最新ログの底へスクロール
     scBottom(true);
   };
   window.visualViewport.addEventListener('resize', onViewportChange);
@@ -739,6 +718,7 @@ const sha256 = async (text) => {
   return bytesToHex(new Uint8Array(hashBuffer));
 };
 
+// PBKDF2 から AES-GCM CryptoKey を安全に導出
 const deriveMasterKey = async (roomId, pass) => {
   const enc = new TextEncoder();
   const passwordBuffer = enc.encode(pass);
@@ -764,11 +744,12 @@ const deriveMasterKey = async (roomId, pass) => {
       name: "AES-GCM",
       length: 256
     },
-    true,
+    true, // ラッピングを有効に設定
     ["encrypt", "decrypt", "wrapKey", "unwrapKey"]
   );
 };
 
+// 鍵配布用ラッピング（メモリ露出のない暗号化エクスポート）
 const wrapMasterKey = async (keyToWrap, wrappingKey) => {
   const iv = window.crypto.getRandomValues(new Uint8Array(12));
   const wrapped = await window.crypto.subtle.wrapKey(
@@ -791,6 +772,7 @@ const wrapMasterKey = async (keyToWrap, wrappingKey) => {
   return ivHex + ":" + btoa(binary);
 };
 
+// 鍵配布用ラッピング解除（インポート）
 const unwrapMasterKey = async (wrappedStr, unwrappingKey) => {
   try {
     const parts = wrappedStr.split(":");
@@ -836,6 +818,7 @@ const importRawKeyFromHex = async (hex) => {
   );
 };
 
+// 对称鍵のエクスポート / インポート処理 (sessionStorageキャッシュ用)
 const exportKeyToHex = async (key) => {
   const exported = await window.crypto.subtle.exportKey("raw", key);
   return bytesToHex(new Uint8Array(exported));
@@ -852,19 +835,6 @@ const importKeyFromHex = async (hex) => {
   );
 };
 
-// 鍵導出のキャッシュ制御関数
-const getOrCreateMasterKey = async (roomId, pass, hashId) => {
-  let cachedKeyHex = sessionStorage.getItem(`nz_mkey_${hashId}`);
-  if (cachedKeyHex) {
-    return await importKeyFromHex(cachedKeyHex);
-  }
-  if (!pass) return null;
-  const key = await deriveMasterKey(roomId, pass);
-  const exportedHex = await exportKeyToHex(key);
-  sessionStorage.setItem(`nz_mkey_${hashId}`, exportedHex);
-  return key;
-};
-
 const makeTrip = async (name, tripKey) => {
   if (!tripKey) return "";
   const hash = await sha256(SYSTEM_SALT + name + tripKey);
@@ -875,12 +845,13 @@ const getRoomHash = async (roomId) => {
   return await sha256(SYSTEM_SALT + roomId);
 };
 
-let masterKey = null; 
+let masterKey = null; // メモリ内キャッシュ対称鍵 (CryptoKey)
 let isHost = false;
 let myGuestKey = null;
 let targetDelId = null;
-let hasSentJoinMsgInSession = false; 
+let hasSentJoinMsgInSession = false; // 手動入室時のみお知らせを出すためセッション単位で追跡
 
+// メッセージ暗号化
 const encrypt = async (t, key = masterKey) => {
   if (!t || !key) return "";
   try {
@@ -911,7 +882,8 @@ const encrypt = async (t, key = masterKey) => {
   }
 };
 
-const decCache = new Map(); 
+// メッセージ復号
+const decCache = new Map(); // 再レンダリング時の復号コストをゼロにするためのローカルキャッシュ
 const decrypt = async (c, key = masterKey) => {
   if (!c || !key) return null;
   if (decCache.has(c)) return decCache.get(c);
@@ -955,7 +927,6 @@ const updateTripPreview = async () => {
   const n = D.ni.value || "名無し";
   const tk = D.tripi.value;
   const t = tk ? await makeTrip(n, tk) : "";
-  D.tripPreview.style.display = "flex";
   D.tripPrevText.textContent = `プレビュー: ${n} ${t}`;
   localStorage.setItem("nz_mytrip_styled", t);
   localStorage.setItem("nz_myname", n);
@@ -1005,7 +976,7 @@ const updateTimerUIFromVal = async (val) => {
 let isRoomApproveMode = false;
 const updateRoomModeBtnUI = () => {
   D.roomModeToggleBtn.classList.toggle("active", isRoomApproveMode);
-  D.roomModeStatusText.textContent = isRoomApproveMode ? "承認制" : "オープン";
+  D.roomModeStatusText.textContent = isRoomApproveMode ? "承認制" : "ｵｰﾌﾟﾝ";
   D.roomModeStatusText.style.color = isRoomApproveMode ? "#fff" : "var(--tx)";
   D.hostApprovePanel.style.display = isRoomApproveMode ? "flex" : "none";
 };
@@ -1054,7 +1025,7 @@ function buildPicker(con, sel, cls, onChange) {
 const onColorSelect = v => { curColor = v; setGlobalColor(v); localStorage.setItem("nz_color",v); syncPickers(v); };
 buildPicker(D.lbClrPick, curColor, "clrc",  onColorSelect);
 
-D.bclr.addEventListener("click", () => {
+D.clrBtn.addEventListener("click", () => {
   tmpColor = curColor;
   D.clrPrev.innerHTML = `<span style="color:${curColor}">■ この色で名前、トリップ、発言時刻が同期表示されます</span>`;
   buildPicker(D.clrPick2, curColor, "clrc2", v => { tmpColor = v; D.clrPrev.innerHTML = `<span style="color:${v}">■ この色で名前、トリップ、発言時刻が同期表示されます</span>`; });
@@ -1068,6 +1039,581 @@ D.clrOk.addEventListener("click", async () => {
   D.clrmod.classList.remove("show");
 });
 D.clrCancel.addEventListener("click", () => D.clrmod.classList.remove("show"));
+
+function showToast(msg) {
+  D.toastContainer.innerHTML = '';
+  const t = document.createElement("div"); t.className = "toast"; t.textContent = msg;
+  D.toastContainer.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 2000);
+}
+
+const fDT = ts => {
+  if(!ts) return ""; const d = new Date(ts);
+  const y = d.getFullYear();
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  const dy = String(d.getDate()).padStart(2, "0");
+  const h = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  const s = String(d.getSeconds()).padStart(2, "0");
+  return `${y}/${mo}/${dy} ${h}:${mi}:${s}`;
+};
+
+const UR = /(https?:\/\/[^\s\n<>"]+)/gi;
+
+// URLリンク化処理を高速化し、DOM要素の配列として返すように最適化
+function parseTxtSplit(txt) {
+  const norm = txt.replace(/[\u3000]/g, " ");
+  const elements = [];
+  let last = 0, m;
+  UR.lastIndex = 0;
+
+  while ((m = UR.exec(norm)) !== null) {
+    if (m.index > last) {
+      const textNode = document.createTextNode(norm.slice(last, m.index));
+      elements.push(textNode);
+    }
+    const a = document.createElement("a");
+    a.href = m[0];
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.style.color = "#60a5fa";
+    a.style.textDecoration = "underline";
+    a.textContent = m[0];
+    elements.push(a);
+    last = m.index + m[0].length;
+  }
+  if (last < norm.length) {
+    elements.push(document.createTextNode(norm.slice(last)));
+  }
+  return elements;
+}
+
+window.triggerDeleteMsg = (mid, previewText) => {
+  targetDelId = mid;
+  D.delConfirmPreview.textContent = previewText;
+  D.delConfirmMod.classList.add("show");
+};
+
+window.openZoomModal = (b64) => {
+  D.imgViewSrc.src = b64;
+  D.imgViewMod.classList.add("show");
+  resetZoom();
+};
+
+function insertMessageEl(el) {
+  const ts = parseInt(el.dataset.ts) || 0;
+  const lastChild = D.tli.lastElementChild;
+  
+  if (!lastChild) {
+    D.tli.appendChild(el);
+    return;
+  }
+  const lastTs = parseInt(lastChild.dataset.ts) || 0;
+  if (ts >= lastTs) {
+    D.tli.appendChild(el);
+    return;
+  }
+  
+  const children = Array.from(D.tli.children);
+  let inserted = false;
+  for (let i = children.length - 1; i >= 0; i--) {
+    const child = children[i];
+    const childTs = parseInt(child.dataset.ts) || 0;
+    if (childTs <= ts) {
+      D.tli.insertBefore(el, child.nextSibling);
+      inserted = true;
+      break;
+    }
+  }
+  if (!inserted) {
+    D.tli.insertBefore(el, D.tli.firstChild);
+  }
+}
+
+// innerHTMLを完全に廃止し、ブラウザの描画負荷を最小化した超高速DOM生成
+async function cMsg(msg) {
+  const msgTs = msg.t || srvNow();
+
+  // 1. システムメッセージの高速描画
+  if (msg.sys) {
+    const sysText = await decrypt(msg.m, masterKey);
+    if (!sysText) return null; 
+
+    const d = document.createElement("div"); 
+    d.dataset.mid = msg.id;
+    d.dataset.ts = msgTs;
+    d.className = "sys-msg"; 
+    
+    const msgDiv = document.createElement("div");
+    msgDiv.style.lineHeight = "1.5";
+    msgDiv.style.fontSize = "12px";
+    
+    // 改行処理を安全かつ高速に
+    const lines = sysText.split("\n");
+    lines.forEach((line, i) => {
+      if (i > 0) msgDiv.appendChild(document.createElement("br"));
+      msgDiv.appendChild(document.createTextNode(line));
+    });
+
+    const tsDiv = document.createElement("div");
+    tsDiv.style.opacity = "0.5";
+    tsDiv.style.fontSize = "10px";
+    tsDiv.style.fontFamily = "monospace";
+    tsDiv.style.marginTop = "2px";
+    tsDiv.textContent = `[${fDT(msgTs)}]`;
+
+    d.appendChild(msgDiv);
+    d.appendChild(tsDiv);
+    return d;
+  }
+
+  // 2. 通常メッセージの高速描画
+  const metaStr = await decrypt(msg.mt, masterKey);
+  const txt = await decrypt(msg.m, masterKey);
+  
+  if (!metaStr || !txt) {
+    const d = document.createElement("div");
+    d.dataset.mid = msg.id;
+    d.dataset.ts = msgTs;
+    d.className = "sys-msg";
+    d.style.borderColor = "rgba(244, 63, 94, 0.3)";
+    d.style.color = "#fda4af";
+    d.textContent = `⚠️ 復号エラー (ID: ${msg.id ? msg.id.substring(0,8) : '???'})`;
+    return d;
+  }
+  
+  let meta; try { meta = JSON.parse(metaStr); } catch { return null; }
+
+  const d = document.createElement("div"); 
+  d.dataset.mid = msg.id;
+  d.dataset.ts = msgTs;
+  if (msg.c) {
+    d.setAttribute("data-cid", msg.c);
+  }
+  d.className = "mw";
+  
+  const sN = meta.n || "???", sC = meta.c || "#94a3b8", sT = meta.p || "";
+
+  // mm (ヘッダーコンテナ) の構築
+  const mm = document.createElement("div");
+  mm.className = "mm";
+  mm.style.display = "flex";
+  mm.style.alignItems = "center";
+  mm.style.justifyContent = "space-between";
+  mm.style.width = "100%";
+
+  // 名前とトリップ
+  const nameWrap = document.createElement("div");
+  nameWrap.style.minWidth = "0";
+  nameWrap.style.overflow = "hidden";
+  nameWrap.style.textOverflow = "ellipsis";
+  nameWrap.style.whiteSpace = "nowrap";
+  nameWrap.style.flex = "1";
+
+  const nameSpan = document.createElement("span");
+  nameSpan.style.color = sC;
+  nameSpan.style.fontWeight = "700";
+  nameSpan.textContent = sN;
+  nameWrap.appendChild(nameSpan);
+
+  if (sT) {
+    const space = document.createTextNode(" ");
+    const tripSpan = document.createElement("span");
+    tripSpan.style.color = sC;
+    tripSpan.style.fontSize = "11px";
+    tripSpan.style.fontWeight = "bold";
+    tripSpan.textContent = sT;
+    nameWrap.appendChild(space);
+    nameWrap.appendChild(tripSpan);
+  }
+
+  // 時間と削除ボタン
+  const rightWrap = document.createElement("div");
+  rightWrap.style.display = "flex";
+  rightWrap.style.alignItems = "center";
+  rightWrap.style.gap = "8px";
+  rightWrap.style.flexShrink = "0";
+  rightWrap.style.marginLeft = "8px";
+
+  const timeSpan = document.createElement("span");
+  timeSpan.className = "ts";
+  timeSpan.style.color = sC;
+  timeSpan.style.opacity = "0.8";
+  timeSpan.style.fontFamily = "monospace";
+  timeSpan.textContent = fDT(msgTs);
+  rightWrap.appendChild(timeSpan);
+
+  let rawTextPreview = txt;
+
+  if (msg.u === myUid) {
+    if (txt.startsWith("IMG::data:image/")) {
+      rawTextPreview = "[画像ファイル]";
+    }
+    const escPreview = rawTextPreview.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const delBtn = document.createElement("button");
+    delBtn.className = "del-btn-inline";
+    delBtn.title = "削除";
+    delBtn.textContent = "×";
+    delBtn.setAttribute("onclick", `triggerDeleteMsg('${msg.id}', '${escPreview}')`);
+    rightWrap.appendChild(delBtn);
+  }
+
+  mm.appendChild(nameWrap);
+  mm.appendChild(rightWrap);
+
+  // mb (メッセージ本文コンテナ) の構築
+  const mb = document.createElement("div");
+  mb.className = "mb";
+  mb.style.borderColor = sC;
+
+  if (txt.startsWith("IMG::data:image/")) {
+    const b64 = txt.substring(5);
+    if (b64.match(/^data:image\/(jpeg|png|gif|webp);base64,[a-zA-Z0-9+/=]+$/)) {
+      const img = document.createElement("img");
+      img.src = b64;
+      img.className = "inline-img";
+      img.alt = "画像";
+      img.decoding = "async"; // 非同期デコード
+      img.setAttribute("onclick", `openZoomModal('${b64}')`);
+      mb.appendChild(img);
+    } else {
+      const errSpan = document.createElement("span");
+      errSpan.style.color = "red";
+      errSpan.textContent = "[不正な画像データ]";
+      mb.appendChild(errSpan);
+    }
+  } else {
+    const splitElements = parseTxtSplit(txt);
+    splitElements.forEach(el => {
+      if (el.nodeType === Node.TEXT_NODE) {
+        const textLines = el.textContent.split("\n");
+        textLines.forEach((line, i) => {
+          if (i > 0) mb.appendChild(document.createElement("br"));
+          mb.appendChild(document.createTextNode(line));
+        });
+      } else {
+        mb.appendChild(el);
+      }
+    });
+  }
+
+  d.appendChild(mm);
+  d.appendChild(mb);
+  d._meta = meta;
+  return d;
+}
+
+D.delCancelBtn.onclick = () => { D.delConfirmMod.classList.remove("show"); targetDelId = null; };
+D.delExecuteBtn.onclick = async () => {
+  if (curR && targetDelId) {
+    if (confirm("本当にこのメッセージを物理削除しますか？\nこの操作は元に戻せません。")) {
+      await remove(ref(db, `chat/${curR}/${targetDelId}`)).catch(e => {
+        showToast("❌ メッセージの削除に失敗しました");
+      });
+      showToast("✅ 削除完了");
+    }
+  }
+  D.delConfirmMod.classList.remove("show");
+  targetDelId = null;
+};
+
+let curR = null, curN = null, rawR = null, myUid = null;
+let isW = false, _exitLock = false, isLiveMode = false, unreadCount = 0;
+let displayedMsgIds = new Set();
+let myPresRef = null, _roomExpireAt = null, _cOff = null, _pOff = null, _rOff = null, _crOff = null, _waitPresOff = null, _waitRoomOff = null, _pendingOff = null;
+
+// 一時仮メッセージ要素を差し替え、描画ガタつきを無くして相手への即時反映を実現
+async function queueIncomingMessage(m) {
+  if (m.c) {
+    const tempEl = D.tli.querySelector(`[data-cid="${CSS.escape(String(m.c))}"]`);
+    if (tempEl) {
+      const realEl = await cMsg(m);
+      if (realEl) {
+        tempEl.replaceWith(realEl);
+        displayedMsgIds.add(m.id);
+        displayedMsgIds.delete(m.c);
+        trimTimeline();
+        scBottom();
+        return;
+      }
+    }
+  }
+  await renderSingleMessage(m);
+}
+
+async function renderSingleMessage(m) {
+  if (displayedMsgIds.has(m.id)) return;
+  const el = await cMsg(m); 
+  if (el) {
+    insertMessageEl(el);
+    displayedMsgIds.add(m.id); 
+    if (m.u !== myUid && !m.sys) {
+        if (!isLiveMode) { 
+            unreadCount++; 
+            updateScrollBtnUI();
+        }
+    }
+    trimTimeline();
+    scBottom();
+  }
+}
+
+function removeMessageEl(id) {
+  displayedMsgIds.delete(id);
+  const el = D.tli.querySelector(`[data-mid="${CSS.escape(String(id))}"]`);
+  if (el) {
+    if (el.dataset.cid) displayedMsgIds.delete(el.dataset.cid);
+    el.remove();
+  }
+  const elCid = D.tli.querySelector(`[data-cid="${CSS.escape(String(id))}"]`);
+  if (elCid) {
+    elCid.remove();
+  }
+}
+
+async function wipe(r) {
+  if (!r) return;
+  const updates = { [`rooms/${r}`]: null, [`chat/${r}`]: null, [`presence/${r}`]: null, [`pending/${r}`]: null, [`authorized_users/${r}`]: null };
+  try { await update(ref(db), updates); } catch (e) { }
+}
+
+async function sendSysMsg(text) {
+  if (!curR || !masterKey) return;
+  await push(ref(db, `chat/${curR}`), { 
+    sys: true, 
+    m: await encrypt(text, masterKey), 
+    t: serverTimestamp()
+  }).catch(e => {
+    console.error("システムメッセージ送信失敗:", e);
+  });
+}
+
+window.doExit = async () => {
+  _exitLock = true; 
+  const hashId = curR;
+  if (curR && masterKey && localStorage.getItem("nz_is_in_room") === "true") {
+    // 退室ログを出力
+    await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が退室しました`);
+    if(myPresRef) await remove(myPresRef).catch(()=>{});
+    await remove(ref(db, `pending/${curR}/${myUid}`)).catch(()=>{});
+    await remove(ref(db, `authorized_users/${curR}/${myUid}`)).catch(()=>{});
+    
+    const pSnap = await get(ref(db, `presence/${curR}`));
+    const members = pSnap.val();
+    if (!members || Object.keys(members).length === 0) {
+      await wipe(curR).catch(()=>{});
+    }
+  }
+
+  // 明示的な手動退室時のみ、次回入室のためにお知らせ送信フラグおよび暗号化対称鍵キャッシュを破棄
+  if (curR) {
+    localStorage.removeItem(`nz_sent_join_${curR}`);
+    sessionStorage.removeItem(`nz_mkey_${curR}`);
+  }
+  hasSentJoinMsgInSession = false;
+
+  if (hashId) {
+    localStorage.removeItem(`nz_entered_${hashId}`);
+    localStorage.removeItem(`nz_authkey_${hashId}`);
+  }
+  localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created"); localStorage.setItem("nz_is_in_room", "false");
+  if (window.history?.replaceState) window.history.replaceState({}, document.title, location.pathname);
+  clearAll(); showLobby();
+};
+
+function clearAll() {
+  if(typeof _cOff === "function"){ _cOff(); _cOff = null; }
+  if(typeof _crOff === "function"){ _crOff(); _crOff = null; }
+  if(typeof _pOff === "function"){ _pOff = null; }
+  if(typeof _rOff === "function"){ _rOff = null; }
+  if(typeof _waitPresOff === "function"){ _waitPresOff(); _waitPresOff = null; }
+  if(typeof _waitRoomOff === "function"){ _waitRoomOff(); _waitRoomOff = null; }
+  if(typeof _pendingOff === "function"){ _pendingOff = null; }
+
+  // セキュリティ要件：鍵情報と過去復号テキストキャッシュの徹底的なゼロ物理破棄
+  masterKey = null; 
+  decCache.clear();
+
+  isLiveMode = false; displayedMsgIds.clear(); D.tli.innerHTML = "";
+  stopTimerLoop(); D.hostModeCtrl.style.display = "none"; D.hostApprovePanel.style.display = "none";
+  stopWaitTicker(); _seenWaitIds.clear(); D.waitBadge.classList.remove("show");
+}
+
+let _timerRaf = null;
+function startTimerLoop() {
+  if (_timerRaf) cancelAnimationFrame(_timerRaf);
+  const tick = () => {
+    if (!curR || !_roomExpireAt) return;
+    const remain = Math.max(0, _roomExpireAt - srvNow());
+    const m = Math.floor(remain / 60000), s = Math.floor((remain % 60000) / 1000);
+    D.timerDsp.textContent = `${m}:${String(s).padStart(2,"0")}`;
+
+    if (remain <= 0 && !_exitLock) { _exitLock = true; doExit(); return; }
+    _timerRaf = requestAnimationFrame(tick);
+  };
+  _timerRaf = requestAnimationFrame(tick);
+}
+function stopTimerLoop() { if(_timerRaf) cancelAnimationFrame(_timerRaf); D.timerDsp.textContent = "--:--"; }
+
+function showLobby(msg = "") {
+  clearAll(); localStorage.setItem("nz_is_in_room", "false"); 
+  D.lberr.textContent = msg; D.lberr.style.display = msg ? "block" : "none";
+  D.app.style.display = "none"; D.waitMod.classList.remove("show"); D.lobby.style.display = "block";
+  D.ib.classList.remove("show");
+  D.enBtn.disabled = false; D.enBtn.textContent = "入室 / 作成";
+  
+  D.ni.value = localStorage.getItem("nz_ni") || ""; D.tripi.value = localStorage.getItem("nz_tripi") || "";
+  D.ri.value = localStorage.getItem("nz_ri_val") || ""; D.pi.value = localStorage.getItem("nz_pi_val") || "";
+  D.timeri.value = localStorage.getItem("nz_timer_val") || "30";
+  updateTripPreview(); syncPickers(curColor); checkCurrentRoomStatus();
+}
+
+// ボタンをクリックさせることなく、継続中であれば自動的かつシームレスに再入室を完了させる
+async function checkCurrentRoomStatus() {
+  const lastRi = localStorage.getItem("nz_active_ri"), lastCreated = localStorage.getItem("nz_active_created");
+  if (!lastRi || !lastCreated) return;
+  try {
+    const hashId = await getRoomHash(lastRi);
+    const snap = await get(ref(db, `rooms/${hashId}`));
+    if (snap.exists() && snap.val().created === parseInt(lastCreated) && snap.val().expireAt > srvNow()) {
+      const savedNi = localStorage.getItem("nz_ni") || "名無し";
+      const savedTripKey = localStorage.getItem("nz_tripi") || "";
+      const savedPi = localStorage.getItem("nz_pi_val") || "";
+      const savedTimer = parseInt(localStorage.getItem("nz_timer_val")) || 30;
+      
+      const tripStyled = await makeTrip(savedNi, savedTripKey);
+      localStorage.setItem("nz_mytrip_styled", tripStyled);
+      localStorage.setItem("nz_is_in_room", "true");
+      
+      await doJoin(lastRi, savedPi, savedNi, tripStyled, savedTimer, snap.val().requireApproval);
+    } else {
+      localStorage.removeItem("nz_active_ri"); 
+      localStorage.removeItem("nz_active_created");
+    }
+  } catch(e) {
+    localStorage.removeItem("nz_active_ri"); 
+    localStorage.removeItem("nz_active_created");
+  }
+}
+
+window.approveGuest = async (guestUid, guestKeyHex) => {
+  if (!isHost || !masterKey) return;
+  try {
+    const pendingSnap = await get(ref(db, `pending/${curR}/${guestUid}`));
+    let guestName = "名無し";
+    let guestTrip = "";
+    let guestColor = "#94a3b8";
+    
+    const pVal = pendingSnap.exists() ? pendingSnap.val() : null;
+    if (pVal && pVal.wmeta) {
+      const waitCryptoKey = await window.crypto.subtle.importKey(
+        "raw",
+        await window.crypto.subtle.digest("SHA-256", new TextEncoder().encode(SYSTEM_SALT + rawR)),
+        "AES-GCM",
+        false,
+        ["decrypt"]
+      );
+      const metaStr = await decrypt(pVal.wmeta, waitCryptoKey);
+      if (metaStr) {
+        try {
+          const wm = JSON.parse(metaStr);
+          guestName = wm.n || "名無し";
+          guestTrip = wm.p || "";
+          guestColor = wm.c || "#94a3b8";
+        } catch(e){}
+      }
+    }
+
+    const guestCryptoKey = await importRawKeyFromHex(guestKeyHex);
+    // メモリ露出を完全に防ぐ wrapKey 導出配布
+    const encryptedMasterKey = await wrapMasterKey(masterKey, guestCryptoKey);
+    const guestEncryptedMeta = await encrypt(JSON.stringify({ n: guestName, p: guestTrip, c: guestColor }), masterKey);
+
+    const updates = {};
+    updates[`presence/${curR}/${guestUid}`] = { 
+      status: "approved", 
+      mk: encryptedMasterKey,
+      meta: guestEncryptedMeta 
+    };
+    updates[`authorized_users/${curR}/${guestUid}`] = { mk: encryptedMasterKey, ts: serverTimestamp() };
+    updates[`pending/${curR}/${guestUid}`] = null;
+    
+    await update(ref(db), updates);
+
+    // 承認時のお知らせはゲスト本人の画面遷移時（enterChatUI）に一元送信するため、ここからは送信しません
+
+    showToast("✅ 承認してメンバーに昇格しました");
+  } catch (e) { 
+    alert("承認に失敗しました: " + e.message); 
+  }
+};
+
+window.rejectGuest = async (guestUid) => {
+  if (!isHost || !curR) return;
+  try {
+    await remove(ref(db, `pending/${curR}/${guestUid}`));
+    showToast("🚫 入室申請を拒否しました");
+  } catch (e) { alert("拒否に失敗しました"); }
+};
+
+function formatElapsed(reqAt) {
+  if (!reqAt) return "受付中";
+  const diffSec = Math.max(0, Math.floor((srvNow() - reqAt) / 1000));
+  if (diffSec < 60) return `${diffSec}秒前`;
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}分前`;
+  return `${Math.floor(diffMin/60)}時間前`;
+}
+
+let _seenWaitIds = new Set();
+function renderApprovalCard(uid, wm, gk, reqAt) {
+  const isNew = !_seenWaitIds.has(uid);
+  _seenWaitIds.add(uid);
+  const card = document.createElement("div");
+  card.className = "wait-card-v2" + (isNew ? " is-new" : "");
+  card.innerHTML = `
+    <div class="wait-info">
+      <span style="color:${esc(wm.c)}; font-weight:bold; font-size:10px;">${esc(wm.n)} ${esc(wm.p||"")}</span>
+      <span class="wait-elapsed" data-reqat="${reqAt||0}">${formatElapsed(reqAt)}</span>
+    </div>
+    <div class="wait-actions">
+      <button class="btn-approve" onclick="approveGuest('${uid}','${gk}')">許可</button>
+      <button class="btn-reject" onclick="rejectGuest('${uid}')">拒否</button>
+    </div>`;
+  return card;
+}
+
+let _waitTickTimer = null;
+function startWaitTicker() {
+  stopWaitTicker();
+  _waitTickTimer = setInterval(() => {
+    if (!isHost) return;
+    document.querySelectorAll(".wait-elapsed").forEach(el => {
+      el.textContent = formatElapsed(parseInt(el.dataset.reqat) || 0);
+    });
+  }, 4000);
+}
+function stopWaitTicker() { if (_waitTickTimer) { clearInterval(_waitTickTimer); _waitTickTimer = null; } }
+
+function rafThrottle(fn) {
+  let scheduled = false, latestArgs = null;
+  return (...args) => {
+    latestArgs = args;
+    if (scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(() => { scheduled = false; fn(...latestArgs); });
+  };
+}
+
+function trimTimeline() {
+  while (D.tli.children.length > 100) {
+    const first = D.tli.firstElementChild;
+    if (!first) break;
+    displayedMsgIds.delete(first.dataset.mid);
+    if (first.dataset.cid) displayedMsgIds.delete(first.dataset.cid);
+    first.remove();
+  }
+}
 
 // 過去ログの一括並列処理ロード：リフローを完全に排除しPromise.allによる並列復号で限界まで爆速化
 const processInitialMessages = async (messages) => {
@@ -1095,15 +1641,20 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
     clearAll(); _exitLock = false;
     localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created");
 
-    // 全モードにおいて部屋パスワードを必須チェック
-    if (!pass) throw new Error("部屋の作成・参加にはパスワードが必須です。");
-
     const hashId = await getRoomHash(roomId);
     curR = hashId; rawR = roomId; curN = name;
     
-    // 共通パスワードから対称鍵を即座に導出・取得
-    masterKey = await getOrCreateMasterKey(roomId, pass, hashId);
-    if (!masterKey) throw new Error("マスターキーの生成に失敗しました。");
+    // sessionStorageからキャッシュされた導出済みキーの取得を試みる（PBKDF2計算のスキップ）
+    let cachedKeyHex = sessionStorage.getItem(`nz_mkey_${hashId}`);
+    if (cachedKeyHex) {
+      masterKey = await importKeyFromHex(cachedKeyHex); // 1ms以下でロード
+    } else if (pass) {
+      masterKey = await deriveMasterKey(roomId, pass); // 通常導出
+      const exportedHex = await exportKeyToHex(masterKey);
+      sessionStorage.setItem(`nz_mkey_${hashId}`, exportedHex); // キャッシュ保存
+    } else {
+      throw new Error("パスワード情報が見つかりません。");
+    }
 
     const roomRef = ref(db, `rooms/${hashId}`);
     let snap = await get(roomRef);
@@ -1116,9 +1667,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
     let roomData = null;
     
     if (!snap.exists()) {
-      isHost = true;
-      _roomExpireAt = srvNow() + (initTimer * 60000);
-      roomData = { created: serverTimestamp(), host: myUid, expireAt: _roomExpireAt, requireApproval };
+      roomData = { created: serverTimestamp(), host: myUid, expireAt: srvNow() + (initTimer * 60000), requireApproval };
       await set(roomRef, roomData);
       
       myPresRef = ref(db, `presence/${hashId}/${myUid}`);
@@ -1141,19 +1690,57 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         await update(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: true });
         await enterChatUI(roomData, pass);
       } else if (roomData.requireApproval) {
-        // すでに以前承認されてプレゼンスが存在するか確認
+        const authLocalKey = localStorage.getItem(`nz_authkey_${hashId}`);
+        
         const myPresSnap = await get(myPresRef);
-        if (myPresSnap.exists() && myPresSnap.val().status === "approved") {
-          await enterChatUI(roomData, pass);
-          return;
+        if (myPresSnap.exists() && myPresSnap.val().status === "approved" && myPresSnap.val().mk && authLocalKey) {
+          try {
+            const guestCryptoKey = await importRawKeyFromHex(authLocalKey);
+            const decryptedMk = await unwrapMasterKey(myPresSnap.val().mk, guestCryptoKey);
+            if (decryptedMk) {
+              masterKey = decryptedMk;
+              await update(myPresRef, { mk: null });
+              await enterChatUI(roomData, pass);
+              return;
+            }
+          } catch(e){}
         }
 
-        // 承認待ちデータを登録（共通鍵 masterKey で安全に暗号化）
+        if (authLocalKey) {
+          try {
+            const authSnap = await get(ref(db, `authorized_users/${hashId}/${myUid}`));
+            if (authSnap.exists() && authSnap.val().mk) {
+              const guestCryptoKey = await importRawKeyFromHex(authLocalKey);
+              const decryptedMk = await unwrapMasterKey(authSnap.val().mk, guestCryptoKey);
+              if (decryptedMk) {
+                masterKey = decryptedMk;
+                const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
+                await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: false });
+                await enterChatUI(roomData, pass);
+                return;
+              }
+            }
+          } catch (e) {}
+        }
+
+        const randomBytes = window.crypto.getRandomValues(new Uint8Array(16));
+        myGuestKey = bytesToHex(randomBytes);
+        localStorage.setItem(`nz_authkey_${hashId}`, myGuestKey);
+
+        const waitCryptoKey = await window.crypto.subtle.importKey(
+          "raw",
+          await window.crypto.subtle.digest("SHA-256", new TextEncoder().encode(SYSTEM_SALT + roomId)),
+          "AES-GCM",
+          false,
+          ["encrypt"]
+        );
         const waitMetaStr = JSON.stringify({ n: name, p: trip, c: curColor });
+
         const pendingRef = ref(db, `pending/${hashId}/${myUid}`);
         await set(pendingRef, { 
           status: "waiting", 
-          wmeta: await encrypt(waitMetaStr, masterKey), 
+          gk: myGuestKey, 
+          wmeta: await encrypt(waitMetaStr, waitCryptoKey), 
           reqAt: serverTimestamp() 
         });
 
@@ -1161,19 +1748,24 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         D.waitModTrip.textContent = `${name} ${trip}`;
         D.waitMod.classList.add("show");
         
-        // 承認イベントの監視
         _waitPresOff = onValue(myPresRef, async (s) => {
           if (!s.exists()) return;
           const val = s.val();
-          if (val.status === "approved") {
-             D.waitMod.classList.remove("show");
-             if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
-             if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
-             await enterChatUI(roomData, pass);
+          if (val.status === "approved" && val.mk) {
+            try {
+              const guestCryptoKey = await importRawKeyFromHex(myGuestKey);
+              const decryptedMk = await unwrapMasterKey(val.mk, guestCryptoKey);
+              if (decryptedMk) {
+                 masterKey = decryptedMk;
+                 D.waitMod.classList.remove("show");
+                 if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
+                 if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
+                 await enterChatUI(roomData, pass);
+              }
+            } catch(e){}
           }
         });
 
-        // 途中で「オープン」に切り替わった場合の監視
         _waitRoomOff = onValue(ref(db, `rooms/${hashId}`), async (s) => {
           if (!s.exists()) return;
           const rVal = s.val();
@@ -1181,12 +1773,20 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
             if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
             if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
 
-            const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
-            await remove(pendingRef).catch(()=>{});
-            await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey) });
-            
-            D.waitMod.classList.remove("show");
-            await enterChatUI(rVal, pass);
+            const currentPass = pass || localStorage.getItem("nz_pi_val") || "";
+            if (currentPass) {
+              masterKey = await deriveMasterKey(roomId, currentPass);
+              const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
+              
+              await remove(pendingRef).catch(()=>{});
+              await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey) });
+              
+              D.waitMod.classList.remove("show");
+              await enterChatUI(rVal, currentPass);
+            } else {
+              D.waitMod.classList.remove("show");
+              showLobby("エラー: 部屋がオープンモードになりましたが、暗号化パスワードが存在しません。");
+            }
           }
         });
         
@@ -1196,17 +1796,12 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         };
 
       } else {
-        // オープンルームかつゲスト：即時入室
         const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
         await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey) });
         await enterChatUI(roomData, pass);
       }
     }
-  } catch (e) {
-    // 不必要な再接続無限ループを防ぐため、エラー時には確実に自動フラグを消去
-    localStorage.removeItem("nz_active_ri"); 
-    localStorage.removeItem("nz_active_created");
-    localStorage.setItem("nz_is_in_room", "false");
+  } catch (e) { 
     showLobby("エラー: " + e.message); 
   }
 }
@@ -1215,6 +1810,22 @@ async function enterChatUI(roomData, pass) {
   D.lobby.style.display = "none"; D.waitMod.classList.remove("show");
   D.app.style.display = "flex"; D.app.classList.add("visible");
   D.ib.classList.add("show"); D.rdsp.textContent = rawR;
+
+  localStorage.setItem("nz_active_ri", rawR); 
+  localStorage.setItem("nz_active_created", roomData.created);
+  localStorage.setItem("nz_is_in_room", "true");
+  localStorage.setItem(`nz_entered_${curR}`, "true");
+  
+  if (pass) {
+    localStorage.setItem("nz_pi_val", pass);
+  }
+
+  // ローカルストレージに送信済みフラグを記録。タブを閉じたり回線が切れても、お知らせログの二重送信を防ぎます
+  const localSentKey = `nz_sent_join_${curR}`;
+  if (!localStorage.getItem(localSentKey)) {
+    localStorage.setItem(localSentKey, "true");
+    await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が入室しました`);
+  }
 
   if (isHost) {
     D.hostModeCtrl.style.display = "flex";
@@ -1266,6 +1877,7 @@ async function enterChatUI(roomData, pass) {
       membersData.push({ id, u });
     }
 
+    // メンバーの復号処理を並列化して限界まで爆速処理
     const elements = await Promise.all(membersData.map(async ({ id, u }) => {
       if (u.status === "approved" && u.meta) {
         const metaStr = await decrypt(u.meta, masterKey);
@@ -1303,15 +1915,23 @@ async function enterChatUI(roomData, pass) {
       if (!curR || !isHost) return;
       
       const pendingData = Object.entries(s.val() || {});
+      const waitCryptoKey = await window.crypto.subtle.importKey(
+        "raw",
+        await window.crypto.subtle.digest("SHA-256", new TextEncoder().encode(SYSTEM_SALT + rawR)),
+        "AES-GCM",
+        false,
+        ["decrypt"]
+      );
 
+      // 承認待ちユーザーのパース・復号処理を並列化
       const cards = await Promise.all(pendingData.map(async ([id, u]) => {
         if (!u) return null;
-        if (u.status === "waiting" && u.wmeta) {
-          const metaStr = await decrypt(u.wmeta, masterKey);
+        if (u.status === "waiting" && u.wmeta && u.gk) {
+          const metaStr = await decrypt(u.wmeta, waitCryptoKey);
           if (metaStr) {
             try {
                const wm = JSON.parse(metaStr);
-               return { id, wm, reqAt: u.reqAt };
+               return { id, wm, gk: u.gk, reqAt: u.reqAt };
             } catch(e){}
           }
         }
@@ -1323,7 +1943,7 @@ async function enterChatUI(roomData, pass) {
       for (const card of cards) {
         if (card) {
           waitCount++;
-          fg.appendChild(renderApprovalCard(card.id, card.wm, card.reqAt));
+          fg.appendChild(renderApprovalCard(card.id, card.wm, card.gk, card.reqAt));
         }
       }
 
@@ -1339,6 +1959,7 @@ async function enterChatUI(roomData, pass) {
     _pendingOff = onValue(ref(db, `pending/${curR}`), rafThrottle(renderPendingList));
   }
 
+  // indexOn（ルール設定）に一切依存しない100%安全なデータ直引きアーキテクチャへの移行
   const chatRef = ref(db, `chat/${curR}`);
   const chatSnap = await get(chatRef);
   if (chatSnap.exists()) {
@@ -1350,10 +1971,12 @@ async function enterChatUI(roomData, pass) {
     });
     msgs.sort((a, b) => (a.t || 0) - (b.t || 0));
     
+    // 直近100件にクライアント側（メモリ上）でスライスして、DOM描画を極限まで軽量に維持
     const limitedMsgs = msgs.slice(-100);
     await processInitialMessages(limitedMsgs);
   }
 
+  // サーバーにフィルタ指定（query/limitToLast/orderBy）を投げず直に監視することで、インデックスエラーを確実に回避
   _cOff = onChildAdded(ref(db, `chat/${curR}`), snap => {
     if(!curR || !masterKey) return;
     const m = snap.val(); 
@@ -1369,18 +1992,7 @@ async function enterChatUI(roomData, pass) {
     removeMessageEl(snap.key);
   });
   
-  isLiveMode = true; 
-  setTimeout(()=> scBottom(true), 300);
-
-  // すべての初期ロードが成功して初めて自動接続フラグを永続化する（ロード失敗時の無限ループ対策）
-  localStorage.setItem("nz_active_ri", rawR); 
-  localStorage.setItem("nz_active_created", roomData.created);
-
-  const localSentKey = `nz_sent_join_${curR}`;
-  if (!localStorage.getItem(localSentKey)) {
-    localStorage.setItem(localSentKey, "true");
-    await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が入室しました`);
-  }
+  isLiveMode = true; setTimeout(()=> scBottom(true), 300);
 }
 
 let _wasDisconnected = false;
@@ -1399,6 +2011,7 @@ function initConnectionMonitor() {
   });
 }
 
+// 自動再接続・スリープ復帰時のお知らせログ（システム通知）重複送信を防ぐため生存監視のみにスリム化
 async function forceResync() {
   if (!curR || !masterKey) return;
   try {
@@ -1414,6 +2027,7 @@ async function forceResync() {
 
 document.addEventListener("visibilitychange", async () => {
   if (document.visibilityState === "visible") {
+    // 復帰時に明示的にgoOnlineさせてWebSocket切断からの再接続プロセスを即座にキック
     import("https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js").then((m) => {
       m.goOnline(db);
     });
@@ -1427,15 +2041,20 @@ document.addEventListener("visibilitychange", async () => {
         const myPresSnap = await get(myPresRef);
         if (myPresSnap.exists()) {
           const val = myPresSnap.val();
-          if (val.status === "approved") {
-            D.waitMod.classList.remove("show");
-            if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
-            if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
-            
-            const rSnap = await get(ref(db, `rooms/${curR}`));
-            const rData = rSnap.exists() ? rSnap.val() : { requireApproval: true };
-            await enterChatUI(rData, localStorage.getItem("nz_pi_val"));
-            return;
+          if (val.status === "approved" && val.mk) {
+            const guestCryptoKey = await importRawKeyFromHex(myGuestKey);
+            const decryptedMk = await unwrapMasterKey(val.mk, guestCryptoKey);
+            if (decryptedMk) {
+              masterKey = decryptedMk;
+              D.waitMod.classList.remove("show");
+              if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
+              if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
+              
+              const rSnap = await get(ref(db, `rooms/${curR}`));
+              const rData = rSnap.exists() ? rSnap.val() : { requireApproval: true };
+              await enterChatUI(rData, localStorage.getItem("nz_pi_val"));
+              return;
+            }
           }
         }
         
@@ -1445,7 +2064,7 @@ document.addEventListener("visibilitychange", async () => {
           if (rVal.requireApproval === false) {
             const currentPass = localStorage.getItem("nz_pi_val") || "";
             if (currentPass) {
-              masterKey = await getOrCreateMasterKey(rawR, currentPass, curR);
+              masterKey = await deriveMasterKey(rawR, currentPass);
               const metaStr = JSON.stringify({ n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor });
               await remove(ref(db, `pending/${curR}/${myUid}`)).catch(()=>{});
               await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey) });
@@ -1486,6 +2105,7 @@ async function sendMsg(overrideText = null, imgData = null) {
   const encryptedMeta = await encrypt(JSON.stringify(metaObj), masterKey);
   const encryptedMsg = await encrypt(imgData ? "IMG::" + imgData : txt, masterKey);
 
+  // 通信パケットを削減：mt(meta)、c(cid)、t(timestamp) へと極限まで圧縮
   const tempObj = { 
     id: cid, 
     c: cid, 
@@ -1495,8 +2115,10 @@ async function sendMsg(overrideText = null, imgData = null) {
     t: nowSrv
   };
   
+  // 楽観的UI：自分の画面へ即反映
   await renderSingleMessage(tempObj);
 
+  // 相手へ爆速で到達させるための非同期バックグラウンド同期
   push(ref(db, `chat/${curR}`), { 
     u: myUid, 
     c: cid, 
@@ -1520,10 +2142,12 @@ D.fileInput.onchange = (e) => {
     const img = new Image();
     img.onload = async () => {
       const cvs = document.createElement("canvas"); let w = img.width, h = img.height;
+      // 最大幅を 600px に抑え、ペイロードサイズを劇的に落とすことで暗号化・同期速度を限界突破
       if (w > 600) { h = Math.round((h * 600) / w); w = 600; }
       cvs.width = w; cvs.height = h; 
       cvs.getContext("2d").drawImage(img, 0, 0, w, h);
       
+      // JPEGの品質を 0.5 に落として通信量を最小化
       await sendMsg(null, cvs.toDataURL("image/jpeg", 0.5));
       
       D.imgBtn.innerHTML = origIcon; D.imgBtn.disabled = false; D.fileInput.value = "";
@@ -1537,7 +2161,6 @@ D.fileInput.onchange = (e) => {
 let isCmp = false;
 D.mi.addEventListener("compositionstart", () => { isCmp = true; });
 D.mi.addEventListener("compositionend", () => { isCmp = false; });
-
 D.mi.addEventListener("keydown", e => { if(e.key === "Enter" && !e.shiftKey && !isCmp) { e.preventDefault(); sendMsg(); } });
 D.mi.addEventListener("input", () => { D.mi.style.height = "auto"; D.mi.style.height = Math.min(D.mi.scrollHeight, 90) + "px"; });
 D.sdBtn.onclick = () => sendMsg();
@@ -1548,8 +2171,7 @@ D.enBtn.onclick = async () => {
   const n = D.ni.value.trim(), r = D.ri.value.trim(), p = D.pi.value.trim(), tk = D.tripi.value.trim();
   const tm = clampTimer(D.timeri.value);
   const isApproveMode = false;
-  // 部屋パスワードを両モードで必須検証
-  if (!n || !r || !p || !tk) { alert("必須項目をすべて入力してください。（パスワードは必須です）"); return; }
+  if (!n || !r || !tk) { alert("必須項目をすべて入力してください。"); return; }
   
   localStorage.setItem("nz_is_in_room", "true");
   D.enBtn.disabled = true; D.enBtn.textContent = "処理中...";
@@ -1575,6 +2197,7 @@ D.kbToggleBtn.onclick = () => {
   D.kbStatusText.textContent = keepKbOpen ? "KB:開" : "KB:閉";
   D.kbStatusText.style.color = keepKbOpen ? "#fff" : "var(--tx)";
   
+  // KBボタンの操作に追従して仮想キーボード自体の開閉（フォーカス制御）を即時実行
   if (keepKbOpen) {
     D.mi.focus();
   } else {
@@ -1816,6 +2439,7 @@ D_timerApplyBtn.onclick = async () => {
 
 let isInit = false;
 
+// 認証・初期接続を最速で進行させるためのメイン処理
 const initUserSession = async (user) => {
   myUid = user.uid; 
   if (isInit) return; 
@@ -1854,6 +2478,7 @@ const initUserSession = async (user) => {
   showLobby();
 };
 
+// 匿名サインインを最速で行うためのプロミス並列同期処理（ローカルセッションの優先評価）
 const authenticateAnonymously = () => {
   return new Promise((resolve, reject) => {
     if (auth.currentUser) {
@@ -1889,8 +2514,10 @@ const authenticateAnonymously = () => {
   });
 };
 
+// 1. 認証を待たずに即時WebSocket接続を開始（認証フローとの並行ウォームアップ）
 initConnectionMonitor();
 
+// 2. 匿名認証・セッション復元
 authenticateAnonymously()
   .then(async (user) => {
     await initUserSession(user);

@@ -657,7 +657,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   <div class="clrmc">
     <h3 style="font-size:12px;">カラーを変更</h3>
     <div class="clrpick-grid" id="clrPick2" style="margin:4px 0"></div>
-    <div class="clr-prev" id="clrPrev"><span style="color:var(--usr-color)">■ この色で名前、トリップ、発言時刻が同期表示されます</span></div>
+    <div class="clr-prev" id="clrPrev"></div>
     <div class="clr-btns">
       <button class="clr-cancel" id="clrCancel">キャンセル</button>
       <button class="clr-ok" id="clrOk">適用</button>
@@ -682,7 +682,7 @@ import { getDatabase, ref, push, onValue, set, update, remove, get, serverTimest
 // トリップ生成用の鍵
 const SYSTEM_SALT = "NEZU_PRO_SYS_SALT_2026_V1";
 
-// 接続設定（プレーン表記。デコード不具合によるAPIキーエラーを完全に防止）
+// 接続設定
 const firebaseConfig = {
   apiKey: "AIzaSyCsRidc0smUQDaBwq-oki5NzxSHx6-ljiw",
   authDomain: "nezuochat.firebaseapp.com",
@@ -727,11 +727,9 @@ let isAutoScroll = true;
 const scBottom = (force = false) => {
   if (!isAutoScroll && !force) return;
   
-  // コールスタックと同一のフレームでスクロール位置を即時バインド（反映速度の極限化）
   D.tl.scrollTop = D.tl.scrollHeight;
   updateJumpBtns();
   
-  // モバイル端末でのキーボード開閉アニメーションラグを吸収するための二重補正
   requestAnimationFrame(() => {
     D.tl.scrollTop = D.tl.scrollHeight;
     setTimeout(() => {
@@ -764,7 +762,7 @@ const initHashPass = () => {
 initHashPass();
 
 /* =========================================================
-   Web Cryptography API (AES-GCM 256) 高速・セキュア実装
+   Web Cryptography API (AES-GCM 256) 実装
    ========================================================= */
 
 const hexToBytes = (hex) => {
@@ -785,7 +783,7 @@ const sha256 = async (text) => {
   return bytesToHex(new Uint8Array(hashBuffer));
 };
 
-// PBKDF2 から AES-GCM CryptoKey を安全に導出
+// PBKDF2 から AES-GCM CryptoKey を安全に導出 (100,000イテレーションに強化)
 const deriveMasterKey = async (roomId, pass) => {
   const enc = new TextEncoder();
   const passwordBuffer = enc.encode(pass);
@@ -803,7 +801,7 @@ const deriveMasterKey = async (roomId, pass) => {
     {
       name: "PBKDF2",
       salt: saltBuffer,
-      iterations: 10000,
+      iterations: 100000,
       hash: "SHA-256"
     },
     baseKey,
@@ -811,12 +809,12 @@ const deriveMasterKey = async (roomId, pass) => {
       name: "AES-GCM",
       length: 256
     },
-    true, // ラッピングを有効に設定
+    true,
     ["encrypt", "decrypt", "wrapKey", "unwrapKey"]
   );
 };
 
-// 鍵配布用ラッピング（メモリ露出のない暗号化エクスポート）
+// 鍵配布用ラッピング
 const wrapMasterKey = async (keyToWrap, wrappingKey) => {
   const iv = window.crypto.getRandomValues(new Uint8Array(12));
   const wrapped = await window.crypto.subtle.wrapKey(
@@ -839,7 +837,7 @@ const wrapMasterKey = async (keyToWrap, wrappingKey) => {
   return ivHex + ":" + btoa(binary);
 };
 
-// 鍵配布用ラッピング解除（インポート）
+// 鍵配布用ラッピング解除
 const unwrapMasterKey = async (wrappedStr, unwrappingKey) => {
   try {
     const parts = wrappedStr.split(":");
@@ -885,7 +883,7 @@ const importRawKeyFromHex = async (hex) => {
   );
 };
 
-// 対称鍵のエクスポート / インポート処理 (sessionStorageキャッシュ用)
+// 対称鍵のエクスポート / インポート処理
 const exportKeyToHex = async (key) => {
   const exported = await window.crypto.subtle.exportKey("raw", key);
   return bytesToHex(new Uint8Array(exported));
@@ -902,7 +900,7 @@ const importKeyFromHex = async (hex) => {
   );
 };
 
-// トリップキーとアルゴリズムの隠蔽化 (キー反転 + 難読化攪拌)
+// トリップキーとアルゴリズムの隠蔽化
 const makeTrip = async (name, tripKey) => {
   if (!tripKey) return "";
   const revKey = tripKey.split("").reverse().join("");
@@ -915,15 +913,15 @@ const getRoomHash = async (roomId) => {
   return await sha256(SYSTEM_SALT + roomId);
 };
 
-let masterKey = null; // メモリ内キャッシュ対称鍵 (CryptoKey)
+let masterKey = null; 
 let isHost = false;
 let myGuestKey = null;
 let targetDelId = null;
-let hasSentJoinMsgInSession = false; // 手動入室時のみお知らせを出すためセッション単位で追跡
+let hasSentJoinMsgInSession = false;
 
-// メッセージ暗号化を非同期 Promise キャッシュでさらに爆速化
-const decCache = new Map(); // 暗号文 -> Promise<plaintext>
-const metaCache = new Map(); // 暗号文 -> Promise<metadata_object>
+// メッセージ暗号化を非同期 Promise キャッシュ
+const decCache = new Map(); 
+const metaCache = new Map(); 
 
 const encrypt = async (t, key = masterKey) => {
   if (!t || !key) return "";
@@ -955,7 +953,6 @@ const encrypt = async (t, key = masterKey) => {
   }
 };
 
-// 重複する復号処理を完全に抑制する Promise 直キャッシュ設計
 const decrypt = (c, key = masterKey) => {
   if (!c || !key) return Promise.resolve(null);
   if (decCache.has(c)) return decCache.get(c);
@@ -996,7 +993,6 @@ const decrypt = (c, key = masterKey) => {
 let _srvOff = 0;
 onValue(ref(db, ".info/serverTimeOffset"), s => { _srvOff = s.val() || 0; });
 const srvNow = () => Date.now() + _srvOff;
-const esc = t => (t||"").replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 const updateTripPreview = async () => {
   const n = D.ni.value || "名無し";
@@ -1090,7 +1086,8 @@ setGlobalColor(curColor);
 
 const syncPickers = v => { if(D.lbClrPick) D.lbClrPick.querySelectorAll("button").forEach(b => b.classList.toggle("sel", b.dataset.color === v)); };
 function buildPicker(con, sel, cls, onChange) {
-  if (!con) return; con.innerHTML = "";
+  if (!con) return; 
+  while (con.firstChild) con.removeChild(con.firstChild);
   COLORS.forEach(({v,n}) => {
     const b = document.createElement("button");
     b.className = cls + (v === sel ? " sel" : ""); b.style.background = v; b.title = n; b.dataset.color = v;
@@ -1102,8 +1099,20 @@ buildPicker(D.lbClrPick, curColor, "clrc",  onColorSelect);
 
 D.clrBtn.addEventListener("click", () => {
   tmpColor = curColor;
-  D.clrPrev.innerHTML = `<span style="color:${curColor}">■ この色で名前、トリップ、発言時刻が同期表示されます</span>`;
-  buildPicker(D.clrPick2, curColor, "clrc2", v => { tmpColor = v; D.clrPrev.innerHTML = `<span style="color:${v}">■ この色で名前、トリップ、発言時刻が同期表示されます</span>`; });
+  D.clrPrev.textContent = "";
+  const prevSpan = document.createElement("span");
+  prevSpan.style.color = curColor;
+  prevSpan.textContent = "■ この色で名前、トリップ、発言時刻が同期表示されます";
+  D.clrPrev.appendChild(prevSpan);
+
+  buildPicker(D.clrPick2, curColor, "clrc2", v => { 
+    tmpColor = v; 
+    D.clrPrev.textContent = "";
+    const innerSpan = document.createElement("span");
+    innerSpan.style.color = v;
+    innerSpan.textContent = "■ この色で名前、トリップ、発言時刻が同期表示されます";
+    D.clrPrev.appendChild(innerSpan);
+  });
   D.clrmod.classList.add("show");
 });
 D.clrOk.addEventListener("click", async () => {
@@ -1116,7 +1125,7 @@ D.clrOk.addEventListener("click", async () => {
 D.clrCancel.addEventListener("click", () => D.clrmod.classList.remove("show"));
 
 function showToast(msg) {
-  D.toastContainer.innerHTML = '';
+  D.toastContainer.textContent = "";
   const t = document.createElement("div"); t.className = "toast"; t.textContent = msg;
   D.toastContainer.appendChild(t);
   setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 2000);
@@ -1135,7 +1144,7 @@ const fDT = ts => {
 
 const UR = /(https?:\/\/[^\s\n<>"]+)/gi;
 
-// URLリンク化処理を高速化し、DOM要素の配列として返すように最適化
+// URLリンク化処理
 function parseTxtSplit(txt) {
   const norm = txt.replace(/[\u3000]/g, " ");
   const elements = [];
@@ -1163,12 +1172,12 @@ function parseTxtSplit(txt) {
   return elements;
 }
 
-window.triggerDeleteMsg = (mid, previewText) => {
+window.triggerDeleteMsg = (mid, txt) => {
   targetDelId = mid;
-  D.delConfirmPreview.innerHTML = ""; // 以前のプレビュー表示をリセット
+  D.delConfirmPreview.textContent = "";
   
-  if (previewText.startsWith("IMG::data:image/")) {
-    const b64 = previewText.substring(5);
+  if (txt.startsWith("IMG::data:image/")) {
+    const b64 = txt.substring(5);
     const img = document.createElement("img");
     img.src = b64;
     img.style.maxWidth = "100%";
@@ -1181,7 +1190,7 @@ window.triggerDeleteMsg = (mid, previewText) => {
     img.style.margin = "8px auto 0";
     D.delConfirmPreview.appendChild(img);
   } else {
-    D.delConfirmPreview.textContent = previewText;
+    D.delConfirmPreview.textContent = txt;
   }
   D.delConfirmMod.classList.add("show");
 };
@@ -1222,11 +1231,11 @@ function insertMessageEl(el) {
   }
 }
 
-// メタ構造体のPromiseキャッシュ展開により、JSONパースの重複リフローを100%防止
+// 描画処理の完全DOM API化 (innerHTMLの廃止)
 async function cMsg(msg) {
   const msgTs = msg.t || srvNow();
 
-  // 1. システムメッセージの高速描画
+  // 1. システムメッセージ
   if (msg.sys) {
     const sysText = await decrypt(msg.m, masterKey);
     if (!sysText) return null; 
@@ -1258,7 +1267,7 @@ async function cMsg(msg) {
     return d;
   }
 
-  // 2. 通常メッセージの高速描画 (Promise.all による2倍速同時並行復号)
+  // 2. 通常メッセージ
   const pMeta = metaCache.has(msg.mt) ? metaCache.get(msg.mt) : (async () => {
     const metaStr = await decrypt(msg.mt, masterKey);
     if (!metaStr) return null;
@@ -1267,7 +1276,6 @@ async function cMsg(msg) {
   metaCache.set(msg.mt, pMeta);
 
   const pTxt = decrypt(msg.m, masterKey);
-
   const [meta, txt] = await Promise.all([pMeta, pTxt]);
 
   if (!meta || !txt) {
@@ -1337,20 +1345,14 @@ async function cMsg(msg) {
   timeSpan.textContent = fDT(msgTs);
   rightWrap.appendChild(timeSpan);
 
-  let rawTextPreview = txt;
-
   if (msg.u === myUid) {
-    let escPreview = "";
-    if (txt.startsWith("IMG::data:image/")) {
-      escPreview = "IMG::" + txt.substring(5); 
-    } else {
-      escPreview = txt.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    }
     const delBtn = document.createElement("button");
     delBtn.className = "del-btn-inline";
     delBtn.title = "削除";
     delBtn.textContent = "×";
-    delBtn.setAttribute("onclick", `triggerDeleteMsg('${msg.id}', '${escPreview}')`);
+    delBtn.addEventListener("click", () => {
+      window.triggerDeleteMsg(msg.id, txt);
+    });
     rightWrap.appendChild(delBtn);
   }
 
@@ -1418,9 +1420,8 @@ let curR = null, curN = null, rawR = null, myUid = null;
 let isW = false, _exitLock = false, isLiveMode = false, unreadCount = 0;
 let displayedMsgIds = new Set();
 let myPresRef = null, _roomExpireAt = null, _cOff = null, _pOff = null, _rOff = null, _crOff = null, _waitPresOff = null, _waitRoomOff = null, _pendingOff = null;
-let pendingTimeoutTimer = null; // 承認待機タイムアウト監視用スレッド
+let pendingTimeoutTimer = null;
 
-// 一時仮メッセージ要素を差し替え、描画ガタつきを無くして相手への即時反映を実現
 async function queueIncomingMessage(m) {
   if (m.c) {
     const tempEl = D.tli.querySelector(`[data-cid="${CSS.escape(String(m.c))}"]`);
@@ -1492,7 +1493,6 @@ window.doExit = async () => {
   if (pendingTimeoutTimer) { clearInterval(pendingTimeoutTimer); pendingTimeoutTimer = null; }
   
   if (curR && masterKey && localStorage.getItem("nz_is_in_room") === "true") {
-    // 退室ログを出力
     await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が退室しました`);
     if(myPresRef) await remove(myPresRef).catch(()=>{});
     await remove(ref(db, `pending/${curR}/${myUid}`)).catch(()=>{});
@@ -1505,17 +1505,16 @@ window.doExit = async () => {
     }
   }
 
-  // 明示的な手動退室時のみ、次回入室のためにお知らせ送信フラグおよび暗号化対称鍵キャッシュを破棄
   if (curR) {
     localStorage.removeItem(`nz_sent_join_${curR}`);
-    localStorage.removeItem(`nz_mkey_${curR}`); // 永続ストレージの鍵キャッシュの破棄
+    localStorage.removeItem(`nz_mkey_${curR}`);
   }
   hasSentJoinMsgInSession = false;
 
   if (hashId) {
     localStorage.removeItem(`nz_entered_${hashId}`);
     localStorage.removeItem(`nz_authkey_${hashId}`);
-    localStorage.removeItem("nz_pending_req_at"); // 申請開始時間を確実に破棄
+    localStorage.removeItem("nz_pending_req_at");
   }
   localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created"); localStorage.setItem("nz_is_in_room", "false");
   if (window.history?.replaceState) window.history.replaceState({}, document.title, location.pathname);
@@ -1532,12 +1531,11 @@ function clearAll() {
   if(typeof _pendingOff === "function"){ _pendingOff = null; }
   if(pendingTimeoutTimer) { clearInterval(pendingTimeoutTimer); pendingTimeoutTimer = null; }
 
-  // セキュリティ要件：鍵情報と過去復号テキストキャッシュの徹底的なゼロ物理破棄
   masterKey = null; 
   decCache.clear();
   metaCache.clear();
 
-  isLiveMode = false; displayedMsgIds.clear(); D.tli.innerHTML = "";
+  isLiveMode = false; displayedMsgIds.clear(); D.tli.textContent = "";
   stopTimerLoop(); D.hostModeCtrl.style.display = "none"; D.hostApprovePanel.style.display = "none";
   stopWaitTicker(); _seenWaitIds.clear(); D.waitBadge.classList.remove("show");
 }
@@ -1547,7 +1545,6 @@ function startTimerLoop() {
   if (_timerRaf) cancelAnimationFrame(_timerRaf);
   const tick = () => {
     if (!curR) return;
-    // タイマー寿命が取得できていない、または同期中の場合は30分（デフォルト）をあてがう超堅牢設計
     const expire = (typeof _roomExpireAt === "number") ? _roomExpireAt : (srvNow() + 30 * 60000);
     const remain = Math.max(0, expire - srvNow());
     const m = Math.floor(remain / 60000), s = Math.floor((remain % 60000) / 1000);
@@ -1573,7 +1570,6 @@ function showLobby(msg = "") {
   updateTripPreview(); syncPickers(curColor); checkCurrentRoomStatus();
 }
 
-// 継続中セッションが存在する場合、他の部屋の招待URLなどのパラメータを上書きして最優先で移行（複窓・PWAショートカット直行・浮気防止）
 async function checkCurrentRoomStatus() {
   const lastRi = localStorage.getItem("nz_active_ri"), lastCreated = localStorage.getItem("nz_active_created");
   if (!lastRi || !lastCreated) return;
@@ -1631,7 +1627,6 @@ window.approveGuest = async (guestUid, guestKeyHex) => {
     }
 
     const guestCryptoKey = await importRawKeyFromHex(guestKeyHex);
-    // メモリ露出を完全に防ぐ wrapKey 導出配布
     const encryptedMasterKey = await wrapMasterKey(masterKey, guestCryptoKey);
     const guestEncryptedMeta = await encrypt(JSON.stringify({ n: guestName, p: guestTrip, c: guestColor }), masterKey);
 
@@ -1645,8 +1640,6 @@ window.approveGuest = async (guestUid, guestKeyHex) => {
     updates[`pending/${curR}/${guestUid}`] = null;
     
     await update(ref(db), updates);
-
-    // 承認時のお知らせをホスト側から代わりに即書き込む（ゲスト側のバックグラウンド自動入室を完全にサポート）
     await sendSysMsg(`${guestName} ${guestTrip} が入室しました`);
 
     showToast("✅ 承認してメンバーに昇格しました");
@@ -1673,20 +1666,50 @@ function formatElapsed(reqAt) {
 }
 
 let _seenWaitIds = new Set();
+// 承認待機カードの完全DOM API化 (innerHTMLの廃止)
 function renderApprovalCard(uid, wm, gk, reqAt) {
   const isNew = !_seenWaitIds.has(uid);
   _seenWaitIds.add(uid);
+  
   const card = document.createElement("div");
   card.className = "wait-card-v2" + (isNew ? " is-new" : "");
-  card.innerHTML = `
-    <div class="wait-info">
-      <span style="color:${esc(wm.c)}; font-weight:bold; font-size:10px;">${esc(wm.n)} ${esc(wm.p||"")}</span>
-      <span class="wait-elapsed" data-reqat="${reqAt||0}">${formatElapsed(reqAt)}</span>
-    </div>
-    <div class="wait-actions">
-      <button class="btn-approve" onclick="approveGuest('${uid}','${gk}')">許可</button>
-      <button class="btn-reject" onclick="rejectGuest('${uid}')">拒否</button>
-    </div>`;
+  
+  const info = document.createElement("div");
+  info.className = "wait-info";
+  
+  const nameSpan = document.createElement("span");
+  nameSpan.style.color = wm.c || "#94a3b8";
+  nameSpan.style.fontWeight = "bold";
+  nameSpan.style.fontSize = "10px";
+  nameSpan.textContent = `${wm.n} ${wm.p || ""}`;
+  
+  const elapsedSpan = document.createElement("span");
+  elapsedSpan.className = "wait-elapsed";
+  elapsedSpan.dataset.reqat = reqAt || 0;
+  elapsedSpan.textContent = formatElapsed(reqAt);
+  
+  info.appendChild(nameSpan);
+  info.appendChild(elapsedSpan);
+  
+  const actions = document.createElement("div");
+  actions.className = "wait-actions";
+  
+  const btnApprove = document.createElement("button");
+  btnApprove.className = "btn-approve";
+  btnApprove.textContent = "許可";
+  btnApprove.addEventListener("click", () => window.approveGuest(uid, gk));
+  
+  const btnReject = document.createElement("button");
+  btnReject.className = "btn-reject";
+  btnReject.textContent = "拒否";
+  btnReject.addEventListener("click", () => window.rejectGuest(uid));
+  
+  actions.appendChild(btnApprove);
+  actions.appendChild(btnReject);
+  
+  card.appendChild(info);
+  card.appendChild(actions);
+  
   return card;
 }
 
@@ -1702,16 +1725,6 @@ function startWaitTicker() {
 }
 function stopWaitTicker() { if (_waitTickTimer) { clearInterval(_waitTickTimer); _waitTickTimer = null; } }
 
-function rafThrottle(fn) {
-  let scheduled = false, latestArgs = null;
-  return (...args) => {
-    latestArgs = args;
-    if (scheduled) return;
-    scheduled = true;
-    requestAnimationFrame(() => { scheduled = false; fn(...latestArgs); });
-  };
-}
-
 function trimTimeline() {
   while (D.tli.children.length > 100) {
     const first = D.tli.firstElementChild;
@@ -1722,7 +1735,7 @@ function trimTimeline() {
   }
 }
 
-// 過去ログの一括並列処理ロード：リフローを完全に排除しPromise.allによる並列復号で限界まで爆速化
+// 過去ログの一括ロード
 const processInitialMessages = async (messages) => {
   const elements = await Promise.all(messages.map(async (m) => {
     if (displayedMsgIds.has(m.id)) return null;
@@ -1743,12 +1756,12 @@ const processInitialMessages = async (messages) => {
   scBottom(true);
 };
 
-// 承認待ち有効期限（5分間タイムアウト）自動処理ロジック
+// 承認待ち自動タイムアウト
 const startPendingTimeout = (reqAtTime, name, trip) => {
   if (pendingTimeoutTimer) clearInterval(pendingTimeoutTimer);
   pendingTimeoutTimer = setInterval(() => {
     const elapsed = srvNow() - reqAtTime;
-    if (elapsed >= 5 * 60 * 1000) { // 5分
+    if (elapsed >= 5 * 60 * 1000) {
       clearInterval(pendingTimeoutTimer);
       pendingTimeoutTimer = null;
       showToast("⏳ 承認待ちの有効期限（5分）が切れました。");
@@ -1764,7 +1777,6 @@ const startPendingTimeout = (reqAtTime, name, trip) => {
 
 async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
   try {
-    // 処理開始時にロビー画面を一旦隠す（ロビーのチラつきを完全に防止）
     D.lobby.style.display = "none";
     D.enBtn.disabled = true;
     D.enBtn.textContent = "処理中...";
@@ -1772,7 +1784,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
     clearAll(); _exitLock = false;
     localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created");
 
-    // 匿名ログインの完了とセッションUIDの存在を強制的に保証
     if (!myUid && auth.currentUser) {
       myUid = auth.currentUser.uid;
     }
@@ -1784,14 +1795,13 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
     const hashId = await getRoomHash(roomId);
     curR = hashId; rawR = roomId; curN = name;
     
-    // localStorageからキャッシュされた導出済みキーの取得を試みる（PBKDF2計算を完全にバイパスして0ms直行）
     let cachedKeyHex = localStorage.getItem(`nz_mkey_${hashId}`);
     if (cachedKeyHex) {
-      masterKey = await importKeyFromHex(cachedKeyHex); // 1ms以下でロード
+      masterKey = await importKeyFromHex(cachedKeyHex);
     } else if (pass) {
-      masterKey = await deriveMasterKey(roomId, pass); // 通常導出
+      masterKey = await deriveMasterKey(roomId, pass);
       const exportedHex = await exportKeyToHex(masterKey);
-      localStorage.setItem(`nz_mkey_${hashId}`, exportedHex); // localStorageへ永続キャッシュ
+      localStorage.setItem(`nz_mkey_${hashId}`, exportedHex);
     } else {
       throw new Error("パスワード情報が見つかりません。");
     }
@@ -1807,7 +1817,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
     let roomData = null;
     
     if (!snap.exists()) {
-      // タイマー即時起動仕様：ローカル側で即座に残り時間を計算・表示
       const expireAtVal = srvNow() + (initTimer * 60000);
       _roomExpireAt = expireAtVal;
       isHost = true;
@@ -1819,7 +1828,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
       await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: true });
       
-      // データベースからの再 get 反映を待たずに、即座にローカル値（Date.nowで補完）でタイマー稼働
       const localRoomData = { ...roomData, created: Date.now() };
       await enterChatUI(localRoomData, pass);
     } 
@@ -1843,10 +1851,9 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
             const decryptedMk = await unwrapMasterKey(myPresSnap.val().mk, guestCryptoKey);
             if (decryptedMk) {
               masterKey = decryptedMk;
-              await update(myPresRef, { mk: null }); // 自プレゼンスのmkをクリア
-              localStorage.removeItem("nz_pending_req_at"); // 申請成功時は開始時間を初期化
+              await update(myPresRef, { mk: null });
+              localStorage.removeItem("nz_pending_req_at");
               
-              // タイマーの秒ズレを完全に防ぐため、入室前に最新ルームデータをサーバーから裏取りする
               const freshSnap = await get(roomRef);
               const latestRoomData = freshSnap.exists() ? freshSnap.val() : roomData;
               await enterChatUI(latestRoomData, pass);
@@ -1865,9 +1872,8 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
                 masterKey = decryptedMk;
                 const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
                 await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: false });
-                localStorage.removeItem("nz_pending_req_at"); // 申請成功時は開始時間を初期化
+                localStorage.removeItem("nz_pending_req_at");
                 
-                // 待機中にずれたタイマー同期を修正するための部屋情報再取得
                 const freshSnap = await get(roomRef);
                 const latestRoomData = freshSnap.exists() ? freshSnap.val() : roomData;
                 await enterChatUI(latestRoomData, pass);
@@ -1892,14 +1898,12 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
 
         const pendingRef = ref(db, `pending/${hashId}/${myUid}`);
         
-        // 待機開始時間の取得（ストレージに無ければ新規、あれば経過時間引き継ぎ）
         let requestTime = parseInt(localStorage.getItem("nz_pending_req_at"));
         if (!requestTime || isNaN(requestTime)) {
           requestTime = srvNow();
           localStorage.setItem("nz_pending_req_at", requestTime);
         }
 
-        // バックグラウンドなど別スレッドで既に5分以上経っているか瞬時にチェック
         const elapsed = srvNow() - requestTime;
         if (elapsed >= 5 * 60 * 1000) {
           showToast("⏳ 承認待ちの有効期限（5分）が切れました。");
@@ -1908,7 +1912,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
           return;
         }
 
-        // DBに申請データが存在しない場合のみ登録
         const pendingSnap = await get(pendingRef);
         if (!pendingSnap.exists()) {
           await set(pendingRef, { 
@@ -1919,7 +1922,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
           });
         }
 
-        // タブ開いてなくても「先に入室（バックグラウンド維持）」させるために情報を即保存！
         localStorage.setItem("nz_active_ri", rawR);
         localStorage.setItem("nz_active_created", roomData.created);
         localStorage.setItem("nz_is_in_room", "true");
@@ -1930,7 +1932,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         D.waitModTrip.textContent = `${name} ${trip} (同期中...)`;
         D.waitMod.classList.add("show");
 
-        // タイムアウト進行を引き継いで開始
         startPendingTimeout(requestTime, name, trip);
         
         _waitPresOff = onValue(myPresRef, async (s) => {
@@ -1947,9 +1948,8 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
                  if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
                  if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
                  if (pendingTimeoutTimer) { clearInterval(pendingTimeoutTimer); pendingTimeoutTimer = null; }
-                 localStorage.removeItem("nz_pending_req_at"); // 待機成功時はクリーンアップ
+                 localStorage.removeItem("nz_pending_req_at");
                  
-                 // 承認後のタイマー秒ズレを正す最新データの同期
                  const freshSnap = await get(roomRef);
                  const latestRoomData = freshSnap.exists() ? freshSnap.val() : roomData;
                  await enterChatUI(latestRoomData, pass);
@@ -1960,7 +1960,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
 
         _waitRoomOff = onValue(ref(db, `rooms/${hashId}`), async (s) => {
           if (!s.exists()) {
-            // 待機中にホスト退室などで部屋が消えたらキャンセル
             if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
             if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
             if (pendingTimeoutTimer) { clearInterval(pendingTimeoutTimer); pendingTimeoutTimer = null; }
@@ -1971,11 +1970,10 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
           }
           const rVal = s.val();
           if (rVal.requireApproval === false) {
-            // 待機中に「オープンモード」に切り替わったら即座に自動入室させる
             if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
             if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
             if (pendingTimeoutTimer) { clearInterval(pendingTimeoutTimer); pendingTimeoutTimer = null; }
-            localStorage.removeItem("nz_pending_req_at"); // 待機成功時はクリーンアップ
+            localStorage.removeItem("nz_pending_req_at");
 
             const currentPass = pass || localStorage.getItem("nz_pi_val") || "";
             if (currentPass) {
@@ -1998,7 +1996,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
           if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
           if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
           if (pendingTimeoutTimer) { clearInterval(pendingTimeoutTimer); pendingTimeoutTimer = null; }
-          // 申請データをDBから消去してロビーに戻る
           await remove(pendingRef).catch(()=>{});
           doExit(); 
         };
@@ -2011,7 +2008,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
     }
   } catch (e) { 
     console.error("入室失敗詳細:", e);
-    // エラーが起きた場合は即座にUIロックを解除し、原因を明確に伝える
     localStorage.removeItem("nz_is_in_room");
     D.enBtn.disabled = false;
     D.enBtn.textContent = "入室 / 作成";
@@ -2033,11 +2029,9 @@ async function enterChatUI(roomData, pass) {
     localStorage.setItem("nz_pi_val", pass);
   }
 
-  // ローカルストレージに送信済みフラグを記録。タブを閉じたり回線が切れても、お知らせログの二重送信を防ぎます
   const localSentKey = `nz_sent_join_${curR}`;
   if (!localStorage.getItem(localSentKey)) {
     localStorage.setItem(localSentKey, "true");
-    // ホストが承認時にお知らせログを代わりに送信するため、承認制部屋（LOCKED）ではゲスト側からのシステム送信をパスする
     if (roomData && roomData.requireApproval !== true) {
       await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が入室しました`);
     }
@@ -2095,7 +2089,6 @@ async function enterChatUI(roomData, pass) {
       membersData.push({ id, u });
     }
 
-    // メンバーの復号処理を並列化してメンバーリストを瞬時にロード
     const elements = await Promise.all(membersData.map(async ({ id, u }) => {
       if (u.status === "approved" && u.meta) {
         let m;
@@ -2130,15 +2123,11 @@ async function enterChatUI(roomData, pass) {
       }
     }
 
-    D.pl.innerHTML = ""; 
+    D.pl.textContent = ""; 
     D.pl.appendChild(fg); 
     D.pcnt.textContent = `[${count}人]`;
   }
-  // バックグラウンド・非アクティブ時の遅延（ requestAnimationFrame 間引き）を回避して即時同期
   _pOff = onValue(ref(db, `presence/${curR}`), renderPresenceList);
-
-  // 複数タブ（多重ログイン）時の古いタブを切断せず、複数タブ双方から完全同期して同時会話。
-  // 古いタブ側を強制切断退室させていたリスナー（watchMyPresOff）は要請に基づき完全に撤廃されました。
 
   if (isHost) {
     async function renderPendingList(s) {
@@ -2153,11 +2142,9 @@ async function enterChatUI(roomData, pass) {
         ["decrypt"]
       );
 
-      // 承認待ちユーザーのパース・復号処理を並列化
       const cards = await Promise.all(pendingData.map(async ([id, u]) => {
         if (!u) return null;
         if (u.status === "waiting" && u.wmeta && u.gk) {
-          // 申請から5分経過した待機カードの自動除外＆お掃除
           if (u.reqAt && (srvNow() - u.reqAt > 5 * 60 * 1000)) {
             remove(ref(db, `pending/${curR}/${id}`)).catch(()=>{});
             return null;
@@ -2182,20 +2169,22 @@ async function enterChatUI(roomData, pass) {
         }
       }
 
-      D.waitList.innerHTML = "";
+      D.waitList.textContent = "";
       if (waitCount > 0) {
         D.waitList.appendChild(fg);
       } else {
-        D.waitList.innerHTML = '<span style="font-size:9px; color:var(--m2);">待機ユーザーなし</span>';
+        const noUserSpan = document.createElement("span");
+        noUserSpan.style.fontSize = "9px";
+        noUserSpan.style.color = "var(--m2)";
+        noUserSpan.textContent = "待機ユーザーなし";
+        D.waitList.appendChild(noUserSpan);
       }
       D.waitBadge.textContent = `🔔 ${waitCount}`;
       D.waitBadge.classList.toggle("show", waitCount > 0);
     }
-    // 非アクティブタブでの遅延を排除しホスト画面に承認情報を即時同期
     _pendingOff = onValue(ref(db, `pending/${curR}`), renderPendingList);
   }
 
-  // indexOn（ルール設定）に一切依存しない100%安全なデータ直引きアーキテクチャへの移行
   const chatRef = ref(db, `chat/${curR}`);
   const chatSnap = await get(chatRef);
   if (chatSnap.exists()) {
@@ -2207,12 +2196,10 @@ async function enterChatUI(roomData, pass) {
     });
     msgs.sort((a, b) => (a.t || 0) - (b.t || 0));
     
-    // 直近100件にクライアント側（メモリ上）でスライスして、DOM描画を極限まで軽量に維持
     const limitedMsgs = msgs.slice(-100);
     await processInitialMessages(limitedMsgs);
   }
 
-  // サーバーにフィルタ指定（query/limitToLast/orderBy）を投げず直に監視することで、インデックスエラーを確実に回避
   _cOff = onChildAdded(ref(db, `chat/${curR}`), snap => {
     if(!curR || !masterKey) return;
     const m = snap.val(); 
@@ -2246,7 +2233,6 @@ function initConnectionMonitor() {
   });
 }
 
-// 自動再接続・スリープ復帰時のお知らせログ（システム通知）重複送信を防ぐため生存監視のみにスリム化
 async function forceResync() {
   if (!curR || !masterKey) return;
   try {
@@ -2262,7 +2248,6 @@ async function forceResync() {
 
 document.addEventListener("visibilitychange", async () => {
   if (document.visibilityState === "visible") {
-    // 復帰時に明示的にgoOnlineさせてWebSocket切断からの再接続プロセスを即座にキック
     import("https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js").then((m) => {
       m.goOnline(db);
     });
@@ -2342,7 +2327,6 @@ async function sendMsg(overrideText = null, imgData = null) {
   const encryptedMeta = await encrypt(JSON.stringify(metaObj), masterKey);
   const encryptedMsg = await encrypt(imgData ? "IMG::" + imgData : txt, masterKey);
 
-  // 通信パケットを削減：mt(meta)、c(cid)、t(timestamp) へと極限まで圧縮
   const tempObj = { 
     id: cid, 
     c: cid, 
@@ -2370,20 +2354,51 @@ async function sendMsg(overrideText = null, imgData = null) {
 D.imgBtn.onclick = () => D.fileInput.click();
 D.fileInput.onchange = (e) => {
   const file = e.target.files[0]; if (!file) return;
-  const origIcon = D.imgBtn.innerHTML;
-  D.imgBtn.innerHTML = `<div class="spin" style="width:12px;height:12px;border-width:2px;border-top-color:transparent"></div>`; D.imgBtn.disabled = true;
+  
+  const svgEl = D.imgBtn.querySelector("svg");
+  if (svgEl) svgEl.style.display = "none";
+  D.imgBtn.disabled = true;
+
+  const spin = document.createElement("div");
+  spin.className = "spin";
+  spin.style.width = "12px";
+  spin.style.height = "12px";
+  spin.style.borderWidth = "2px";
+  spin.style.borderTopColor = "transparent";
+  D.imgBtn.appendChild(spin);
+
   const reader = new FileReader();
   reader.onload = (ev) => {
     const img = new Image();
     img.onload = async () => {
-      const cvs = document.createElement("canvas"); let w = img.width, h = img.height;
-      if (w > 600) { h = Math.round((h * 600) / w); w = 600; }
+      const cvs = document.createElement("canvas"); 
+      let w = img.width, h = img.height;
+      const maxDim = 1000;
+      if (w > maxDim || h > maxDim) {
+        if (w > h) {
+          h = Math.round((h * maxDim) / w);
+          w = maxDim;
+        } else {
+          w = Math.round((w * maxDim) / h);
+          h = maxDim;
+        }
+      }
       cvs.width = w; cvs.height = h; 
       cvs.getContext("2d").drawImage(img, 0, 0, w, h);
-      await sendMsg(null, cvs.toDataURL("image/jpeg", 0.5));
-      D.imgBtn.innerHTML = origIcon; D.imgBtn.disabled = false; D.fileInput.value = "";
+      await sendMsg(null, cvs.toDataURL("image/jpeg", 0.6));
+      
+      spin.remove();
+      if (svgEl) svgEl.style.display = "";
+      D.imgBtn.disabled = false; 
+      D.fileInput.value = "";
     };
-    img.onerror = () => { alert("読込失敗"); D.imgBtn.innerHTML = origIcon; D.imgBtn.disabled = false; D.fileInput.value = ""; };
+    img.onerror = () => { 
+      alert("読込失敗"); 
+      spin.remove();
+      if (svgEl) svgEl.style.display = "";
+      D.imgBtn.disabled = false; 
+      D.fileInput.value = ""; 
+    };
     img.src = ev.target.result;
   };
   reader.readAsDataURL(file);
@@ -2398,7 +2413,6 @@ D.sdBtn.onclick = () => sendMsg();
 D.clrMsgBtn.onclick = () => { D.mi.value = ""; D.mi.style.height = "auto"; D.mi.focus(); };
 
 D.enBtn.onclick = async () => {
-  // 複窓・他ルーム作成/入室制限：ストレージに入室中セッションが残っている場合は完全に制限して引き戻す
   const savedActiveRi = localStorage.getItem("nz_active_ri");
   if (savedActiveRi && localStorage.getItem("nz_is_in_room") === "true") {
     alert("既に入室中または待機中の部屋（" + savedActiveRi + "）があります。まずはそちらから退室してください。");
@@ -2406,7 +2420,7 @@ D.enBtn.onclick = async () => {
     D.pi.value = localStorage.getItem("nz_pi_val") || "";
     D.ni.value = localStorage.getItem("nz_ni") || "名無し";
     D.tripi.value = localStorage.getItem("nz_tripi") || "";
-    // 現在のセッションの再入室処理を強制的にトリガー
+    
     localStorage.setItem("nz_is_in_room", "true");
     const tripStyled = await makeTrip(D.ni.value, D.tripi.value);
     await doJoin(savedActiveRi, D.pi.value, D.ni.value, tripStyled, parseInt(D.timeri.value) || 30, false);
@@ -2435,7 +2449,6 @@ D.gnBtn.onclick = () => {
 D.gdBtn.onclick = () => D.gmod.classList.add("show");
 D.gcBtn.onclick = () => D.gmod.classList.remove("show");
 
-// モーダル領域の自動クローズを、マスク背景をクリックした時のみに厳密化（ズームやドラッグ等の操作不具合を解消）
 document.querySelectorAll(".mod-overlay").forEach(m => { 
   m.onclick = e => { 
     if (e.target === m) {
@@ -2450,7 +2463,6 @@ D.kbToggleBtn.onclick = () => {
   D.kbStatusText.textContent = keepKbOpen ? "キーボード:開" : "キーボード:閉";
   D.kbStatusText.style.color = keepKbOpen ? "#fff" : "var(--tx)";
   
-  // キーボードボタンの操作に追従して仮想キーボード自体の開閉（フォーカス制御）を即時実行
   if (keepKbOpen) {
     D.mi.focus();
   } else {
@@ -2469,7 +2481,7 @@ D.autoScrollToggleBtn.onclick = () => {
 };
 
 const updateScrollBtnUI = () => {
-  // スクロール追従の非活性・活性時の微調整
+  // スクロール追従の状態に合わせた必要に応じた補助処理
 };
 
 const updateJumpBtns = () => {
@@ -2693,7 +2705,6 @@ D_timerApplyBtn.onclick = async () => {
 
 let isInit = false;
 
-// 認証・初期接続を最速で進行させるためのメイン処理
 const initUserSession = async (user) => {
   myUid = user.uid; 
   if (isInit) return; 
@@ -2707,8 +2718,6 @@ const initUserSession = async (user) => {
   const savedTripKey = localStorage.getItem("nz_tripi");
   const savedTimer = parseInt(localStorage.getItem("nz_timer_val")) || 30;
   
-  // 1. 入室中、または待機中のセッション情報が存在する場合、
-  // URLパラメータ（他の部屋の招待URL等）が異なっていても、現在のアクティブな部屋（savedActiveRi）を最優先にして強制移行（複窓・浮気防止）
   if (savedActiveRi && savedActiveCreated && savedNi && savedTripKey) {
     try {
       const hashId = await getRoomHash(savedActiveRi);
@@ -2718,16 +2727,13 @@ const initUserSession = async (user) => {
         const tripStyled = await makeTrip(savedNi, savedTripKey); 
         localStorage.setItem("nz_mytrip_styled", tripStyled);
         
-        // 浮気防止：招待URLパラメータを現在接続中のアクティブな部屋情報に動的書き換え
         if (window.history?.replaceState) {
           window.history.replaceState({}, document.title, location.pathname + "?r=" + encodeURIComponent(savedActiveRi));
         }
         
-        // ロビーを一切見せることなく直接バックグラウンド入室・待機を継続
         await doJoin(savedActiveRi, savedPi, savedNi, tripStyled, savedTimer, snap.val().requireApproval);
-        return; // 自動移行プロセスが走ったため終了
+        return;
       } else {
-        // すでに部屋が消滅している場合はゴミデータをクリア
         localStorage.removeItem("nz_active_ri"); 
         localStorage.removeItem("nz_active_created");
         localStorage.removeItem("nz_is_in_room");
@@ -2738,7 +2744,6 @@ const initUserSession = async (user) => {
     }
   }
 
-  // 2. 入室中のアクティブな部屋が存在しない場合のみ、ロビーを読み込み、URLパラメータを適用する
   if (urlR) { 
     D.ri.value = urlR; 
     localStorage.setItem("nz_ri_val", urlR); 
@@ -2746,7 +2751,6 @@ const initUserSession = async (user) => {
   showLobby();
 };
 
-// 匿名サインインを最速で行うためのプロミス並列同期処理（ローカルセッションの優先評価）
 const authenticateAnonymously = () => {
   return new Promise((resolve, reject) => {
     if (auth.currentUser) {
@@ -2782,10 +2786,8 @@ const authenticateAnonymously = () => {
   });
 };
 
-// 1. 認証を待たずに即時WebSocket接続を開始（認証フローとの並行ウォームアップ）
 initConnectionMonitor();
 
-// 2. 匿名認証・セッション復元
 authenticateAnonymously()
   .then(async (user) => {
     await initUserSession(user);

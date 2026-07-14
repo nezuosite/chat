@@ -994,13 +994,19 @@ const decrypt = (c, key = masterKey) => {
         ct
       );
 
-      return new TextDecoder().decode(decrypted);
+      const plaintext = new TextDecoder().decode(decrypted);
+      // 復号に成功した場合のみキャッシュに登録（バグの根本原因の解決）
+      decCache.set(c, p);
+      return plaintext;
     } catch (e) {
       console.error("復号エラー詳細:", e);
+      // 復号に失敗した場合は、誤った「null」結果をキャッシュせずに削除して次回再試行させる
+      decCache.delete(c);
       return null;
     }
   })();
 
+  // 一時的に登録するが、エラー時はcatch内で自ら削除する
   decCache.set(c, p);
   return p;
 };
@@ -1611,20 +1617,20 @@ window.doExit = async () => {
 
     let isLast = false;
     try {
-      // データベースから現在の参加者数情報を安全に引き出す
+      // プレゼンス削除を最優先にする前に、本人の承認済みの状態下で全体の参加者リストを先に絶対ロードする (セキュリティルールの回避)
       const pSnap = await get(ref(db, `presence/${curR}`)).catch(() => null);
       const members = pSnap ? pSnap.val() : null;
-      // 自分以外に参加者がいない場合は「最後の1人」と見なす
+      // 自分以外に参加者がいない場合は「最後の1人」と判断
       if (!members || Object.keys(members).length === 0 || (Object.keys(members).length === 1 && members[myUid])) {
         isLast = true;
       }
     } catch (e) {}
 
     if (isLast) {
-      // 最後の1人の場合は自分自身を名簿に乗せたまま部屋ごとクリーンアップ（一括消去のなかで自分の名簿も完全に消える）
+      // 最後の1人の場合は自分自身をリストに残したまま部屋全体を即座に消滅（wipeで自分自身の情報も安全に消去）
       await wipe(curR).catch(()=>{});
     } else {
-      // 他に参加者が残っている場合は通常通り自分のプレゼンスのみ削除して退出
+      // 他に参加者がいる場合は自分のプレゼンスのみ削除して退出
       try {
         if (myPresRef) await remove(myPresRef).catch(()=>{});
         await remove(ref(db, `pending/${curR}/${myUid}`)).catch(()=>{});
@@ -1787,6 +1793,8 @@ window.approveGuest = async (guestUid, guestKeyHex) => {
     updates[`pending/${curR}/${guestUid}`] = null;
     
     await update(ref(db), updates);
+    
+    // ホストの承認によって入室したおしらせを最速で確実に送出
     await sendSysMsg(`${guestName} ${guestTrip} が入室しました`).catch(()=>{});
 
     showToast("✅ 承認してメンバーに昇格しました");
@@ -2137,13 +2145,15 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
               masterKey = await deriveMasterKey(rawR, currentPass);
               const metaStr = JSON.stringify({ n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor });
               
-              await remove(pendingRef).catch(()=>{});
+              // 1. プレゼンスを先に approved に書き込み、データベース書き込み権限を獲得
               await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey) });
               
-              D.waitMod.classList.remove("show");
-              
-              // 待機中からオープン移行時にお知らせを送出
+              // 2. 権限を獲得した直後に最優先で入室おしらせログを即時送信
               await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が入室しました`).catch(()=>{});
+
+              // 3. 待機申請を削除してUIをクローズ
+              await remove(pendingRef).catch(()=>{});
+              D.waitMod.classList.remove("show");
               
               await enterChatUI(rVal, currentPass);
             } else {

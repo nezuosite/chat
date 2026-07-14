@@ -37,15 +37,15 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   height: var(--app-viewport-height, 100dvh);
 }
 
-/* ロビーUI (スマホ1画面へ完璧に収めるための圧縮CSS) */
+/* ロビーUI (スマホ1画面へ確実に収めるための圧縮CSS) */
 #lobby{display:none;position:fixed;inset:0;background:var(--bg);z-index:100;overflow-y:auto;align-items:center;justify-content:center;}
 .lbo{
   height:auto;
-  min-height:0;
+  max-height: 100dvh;
   display:flex;
   flex-direction:column;
   padding:8px 12px calc(8px + var(--safe));
-  gap:8px;
+  gap:6px;
   justify-content:center;
   max-width:340px;
   width: 100%;
@@ -1632,7 +1632,7 @@ window.doExit = async () => {
   clearAll(); showLobby();
 };
 
-// 同一の部屋へ「サイレント復帰」する際はDOMを意図的に破壊しない仕様
+// 同一の部屋へ「サイレント復帰」する際はDOM、暗号化資産を破壊しない仕様
 function clearAll(newHashId = null) {
   if (typeof _cOff === "function"){ _cOff(); _cOff = null; }
   if (typeof _crOff === "function"){ _crOff(); _crOff = null; }
@@ -1643,15 +1643,17 @@ function clearAll(newHashId = null) {
   if (typeof _pendingOff === "function"){ _pendingOff = null; }
   if (pendingTimeoutTimer) { clearInterval(pendingTimeoutTimer); pendingTimeoutTimer = null; }
 
-  masterKey = null; 
-  decCache.clear();
-  metaCache.clear();
-
   isLiveMode = false;
   stopTimerLoop(); D.hostModeCtrl.style.display = "none"; D.hostApprovePanel.style.display = "none";
   stopWaitTicker(); _seenWaitIds.clear(); D.waitBadge.classList.remove("show");
 
+  // 新しい部屋へ遷移する場合、または退室時のみ完全初期化
   if (!newHashId || curR !== newHashId) {
+    if (!newHashId) {
+      masterKey = null; 
+      decCache.clear();
+      metaCache.clear();
+    }
     displayedMsgIds.clear();
     currentRoomMsgs = [];
     D.tli.textContent = "";
@@ -1900,8 +1902,20 @@ const startPendingTimeout = (reqAtTime, name, trip) => {
 async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
   try {
     const hashId = await getRoomHash(roomId);
-    
-    // OPTIMISTIC RENDER: 既に過去に入室実績がある場合は、WebSocket接続前にキャッシュから即表示
+
+    // 1. 最優先で鍵(masterKey)を絶対に復元/インポートして解決 (これで復号エラーを完全に回避)
+    let cachedKeyHex = localStorage.getItem(`nz_mkey_${hashId}`);
+    if (cachedKeyHex) {
+      masterKey = await importKeyFromHex(cachedKeyHex);
+    } else if (pass) {
+      masterKey = await deriveMasterKey(roomId, pass);
+      const exportedHex = await exportKeyToHex(masterKey);
+      localStorage.setItem(`nz_mkey_${hashId}`, exportedHex);
+    } else {
+      throw new Error("パスワード情報が見つかりません。");
+    }
+
+    // 2. 鍵の用意が100%完了したあとに、キャッシュから画面構築
     const previouslyEntered = localStorage.getItem(`nz_entered_${hashId}`) === "true";
     if (previouslyEntered) {
       await renderCachedState(hashId);
@@ -1914,27 +1928,8 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
     clearAll(hashId); _exitLock = false;
     localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created");
 
-    if (!myUid && auth.currentUser) {
-      myUid = auth.currentUser.uid;
-    }
-    if (!myUid) {
-      const u = await authenticateAnonymously();
-      myUid = u.uid;
-    }
-
     curR = hashId; rawR = roomId; curN = name;
     
-    let cachedKeyHex = localStorage.getItem(`nz_mkey_${hashId}`);
-    if (cachedKeyHex) {
-      masterKey = await importKeyFromHex(cachedKeyHex);
-    } else if (pass) {
-      masterKey = await deriveMasterKey(roomId, pass);
-      const exportedHex = await exportKeyToHex(masterKey);
-      localStorage.setItem(`nz_mkey_${hashId}`, exportedHex);
-    } else {
-      throw new Error("パスワード情報が見つかりません。");
-    }
-
     const roomRef = ref(db, `rooms/${hashId}`);
     let snap = await get(roomRef);
 
@@ -2433,7 +2428,6 @@ async function forceResync() {
 
     // 2. メンバーリストを同期
     if (presenceSnap.exists()) {
-      // 既存のPresenceパーサーにそのまま委譲して整合性を完全に保持
       await renderPresenceList(presenceSnap);
     }
 

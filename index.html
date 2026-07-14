@@ -241,7 +241,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .switch-btn.active::after {transform:translateX(32px);}
 .switch-text {font-size:11px; font-weight:bold; pointer-events:none; color:var(--tx); position:relative; z-index:2; width: 100%; text-align: center;}
 
-/* 承認トグル専用の小型スイッチつまみ調整（表示崩れ徹底防止） */
+/* 承認トグル専用の小型スイッチつまみ調整 */
 #roomModeToggleBtn::after {
   top: 1px !important;
   left: 1px !important;
@@ -578,7 +578,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <div style="display:flex; flex-direction:column; gap:14px; overflow-y:auto; padding-right:4px; font-size:12px; line-height:1.6; color:var(--mu);">
       <div class="guide-sec">
         <span class="guide-sub-title" style="color:#a5b4fc; font-weight:800; font-size:12.5px; border-bottom:1px solid rgba(255, 255, 255, 0.05); padding-bottom:2px; display:block; margin-bottom:4px;">🔑 1. 使い方（かんたん3ステップ）</span>
-        1. <b>表示名</b>、本人確認用の<b>トリップキー</b>、共有する<b>部屋ID</b>、暗号化用の<b>部屋パスワード</b>を入力します。（「自動生成」ボタンを押すと、安全な部屋IDと複雑なパスワードをワンタップで作成できます）<br>
+        1. <b>表示名</b>、本人確認用の<b>トリップキー</b>、共有する<b>部屋ID</b>、暗号化用の<b>部屋パスワード</b>を入力します。（「自動生成」ボタンを押すると、安全な部屋IDと複雑なパスワードをワンタップで作成できます）<br>
         2. 「入室 / 作成」を押してチャットに入り、画面右上にある「🔗 URL」ボタンを押して招待用リンクを相手に共有します。<br>
         3. 会話が終わったら「退室」を押して退出します。最後の一人が退室した、もしくは制限時間が切れた瞬間に、部屋とすべての履歴は自動で消滅します。
       </div>
@@ -850,6 +850,19 @@ const importKeyFromHex = async (hex) => {
     true,
     ["encrypt", "decrypt", "wrapKey", "unwrapKey"]
   );
+};
+
+// 鍵導出のキャッシュ制御関数
+const getOrCreateMasterKey = async (roomId, pass, hashId) => {
+  let cachedKeyHex = sessionStorage.getItem(`nz_mkey_${hashId}`);
+  if (cachedKeyHex) {
+    return await importKeyFromHex(cachedKeyHex);
+  }
+  if (!pass) return null;
+  const key = await deriveMasterKey(roomId, pass);
+  const exportedHex = await exportKeyToHex(key);
+  sessionStorage.setItem(`nz_mkey_${hashId}`, exportedHex);
+  return key;
 };
 
 const makeTrip = async (name, tripKey) => {
@@ -1557,17 +1570,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
     const hashId = await getRoomHash(roomId);
     curR = hashId; rawR = roomId; curN = name;
     
-    let cachedKeyHex = sessionStorage.getItem(`nz_mkey_${hashId}`);
-    if (cachedKeyHex) {
-      masterKey = await importKeyFromHex(cachedKeyHex); 
-    } else if (pass) {
-      masterKey = await deriveMasterKey(roomId, pass); 
-      const exportedHex = await exportKeyToHex(masterKey);
-      sessionStorage.setItem(`nz_mkey_${hashId}`, exportedHex); 
-    } else {
-      throw new Error("パスワード情報が見つかりません。");
-    }
-
     const roomRef = ref(db, `rooms/${hashId}`);
     let snap = await get(roomRef);
 
@@ -1579,7 +1581,11 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
     let roomData = null;
     
     if (!snap.exists()) {
-      roomData = { created: serverTimestamp(), host: myUid, expireAt: srvNow() + (initTimer * 60000), requireApproval };
+      if (!pass) throw new Error("新規作成にはパスワードが必要です。");
+      masterKey = await getOrCreateMasterKey(roomId, pass, hashId);
+      isHost = true;
+      _roomExpireAt = srvNow() + (initTimer * 60000);
+      roomData = { created: serverTimestamp(), host: myUid, expireAt: _roomExpireAt, requireApproval };
       await set(roomRef, roomData);
       
       myPresRef = ref(db, `presence/${hashId}/${myUid}`);
@@ -1598,6 +1604,8 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       myPresRef = ref(db, `presence/${hashId}/${myUid}`);
 
       if (isHost) {
+        masterKey = await getOrCreateMasterKey(roomId, pass, hashId);
+        if (!masterKey) throw new Error("ホストキーの再構築にパスワードが必要です。");
         const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
         await update(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: true });
         await enterChatUI(roomData, pass);
@@ -1687,7 +1695,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
 
             const currentPass = pass || localStorage.getItem("nz_pi_val") || "";
             if (currentPass) {
-              masterKey = await deriveMasterKey(roomId, currentPass);
+              masterKey = await getOrCreateMasterKey(roomId, currentPass, hashId);
               const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
               
               await remove(pendingRef).catch(()=>{});
@@ -1708,6 +1716,8 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         };
 
       } else {
+        if (!pass) throw new Error("承認制ではありません。パスワードが必要です。");
+        masterKey = await getOrCreateMasterKey(roomId, pass, hashId);
         const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
         await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey) });
         await enterChatUI(roomData, pass);
@@ -1969,7 +1979,7 @@ document.addEventListener("visibilitychange", async () => {
           if (rVal.requireApproval === false) {
             const currentPass = localStorage.getItem("nz_pi_val") || "";
             if (currentPass) {
-              masterKey = await deriveMasterKey(rawR, currentPass);
+              masterKey = await getOrCreateMasterKey(rawR, currentPass, curR);
               const metaStr = JSON.stringify({ n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor });
               await remove(ref(db, `pending/${curR}/${myUid}`)).catch(()=>{});
               await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey) });

@@ -996,6 +996,7 @@ const decrypt = (c, key = masterKey) => {
 
       return new TextDecoder().decode(decrypted);
     } catch (e) {
+      console.error("復号エラー詳細:", e);
       return null;
     }
   })();
@@ -1610,7 +1611,6 @@ window.doExit = async () => {
 
     let isLast = false;
     try {
-      // データベースから現在の参加者数情報を安全に引き出す
       const pSnap = await get(ref(db, `presence/${curR}`)).catch(() => null);
       const members = pSnap ? pSnap.val() : null;
       // 自分以外に参加者がいない場合は「最後の1人」と見なす
@@ -1759,7 +1759,7 @@ window.approveGuest = async (guestUid, guestKeyHex) => {
         await window.crypto.subtle.digest("SHA-256", new TextEncoder().encode(SYSTEM_SALT + rawR)),
         "AES-GCM",
         false,
-        ["decrypt"]
+        ["encrypt", "decrypt"]
       );
       const metaStr = await decrypt(pVal.wmeta, waitCryptoKey);
       if (metaStr) {
@@ -1930,7 +1930,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
     clearAll(hashId); _exitLock = false;
     localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created");
 
-    // 2. 最優先で鍵(masterKey)を絶対に復元/解決 (復号エラーを完全に回避)
+    // 2. 最優先で鍵(masterKey)を絶対に復元/解決 (復号エラーを完全に防止)
     let cachedKeyHex = localStorage.getItem(`nz_mkey_${hashId}`);
     if (cachedKeyHex) {
       masterKey = await importKeyFromHex(cachedKeyHex);
@@ -2048,7 +2048,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
           await window.crypto.subtle.digest("SHA-256", new TextEncoder().encode(SYSTEM_SALT + roomId)),
           "AES-GCM",
           false,
-          ["encrypt"]
+          ["encrypt", "decrypt"]
         );
         const waitMetaStr = JSON.stringify({ n: name, p: trip, c: curColor });
 
@@ -2140,6 +2140,10 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
               await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey) });
               
               D.waitMod.classList.remove("show");
+              
+              // 待機中からオープン移行時にお知らせを送出
+              await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が入室しました`).catch(()=>{});
+              
               await enterChatUI(rVal, currentPass);
             } else {
               D.waitMod.classList.remove("show");
@@ -2305,7 +2309,7 @@ async function enterChatUI(roomData, pass) {
         await window.crypto.subtle.digest("SHA-256", new TextEncoder().encode(SYSTEM_SALT + rawR)),
         "AES-GCM",
         false,
-        ["decrypt"]
+        ["encrypt", "decrypt"]
       );
 
       const cards = await Promise.all(pendingData.map(async ([id, u]) => {

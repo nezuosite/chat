@@ -1,5 +1,8 @@
 <!DOCTYPE html>
-<html l> name="viewport" content="width=device-width, initial-scale=1.0, maximu-scalable=no, viewport-fit=cover">
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0f172a">
@@ -230,10 +233,17 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .jump-btn:active{background:var(--in); color:#fff;}
 .jump-btn:disabled{opacity:0.3; cursor:not-allowed;}
 
-.switch-btn {position:relative; width:64px!important; height:32px!important; border-radius:16px!important; background:var(--s2)!important; border:1px solid var(--bd)!important; padding:0 2px!important; overflow:hidden; transition:all 0.25s ease; cursor:pointer; display: flex; align-items: center;}
-.switch-btn::after {content:""; position:absolute; top:2px; left:2px; width:26px; height:26px; background:rgba(255,255,255,0.25); border:1px solid rgba(255,255,255,0.45); backdrop-filter:blur(1px); border-radius:50%; transition:transform 0.25s ease; z-index:1;}
-.switch-btn.active {background:var(--in)!important; border-color:var(--i2)!important;}
-.switch-btn.active::after {transform:translateX(32px);}
+/* カスタマイズされた補助トグルボタンサイズ：テキスト崩れの完全な防止 */
+.switch-kb { width: 110px !important; height: 32px !important; position:relative; border-radius:16px!important; background:var(--s2)!important; border:1px solid var(--bd)!important; padding:0 2px!important; overflow:hidden; transition:all 0.25s ease; cursor:pointer; display: flex; align-items: center;}
+.switch-kb::after { content:""; position:absolute; top:2px; left:2px; width:26px; height:26px; background:rgba(255,255,255,0.25); border:1px solid rgba(255,255,255,0.45); backdrop-filter:blur(1px); border-radius:50%; transition:transform 0.25s ease; z-index:1; }
+.switch-kb.active { background:var(--in)!important; border-color:var(--i2)!important; }
+.switch-kb.active::after { transform: translateX(78px) !important; }
+
+.switch-scroll { width: 85px !important; height: 32px !important; position:relative; border-radius:16px!important; background:var(--s2)!important; border:1px solid var(--bd)!important; padding:0 2px!important; overflow:hidden; transition:all 0.25s ease; cursor:pointer; display: flex; align-items: center;}
+.switch-scroll::after { content:""; position:absolute; top:2px; left:2px; width:26px; height:26px; background:rgba(255,255,255,0.25); border:1px solid rgba(255,255,255,0.45); backdrop-filter:blur(1px); border-radius:50%; transition:transform 0.25s ease; z-index:1; }
+.switch-scroll.active { background:var(--in)!important; border-color:var(--i2)!important; }
+.switch-scroll.active::after { transform: translateX(53px) !important; }
+
 .switch-text {font-size:11px; font-weight:bold; pointer-events:none; color:var(--tx); position:relative; z-index:2; width: 100%; text-align: center;}
 
 /* 小型のスイッチボタン */
@@ -299,15 +309,31 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .clr-cancel{background:var(--bg);border:1px solid var(--bd);color:var(--tx)}
 .clr-ok{background:var(--in);color:#fff}
 
-/* 画像プレビューモーダルのレイアウト：閉じるボタンとの被りを100%防止 */
+/* 削除プレビューエリアを含むダイアログ用CSS */
+.del-modal-text {
+  background: var(--bg);
+  border: 1px solid var(--bd);
+  border-radius: 4px;
+  padding: 8px;
+  font-size: 12px;
+  color: var(--tx);
+  max-height: 150px;
+  overflow-y: auto;
+  word-break: break-all;
+  margin-top: 8px;
+}
+
+/* 画像プレビューモーダルのレイアウト：詳細度の競合を回避し display: flex を優先適用 */
 #imgViewMod {
   background: rgba(0,0,0,0.95);
   backdrop-filter: blur(8px);
-  display: none;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   touch-action: none;
+}
+#imgViewMod.show {
+  display: flex !important;
 }
 #imgViewSrc {
   max-width: 90%;
@@ -469,7 +495,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       <div id="hostModeCtrl">
         <span class="htc-lbl">🚪 設定:</span>
         <button id="roomModeToggleBtn" class="switch-btn-sm" title="オープン/承認制の切り替え"></button>
-        <span id="roomModeStatusText" style="font-size:11px; font-weight:bold; color:var(--tx); margin-left:4px; min-width:36px; display:inline-block;">ｵｰﾌﾟﾝ</span>
+        <span id="roomModeStatusText" style="font-size:11px; font-weight:bold; color:var(--tx); margin-left:4px; min-width:36px; display:inline-block;">オープン</span>
       </div>
       <!-- 右：LOCKED（モード状態）[参加人数] -->
       <div style="display:flex; align-items:center; gap:6px; margin-left:auto;">
@@ -494,11 +520,11 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <div id="ib">
       <div id="ibTopBar">
         <!-- 1. キーボードボタン -->
-        <button id="kbToggleBtn" class="switch-btn ib-icon-btn" title="送信後のキーボード設定">
-          <span id="kbStatusText" class="switch-text">KB:閉</span>
+        <button id="kbToggleBtn" class="switch-kb ib-icon-btn" title="送信後のキーボード設定">
+          <span id="kbStatusText" class="switch-text">キーボード:閉</span>
         </button>
         <!-- 2. 自動追従ON/OFF -->
-        <button id="autoScrollToggleBtn" class="switch-btn ib-icon-btn active" title="新着メッセージへの自動追従">
+        <button id="autoScrollToggleBtn" class="switch-scroll ib-icon-btn active" title="新着メッセージへの自動追従">
           <span id="autoScrollStatusText" class="switch-text">追従:ON</span>
         </button>
         <!-- 4. 上下ジャンプ(▲▼) -->
@@ -568,9 +594,9 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <h3 style="font-size:13px; color:var(--ro);">⚠️ 発言の削除確認</h3>
     <div style="font-size:10px; color:var(--mu);">以下の発言を完全に消去しますか？（復元できません）</div>
     <div id="delConfirmPreview" class="del-modal-text"></div>
-    <div class="wait-btns" style="display:flex; justify-content:space-between; gap:24px; margin-top:12px; width:100%;">
-      <button class="btn bq" id="delCancelBtn" style="flex:1;">戻る</button>
-      <button class="btn bp" id="delExecuteBtn" style="flex:1; background:var(--ro); border:1px solid rgba(244, 63, 94, 0.4); color:#fda4af;">完全に削除</button>
+    <div class="wait-btns" style="display:flex; flex-direction:column; gap:8px; margin-top:12px; width:100%;">
+      <button class="btn bp" id="delExecuteBtn" style="width:100%; background:var(--ro); border:1px solid rgba(244, 63, 94, 0.4); color:#fda4af;">完全に削除</button>
+      <button class="btn bq" id="delCancelBtn" style="width:100%;">戻る</button>
     </div>
   </div>
 </div>
@@ -1019,7 +1045,7 @@ const updateTimerUIFromVal = async (val) => {
 let isRoomApproveMode = false;
 const updateRoomModeBtnUI = () => {
   D.roomModeToggleBtn.classList.toggle("active", isRoomApproveMode);
-  D.roomModeStatusText.textContent = isRoomApproveMode ? "承認制" : "ｵｰﾌﾟﾝ";
+  D.roomModeStatusText.textContent = isRoomApproveMode ? "承認制" : "オープン";
   D.roomModeStatusText.style.color = isRoomApproveMode ? "#fda4af" : "var(--em)";
   D.hostApprovePanel.style.display = isRoomApproveMode ? "flex" : "none";
 };
@@ -1045,7 +1071,7 @@ const COLORS = [
   {v:"#f59e0b",n:"イエロー"},{v:"#a3e635",n:"ライム1"},{v:"#bef264",n:"パステルライム"},{v:"#84cc16",n:"ライム2"},
   {v:"#10b981",n:"エメラルド"},{v:"#a7f3d0",n:"パステルミント"},{v:"#34d399",n:"ミント"},{v:"#2dd4bf",n:"ティール"},
   {v:"#99f6e4",n:"パステルティール"},{v:"#14b8a6",n:"アクア"},{v:"#06b6d4",n:"シアン"},{v:"#7dd3fc",n:"パステルスカイ"},
-  {v:"#38bdf8",n:"スカイ"},{v:"#6366f1",n:"インディゴ"},{v:"#818cf8",n:"パステルインディゴ"},{v:"#c4b5fd",n:"パステルパーpurple"},
+  {v:"#38bdf8",n:"スカイ"},{v:"#6366f1",n:"インディゴ"},{v:"#818cf8",n:"パステルインディゴ"},{v:"#c4b5fd",n:"パステルパープル"},
   {v:"#a855f7",n:"パープル"},{v:"#c084fc",n:"ライトパープル"},{v:"#f472b6",n:"ピンク"},{v:"#fda4af",n:"パステルローズ"},
   {v:"#f9a8d4",n:"ライトピンク"},{v:"#db2777",n:"ローズ"},{v:"#e2e8f0",n:"スレート"},{v:"#94a3b8",n:"グレー"}
 ];
@@ -1133,7 +1159,25 @@ function parseTxtSplit(txt) {
 
 window.triggerDeleteMsg = (mid, previewText) => {
   targetDelId = mid;
-  D.delConfirmPreview.textContent = previewText;
+  D.delConfirmPreview.innerHTML = ""; // 以前のプレビュー表示をリセット
+  
+  if (previewText.startsWith("IMG::data:image/")) {
+    // 削除対象が画像データの場合は、サムネイル（img要素）を動的に流し込む
+    const b64 = previewText.substring(5);
+    const img = document.createElement("img");
+    img.src = b64;
+    img.style.maxWidth = "100%";
+    img.style.maxHeight = "120px";
+    img.style.borderRadius = "4px";
+    img.style.marginTop = "6px";
+    img.style.border = "1px solid var(--bd)";
+    img.style.objectFit = "contain";
+    img.style.display = "block";
+    img.style.margin = "8px auto 0";
+    D.delConfirmPreview.appendChild(img);
+  } else {
+    D.delConfirmPreview.textContent = previewText;
+  }
   D.delConfirmMod.classList.add("show");
 };
 
@@ -1308,10 +1352,12 @@ async function cMsg(msg) {
   let rawTextPreview = txt;
 
   if (msg.u === myUid) {
+    let escPreview = "";
     if (txt.startsWith("IMG::data:image/")) {
-      rawTextPreview = "[画像ファイル]";
+      escPreview = "IMG::" + txt.substring(5); // プレビュー側に画像データをそのまま伝達
+    } else {
+      escPreview = txt.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
-    const escPreview = rawTextPreview.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     const delBtn = document.createElement("button");
     delBtn.className = "del-btn-inline";
     delBtn.title = "削除";
@@ -1336,7 +1382,9 @@ async function cMsg(msg) {
       img.className = "inline-img";
       img.alt = "画像";
       img.decoding = "async"; // 非同期デコード
-      img.setAttribute("onclick", `openZoomModal('${b64}')`);
+      img.addEventListener("click", () => {
+        window.openZoomModal(b64);
+      });
       mb.appendChild(img);
     } else {
       const errSpan = document.createElement("span");
@@ -2349,15 +2397,23 @@ D.gnBtn.onclick = () => {
 
 D.gdBtn.onclick = () => D.gmod.classList.add("show");
 D.gcBtn.onclick = () => D.gmod.classList.remove("show");
-document.querySelectorAll(".mod-overlay").forEach(m => { m.onclick = e => { if(e.target === m || m.id === "imgViewMod" || m.id === "timerSettingMod") m.classList.remove("show"); }; });
+
+// モーダル領域の自動クローズを、マスク背景をクリックした時のみに厳密化（ズームやドラッグ等の操作不具合を解消）
+document.querySelectorAll(".mod-overlay").forEach(m => { 
+  m.onclick = e => { 
+    if (e.target === m) {
+      m.classList.remove("show"); 
+    }
+  }; 
+});
 
 D.kbToggleBtn.onclick = () => {
   keepKbOpen = !keepKbOpen;
   D.kbToggleBtn.classList.toggle("active", keepKbOpen);
-  D.kbStatusText.textContent = keepKbOpen ? "KB:開" : "KB:閉";
+  D.kbStatusText.textContent = keepKbOpen ? "キーボード:開" : "キーボード:閉";
   D.kbStatusText.style.color = keepKbOpen ? "#fff" : "var(--tx)";
   
-  // KBボタンの操作に追従して仮想キーボード自体の開閉（フォーカス制御）を即時実行
+  // キーボードボタンの操作に追従して仮想キーボード自体の開閉（フォーカス制御）を即時実行
   if (keepKbOpen) {
     D.mi.focus();
   } else {
@@ -2564,7 +2620,8 @@ const openTimerMod = () => {
 
 $("timerDsp").onclick = openTimerMod;
 $("timerBtnIcon").onclick = openTimerMod;
-D_timerSettingCloseBtn.onclick = () => D_timerSettingMod.classList.remove("show");
+D_timerSettingCloseBtn.onclick = () => { D_timerSettingMod.classList.remove("show"); };
+D.imgViewCloseBtn.onclick = () => { D.imgViewMod.classList.remove("show"); };
 
 D_modTimerInput.addEventListener("input", (e) => {
   let val = clampTimer(parseInt(e.target.value));

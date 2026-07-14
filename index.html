@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0f172a">
 <title>NEZU ONETIME CHAT</title>
 <style>
-/* 共通リreset＆変数 */
+/* 共通リセット＆変数 */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
   --bg:#0f172a;--sf:#1e293b;--s2:#0a1628;--bd:#334155;
@@ -408,7 +408,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 <!-- ロビー画面 -->
 <div id="lobby" style="display: none;">
   <div class="lbo">
-    <h2 class="lbt">⚡ NEZU ONETIME CHAT</h2>
+    <h2 class="lbt">⚡ NEZU ONETIME CHAT - PRO</h2>
     <div class="lbsub">DISPOSABLE & ZERO-KNOWLEDGE E2EE</div>
     <div class="lbi">
       <div class="ibox">
@@ -681,6 +681,9 @@ import { getDatabase, ref, push, onValue, set, update, remove, get, serverTimest
 
 // トリップ生成用の鍵
 const SYSTEM_SALT = "NEZU_PRO_SYS_SALT_2026_V1";
+
+// タブ一意の使い捨てランダムセッション識別子（多重ログイン・複窓の防止用）
+const tabId = "tab_" + Math.random().toString(36).substring(2, 10);
 
 // 接続設定（プレーン表記。デコード不具合によるAPIキーエラーを完全に防止）
 const firebaseConfig = {
@@ -1168,6 +1171,7 @@ window.triggerDeleteMsg = (mid, previewText) => {
   D.delConfirmPreview.innerHTML = ""; // 以前のプレビュー表示をリセット
   
   if (previewText.startsWith("IMG::data:image/")) {
+    // 削除対象が画像データの場合は、サムネイル（img要素）を動的に流し込む
     const b64 = previewText.substring(5);
     const img = document.createElement("img");
     img.src = b64;
@@ -1222,7 +1226,7 @@ function insertMessageEl(el) {
   }
 }
 
-// 送信者と本文の復号を Promise.all で同時に並列復号させ、2倍速にする
+// メタ構造体のPromiseキャッシュ展開により、JSONパースの重複リフローを100%防止
 async function cMsg(msg) {
   const msgTs = msg.t || srvNow();
 
@@ -1505,6 +1509,7 @@ window.doExit = async () => {
     }
   }
 
+  // 明示的な手動退室時のみ、次回入室のためにお知らせ送信フラグおよび暗号化対称鍵キャッシュを破棄
   if (curR) {
     localStorage.removeItem(`nz_sent_join_${curR}`);
     sessionStorage.removeItem(`nz_mkey_${curR}`);
@@ -1546,6 +1551,7 @@ function startTimerLoop() {
   if (_timerRaf) cancelAnimationFrame(_timerRaf);
   const tick = () => {
     if (!curR) return;
+    // タイマー寿命が取得できていない、または同期中の場合は30分（デフォルト）をあてがう超堅牢設計
     const expire = (typeof _roomExpireAt === "number") ? _roomExpireAt : (srvNow() + 30 * 60000);
     const remain = Math.max(0, expire - srvNow());
     const m = Math.floor(remain / 60000), s = Math.floor((remain % 60000) / 1000);
@@ -1571,7 +1577,7 @@ function showLobby(msg = "") {
   updateTripPreview(); syncPickers(curColor); checkCurrentRoomStatus();
 }
 
-// 継続中セッションが存在する場合、招待URLを自動上書きして最優先で移行（浮気防止）
+// 継続中セッションが存在する場合、他の部屋の招待URLなどのパラメータを上書きして最優先で移行（浮気防止）
 async function checkCurrentRoomStatus() {
   const lastRi = localStorage.getItem("nz_active_ri"), lastCreated = localStorage.getItem("nz_active_created");
   if (!lastRi || !lastCreated) return;
@@ -1608,6 +1614,8 @@ window.approveGuest = async (guestUid, guestKeyHex) => {
     let guestColor = "#94a3b8";
     
     const pVal = pendingSnap.exists() ? pendingSnap.val() : null;
+    const guestTabId = pVal && pVal.tab ? pVal.tab : ""; // ゲストのタブ識別子を取得
+
     if (pVal && pVal.wmeta) {
       const waitCryptoKey = await window.crypto.subtle.importKey(
         "raw",
@@ -1636,7 +1644,8 @@ window.approveGuest = async (guestUid, guestKeyHex) => {
     updates[`presence/${curR}/${guestUid}`] = { 
       status: "approved", 
       mk: encryptedMasterKey,
-      meta: guestEncryptedMeta 
+      meta: guestEncryptedMeta,
+      tab: guestTabId // 複窓対策用にタブ識別子を引き継いで presence に書き込む
     };
     updates[`authorized_users/${curR}/${guestUid}`] = { mk: encryptedMasterKey, ts: serverTimestamp() };
     updates[`pending/${curR}/${guestUid}`] = null;
@@ -1814,7 +1823,8 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       
       myPresRef = ref(db, `presence/${hashId}/${myUid}`);
       const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
-      await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: true });
+      // 複窓対策として自ノードの登録時に tabId を一緒に書き込む
+      await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: true, tab: tabId });
       
       // データベースからの再 get 反映を待たずに、即座にローカル値（Date.nowで補完）でタイマー稼働
       const localRoomData = { ...roomData, created: Date.now() };
@@ -1828,7 +1838,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
 
       if (isHost) {
         const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
-        await update(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: true });
+        await update(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: true, tab: tabId });
         await enterChatUI(roomData, pass);
       } else if (roomData.requireApproval) {
         const authLocalKey = localStorage.getItem(`nz_authkey_${hashId}`);
@@ -1840,7 +1850,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
             const decryptedMk = await unwrapMasterKey(myPresSnap.val().mk, guestCryptoKey);
             if (decryptedMk) {
               masterKey = decryptedMk;
-              await update(myPresRef, { mk: null });
+              await update(myPresRef, { mk: null, tab: tabId }); // 自プレゼンスにtabIdを書き込む
               localStorage.removeItem("nz_pending_req_at"); // 申請成功時は開始時間を初期化
               
               // タイマーの秒ズレを完全に防ぐため、入室前に最新ルームデータをサーバーから裏取りする
@@ -1861,7 +1871,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
               if (decryptedMk) {
                 masterKey = decryptedMk;
                 const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
-                await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: false });
+                await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: false, tab: tabId });
                 localStorage.removeItem("nz_pending_req_at"); // 申請成功時は開始時間を初期化
                 
                 // 待機中にずれたタイマー同期を修正するための部屋情報再取得
@@ -1905,14 +1915,15 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
           return;
         }
 
-        // DBに申請データが存在しない場合のみ登録
+        // DBに申請データが存在しない場合のみ登録（複窓対策用の tab フィールドを付与）
         const pendingSnap = await get(pendingRef);
         if (!pendingSnap.exists()) {
           await set(pendingRef, { 
             status: "waiting", 
             gk: myGuestKey, 
             wmeta: await encrypt(waitMetaStr, waitCryptoKey), 
-            reqAt: serverTimestamp() 
+            reqAt: serverTimestamp(),
+            tab: tabId // 待機セッション用タブIDの書き込み
           });
         }
 
@@ -1933,6 +1944,17 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         _waitPresOff = onValue(myPresRef, async (s) => {
           if (!s.exists()) return;
           const val = s.val();
+          
+          // 複窓対策：待機中に別の窓から入室申請されたのを検知した場合、古いタブの待機を遮断する
+          if (val.tab && val.tab !== tabId) {
+            if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
+            if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
+            if (pendingTimeoutTimer) { clearInterval(pendingTimeoutTimer); pendingTimeoutTimer = null; }
+            alert("⚠️ 他のタブでこの部屋への入室が開始されたため、この画面の待機を切断しました。");
+            doExit();
+            return;
+          }
+
           if (val.status === "approved" && val.mk) {
             try {
               const guestCryptoKey = await importRawKeyFromHex(myGuestKey);
@@ -1979,7 +2001,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
               const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
               
               await remove(pendingRef).catch(()=>{});
-              await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey) });
+              await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), tab: tabId });
               
               D.waitMod.classList.remove("show");
               await enterChatUI(rVal, currentPass);
@@ -2001,7 +2023,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
 
       } else {
         const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
-        await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey) });
+        await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), tab: tabId });
         await enterChatUI(roomData, pass);
       }
     }
@@ -2132,6 +2154,19 @@ async function enterChatUI(roomData, pass) {
   }
   // バックグラウンド・非アクティブ時の遅延（ requestAnimationFrame 間引き）を回避して即時同期
   _pOff = onValue(ref(db, `presence/${curR}`), renderPresenceList);
+
+  // 複窓対策：チャット中も自分自身のプレゼンスノードの tabId が書き換えられていないか常時監視
+  const watchMyPresOff = onValue(myPresRef, (s) => {
+    if (!curR || _exitLock) return;
+    if (!s.exists()) return;
+    const val = s.val();
+    if (val.tab && val.tab !== tabId) {
+      // 別のタブが新しく入室したため、この古いタブを切断退室させる
+      alert("⚠️ 他のタブでこの部屋に入室したため、この画面を切断しました。");
+      if (typeof watchMyPresOff === "function") watchMyPresOff();
+      doExit();
+    }
+  });
 
   if (isHost) {
     async function renderPendingList(s) {
@@ -2296,7 +2331,7 @@ document.addEventListener("visibilitychange", async () => {
               masterKey = await deriveMasterKey(rawR, currentPass);
               const metaStr = JSON.stringify({ n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor });
               await remove(ref(db, `pending/${curR}/${myUid}`)).catch(()=>{});
-              await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey) });
+              await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), tab: tabId });
               
               D.waitMod.classList.remove("show");
               if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
@@ -2391,10 +2426,10 @@ D.sdBtn.onclick = () => sendMsg();
 D.clrMsgBtn.onclick = () => { D.mi.value = ""; D.mi.style.height = "auto"; D.mi.focus(); };
 
 D.enBtn.onclick = async () => {
-  // 入室中の部屋がある場合、他の部屋の作成・入室操作をブロックして引き戻す
+  // 複窓・他ルーム作成/入室制限：ストレージに入室中セッションが残っている場合は完全に制限して引き戻す
   const savedActiveRi = localStorage.getItem("nz_active_ri");
   if (savedActiveRi && localStorage.getItem("nz_is_in_room") === "true") {
-    alert("既に入室中または待機中の部屋があります。他の部屋の作成・入室はできません。");
+    alert("既に入室中または待機中の部屋（" + savedActiveRi + "）があります。まずはそちらから退室してください。");
     D.ri.value = savedActiveRi;
     D.pi.value = localStorage.getItem("nz_pi_val") || "";
     D.ni.value = localStorage.getItem("nz_ni") || "名無し";
@@ -2428,6 +2463,7 @@ D.gnBtn.onclick = () => {
 D.gdBtn.onclick = () => D.gmod.classList.add("show");
 D.gcBtn.onclick = () => D.gmod.classList.remove("show");
 
+// モーダル領域の自動クローズを、マスク背景をクリックした時のみに厳密化（ズームやドラッグ等の操作不具合を解消）
 document.querySelectorAll(".mod-overlay").forEach(m => { 
   m.onclick = e => { 
     if (e.target === m) {
@@ -2442,6 +2478,7 @@ D.kbToggleBtn.onclick = () => {
   D.kbStatusText.textContent = keepKbOpen ? "キーボード:開" : "キーボード:閉";
   D.kbStatusText.style.color = keepKbOpen ? "#fff" : "var(--tx)";
   
+  // キーボードボタンの操作に追従して仮想キーボード自体の開閉（フォーカス制御）を即時実行
   if (keepKbOpen) {
     D.mi.focus();
   } else {
@@ -2459,7 +2496,9 @@ D.autoScrollToggleBtn.onclick = () => {
   showToast(isAutoScroll ? "📜 新着ログに追従スクロールします" : "📜 スクロール追従をオフにしました");
 };
 
-const updateScrollBtnUI = () => {};
+const updateScrollBtnUI = () => {
+  // スクロール追従の非活性・活性時の微調整
+};
 
 const updateJumpBtns = () => {
   const sTop = D.tl.scrollTop;
@@ -2697,7 +2736,7 @@ const initUserSession = async (user) => {
   const savedTimer = parseInt(localStorage.getItem("nz_timer_val")) || 30;
   
   // 1. 入室中の部屋、または待機中のセッション情報が存在する場合、
-  // URLパラメータ（他の部屋の招待URL等）が異なっていても、現在のアクティブな部屋（savedActiveRi）を最優先にして強制移行（浮気防止）
+  // URLパラメータ（他の部屋の招待URL等）が異なっていても、現在のアクティブな部屋（savedActiveRi）を最優先にして強制移行（複窓・浮気防止）
   if (savedActiveRi && savedActiveCreated && savedNi && savedTripKey) {
     try {
       const hashId = await getRoomHash(savedActiveRi);

@@ -419,7 +419,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 <!-- ロビー画面 -->
 <div id="lobby" style="display: none;">
   <div class="lbo">
-    <h2 class="lbt">⚡ NEZU ONETIME CHAT - PRO</h2>
+    <h2 class="lbt">⚡ NEZU ONETIME CHAT</h2>
     <div class="lbsub">DISPOSABLE & ZERO-KNOWLEDGE E2EE</div>
     <div class="lbi">
       <div class="ibox">
@@ -897,7 +897,7 @@ const importRawKeyFromHex = async (hex) => {
   );
 };
 
-// 对称鍵のエクスポート / インポート処理
+// 対称鍵のエクスポート / インポート処理
 const exportKeyToHex = async (key) => {
   const exported = await window.crypto.subtle.exportKey("raw", key);
   return bytesToHex(new Uint8Array(exported));
@@ -1300,14 +1300,18 @@ async function cMsg(msg) {
   const [meta, txt] = await Promise.all([pMeta, pTxt]);
 
   if (!meta || !txt) {
-    const d = document.createElement("div");
-    d.dataset.mid = msg.id;
-    d.dataset.ts = msgTs;
-    d.className = "sys-msg";
-    d.style.borderColor = "rgba(244, 63, 94, 0.3)";
-    d.style.color = "#fda4af";
-    d.textContent = `⚠️ 復号エラー (ID: ${msg.id ? msg.id.substring(0,8) : '???'})`;
-    return d;
+    // ライブ同期モード中で、かつ本当に復号できなかった場合のみエラーを表示
+    if (isLiveMode) {
+      const d = document.createElement("div");
+      d.dataset.mid = msg.id;
+      d.dataset.ts = msgTs;
+      d.className = "sys-msg";
+      d.style.borderColor = "rgba(244, 63, 94, 0.3)";
+      d.style.color = "#fda4af";
+      d.textContent = `⚠️ 復号エラー (ID: ${msg.id ? msg.id.substring(0,8) : '???'})`;
+      return d;
+    }
+    return null; // キャッシュ復元段階では、復号に失敗したものは描画スキップして本接続での再試行に委ねる
   }
 
   const d = document.createElement("div"); 
@@ -2331,10 +2335,6 @@ async function enterChatUI(roomData, pass) {
       const cards = await Promise.all(pendingData.map(async ([id, u]) => {
         if (!u) return null;
         if (u.status === "waiting" && u.wmeta && u.gk) {
-          if (u.reqAt && (srvNow() - u.reqAt > 5 * 60 * 1000)) {
-            remove(ref(db, `pending/${curR}/${id}`)).catch(()=>{});
-            return null;
-          }
           const metaStr = await decrypt(u.wmeta, waitCryptoKey);
           if (metaStr) {
             try {
@@ -2687,13 +2687,18 @@ D.enBtn.onclick = async () => {
   if (!n || !r || !tk || !p) { alert("必須項目をすべて入力してください。"); return; }
   
   const hashId = await getRoomHash(r);
+  
+  // 入室ボタンを押した瞬間から、ロビー戻りを防ぐために永続キー群を即座にローカルにロック
+  localStorage.setItem("nz_active_ri", r);
+  localStorage.setItem("nz_is_in_room", "true");
+  localStorage.setItem("nz_ni", n);
+  localStorage.setItem("nz_tripi", tk);
   localStorage.setItem(`nz_pi_${hashId}`, p);
   localStorage.setItem("nz_pi_val", p);
 
   // 新規の手動アクションであることを保証するフラグを格納
   sessionStorage.setItem("nz_explicit_join", "true");
 
-  localStorage.setItem("nz_is_in_room", "true");
   D.enBtn.disabled = true; D.enBtn.textContent = "処理中...";
   const tripStyled = await makeTrip(n, tk); localStorage.setItem("nz_mytrip_styled", tripStyled);
   await doJoin(r, p, n, tripStyled, tm, isApproveMode);
@@ -3056,7 +3061,7 @@ const initUserSession = async (user) => {
       
       // バックグラウンドでデータベースの確認を行い、セッションを完全接続
       const snap = await get(ref(db, `rooms/${hashId}`));
-      if (snap.exists() && snap.val().created === parseInt(savedActiveCreated) && snap.val().expireAt > srvNow()) {
+      if (snap.exists() && (savedActiveCreated === "pending" || snap.val().created === parseInt(savedActiveCreated)) && snap.val().expireAt > srvNow()) {
         localStorage.setItem("nz_is_in_room", "true");
         const tripStyled = await makeTrip(savedNi, savedTripKey); 
         localStorage.setItem("nz_mytrip_styled", tripStyled);

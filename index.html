@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0f172a">
 <title>NEZU ONETIME CHAT</title>
 <style>
-/* 共通リセット＆変数 */
+/* 共通リreset＆変数 */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
   --bg:#0f172a;--sf:#1e293b;--s2:#0a1628;--bd:#334155;
@@ -1171,6 +1171,7 @@ window.triggerDeleteMsg = (mid, previewText) => {
   D.delConfirmPreview.innerHTML = ""; // 以前のプレビュー表示をリセット
   
   if (previewText.startsWith("IMG::data:image/")) {
+    // 削除対象が画像データの場合は、サムネイル（img要素）を動的に流し込む
     const b64 = previewText.substring(5);
     const img = document.createElement("img");
     img.src = b64;
@@ -1511,7 +1512,7 @@ window.doExit = async () => {
   // 明示的な手動退室時のみ、次回入室のためにお知らせ送信フラグおよび暗号化対称鍵キャッシュを破棄
   if (curR) {
     localStorage.removeItem(`nz_sent_join_${curR}`);
-    localStorage.removeItem(`nz_mkey_${curR}`); // 鍵キャッシュの破棄
+    localStorage.removeItem(`nz_mkey_${curR}`); // 永続ストレージの鍵キャッシュの破棄
   }
   hasSentJoinMsgInSession = false;
 
@@ -1576,7 +1577,7 @@ function showLobby(msg = "") {
   updateTripPreview(); syncPickers(curColor); checkCurrentRoomStatus();
 }
 
-// 継続中セッションが存在する場合、招待URLを自動上書きして最優先で移行（複窓・PWAショートカット直行・浮気防止）
+// 継続中セッションが存在する場合、他の部屋の招待URLなどのパラメータを上書きして最優先で移行（複窓・PWAショートカット直行・浮気防止）
 async function checkCurrentRoomStatus() {
   const lastRi = localStorage.getItem("nz_active_ri"), lastCreated = localStorage.getItem("nz_active_created");
   if (!lastRi || !lastCreated) return;
@@ -1943,16 +1944,6 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         _waitPresOff = onValue(myPresRef, async (s) => {
           if (!s.exists()) return;
           const val = s.val();
-          
-          // 複窓対策：待機中に別の窓から入室申請されたのを検知した場合、古いタブの待機を遮断する
-          if (val.tab && val.tab !== tabId) {
-            if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
-            if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
-            if (pendingTimeoutTimer) { clearInterval(pendingTimeoutTimer); pendingTimeoutTimer = null; }
-            alert("⚠️ 他のタブでこの部屋に入室したため、この画面の待機を切断しました。");
-            doExit();
-            return;
-          }
 
           if (val.status === "approved" && val.mk) {
             try {
@@ -1996,8 +1987,8 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
 
             const currentPass = pass || localStorage.getItem("nz_pi_val") || "";
             if (currentPass) {
-              masterKey = await deriveMasterKey(rawR, currentPass);
-              const metaStr = JSON.stringify({ n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor });
+              masterKey = await deriveMasterKey(roomId, currentPass);
+              const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
               
               await remove(pendingRef).catch(()=>{});
               await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), tab: tabId });
@@ -2154,18 +2145,8 @@ async function enterChatUI(roomData, pass) {
   // バックグラウンド・非アクティブ時の遅延（ requestAnimationFrame 間引き）を回避して即時同期
   _pOff = onValue(ref(db, `presence/${curR}`), renderPresenceList);
 
-  // 複窓対策：チャット中も自分自身のプレゼンスノードの tabId が書き換えられていないか常時監視
-  const watchMyPresOff = onValue(myPresRef, (s) => {
-    if (!curR || _exitLock) return;
-    if (!s.exists()) return;
-    const val = s.val();
-    if (val.tab && val.tab !== tabId) {
-      // 別のタブが新しく入室したため、この古いタブを切断退室させる
-      alert("⚠️ 他のタブでこの部屋に入室したため、この画面を切断しました。");
-      if (typeof watchMyPresOff === "function") watchMyPresOff();
-      doExit();
-    }
-  });
+  // 複窓対策：古いタブを切断せず複数タブからの「同時アクセス」を完全維持。
+  // 自ノードを監視して切断させる古いリスナー（watchMyPresOff）は完全に撤廃されました。
 
   if (isHost) {
     async function renderPendingList(s) {
@@ -2184,7 +2165,7 @@ async function enterChatUI(roomData, pass) {
       const cards = await Promise.all(pendingData.map(async ([id, u]) => {
         if (!u) return null;
         if (u.status === "waiting" && u.wmeta && u.gk) {
-          // ホスト側でも、申請から5分（300000ms）経過した古い待機カードは自動除外＆DBからお掃除する
+          // 申請から5分経過した待機カードの自動除外＆お掃除
           if (u.reqAt && (srvNow() - u.reqAt > 5 * 60 * 1000)) {
             remove(ref(db, `pending/${curR}/${id}`)).catch(()=>{});
             return null;
@@ -2425,7 +2406,7 @@ D.sdBtn.onclick = () => sendMsg();
 D.clrMsgBtn.onclick = () => { D.mi.value = ""; D.mi.style.height = "auto"; D.mi.focus(); };
 
 D.enBtn.onclick = async () => {
-  // 複窓・他ルーム作成/入室制限：ストレージに入室中セッションが残っている場合は完全に制限して引き戻す
+  // 他ルーム作成/入室制限：ストレージに入室中セッションが残っている場合は完全に制限して引き戻す
   const savedActiveRi = localStorage.getItem("nz_active_ri");
   if (savedActiveRi && localStorage.getItem("nz_is_in_room") === "true") {
     alert("既に入室中または待機中の部屋（" + savedActiveRi + "）があります。まずはそちらから退室してください。");
@@ -2735,7 +2716,7 @@ const initUserSession = async (user) => {
   const savedTimer = parseInt(localStorage.getItem("nz_timer_val")) || 30;
   
   // 1. 入室中、または待機中のセッション情報が存在する場合、
-  // 他の招待URLなどを踏んでページを開き直しても無視し、現在接続中の部屋へ強制的に直行移行（複窓・浮気防止）
+  // URLパラメータ（他の部屋の招待URL等）が異なっていても、現在のアクティブな部屋（savedActiveRi）を最優先にして強制移行（複窓・浮気防止）
   if (savedActiveRi && savedActiveCreated && savedNi && savedTripKey) {
     try {
       const hashId = await getRoomHash(savedActiveRi);
@@ -2745,14 +2726,14 @@ const initUserSession = async (user) => {
         const tripStyled = await makeTrip(savedNi, savedTripKey); 
         localStorage.setItem("nz_mytrip_styled", tripStyled);
         
-        // 浮気・誤クリック防止：招待URLパラメータを現在接続中のアクティブな部屋情報に動的書き換え
+        // 浮気防止：招待URLパラメータを現在接続中のアクティブな部屋情報に動的書き換え
         if (window.history?.replaceState) {
           window.history.replaceState({}, document.title, location.pathname + "?r=" + encodeURIComponent(savedActiveRi));
         }
         
-        // ロビーを経由することなく直接、接続中ルーム（または待機）へ移行
+        // ロビーを一切見せることなく直接バックグラウンド入室・待機を継続
         await doJoin(savedActiveRi, savedPi, savedNi, tripStyled, savedTimer, snap.val().requireApproval);
-        return; // 自動移行したため終了
+        return; // 自動移行プロセスが走ったため終了
       } else {
         // すでに部屋が消滅している場合はゴミデータをクリア
         localStorage.removeItem("nz_active_ri"); 

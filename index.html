@@ -419,7 +419,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 <!-- ロビー画面 -->
 <div id="lobby" style="display: none;">
   <div class="lbo">
-    <h2 class="lbt">⚡ NEZU ONETIME CHAT</h2>
+    <h2 class="lbt">⚡ NEZU ONETIME CHAT - PRO</h2>
     <div class="lbsub">DISPOSABLE & ZERO-KNOWLEDGE E2EE</div>
     <div class="lbi">
       <div class="ibox">
@@ -689,7 +689,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import { getAuth, signInAnonymously, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import { getDatabase, ref, push, onValue, set, update, remove, get, serverTimestamp, onChildAdded, onChildRemoved, goOnline, query, limitToLast }
   from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
@@ -897,7 +897,7 @@ const importRawKeyFromHex = async (hex) => {
   );
 };
 
-// 対称鍵のエクスポート / インポート処理
+// 对称鍵のエクスポート / インポート処理
 const exportKeyToHex = async (key) => {
   const exported = await window.crypto.subtle.exportKey("raw", key);
   return bytesToHex(new Uint8Array(exported));
@@ -995,7 +995,7 @@ const decrypt = (c, key = masterKey) => {
       );
 
       const plaintext = new TextDecoder().decode(decrypted);
-      // 復号に成功した場合のみキャッシュに登録（バグの根本原因の解決）
+      // 復号に成功した場合のみキャッシュに登録
       decCache.set(c, p);
       return plaintext;
     } catch (e) {
@@ -1289,25 +1289,12 @@ async function cMsg(msg) {
   }
 
   // 2. 通常メッセージ
-  let pMeta;
-  if (metaCache.has(msg.mt)) {
-    pMeta = metaCache.get(msg.mt);
-  } else {
-    pMeta = (async () => {
-      const metaStr = await decrypt(msg.mt, masterKey);
-      if (!metaStr) {
-        metaCache.delete(msg.mt);
-        return null;
-      }
-      try {
-        return JSON.parse(metaStr);
-      } catch (e) {
-        metaCache.delete(msg.mt);
-        return null;
-      }
-    })();
-    metaCache.set(msg.mt, pMeta);
-  }
+  const pMeta = metaCache.has(msg.mt) ? metaCache.get(msg.mt) : (async () => {
+    const metaStr = await decrypt(msg.mt, masterKey);
+    if (!metaStr) return null;
+    try { return JSON.parse(metaStr); } catch { return null; }
+  })();
+  metaCache.set(msg.mt, pMeta);
 
   const pTxt = decrypt(msg.m, masterKey);
   const [meta, txt] = await Promise.all([pMeta, pTxt]);
@@ -1810,6 +1797,8 @@ window.approveGuest = async (guestUid, guestKeyHex) => {
     updates[`pending/${curR}/${guestUid}`] = null;
     
     await update(ref(db), updates);
+    
+    // ホストの承認によって入室したおしらせを最速で確実に送出
     await sendSysMsg(`${guestName} ${guestTrip} が入室しました`).catch(()=>{});
 
     showToast("✅ 承認してメンバーに昇格しました");
@@ -1867,7 +1856,15 @@ function renderApprovalCard(uid, wm, gk, reqAt) {
   const btnApprove = document.createElement("button");
   btnApprove.className = "btn-approve";
   btnApprove.textContent = "許可";
-  btnApprove.addEventListener("click", () => window.approveGuest(uid, gk));
+  
+  // 承認ボタンの連打・二重処理を確実に防止する構造的ロック
+  btnApprove.addEventListener("click", async () => {
+    if (btnApprove.disabled) return;
+    btnApprove.disabled = true;
+    btnReject.disabled = true;
+    btnApprove.textContent = "処理中...";
+    await window.approveGuest(uid, gk);
+  });
   
   const btnReject = document.createElement("button");
   btnReject.className = "btn-reject";
@@ -2439,7 +2436,7 @@ async function forceResync() {
     const presenceSnap = results[2];
     const pendingSnap = isHost ? results[3] : null;
 
-    // 非同期交渉中に退室が行われていた場合は処理を破棄
+    // 各非同期処理の競合・不整合を防ぐため、裏で退室が行われていたら処理を打ち切る
     if (targetRoom !== curR) return;
 
     if (!roomSnap.exists() && !_exitLock) {
@@ -2703,6 +2700,7 @@ D.enBtn.onclick = async () => {
   
   // 入室ボタンを押した瞬間から、ロビー戻りを防ぐために永続キー群を即座にローカルにロック
   localStorage.setItem("nz_active_ri", r);
+  localStorage.setItem("nz_active_created", "pending"); // 本部屋作成前の一時バインド
   localStorage.setItem("nz_is_in_room", "true");
   localStorage.setItem("nz_ni", n);
   localStorage.setItem("nz_tripi", tk);
@@ -3121,36 +3119,43 @@ const initUserSession = async (user) => {
 
 const authenticateAnonymously = () => {
   return new Promise((resolve, reject) => {
-    if (auth.currentUser) {
-      resolve(auth.currentUser);
-      return;
-    }
-    
-    let isResolved = false;
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        unsubscribe();
-        if (!isResolved) {
-          isResolved = true;
-          resolve(user);
+    // 匿名サインイン情報のセッション持続を確実にするためのローカル永続性を強制
+    setPersistence(auth, browserLocalPersistence)
+      .then(() => {
+        if (auth.currentUser) {
+          resolve(auth.currentUser);
+          return;
         }
-      } else {
-        unsubscribe();
-        signInAnonymously(auth)
-          .then((cred) => {
+        
+        let isResolved = false;
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+          if (user) {
+            unsubscribe();
             if (!isResolved) {
               isResolved = true;
-              resolve(cred.user);
+              resolve(user);
             }
-          })
-          .catch((err) => {
-            if (!isResolved) {
-              isResolved = true;
-              reject(err);
-            }
-          });
-      }
-    });
+          } else {
+            unsubscribe();
+            signInAnonymously(auth)
+              .then((cred) => {
+                if (!isResolved) {
+                  isResolved = true;
+                  resolve(cred.user);
+                }
+              })
+              .catch((err) => {
+                if (!isResolved) {
+                  isResolved = true;
+                  reject(err);
+                }
+              });
+          }
+        });
+      })
+      .catch((err) => {
+        reject(err);
+      });
   });
 };
 

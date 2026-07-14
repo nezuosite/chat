@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0f172a">
 <title>NEZU ONETIME CHAT</title>
 <style>
-/* 共通リreset＆変数 */
+/* 共通リセット＆変数 */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
   --bg:#0f172a;--sf:#1e293b;--s2:#0a1628;--bd:#334155;
@@ -681,9 +681,6 @@ import { getDatabase, ref, push, onValue, set, update, remove, get, serverTimest
 
 // トリップ生成用の鍵
 const SYSTEM_SALT = "NEZU_PRO_SYS_SALT_2026_V1";
-
-// タブ一意の使い捨てランダムセッション識別子（多重ログイン・複窓の防止用）
-const tabId = "tab_" + Math.random().toString(36).substring(2, 10);
 
 // 接続設定（プレーン表記。デコード不具合によるAPIキーエラーを完全に防止）
 const firebaseConfig = {
@@ -1987,8 +1984,8 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
 
             const currentPass = pass || localStorage.getItem("nz_pi_val") || "";
             if (currentPass) {
-              masterKey = await deriveMasterKey(roomId, currentPass);
-              const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
+              masterKey = await deriveMasterKey(rawR, currentPass);
+              const metaStr = JSON.stringify({ n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor });
               
               await remove(pendingRef).catch(()=>{});
               await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), tab: tabId });
@@ -2145,8 +2142,8 @@ async function enterChatUI(roomData, pass) {
   // バックグラウンド・非アクティブ時の遅延（ requestAnimationFrame 間引き）を回避して即時同期
   _pOff = onValue(ref(db, `presence/${curR}`), renderPresenceList);
 
-  // 複窓対策：古いタブを切断せず複数タブからの「同時アクセス」を完全維持。
-  // 自ノードを監視して切断させる古いリスナー（watchMyPresOff）は完全に撤廃されました。
+  // 複窓対策：複数タブでの同時ログインアクセスを許容（競合切断を排除）。
+  // 古いタブ側を検知して切断させていたリスナー（watchMyPresOff）は要請に基づき完全に撤廃されました。
 
   if (isHost) {
     async function renderPendingList(s) {
@@ -2406,7 +2403,7 @@ D.sdBtn.onclick = () => sendMsg();
 D.clrMsgBtn.onclick = () => { D.mi.value = ""; D.mi.style.height = "auto"; D.mi.focus(); };
 
 D.enBtn.onclick = async () => {
-  // 他ルーム作成/入室制限：ストレージに入室中セッションが残っている場合は完全に制限して引き戻す
+  // 複窓・他ルーム作成/入室制限：ストレージに入室中セッションが残っている場合は完全に制限して引き戻す
   const savedActiveRi = localStorage.getItem("nz_active_ri");
   if (savedActiveRi && localStorage.getItem("nz_is_in_room") === "true") {
     alert("既に入室中または待機中の部屋（" + savedActiveRi + "）があります。まずはそちらから退室してください。");

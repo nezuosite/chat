@@ -1,8 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<html l> name="viewport" content="width=device-width, initial-scale=1.0, maximu-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0f172a">
@@ -585,7 +582,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <div style="font-size:9.5px; color:var(--mu);">ホストが承認するまでチャットには参加できません。<br>この画面のままお待ちください。</div>
     <div class="wait-trip-box">
       <div style="font-size:9px; color:var(--m2); margin-bottom:3px;">あなたのID（ホストに伝えてください）</div>
-      <b id="waitModTrip" style="font-size:13px; color:var(--em);"></b>
+      <b id="waitModTrip" style="font-size:12px; color:var(--em);"></b>
     </div>
     <div class="wait-btns">
       <button class="btn bq" id="waitCopyIdBtn" style="flex:1;">IDコピー</button>
@@ -656,11 +653,10 @@ import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gsta
 import { getDatabase, ref, push, onValue, set, update, remove, get, serverTimestamp, onChildAdded, onChildRemoved }
   from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
-// トリップ生成用の鍵および環境データの難読化（ソース分析・検索エンジン対策）
-const _0x5a1t = [78, 69, 90, 85, 95, 80, 114, 111, 95, 83, 121, 115, 95, 83, 97, 108, 116, 95, 50, 48, 50, 54, 95, 86, 49];
-const SYSTEM_SALT = String.fromCharCode(..._0x5a1t);
+// トリップ生成用の鍵
+const SYSTEM_SALT = "NEZU_PRO_SYS_SALT_2026_V1";
 
-const _dec = (str) => atob(str);
+// 接続設定（プレーン表記。デコード不具合によるAPIキーエラーを完全に防止）
 const firebaseConfig = {
   apiKey: "AIzaSyCsRidc0smUQDaBwq-oki5NzxSHx6-ljiw",
   authDomain: "nezuochat.firebaseapp.com",
@@ -860,7 +856,7 @@ const importRawKeyFromHex = async (hex) => {
   );
 };
 
-// 対称鍵のエクスポート / インポート処理 (sessionStorageキャッシュ用)
+// 对称鍵のエクスポート / インポート処理 (sessionStorageキャッシュ用)
 const exportKeyToHex = async (key) => {
   const exported = await window.crypto.subtle.exportKey("raw", key);
   return bytesToHex(new Uint8Array(exported));
@@ -990,7 +986,7 @@ const copyToClip = (text) => {
   }); 
 };
 D.lbCopyTripBtn.onclick = () => copyToClip(`${D.ni.value || "名無し"} ${localStorage.getItem("nz_mytrip_styled")||""}`);
-D.waitCopyIdBtn.onclick = () => copyToClip(`${localStorage.getItem("nz_myname")} ${localStorage.getItem("nz_mytrip_styled")||""}`);
+D.waitCopyIdBtn.onclick = () => copyToClip(`${D.ni.value || "名無し"} ${localStorage.getItem("nz_mytrip_styled")||""}`);
 
 D.copyUrlBtn.onclick = () => {
   const passVal = D.pi.value || localStorage.getItem("nz_pi_val") || "";
@@ -1049,7 +1045,7 @@ const COLORS = [
   {v:"#f59e0b",n:"イエロー"},{v:"#a3e635",n:"ライム1"},{v:"#bef264",n:"パステルライム"},{v:"#84cc16",n:"ライム2"},
   {v:"#10b981",n:"エメラルド"},{v:"#a7f3d0",n:"パステルミント"},{v:"#34d399",n:"ミント"},{v:"#2dd4bf",n:"ティール"},
   {v:"#99f6e4",n:"パステルティール"},{v:"#14b8a6",n:"アクア"},{v:"#06b6d4",n:"シアン"},{v:"#7dd3fc",n:"パステルスカイ"},
-  {v:"#38bdf8",n:"スカイ"},{v:"#6366f1",n:"インディゴ"},{v:"#818cf8",n:"パステルインディゴ"},{v:"#c4b5fd",n:"パステルパープル"},
+  {v:"#38bdf8",n:"スカイ"},{v:"#6366f1",n:"インディゴ"},{v:"#818cf8",n:"パステルインディゴ"},{v:"#c4b5fd",n:"パステルパーpurple"},
   {v:"#a855f7",n:"パープル"},{v:"#c084fc",n:"ライトパープル"},{v:"#f472b6",n:"ピンク"},{v:"#fda4af",n:"パステルローズ"},
   {v:"#f9a8d4",n:"ライトピンク"},{v:"#db2777",n:"ローズ"},{v:"#e2e8f0",n:"スレート"},{v:"#94a3b8",n:"グレー"}
 ];
@@ -1387,6 +1383,7 @@ let curR = null, curN = null, rawR = null, myUid = null;
 let isW = false, _exitLock = false, isLiveMode = false, unreadCount = 0;
 let displayedMsgIds = new Set();
 let myPresRef = null, _roomExpireAt = null, _cOff = null, _pOff = null, _rOff = null, _crOff = null, _waitPresOff = null, _waitRoomOff = null, _pendingOff = null;
+let pendingTimeoutTimer = null; // 承認待機タイムアウト監視用スレッド
 
 // 一時仮メッセージ要素を差し替え、描画ガタつきを無くして相手への即時反映を実現
 async function queueIncomingMessage(m) {
@@ -1457,6 +1454,8 @@ async function sendSysMsg(text) {
 window.doExit = async () => {
   _exitLock = true; 
   const hashId = curR;
+  if (pendingTimeoutTimer) { clearInterval(pendingTimeoutTimer); pendingTimeoutTimer = null; }
+  
   if (curR && masterKey && localStorage.getItem("nz_is_in_room") === "true") {
     // 退室ログを出力
     await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が退室しました`);
@@ -1495,6 +1494,7 @@ function clearAll() {
   if(typeof _waitPresOff === "function"){ _waitPresOff(); _waitPresOff = null; }
   if(typeof _waitRoomOff === "function"){ _waitRoomOff(); _waitRoomOff = null; }
   if(typeof _pendingOff === "function"){ _pendingOff = null; }
+  if(pendingTimeoutTimer) { clearInterval(pendingTimeoutTimer); pendingTimeoutTimer = null; }
 
   // セキュリティ要件：鍵情報と過去復号テキストキャッシュの徹底的なゼロ物理破棄
   masterKey = null; 
@@ -1705,6 +1705,25 @@ const processInitialMessages = async (messages) => {
   scBottom(true);
 };
 
+// 承認待ち有効期限（5分間タイムアウト）自動処理ロジック
+const startPendingTimeout = (reqAtTime, name, trip) => {
+  if (pendingTimeoutTimer) clearInterval(pendingTimeoutTimer);
+  pendingTimeoutTimer = setInterval(() => {
+    const elapsed = srvNow() - reqAtTime;
+    if (elapsed >= 5 * 60 * 1000) { // 5分
+      clearInterval(pendingTimeoutTimer);
+      pendingTimeoutTimer = null;
+      showToast("⏳ 承認待ちの有効期限（5分）が切れました。");
+      doExit();
+    } else {
+      const remainSec = Math.max(0, Math.floor((5 * 60 * 1000 - elapsed) / 1000));
+      const m = Math.floor(remainSec / 60);
+      const s = remainSec % 60;
+      D.waitModTrip.textContent = `${name} ${trip} (有効期限まで ${m}:${String(s).padStart(2, "0")})`;
+    }
+  }, 1000);
+};
+
 async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
   try {
     clearAll(); _exitLock = false;
@@ -1782,7 +1801,11 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
             if (decryptedMk) {
               masterKey = decryptedMk;
               await update(myPresRef, { mk: null });
-              await enterChatUI(roomData, pass);
+              
+              // タイマーの秒ズレを完全に防ぐため、入室前に最新ルームデータをサーバーから裏取りする
+              const freshSnap = await get(roomRef);
+              const latestRoomData = freshSnap.exists() ? freshSnap.val() : roomData;
+              await enterChatUI(latestRoomData, pass);
               return;
             }
           } catch(e){}
@@ -1798,7 +1821,11 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
                 masterKey = decryptedMk;
                 const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
                 await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: false });
-                await enterChatUI(roomData, pass);
+                
+                // 待機中にずれたタイマー同期を修正するための部屋情報再取得
+                const freshSnap = await get(roomRef);
+                const latestRoomData = freshSnap.exists() ? freshSnap.val() : roomData;
+                await enterChatUI(latestRoomData, pass);
                 return;
               }
             }
@@ -1819,6 +1846,8 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
         const waitMetaStr = JSON.stringify({ n: name, p: trip, c: curColor });
 
         const pendingRef = ref(db, `pending/${hashId}/${myUid}`);
+        const requestTime = srvNow(); // 申請時間をローカル取得
+
         await set(pendingRef, { 
           status: "waiting", 
           gk: myGuestKey, 
@@ -1826,9 +1855,19 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
           reqAt: serverTimestamp() 
         });
 
+        // タブ開いてなくても「先に入室（バックグラウンド維持）」させるために情報を即保存！
+        localStorage.setItem("nz_active_ri", rawR);
+        localStorage.setItem("nz_active_created", roomData.created);
+        localStorage.setItem("nz_is_in_room", "true");
+        localStorage.setItem("nz_ni", name);
+        localStorage.setItem("nz_tripi", localStorage.getItem("nz_tripi") || "");
+
         D.lobby.style.display = "none";
-        D.waitModTrip.textContent = `${name} ${trip}`;
+        D.waitModTrip.textContent = `${name} ${trip} (同期中...)`;
         D.waitMod.classList.add("show");
+
+        // 承認待ち5分間の有効期限カウントダウンを即時稼働
+        startPendingTimeout(requestTime, name, trip);
         
         _waitPresOff = onValue(myPresRef, async (s) => {
           if (!s.exists()) return;
@@ -1842,18 +1881,34 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
                  D.waitMod.classList.remove("show");
                  if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
                  if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
-                 await enterChatUI(roomData, pass);
+                 if (pendingTimeoutTimer) { clearInterval(pendingTimeoutTimer); pendingTimeoutTimer = null; }
+                 
+                 // 承認後のタイマー秒ズレを正す最新データの同期
+                 const freshSnap = await get(roomRef);
+                 const latestRoomData = freshSnap.exists() ? freshSnap.val() : roomData;
+                 await enterChatUI(latestRoomData, pass);
               }
             } catch(e){}
           }
         });
 
         _waitRoomOff = onValue(ref(db, `rooms/${hashId}`), async (s) => {
-          if (!s.exists()) return;
-          const rVal = s.val();
-          if (rVal.requireApproval === false) {
+          if (!s.exists()) {
+            // 待機中にホスト退室などで部屋が消えたらキャンセル
             if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
             if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
+            if (pendingTimeoutTimer) { clearInterval(pendingTimeoutTimer); pendingTimeoutTimer = null; }
+            D.waitMod.classList.remove("show");
+            doExit();
+            showLobby("待機中に部屋が自動消滅したためキャンセルしました。");
+            return;
+          }
+          const rVal = s.val();
+          if (rVal.requireApproval === false) {
+            // 待機中に「オープンモード」に切り替わったら即座に自動入室させる
+            if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
+            if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
+            if (pendingTimeoutTimer) { clearInterval(pendingTimeoutTimer); pendingTimeoutTimer = null; }
 
             const currentPass = pass || localStorage.getItem("nz_pi_val") || "";
             if (currentPass) {
@@ -2024,6 +2079,11 @@ async function enterChatUI(roomData, pass) {
       const cards = await Promise.all(pendingData.map(async ([id, u]) => {
         if (!u) return null;
         if (u.status === "waiting" && u.wmeta && u.gk) {
+          // ホスト側でも、申請から5分（300000ms）経過した古い待機カードは自動除外＆DBからお掃除する
+          if (u.reqAt && (srvNow() - u.reqAt > 5 * 60 * 1000)) {
+            remove(ref(db, `pending/${curR}/${id}`)).catch(()=>{});
+            return null;
+          }
           const metaStr = await decrypt(u.wmeta, waitCryptoKey);
           if (metaStr) {
             try {
@@ -2146,6 +2206,7 @@ document.addEventListener("visibilitychange", async () => {
               D.waitMod.classList.remove("show");
               if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
               if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
+              if (pendingTimeoutTimer) { clearInterval(pendingTimeoutTimer); pendingTimeoutTimer = null; }
               
               const rSnap = await get(ref(db, `rooms/${curR}`));
               const rData = rSnap.exists() ? rSnap.val() : { requireApproval: true };
@@ -2169,6 +2230,7 @@ document.addEventListener("visibilitychange", async () => {
               D.waitMod.classList.remove("show");
               if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
               if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
+              if (pendingTimeoutTimer) { clearInterval(pendingTimeoutTimer); pendingTimeoutTimer = null; }
               
               await enterChatUI(rVal, currentPass);
             }

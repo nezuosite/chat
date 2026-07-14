@@ -1168,7 +1168,6 @@ window.triggerDeleteMsg = (mid, previewText) => {
   D.delConfirmPreview.innerHTML = ""; // 以前のプレビュー表示をリセット
   
   if (previewText.startsWith("IMG::data:image/")) {
-    // 削除対象が画像データの場合は、サムネイル（img要素）を動的に流し込む
     const b64 = previewText.substring(5);
     const img = document.createElement("img");
     img.src = b64;
@@ -1611,7 +1610,6 @@ window.approveGuest = async (guestUid, guestKeyHex) => {
     let guestColor = "#94a3b8";
     
     const pVal = pendingSnap.exists() ? pendingSnap.val() : null;
-    const guestTabId = pVal && pVal.tab ? pVal.tab : ""; // ゲストのタブ識別子を取得
 
     if (pVal && pVal.wmeta) {
       const waitCryptoKey = await window.crypto.subtle.importKey(
@@ -1641,8 +1639,7 @@ window.approveGuest = async (guestUid, guestKeyHex) => {
     updates[`presence/${curR}/${guestUid}`] = { 
       status: "approved", 
       mk: encryptedMasterKey,
-      meta: guestEncryptedMeta,
-      tab: guestTabId // 複窓対策用にタブ識別子を引き継いで presence に書き込む
+      meta: guestEncryptedMeta
     };
     updates[`authorized_users/${curR}/${guestUid}`] = { mk: encryptedMasterKey, ts: serverTimestamp() };
     updates[`pending/${curR}/${guestUid}`] = null;
@@ -1820,8 +1817,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       
       myPresRef = ref(db, `presence/${hashId}/${myUid}`);
       const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
-      // 複窓対策として自ノードの登録時に tabId を一緒に書き込む
-      await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: true, tab: tabId });
+      await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: true });
       
       // データベースからの再 get 反映を待たずに、即座にローカル値（Date.nowで補完）でタイマー稼働
       const localRoomData = { ...roomData, created: Date.now() };
@@ -1835,7 +1831,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
 
       if (isHost) {
         const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
-        await update(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: true, tab: tabId });
+        await update(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: true });
         await enterChatUI(roomData, pass);
       } else if (roomData.requireApproval) {
         const authLocalKey = localStorage.getItem(`nz_authkey_${hashId}`);
@@ -1847,7 +1843,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
             const decryptedMk = await unwrapMasterKey(myPresSnap.val().mk, guestCryptoKey);
             if (decryptedMk) {
               masterKey = decryptedMk;
-              await update(myPresRef, { mk: null, tab: tabId }); // 自プレゼンスにtabIdを書き込む
+              await update(myPresRef, { mk: null }); // 自プレゼンスのmkをクリア
               localStorage.removeItem("nz_pending_req_at"); // 申請成功時は開始時間を初期化
               
               // タイマーの秒ズレを完全に防ぐため、入室前に最新ルームデータをサーバーから裏取りする
@@ -1868,7 +1864,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
               if (decryptedMk) {
                 masterKey = decryptedMk;
                 const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
-                await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: false, tab: tabId });
+                await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: false });
                 localStorage.removeItem("nz_pending_req_at"); // 申請成功時は開始時間を初期化
                 
                 // 待機中にずれたタイマー同期を修正するための部屋情報再取得
@@ -1912,15 +1908,14 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
           return;
         }
 
-        // DBに申請データが存在しない場合のみ登録（複窓対策用の tab フィールドを付与）
+        // DBに申請データが存在しない場合のみ登録
         const pendingSnap = await get(pendingRef);
         if (!pendingSnap.exists()) {
           await set(pendingRef, { 
             status: "waiting", 
             gk: myGuestKey, 
             wmeta: await encrypt(waitMetaStr, waitCryptoKey), 
-            reqAt: serverTimestamp(),
-            tab: tabId // 待機セッション用タブIDの書き込み
+            reqAt: serverTimestamp()
           });
         }
 
@@ -1988,7 +1983,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
               const metaStr = JSON.stringify({ n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor });
               
               await remove(pendingRef).catch(()=>{});
-              await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), tab: tabId });
+              await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey) });
               
               D.waitMod.classList.remove("show");
               await enterChatUI(rVal, currentPass);
@@ -2010,7 +2005,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
 
       } else {
         const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
-        await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), tab: tabId });
+        await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey) });
         await enterChatUI(roomData, pass);
       }
     }
@@ -2142,8 +2137,8 @@ async function enterChatUI(roomData, pass) {
   // バックグラウンド・非アクティブ時の遅延（ requestAnimationFrame 間引き）を回避して即時同期
   _pOff = onValue(ref(db, `presence/${curR}`), renderPresenceList);
 
-  // 複窓対策：複数タブでの同時ログインアクセスを許容（競合切断を排除）。
-  // 古いタブ側を検知して切断させていたリスナー（watchMyPresOff）は要請に基づき完全に撤廃されました。
+  // 複数タブ（多重ログイン）時の古いタブを切断せず、複数タブ双方から完全同期して同時会話。
+  // 古いタブ側を強制切断退室させていたリスナー（watchMyPresOff）は要請に基づき完全に撤廃されました。
 
   if (isHost) {
     async function renderPendingList(s) {
@@ -2308,7 +2303,7 @@ document.addEventListener("visibilitychange", async () => {
               masterKey = await deriveMasterKey(rawR, currentPass);
               const metaStr = JSON.stringify({ n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor });
               await remove(ref(db, `pending/${curR}/${myUid}`)).catch(()=>{});
-              await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), tab: tabId });
+              await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey) });
               
               D.waitMod.classList.remove("show");
               if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }

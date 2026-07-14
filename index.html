@@ -248,7 +248,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .switch-kb { width: 110px !important; height: 32px !important; position:relative; border-radius:16px!important; background:var(--s2)!important; border:1px solid var(--bd); padding:0 2px!important; overflow:hidden; transition:all 0.25s ease; cursor:pointer; display: flex; align-items: center;}
 .switch-kb::after { content:""; position:absolute; top:2px; left:2px; width:26px; height:26px; background:rgba(255,255,255,0.25); border:1px solid rgba(255,255,255,0.45); backdrop-filter:blur(1px); border-radius:50%; transition:transform 0.25s ease; z-index:1; }
 .switch-kb.active { background:var(--in)!important; border-color:var(--i2)!important; }
-.switch-kb.active::after { transform: translateX(78px) !important; }
+.switch-kb.active::after { transform: translateX(53px) !important; }
 
 .switch-scroll { width: 85px !important; height: 32px !important; position:relative; border-radius:16px!important; background:var(--s2)!important; border:1px solid var(--bd); padding:0 2px!important; overflow:hidden; transition:all 0.25s ease; cursor:pointer; display: flex; align-items: center;}
 .switch-scroll::after { content:""; position:absolute; top:2px; left:2px; width:26px; height:26px; background:rgba(255,255,255,0.25); border:1px solid rgba(255,255,255,0.45); backdrop-filter:blur(1px); border-radius:50%; transition:transform 0.25s ease; z-index:1; }
@@ -419,7 +419,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 <!-- ロビー画面 -->
 <div id="lobby" style="display: none;">
   <div class="lbo">
-    <h2 class="lbt">⚡ NEZU ONETIME CHAT - PRO</h2>
+    <h2 class="lbt">⚡ NEZU ONETIME CHAT</h2>
     <div class="lbsub">DISPOSABLE & ZERO-KNOWLEDGE E2EE</div>
     <div class="lbi">
       <div class="ibox">
@@ -644,7 +644,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 
       <div class="guide-sec">
         <span class="guide-sub-title" style="color:#a5b4fc; font-weight:800; font-size:12.5px; border-bottom:1px solid rgba(255, 255, 255, 0.05); padding-bottom:2px; display:block; margin-bottom:4px;">🔒 2. セキュリティと消滅の仕組み</span>
-        ・<b>ブラウザ内での暗号化 (E2EE):</b> AES-GCM (256bit) を採用。メッセージや画像、プロフィール情報は、あなたの端末内で強力に暗号化されてから送信されます。<br>
+        ・<b>ブラウザ内での暗号化 (E2EE):</b> AES-GCM (256bit) を採用 [2]。メッセージや画像、プロフィール情報は、あなたの端末内で強力に暗号化されてから送信されます。<br>
         ・<b>ゼロ知識（Zero-Knowledge）:</b> 暗号を解読するためのパスワードはサーバーに一切保存されないため、第三者が通信やデータを解析しても元の会話を復元できません。<br>
         ・<b>即時一括物理消去:</b> ルームの終了に伴い、メッセージ、認証鍵などのすべてのデータがサーバーのディスク上から完全に消去され消失します。
       </div>
@@ -1475,9 +1475,9 @@ function untrackAndCacheMessage(id) {
   localStorage.setItem(`nz_chat_raw_${curR}`, JSON.stringify(currentRoomMsgs));
 }
 
-async function renderCachedState(hashId) {
+async function renderCachedState(hashId, rawRoomId) {
   curR = hashId;
-  rawR = localStorage.getItem("nz_ri_val") || "";
+  rawR = rawRoomId;
   curN = localStorage.getItem("nz_ni") || "名無し";
   
   D.lobby.style.display = "none"; 
@@ -1630,7 +1630,7 @@ window.doExit = async () => {
       // 最後の1人の場合は自分自身をリストに残したまま部屋全体を即座に消滅（wipeで自分自身の情報も安全に消去）
       await wipe(curR).catch(()=>{});
     } else {
-      // 他に参加者がいる場合は自分のプレゼンスのみ削除して退出
+      // 他に参加者が残っている場合は通常通り自分のプレゼンスのみ削除して退出
       try {
         if (myPresRef) await remove(myPresRef).catch(()=>{});
         await remove(ref(db, `pending/${curR}/${myUid}`)).catch(()=>{});
@@ -1793,8 +1793,6 @@ window.approveGuest = async (guestUid, guestKeyHex) => {
     updates[`pending/${curR}/${guestUid}`] = null;
     
     await update(ref(db), updates);
-    
-    // ホストの承認によって入室したおしらせを最速で確実に送出
     await sendSysMsg(`${guestName} ${guestTrip} が入室しました`).catch(()=>{});
 
     showToast("✅ 承認してメンバーに昇格しました");
@@ -1959,7 +1957,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
     // 3. 鍵の用意が100%完了したあとに、キャッシュから画面構築
     const previouslyEntered = localStorage.getItem(`nz_entered_${hashId}`) === "true";
     if (previouslyEntered) {
-      await renderCachedState(hashId);
+      await renderCachedState(hashId, roomId);
     } else {
       D.lobby.style.display = "none";
       D.enBtn.disabled = true;
@@ -2082,7 +2080,7 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
           await set(pendingRef, { 
             status: "waiting", 
             gk: myGuestKey, 
-            wmeta: await encrypt(waitCryptoKey, waitMetaStr), 
+            wmeta: await encrypt(waitMetaStr, waitCryptoKey), 
             reqAt: serverTimestamp()
           });
         }
@@ -2170,11 +2168,18 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       }
     }
   } catch (e) { 
-    console.error("入室失敗詳細:", e);
-    localStorage.removeItem("nz_is_in_room");
-    D.enBtn.disabled = false;
-    D.enBtn.textContent = "入室 / 作成";
-    showLobby("入室エラー: " + e.message); 
+    console.error("入室処理中のエラー:", e);
+    // ネットワークエラー（一時的な切断）の場合はセッションを絶対に破壊しない！
+    const isNetworkError = !navigator.onLine || e.message.includes("offline") || e.message.includes("network");
+    if (isNetworkError) {
+      showToast("📡 接続が不安定です。再接続を待機中...");
+    } else {
+      // 致命的なエラー（部屋消滅やパスワード不一致）の場合のみロビーへ戻す
+      localStorage.removeItem("nz_is_in_room");
+      D.enBtn.disabled = false;
+      D.enBtn.textContent = "入室 / 作成";
+      showLobby("入室エラー: " + e.message); 
+    }
   }
 }
 
@@ -2994,7 +2999,7 @@ const checkAndWarmboot = async () => {
     const hashId = await getRoomHash(savedActiveRi);
     const previouslyEntered = localStorage.getItem(`nz_entered_${hashId}`) === "true";
     if (previouslyEntered) {
-      await renderCachedState(hashId);
+      await renderCachedState(hashId, savedActiveRi);
     } else {
       // 承認待ちだった場合は待機画面へロビーをバイパスして直行
       D.lobby.style.display = "none";
@@ -3040,7 +3045,7 @@ const initUserSession = async (user) => {
           localStorage.setItem(`nz_mkey_${hashId}`, exportedHex);
         }
         if (masterKey) {
-          await renderCachedState(hashId);
+          await renderCachedState(hashId, savedActiveRi);
         }
       } else {
         // 待機中だった場合は待機画面へロビーをバイパスして直行

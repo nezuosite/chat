@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0f172a">
 <title>NEZU ONETIME CHAT</title>
 <style>
-/* 共通リセット＆変数 */
+/* 共通リreset＆変数 */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
   --bg:#0f172a;--sf:#1e293b;--s2:#0a1628;--bd:#334155;
@@ -605,7 +605,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 <div id="waitMod" class="mod-overlay">
   <div class="gc" style="max-width:320px;">
     <h3>⏳ ホストの承認待ち...</h3>
-    <div style="font-size:9.5px; color:var(--mu);">ホストが承認するまでチャットには参加できません。<br>この画面의ままお待ちください。</div>
+    <div style="font-size:9.5px; color:var(--mu);">ホストが承認するまでチャットには参加できません。<br>この画面のままお待ちください。</div>
     <div class="wait-trip-box">
       <div style="font-size:9px; color:var(--m2); margin-bottom:3px;">あなたのID（ホストに伝えてください）</div>
       <b id="waitModTrip" style="font-size:12px; color:var(--em);"></b>
@@ -613,7 +613,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <div class="wait-btns">
       <button class="btn bq" id="waitCopyIdBtn" style="flex:1;">IDコピー</button>
     </div>
-    <button class="btn bq" id="waitCancelBtn" style="width:100%; margin-top:6px; border-color:var(--ro); color:#fda4af;">キャンセル（退室）</button>
+    <button class="btn bq" id="waitCancelBtn" style="width:100%; margin-top:6px; border-color:var(--ro); color:#fda4af;">キャンセル（ロビーへ戻る）</button>
   </div>
 </div>
 
@@ -1776,6 +1776,11 @@ const startPendingTimeout = (reqAtTime, name, trip) => {
 
 async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
   try {
+    // 処理開始時にロビー画面を一旦隠す（ロビーのチラつきを完全に防止）
+    D.lobby.style.display = "none";
+    D.enBtn.disabled = true;
+    D.enBtn.textContent = "処理中...";
+
     clearAll(); _exitLock = false;
     localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created");
 
@@ -2000,8 +2005,12 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
           }
         });
         
-        D.waitCancelBtn.onclick = () => { 
+        D.waitCancelBtn.onclick = async () => { 
           if (typeof _waitRoomOff === "function") { _waitRoomOff(); _waitRoomOff = null; }
+          if (typeof _waitPresOff === "function") { _waitPresOff(); _waitPresOff = null; }
+          if (pendingTimeoutTimer) { clearInterval(pendingTimeoutTimer); pendingTimeoutTimer = null; }
+          // 申請データをDBから消去してロビーに戻る
+          await remove(pendingRef).catch(()=>{});
           doExit(); 
         };
 
@@ -2039,7 +2048,7 @@ async function enterChatUI(roomData, pass) {
   const localSentKey = `nz_sent_join_${curR}`;
   if (!localStorage.getItem(localSentKey)) {
     localStorage.setItem(localSentKey, "true");
-    // ホスト側が承認時にお知らせログを代わりに送信するため、承認制部屋（LOCKED）ではゲスト側からのシステム送信をパスする
+    // ホストが承認時にお知らせログを代わりに送信するため、承認制部屋（LOCKED）ではゲスト側からのシステム送信をパスする
     if (roomData && roomData.requireApproval !== true) {
       await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が入室しました`);
     }
@@ -2698,6 +2707,8 @@ const initUserSession = async (user) => {
   const savedTripKey = localStorage.getItem("nz_tripi");
   const savedTimer = parseInt(localStorage.getItem("nz_timer_val")) || 30;
   
+  // 1. 入室中の部屋、または待機中のセッション情報が存在する場合、
+  // URLパラメータ（他の部屋の招待URL等）が異なっていても、現在のアクティブな部屋（savedActiveRi）を最優先にして強制移行（浮気防止）
   if (savedActiveRi && savedActiveCreated && savedNi && savedTripKey) {
     try {
       const hashId = await getRoomHash(savedActiveRi);
@@ -2707,15 +2718,21 @@ const initUserSession = async (user) => {
         const tripStyled = await makeTrip(savedNi, savedTripKey); 
         localStorage.setItem("nz_mytrip_styled", tripStyled);
         
+        // 浮気防止：招待URLパラメータを現在接続中のアクティブな部屋情報に動的書き換え
         if (window.history?.replaceState) {
           window.history.replaceState({}, document.title, location.pathname + "?r=" + encodeURIComponent(savedActiveRi));
         }
+        
+        // ロビーを一切見せることなく直接バックグラウンド入室・待機を継続
         await doJoin(savedActiveRi, savedPi, savedNi, tripStyled, savedTimer, snap.val().requireApproval);
-        return; 
+        return; // 自動移行プロセスが走ったため終了
       }
-    } catch(e) {}
+    } catch(e) {
+      console.error("自動移行での再接続に失敗しました:", e);
+    }
   }
 
+  // 2. 入室中のアクティブな部屋が存在しない場合のみ、ロビーに移行して招待URLを宛先に適用する
   if (urlR) { 
     D.ri.value = urlR; 
     localStorage.setItem("nz_ri_val", urlR); 

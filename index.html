@@ -638,13 +638,13 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       <div class="guide-sec">
         <span class="guide-sub-title" style="color:#a5b4fc; font-weight:800; font-size:12.5px; border-bottom:1px solid rgba(255, 255, 255, 0.05); padding-bottom:2px; display:block; margin-bottom:4px;">🔑 1. 使い方（かんたん3ステップ）</span>
         <b>① 部屋情報の入力:</b> 「表示名」「本人証明用のトリップキー」「部屋ID」「部屋パスワード」を入力します（「自動生成」を押すと、安全なIDと複雑なパスワードをワンタップで作れます）。<br>
-        <b>② リンクの共有:</b> 「入室 / 作成」を押してチャットに入り、画面右上にある「🔗 URL」ボタンを押して招待用リンクをコピーし、相手に共有します。<br>
+        <b>② リンク of 共有:</b> 「入室 / 作成」を押してチャットに入り、画面右上にある「🔗 URL」ボタンを押して招待用リンクをコピーし、相手に共有します。<br>
         <b>③ 安全な退室:</b> 会話が終わったら「退室」を押します。全員が退室するか、制限時間が切れた瞬間に、チャットルームとすべての履歴は自動消滅します。
       </div>
 
       <div class="guide-sec">
         <span class="guide-sub-title" style="color:#a5b4fc; font-weight:800; font-size:12.5px; border-bottom:1px solid rgba(255, 255, 255, 0.05); padding-bottom:2px; display:block; margin-bottom:4px;">🔒 2. セキュリティと消滅の仕組み</span>
-        ・<b>ブラウザ内での暗号化 (E2EE):</b> AES-GCM (256bit) を採用 [2]。メッセージや画像、プロフィール情報は、あなたの端末内で強力に暗号化されてから送信されます。<br>
+        ・<b>ブラウザ内での暗号化 (E2EE):</b> AES-GCM (256bit) を採用。メッセージや画像、プロフィール情報は、あなたの端末内で強力に暗号化されてから送信されます。<br>
         ・<b>ゼロ知識（Zero-Knowledge）:</b> 暗号を解読するためのパスワードはサーバーに一切保存されないため、第三者が通信やデータを解析しても元の会話を復元できません。<br>
         ・<b>即時一括物理消去:</b> ルームの終了に伴い、メッセージ、認証鍵などのすべてのデータがサーバーのディスク上から完全に消去され消失します。
       </div>
@@ -1603,9 +1603,7 @@ window.doExit = async () => {
   if (pendingTimeoutTimer) { clearInterval(pendingTimeoutTimer); pendingTimeoutTimer = null; }
   
   if (curR && masterKey && localStorage.getItem("nz_is_in_room") === "true") {
-    // 全体の整合性を守るため、各DBクリーンアップ操作を個別のtry-catchで囲みます。
-    // これにより、ゲストが権限のないノード（authorized_usersなど）を操作して失敗しても
-    // ロビーへの退室・遷移処理（UI操作）が絶対にストップしません。
+    // 確実なお知らせ送出のため、各処理を個別にtry-catch化して堅牢性を最大化
     try {
       await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が退室しました`).catch(()=>{});
     } catch (e) {}
@@ -2976,7 +2974,14 @@ const checkAndWarmboot = async () => {
   const savedNi = localStorage.getItem("nz_ni");
   if (savedActiveRi && savedActiveCreated && savedNi) {
     const hashId = await getRoomHash(savedActiveRi);
-    await renderCachedState(hashId);
+    const previouslyEntered = localStorage.getItem(`nz_entered_${hashId}`) === "true";
+    if (previouslyEntered) {
+      await renderCachedState(hashId);
+    } else {
+      // 承認待ちだった場合は待機画面へロビーをバイパスして直行
+      D.lobby.style.display = "none";
+      D.waitMod.classList.add("show");
+    }
   } else {
     D.lobby.style.display = "flex";
   }
@@ -3004,19 +3009,26 @@ const initUserSession = async (user) => {
       const hashId = await getRoomHash(savedActiveRi);
       const savedPiRoom = localStorage.getItem(`nz_pi_${hashId}`) || savedPi || "";
       
-      // 暗号鍵の復号解決を最優先で先行処理
-      let cachedKeyHex = localStorage.getItem(`nz_mkey_${hashId}`);
-      if (cachedKeyHex) {
-        masterKey = await importKeyFromHex(cachedKeyHex);
-      } else if (savedPiRoom) {
-        masterKey = await deriveMasterKey(savedActiveRi, savedPiRoom);
-        const exportedHex = await exportKeyToHex(masterKey);
-        localStorage.setItem(`nz_mkey_${hashId}`, exportedHex);
-      }
+      const previouslyEntered = localStorage.getItem(`nz_entered_${hashId}`) === "true";
       
-      // 復帰確認のためのFirebase通信を待たず、キャッシュの描画をもって0msで強制移行
-      if (masterKey) {
-        await renderCachedState(hashId);
+      if (previouslyEntered) {
+        // 暗号鍵の復号解決を最優先で先行処理
+        let cachedKeyHex = localStorage.getItem(`nz_mkey_${hashId}`);
+        if (cachedKeyHex) {
+          masterKey = await importKeyFromHex(cachedKeyHex);
+        } else if (savedPiRoom) {
+          masterKey = await deriveMasterKey(savedActiveRi, savedPiRoom);
+          const exportedHex = await exportKeyToHex(masterKey);
+          localStorage.setItem(`nz_mkey_${hashId}`, exportedHex);
+        }
+        if (masterKey) {
+          await renderCachedState(hashId);
+        }
+      } else {
+        // 待機中だった場合は待機画面へロビーをバイパスして直行
+        D.lobby.style.display = "none";
+        D.waitModTrip.textContent = `${savedNi} (再接続中...)`;
+        D.waitMod.classList.add("show");
       }
       
       // バックグラウンドでデータベースの確認を行い、セッションを完全接続

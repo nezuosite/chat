@@ -468,7 +468,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 
     <!-- 2. LOCKED（モード状態）[参加人数] 領域 -->
     <div id="roomStatusArea">
-      <!-- 左：ホスト用モードトグル (スイッチ小型化＋テキスト独立表示) -->
+      <!-- 左：ホスト用モードトグル -->
       <div id="hostModeCtrl">
         <span class="htc-lbl">🚪 設定:</span>
         <button id="roomModeToggleBtn" class="switch-btn-sm" title="オープン/承認制の切り替え"></button>
@@ -662,13 +662,13 @@ const SYSTEM_SALT = String.fromCharCode(..._0x5a1t);
 
 const _dec = (str) => atob(str);
 const firebaseConfig = {
-  apiKey: _dec("QUl6YVN5Q3NSaWRjMHNtVVFEYUJ3cS1va2k1TnpYU0h4Ni1saml3"),
-  authDomain: _dec("bmV6dW9jaGF0LmZpcmViYXNlYXBwLmNvbQ=="),
-  databaseURL: _dec("aHR0cHM6Ly9uZXp1b2NoYXQtZGVmYXVsdC1ydGRiLmFzaWEtc291dGhlYXN0MS5maXJlYmFzZWRhdGFiYXNlLmFwcA=="),
-  projectId: _dec("bmV6dW9jaGF0"),
-  storageBucket: _dec("bmV6dW9jaGF0LmFwcHNwb3QuY29t"),
-  messagingSenderId: _dec("MTU0NzI1MzgxMzk3"),
-  appId: _dec("MToxNTQ3MjUzODEzOTc6d2ViOjg3NDIyY2Q5NTdlMjBjZWU4Y2U1MWM=")
+  apiKey: "AIzaSyCsRidc0smUQDaBwq-oki5NzxSHx6-ljiw",
+  authDomain: "nezuochat.firebaseapp.com",
+  databaseURL: "https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "nezuochat",
+  storageBucket: "nezuochat.appspot.com",
+  messagingSenderId: "154725381397",
+  appId: "1:154725381397:web:8742ccd957e20cee8ce51c"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -1510,8 +1510,10 @@ let _timerRaf = null;
 function startTimerLoop() {
   if (_timerRaf) cancelAnimationFrame(_timerRaf);
   const tick = () => {
-    if (!curR || !_roomExpireAt) return;
-    const remain = Math.max(0, _roomExpireAt - srvNow());
+    if (!curR) return;
+    // タイマー寿命が取得できていない、または同期中の場合は30分（デフォルト）をあてがう超堅牢設計
+    const expire = (typeof _roomExpireAt === "number") ? _roomExpireAt : (srvNow() + 30 * 60000);
+    const remain = Math.max(0, expire - srvNow());
     const m = Math.floor(remain / 60000), s = Math.floor((remain % 60000) / 1000);
     D.timerDsp.textContent = `${m}:${String(s).padStart(2,"0")}`;
 
@@ -1708,6 +1710,15 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
     clearAll(); _exitLock = false;
     localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created");
 
+    // 匿名ログインの完了とセッションUIDの存在を強制的に保証
+    if (!myUid && auth.currentUser) {
+      myUid = auth.currentUser.uid;
+    }
+    if (!myUid) {
+      const u = await authenticateAnonymously();
+      myUid = u.uid;
+    }
+
     const hashId = await getRoomHash(roomId);
     curR = hashId; rawR = roomId; curN = name;
     
@@ -1734,17 +1745,21 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
     let roomData = null;
     
     if (!snap.exists()) {
-      roomData = { created: serverTimestamp(), host: myUid, expireAt: srvNow() + (initTimer * 60000), requireApproval };
+      // タイマー即時起動仕様：ローカル側で即座に残り時間を計算・表示
+      const expireAtVal = srvNow() + (initTimer * 60000);
+      _roomExpireAt = expireAtVal;
+      isHost = true;
+
+      roomData = { created: serverTimestamp(), host: myUid, expireAt: expireAtVal, requireApproval };
       await set(roomRef, roomData);
       
       myPresRef = ref(db, `presence/${hashId}/${myUid}`);
       const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
       await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: true });
       
-      const freshSnap = await get(roomRef);
-      if(freshSnap.exists()) { 
-        await enterChatUI(freshSnap.val(), pass);
-      }
+      // データベースからの再 get 反映を待たずに、即座にローカル値（Date.nowで補完）でタイマー稼働
+      const localRoomData = { ...roomData, created: Date.now() };
+      await enterChatUI(localRoomData, pass);
     } 
     else {
       roomData = snap.val();
@@ -1869,7 +1884,12 @@ async function doJoin(roomId, pass, name, trip, initTimer, requireApproval) {
       }
     }
   } catch (e) { 
-    showLobby("エラー: " + e.message); 
+    console.error("入室失敗詳細:", e);
+    // エラーが起きた場合は即座にUIロックを解除し、原因を明確に伝える
+    localStorage.removeItem("nz_is_in_room");
+    D.enBtn.disabled = false;
+    D.enBtn.textContent = "入室 / 作成";
+    showLobby("入室エラー: " + e.message); 
   }
 }
 
@@ -1911,7 +1931,9 @@ async function enterChatUI(roomData, pass) {
       return; 
     }
     const rVal = s.val();
-    _roomExpireAt = rVal.expireAt;
+    if (rVal && rVal.expireAt) {
+      _roomExpireAt = rVal.expireAt;
+    }
     
     const requireApproval = rVal.requireApproval === true;
     if (requireApproval) {
@@ -1944,7 +1966,7 @@ async function enterChatUI(roomData, pass) {
       membersData.push({ id, u });
     }
 
-    // メンバーの復号処理を並列化して限界まで爆速処理
+    // メンバーの復号処理を並列化してメンバーリストを瞬時にロード
     const elements = await Promise.all(membersData.map(async ({ id, u }) => {
       if (u.status === "approved" && u.meta) {
         let m;

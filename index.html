@@ -1302,6 +1302,10 @@ let displayedMsgIds = new Set();
 let myPresRef = null, _roomExpireAt = null, _cOff = null, _pOff = null, _rOff = null, _crOff = null;
 let pendingTimeoutTimer = null;
 
+// 高速同期のためのフラグ・メモリ空間定義
+let _isExiting = false; 
+let _lastPresenceStr = "";
+
 // E2EE生キャッシュストレージの仕組み
 let currentRoomMsgs = [];
 const loadChatCache = (hashId) => {
@@ -1480,12 +1484,15 @@ async function sendSysMsg(text) {
 }
 
 window.doExit = async () => {
+  if (_isExiting) return;
+  _isExiting = true;
   _exitLock = true; 
   const hashId = curR;
   if (pendingTimeoutTimer) { clearInterval(pendingTimeoutTimer); pendingTimeoutTimer = null; }
   
   if (curR && masterKey && localStorage.getItem("nz_is_in_room") === "true") {
     try {
+      // 退室前に確実にシステムメッセージを送信して同期を待つ
       await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が退室しました`).catch(()=>{});
     } catch (e) {}
 
@@ -1526,9 +1533,11 @@ window.doExit = async () => {
   
   clearAll(); 
   showLobby();
+  _isExiting = false;
 };
 
 function clearAll(newHashId = null) {
+  _lastPresenceStr = "";
   if (typeof _cOff === "function"){ _cOff(); _cOff = null; }
   if (typeof _crOff === "function"){ _crOff(); _crOff = null; }
   if (typeof _pOff === "function"){ _pOff = null; }
@@ -1608,7 +1617,7 @@ async function checkCurrentRoomStatus() {
   }
 }
 
-// 参加者メンバーリストのレンダリング（モジュールスコープ化し、高速同期に対応）
+// 参加者メンバーリストのレンダリング（モジュールスコープ化し、高速同期＆差分更新に対応）
 async function renderPresenceList(s) {
   if (!curR) return;
   
@@ -1631,37 +1640,42 @@ async function renderPresenceList(s) {
   }
 
   const decryptedMembers = [];
-  const elements = await Promise.all(membersData.map(async ({ id, u }) => {
+  const rawPresenceArrayForDiff = [];
+
+  await Promise.all(membersData.map(async ({ id, u }) => {
     if (u.status === "approved" && u.meta) {
       const m = await decryptMeta(u.meta);
       if (m) {
          decryptedMembers.push({ n: m.n, c: m.c || "#94a3b8", isHost: u.isHost === true });
-         const sp = document.createElement("span"); 
-         sp.className = "chip" + (u.isHost ? " is-host" : "");
-         sp.style.color = m.c || "#94a3b8"; sp.style.borderColor = (m.c || "#94a3b8") + "44";
-         sp.textContent = m.n; 
-         return sp;
+         rawPresenceArrayForDiff.push(`${id}:${m.n}:${m.c}:${u.isHost}`);
       }
     }
-    return null;
   }));
+
+  // 差分チェック：プレセンス一覧に変化が無ければDOM操作処理をスキップ
+  rawPresenceArrayForDiff.sort();
+  const currentPresenceStr = rawPresenceArrayForDiff.join("|");
+  if (currentPresenceStr === _lastPresenceStr) {
+    return;
+  }
+  _lastPresenceStr = currentPresenceStr;
 
   if (decryptedMembers.length > 0) {
     localStorage.setItem(`nz_room_members_${curR}`, JSON.stringify(decryptedMembers));
   }
 
   const fg = document.createDocumentFragment();
-  let count = 0;
-  for (const el of elements) {
-    if (el) {
-      fg.appendChild(el);
-      count++;
-    }
-  }
+  decryptedMembers.forEach(m => {
+     const sp = document.createElement("span"); 
+     sp.className = "chip" + (m.isHost ? " is-host" : "");
+     sp.style.color = m.c; sp.style.borderColor = m.c + "44";
+     sp.textContent = m.n; 
+     fg.appendChild(sp);
+  });
 
   D.pl.textContent = ""; 
   D.pl.appendChild(fg); 
-  D.pcnt.textContent = `[${count}人]`;
+  D.pcnt.textContent = `[${decryptedMembers.length}人]`;
 }
 
 async function doJoin(roomId, pass, name, trip, initTimer) {
@@ -1767,13 +1781,14 @@ async function enterChatUI(roomData, pass) {
   const isCreated = sessionStorage.getItem("nz_room_created_flag") === "true";
   const isExplicitJoin = sessionStorage.getItem("nz_explicit_join") === "true";
 
+  // 送信前に多重トリガー防止のためセッション情報を破棄して確実にお知らせログを送信
   if (isCreated) {
-    await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が部屋を作成しました`);
     sessionStorage.removeItem("nz_room_created_flag");
     sessionStorage.removeItem("nz_explicit_join");
+    await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が部屋を作成しました`);
   } else if (isExplicitJoin) {
-    await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が入室しました`);
     sessionStorage.removeItem("nz_explicit_join");
+    await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が入室しました`);
   }
 
   startTimerLoop();
@@ -1792,7 +1807,26 @@ async function enterChatUI(roomData, pass) {
 
   _pOff = onValue(ref(db, `presence/${curR}`), renderPresenceList);
 
-  // ログストリームの高速化：最適化クエリによる負荷低減
+  // 爆速化1: 初回同期時に100件を get() で高速一括ロードし、バッチレンダリングでDOM負荷とラグを解消
+  try {
+    const chatQuery = query(ref(db, `chat/${curR}`), limitToLast(100));
+    const chatSnap = await get(chatQuery);
+    if (chatSnap.exists()) {
+      const msgs = [];
+      chatSnap.forEach(child => {
+        const val = child.val();
+        val.id = child.key;
+        if (!val.t) val.t = Date.now();
+        msgs.push(val);
+      });
+      msgs.sort((a, b) => (a.t || 0) - (b.t || 0));
+      await processInitialMessages(msgs);
+    }
+  } catch (e) {
+    console.error("過去ログの一括取得に失敗しました:", e);
+  }
+
+  // 爆速化2: リアルタイムのストリーミングを開始（既に描画したメッセージは displayedMsgIds で重複ガード）
   const chatQuery = query(ref(db, `chat/${curR}`), limitToLast(100));
   _cOff = onChildAdded(chatQuery, snap => {
     if(!curR || !masterKey) return;
@@ -1800,7 +1834,9 @@ async function enterChatUI(roomData, pass) {
     if(m) { 
       m.id = snap.key; 
       if (!m.t) m.t = Date.now(); 
-      queueIncomingMessage(m);
+      if (!displayedMsgIds.has(m.id)) {
+        queueIncomingMessage(m);
+      }
     } 
   });
 
@@ -1930,6 +1966,11 @@ async function sendMsg(overrideText = null, imgData = null) {
   const nowSrv = srvNow();
   const encryptedMeta = await encrypt(JSON.stringify(metaObj), masterKey);
   const encryptedMsg = await encrypt(imgData ? "IMG::" + imgData : txt, masterKey);
+
+  // 爆速化3: 暗号化平文キャッシュの先行追加（サーバー応答受信時の非同期復号プロセスを瞬時にスキップ）
+  const plainTextVal = imgData ? "IMG::" + imgData : txt;
+  decCache.set(encryptedMsg, Promise.resolve(plainTextVal));
+  metaCache.set(encryptedMeta, Promise.resolve(metaObj));
 
   const tempObj = { 
     id: cid, 

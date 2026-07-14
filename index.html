@@ -132,7 +132,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 
 /* 2. 状態・参加人数エリア */
 #roomStatusArea{background:var(--s2); border-bottom:1px solid var(--bd); padding:6px 12px; display:flex; align-items:center; justify-content:space-between; gap:8px; flex-shrink:0;}
-#hostModeCtrl{display:none; align-items:center; gap:8px;}
+#hostModeCtrl{display:none; align-items:center; gap:4px;}
 .htc-lbl{font-size:12px; font-weight:bold; color:var(--mu); white-space:nowrap}
 #modeIndicator { font-size: 11px; font-weight: bold; padding: 3px 8px; border-radius: 3px; white-space: nowrap; }
 .mode-open { background: rgba(0,255,102,0.1); color: var(--em); border: 1px solid rgba(0,255,102,0.25); }
@@ -234,10 +234,48 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .jump-btn:disabled{opacity:0.3; cursor:not-allowed;}
 
 .switch-btn {position:relative; width:64px!important; height:32px!important; border-radius:16px!important; background:var(--s2)!important; border:1px solid var(--bd)!important; padding:0 2px!important; overflow:hidden; transition:all 0.25s ease; cursor:pointer; display: flex; align-items: center;}
-.switch-btn::after {content:""; position:absolute; top:2px; left:2px; width:26px; height:26px; background:#fff; border-radius:50%; transition:transform 0.25s ease;}
+.switch-btn::after {content:""; position:absolute; top:2px; left:2px; width:26px; height:26px; background:rgba(255,255,255,0.25); border:1px solid rgba(255,255,255,0.45); backdrop-filter:blur(1px); border-radius:50%; transition:transform 0.25s ease; z-index:1;}
 .switch-btn.active {background:var(--in)!important; border-color:var(--i2)!important;}
 .switch-btn.active::after {transform:translateX(32px);}
 .switch-text {font-size:11px; font-weight:bold; pointer-events:none; color:var(--tx); position:relative; z-index:2; width: 100%; text-align: center;}
+
+/* 小型のスイッチボタン */
+.switch-btn-sm {
+  position:relative; 
+  width:46px; 
+  height:22px; 
+  border-radius:11px; 
+  background:var(--s2); 
+  border:1px solid var(--bd); 
+  transition:all 0.25s ease; 
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  padding: 0;
+  overflow: hidden;
+  flex-shrink:0;
+}
+.switch-btn-sm::after {
+  content:""; 
+  position:absolute; 
+  top:1px; 
+  left:1px; 
+  width:18px; 
+  height:18px; 
+  background:rgba(255,255,255,0.25);
+  border:1px solid rgba(255,255,255,0.45);
+  backdrop-filter:blur(1px);
+  border-radius:50%; 
+  transition:transform 0.25s ease;
+  z-index: 1;
+}
+.switch-btn-sm.active {
+  background:var(--in); 
+  border-color:var(--i2);
+}
+.switch-btn-sm.active::after {
+  transform:translateX(24px);
+}
 
 /* 入力エリア */
 .mi-container{position:relative;flex:1;display:flex;align-items:center;background:var(--bg);border:1px solid var(--bd);border-radius:18px;min-height:38px;padding:4px 34px 4px 38px;}
@@ -387,12 +425,12 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       </div>
 
       <div class="fg">
-        <label class="fl">部屋ID *</label>
+        <label class="fl">部屋ID * (必須項目)</label>
         <input type="text" id="ri" class="inp" placeholder="共有する部屋名" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
       </div>
       <div class="fg">
-        <label class="fl">部屋パスワード (部屋作成時は必須)</label>
-        <input type="text" id="pi" class="inp" placeholder="共通暗号化パスワード" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
+        <label class="fl">部屋パスワード * (必須項目)</label>
+        <input type="text" id="pi" class="inp" placeholder="共通暗号化パスワード（必須）" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
       </div>
 
       <div class="brow">
@@ -430,10 +468,11 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 
     <!-- 2. LOCKED（モード状態）[参加人数] 領域 -->
     <div id="roomStatusArea">
-      <!-- 左：ホスト用モードトグル -->
+      <!-- 左：ホスト用モードトグル (スイッチ小型化＋テキスト独立表示) -->
       <div id="hostModeCtrl">
         <span class="htc-lbl">🚪 設定:</span>
-        <button id="roomModeToggleBtn" class="switch-btn" style="width:60px!important; height:22px!important; border-radius:11px!important;"><span id="roomModeStatusText" class="switch-text" style="font-size:9px;">ｵｰﾌﾟﾝ</span></button>
+        <button id="roomModeToggleBtn" class="switch-btn-sm" title="オープン/承認制の切り替え"></button>
+        <span id="roomModeStatusText" style="font-size:11px; font-weight:bold; color:var(--tx); margin-left:4px; min-width:36px; display:inline-block;">ｵｰﾌﾟﾝ</span>
       </div>
       <!-- 右：LOCKED（モード状態）[参加人数] -->
       <div style="display:flex; align-items:center; gap:6px; margin-left:auto;">
@@ -617,14 +656,19 @@ import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gsta
 import { getDatabase, ref, push, onValue, set, update, remove, get, serverTimestamp, onChildAdded, onChildRemoved }
   from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
+// トリップ生成用の鍵および環境データの難読化（ソース分析・検索エンジン対策）
+const _0x5a1t = [78, 69, 90, 85, 95, 80, 114, 111, 95, 83, 121, 115, 95, 83, 97, 108, 116, 95, 50, 48, 50, 54, 95, 86, 49];
+const SYSTEM_SALT = String.fromCharCode(..._0x5a1t);
+
+const _dec = (str) => atob(str);
 const firebaseConfig = {
-  apiKey: "AIzaSyCsRidc0smUQDaBwq-oki5NzxSHx6-ljiw",
-  authDomain: "nezuochat.firebaseapp.com",
-  databaseURL: "https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "nezuochat",
-  storageBucket: "nezuochat.appspot.com",
-  messagingSenderId: "154725381397",
-  appId: "1:154725381397:web:8742ccd957e20cee8ce51c"
+  apiKey: _dec("QUl6YVN5Q3NSaWRjMHNtVVFEYUJ3cS1va2k1TnpYU0h4Ni1saml3"),
+  authDomain: _dec("bmV6dW9jaGF0LmZpcmViYXNlYXBwLmNvbQ=="),
+  databaseURL: _dec("aHR0cHM6Ly9uZXp1b2NoYXQtZGVmYXVsdC1ydGRiLmFzaWEtc291dGhlYXN0MS5maXJlYmFzZWRhdGFiYXNlLmFwcA=="),
+  projectId: _dec("bmV6dW9jaGF0"),
+  storageBucket: _dec("bmV6dW9jaGF0LmFwcHNwb3QuY29t"),
+  messagingSenderId: _dec("MTU0NzI1MzgxMzk3"),
+  appId: _dec("MToxNTQ3MjUzODEzOTc6d2ViOjg3NDIyY2Q5NTdlMjBjZWU4Y2U1MWM=")
 };
 
 const app = initializeApp(firebaseConfig);
@@ -654,8 +698,6 @@ const D = {
   delConfirmMod:$("delConfirmMod"), delConfirmPreview:$("delConfirmPreview"), delCancelBtn:$("delCancelBtn"), delExecuteBtn:$("delExecuteBtn"),
   toastContainer:$("toastContainer")
 };
-
-const SYSTEM_SALT = "NEZU_PRO_SYS_SALT_2026_V1"; 
 
 let keepKbOpen = false;
 let isAutoScroll = true;
@@ -818,7 +860,7 @@ const importRawKeyFromHex = async (hex) => {
   );
 };
 
-// 对称鍵のエクスポート / インポート処理 (sessionStorageキャッシュ用)
+// 対称鍵のエクスポート / インポート処理 (sessionStorageキャッシュ用)
 const exportKeyToHex = async (key) => {
   const exported = await window.crypto.subtle.exportKey("raw", key);
   return bytesToHex(new Uint8Array(exported));
@@ -835,10 +877,13 @@ const importKeyFromHex = async (hex) => {
   );
 };
 
+// トリップキーとアルゴリズムの隠蔽化 (キー反転 + 難読化攪拌)
 const makeTrip = async (name, tripKey) => {
   if (!tripKey) return "";
-  const hash = await sha256(SYSTEM_SALT + name + tripKey);
-  return "◆" + hash.substring(0, 10);
+  const revKey = tripKey.split("").reverse().join("");
+  const mixed = SYSTEM_SALT + "_" + name + "_[SALT]_" + revKey;
+  const hash = await sha256(mixed);
+  return "◆" + hash.substring(3, 13);
 };
 
 const getRoomHash = async (roomId) => {
@@ -882,8 +927,10 @@ const encrypt = async (t, key = masterKey) => {
   }
 };
 
-// メッセージ復号
-const decCache = new Map(); // 再レンダリング時の復号コストをゼロにするためのローカルキャッシュ
+// メッセージ復号 (Mapを活用した極限メモリキャッシュ最適化)
+const decCache = new Map(); 
+const metaCache = new Map(); // メタデータ用のパースキャッシュを追加してさらに爆速化
+
 const decrypt = async (c, key = masterKey) => {
   if (!c || !key) return null;
   if (decCache.has(c)) return decCache.get(c);
@@ -977,7 +1024,7 @@ let isRoomApproveMode = false;
 const updateRoomModeBtnUI = () => {
   D.roomModeToggleBtn.classList.toggle("active", isRoomApproveMode);
   D.roomModeStatusText.textContent = isRoomApproveMode ? "承認制" : "ｵｰﾌﾟﾝ";
-  D.roomModeStatusText.style.color = isRoomApproveMode ? "#fff" : "var(--tx)";
+  D.roomModeStatusText.style.color = isRoomApproveMode ? "#fda4af" : "var(--em)";
   D.hostApprovePanel.style.display = isRoomApproveMode ? "flex" : "none";
 };
 D.roomModeToggleBtn.onclick = async () => {
@@ -1130,7 +1177,7 @@ function insertMessageEl(el) {
   }
 }
 
-// innerHTMLを完全に廃止し、ブラウザの描画負荷を最小化した超高速DOM生成
+// innerHTMLを完全に廃止し、メタデータの復号パースキャッシュ化(metaCache)で描画を限界突破高速化
 async function cMsg(msg) {
   const msgTs = msg.t || srvNow();
 
@@ -1168,21 +1215,40 @@ async function cMsg(msg) {
   }
 
   // 2. 通常メッセージの高速描画
-  const metaStr = await decrypt(msg.mt, masterKey);
+  let meta;
+  if (metaCache.has(msg.mt)) {
+    meta = metaCache.get(msg.mt);
+  } else {
+    const metaStr = await decrypt(msg.mt, masterKey);
+    if (!metaStr) {
+      const d = document.createElement("div");
+      d.dataset.mid = msg.id;
+      d.dataset.ts = msgTs;
+      d.className = "sys-msg";
+      d.style.borderColor = "rgba(244, 63, 94, 0.3)";
+      d.style.color = "#fda4af";
+      d.textContent = `⚠️ 復号エラー (ID: ${msg.id ? msg.id.substring(0,8) : '???'})`;
+      return d;
+    }
+    try {
+      meta = JSON.parse(metaStr);
+      metaCache.set(msg.mt, meta); // メモリ空間に格納してCPU負荷を完全にバイパス
+    } catch {
+      return null;
+    }
+  }
+
   const txt = await decrypt(msg.m, masterKey);
-  
-  if (!metaStr || !txt) {
+  if (!txt) {
     const d = document.createElement("div");
     d.dataset.mid = msg.id;
     d.dataset.ts = msgTs;
     d.className = "sys-msg";
     d.style.borderColor = "rgba(244, 63, 94, 0.3)";
     d.style.color = "#fda4af";
-    d.textContent = `⚠️ 復号エラー (ID: ${msg.id ? msg.id.substring(0,8) : '???'})`;
+    d.textContent = `⚠️ 本文復号エラー (ID: ${msg.id ? msg.id.substring(0,8) : '???'})`;
     return d;
   }
-  
-  let meta; try { meta = JSON.parse(metaStr); } catch { return null; }
 
   const d = document.createElement("div"); 
   d.dataset.mid = msg.id;
@@ -1433,6 +1499,7 @@ function clearAll() {
   // セキュリティ要件：鍵情報と過去復号テキストキャッシュの徹底的なゼロ物理破棄
   masterKey = null; 
   decCache.clear();
+  metaCache.clear();
 
   isLiveMode = false; displayedMsgIds.clear(); D.tli.innerHTML = "";
   stopTimerLoop(); D.hostModeCtrl.style.display = "none"; D.hostApprovePanel.style.display = "none";
@@ -1880,16 +1947,24 @@ async function enterChatUI(roomData, pass) {
     // メンバーの復号処理を並列化して限界まで爆速処理
     const elements = await Promise.all(membersData.map(async ({ id, u }) => {
       if (u.status === "approved" && u.meta) {
-        const metaStr = await decrypt(u.meta, masterKey);
-        if(metaStr) {
-          try {
-             const m = JSON.parse(metaStr);
-             const sp = document.createElement("span"); 
-             sp.className = "chip" + (u.isHost ? " is-host" : "");
-             sp.style.color = m.c || "#94a3b8"; sp.style.borderColor = (m.c || "#94a3b8") + "44";
-             sp.textContent = m.n; 
-             return sp;
-          } catch(e){}
+        let m;
+        if (metaCache.has(u.meta)) {
+          m = metaCache.get(u.meta);
+        } else {
+          const metaStr = await decrypt(u.meta, masterKey);
+          if (metaStr) {
+            try {
+              m = JSON.parse(metaStr);
+              metaCache.set(u.meta, m);
+            } catch(e){}
+          }
+        }
+        if (m) {
+           const sp = document.createElement("span"); 
+           sp.className = "chip" + (u.isHost ? " is-host" : "");
+           sp.style.color = m.c || "#94a3b8"; sp.style.borderColor = (m.c || "#94a3b8") + "44";
+           sp.textContent = m.n; 
+           return sp;
         }
       }
       return null;
@@ -2171,7 +2246,8 @@ D.enBtn.onclick = async () => {
   const n = D.ni.value.trim(), r = D.ri.value.trim(), p = D.pi.value.trim(), tk = D.tripi.value.trim();
   const tm = clampTimer(D.timeri.value);
   const isApproveMode = false;
-  if (!n || !r || !tk) { alert("必須項目をすべて入力してください。"); return; }
+  // 部屋IDと部屋パスワード双方を完全に必須化
+  if (!n || !r || !tk || !p) { alert("必須項目（表示名、トリップキー、部屋ID、部屋パスワード）をすべて入力してください。"); return; }
   
   localStorage.setItem("nz_is_in_room", "true");
   D.enBtn.disabled = true; D.enBtn.textContent = "処理中...";

@@ -1471,9 +1471,6 @@ async function wipe(r) {
   const updates = { [`rooms/${r}`]: null, [`chat/${r}`]: null, [`presence/${r}`]: null };
   try { 
     await update(ref(db), updates); 
-    localStorage.removeItem(`nz_chat_raw_${r}`);
-    localStorage.removeItem(`nz_room_expire_${r}`);
-    localStorage.removeItem(`nz_room_members_${r}`);
   } catch (e) { }
 }
 
@@ -1506,7 +1503,6 @@ window.doExit = async () => {
   D.app.style.display = "none";
   D.app.classList.remove("visible");
   D.lobby.style.display = "flex";
-  D.ib.classList.remove("show");
   D.enBtn.disabled = false;
   D.enBtn.textContent = "入室 / 作成";
 
@@ -1515,12 +1511,15 @@ window.doExit = async () => {
     window.history.replaceState({}, document.title, location.pathname);
   }
 
-  // 2. ローカルストレージの状態を即座に破棄
+  // 2. ローカルストレージ内の当該ルームに関連するキャッシュ、鍵、ログ情報を即座に全削除（次回復帰時のログ完全不可視化）
   if (hashId) {
     localStorage.removeItem(`nz_entered_${hashId}`);
     localStorage.removeItem(`nz_sent_join_${hashId}`);
     localStorage.removeItem(`nz_mkey_${hashId}`);
     localStorage.removeItem(`nz_pi_${hashId}`);
+    localStorage.removeItem(`nz_chat_raw_${hashId}`);
+    localStorage.removeItem(`nz_room_expire_${hashId}`);
+    localStorage.removeItem(`nz_room_members_${hashId}`);
   }
   localStorage.removeItem("nz_active_ri"); 
   localStorage.removeItem("nz_active_created"); 
@@ -1528,30 +1527,38 @@ window.doExit = async () => {
 
   showLobby();
 
-  // 3. 通信が必要な終了処理は、画面遷移を妨げないようにバックグラウンド(非同期)で実行
+  // 3. サーバー上のデータクリーンアップ（非同期で最速実行）
   if (hashId && activeMasterKey) {
-    try {
-      const trip = localStorage.getItem("nz_mytrip_styled") || "";
-      const sysText = `${activeName} ${trip} が退室しました`;
-      const encMsg = await encrypt(sysText, activeMasterKey);
-      push(ref(db, `chat/${hashId}`), { 
-        sys: true, 
-        m: encMsg, 
-        t: serverTimestamp()
-      }).catch(() => {});
-    } catch (e) {}
-
     try {
       const pSnap = await get(ref(db, `presence/${hashId}`)).catch(() => null);
       const members = pSnap ? pSnap.val() : null;
-      const isLast = !members || Object.keys(members).length === 0 || 
-                     (Object.keys(members).length === 1 && members[myUid]);
+      
+      // 自分を含め、approvedな現在のメンバー数を特定
+      const activeMemberIds = members ? Object.keys(members).filter(k => members[k] && members[k].status === "approved") : [];
+      const isLast = activeMemberIds.length <= 1; // 自分1人、または誰もいない場合
+
       if (isLast) {
+        // 【即時消滅】最後の一人（入室者0になる状態）のため、サーバー上の全ログと部屋データを即座に抹消
         await wipe(hashId).catch(() => {});
-      } else if (activePresRef) {
-        await remove(activePresRef).catch(() => {});
+      } else {
+        // 他に入室者が残っている場合のみ、「〇〇が退室しました」をチャットに確実に1回送信して退室
+        const trip = localStorage.getItem("nz_mytrip_styled") || "";
+        const sysText = `${activeName} ${trip}`.trim() + " が退室しました";
+        const encMsg = await encrypt(sysText, activeMasterKey);
+        
+        await push(ref(db, `chat/${hashId}`), { 
+          sys: true, 
+          m: encMsg, 
+          t: serverTimestamp()
+        }).catch(() => {});
+        
+        if (activePresRef) {
+          await remove(activePresRef).catch(() => {});
+        }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error("退室パージ処理中のエラー:", e);
+    }
   }
 
   _isExiting = false;
@@ -1801,16 +1808,20 @@ async function enterChatUI(roomData, pass) {
     localStorage.setItem("nz_pi_val", pass);
   }
 
-  const isCreated = sessionStorage.getItem("nz_room_created_flag") === "true";
-  const isExplicitJoin = sessionStorage.getItem("nz_explicit_join") === "true";
-
-  if (isCreated) {
+  // 【確実なお知らせログ】ボタンから明示的に入室/作成した時のみお知らせを送信するフラグをセット
+  const shouldSendJoin = sessionStorage.getItem("nz_should_send_join_sys") === "true";
+  if (shouldSendJoin) {
+    sessionStorage.removeItem("nz_should_send_join_sys");
+    const isCreated = sessionStorage.getItem("nz_room_created_flag") === "true";
     sessionStorage.removeItem("nz_room_created_flag");
-    sessionStorage.removeItem("nz_explicit_join");
-    await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が部屋を作成しました`);
-  } else if (isExplicitJoin) {
-    sessionStorage.removeItem("nz_explicit_join");
-    await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が入室しました`);
+    
+    const trip = localStorage.getItem("nz_mytrip_styled") || "";
+    const nameWithTrip = `${curN} ${trip}`.trim();
+    if (isCreated) {
+      await sendSysMsg(`${nameWithTrip} が部屋を作成しました`);
+    } else {
+      await sendSysMsg(`${nameWithTrip} が入室しました`);
+    }
   }
 
   startTimerLoop();
@@ -2089,6 +2100,8 @@ D.enBtn.onclick = async () => {
   localStorage.setItem(`nz_pi_${hashId}`, p);
   localStorage.setItem("nz_pi_val", p);
 
+  // 【確実なお知らせログ】ボタンから明示的に入室/作成した時のみお知らせを送信するフラグをセット
+  sessionStorage.setItem("nz_should_send_join_sys", "true");
   sessionStorage.setItem("nz_explicit_join", "true");
 
   D.enBtn.disabled = true; D.enBtn.textContent = "処理中...";
@@ -2157,6 +2170,7 @@ D.jumpDownBtn.onclick = () => {
   D.tl.scrollTo({ top: D.tl.scrollHeight, behavior: "smooth" });
 };
 
+// 画像拡大モーダル用のピンチズーム・ドラッグ
 let scale = 1, panX = 0, panY = 0;
 let lastPanX = 0, lastPanY = 0, isPanning = false;
 const imgEl = D.imgViewSrc;
@@ -2175,9 +2189,7 @@ function updateTransform() {
 
 function clampPan() {
   if (scale <= 1) {
-    panX = 0;
-    panY = 0;
-    return;
+    panX = 0; panY = 0; return;
   }
   const containerWidth = overlayEl.clientWidth;
   const containerHeight = overlayEl.clientHeight;
@@ -2219,13 +2231,9 @@ const updateZoomOrigin = (e) => {
     
     const rect = imgEl.getBoundingClientRect();
     if (rect.width > 0 && rect.height > 0) {
-      const originX = ((midX - rect.left) / rect.width) * 100;
-      const originY = ((midY - rect.top) / rect.height) * 100;
-      
-      const clampedX = Math.max(0, Math.min(100, originX));
-      const clampedY = Math.max(0, Math.min(100, originY));
-      
-      imgEl.style.transformOrigin = `${clampedX}% ${clampedY}%`;
+      const originX = Math.max(0, Math.min(100, ((midX - rect.left) / rect.width) * 100));
+      const originY = Math.max(0, Math.min(100, ((midY - rect.top) / rect.height) * 100));
+      imgEl.style.transformOrigin = `${originX}% ${originY}%`;
     }
   }
 };
@@ -2534,5 +2542,6 @@ authenticateAnonymously()
     showLobby();
   });
 </script>
+<script async src="https://adm.shinobi.jp/st/auto.js" data-admax-id="054d1b55e5fbc208c252569f53d675de"></script>
 </body>
 </html>

@@ -1482,55 +1482,72 @@ async function sendSysMsg(text) {
   });
 }
 
+// 確実に即削除。旧メッセージを絶対に画面に残さず、同期的に最速クリーンアップ
 window.doExit = async () => {
   if (_isExiting) return;
   _isExiting = true;
   _exitLock = true; 
-  const hashId = curR;
-  if (pendingTimeoutTimer) { clearInterval(pendingTimeoutTimer); pendingTimeoutTimer = null; }
   
-  if (curR && masterKey && localStorage.getItem("nz_is_in_room") === "true") {
-    try {
-      await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が退室しました`).catch(()=>{});
-    } catch (e) {}
+  const hashId = curR;
+  const activeName = curN;
+  const activePresRef = myPresRef;
+  const activeMasterKey = masterKey;
 
-    let isLast = false;
-    try {
-      const pSnap = await get(ref(db, `presence/${curR}`)).catch(() => null);
-      const members = pSnap ? pSnap.val() : null;
-      if (!members || Object.keys(members).length === 0 || (Object.keys(members).length === 1 && members[myUid])) {
-        isLast = true;
-      }
-    } catch (e) {}
+  if (pendingTimeoutTimer) { clearInterval(pendingTimeoutTimer); pendingTimeoutTimer = null; }
 
-    if (isLast) {
-      await wipe(curR).catch(()=>{});
-    } else {
-      try {
-        if (myPresRef) await remove(myPresRef).catch(()=>{});
-      } catch (e) {}
-    }
+  // 1. 同期的にDOMとUIの全表示を即座に消去 (チラつき防止)
+  clearAll(); 
+  D.app.style.display = "none";
+  D.app.classList.remove("visible");
+  D.lobby.style.display = "flex";
+  D.ib.classList.remove("show");
+  D.enBtn.disabled = false;
+  D.enBtn.textContent = "入室 / 作成";
+
+  // URL履歴のリセット
+  if (window.history?.replaceState) {
+    window.history.replaceState({}, document.title, location.pathname);
   }
 
-  if (curR) {
-    localStorage.removeItem(`nz_sent_join_${curR}`);
-    localStorage.removeItem(`nz_mkey_${curR}`);
-  }
-  hasSentJoinMsgInSession = false;
-
+  // 2. ローカルストレージの状態を即座に破棄
   if (hashId) {
     localStorage.removeItem(`nz_entered_${hashId}`);
+    localStorage.removeItem(`nz_sent_join_${hashId}`);
+    localStorage.removeItem(`nz_mkey_${hashId}`);
+    localStorage.removeItem(`nz_pi_${hashId}`);
   }
   localStorage.removeItem("nz_active_ri"); 
   localStorage.removeItem("nz_active_created"); 
   localStorage.setItem("nz_is_in_room", "false");
-  
-  if (window.history?.replaceState) {
-    window.history.replaceState({}, document.title, location.pathname);
-  }
-  
-  clearAll(); 
+
   showLobby();
+
+  // 3. 通信が必要な終了処理は、画面遷移を妨げないようにバックグラウンド(非同期)で実行
+  if (hashId && activeMasterKey) {
+    try {
+      const trip = localStorage.getItem("nz_mytrip_styled") || "";
+      const sysText = `${activeName} ${trip} が退室しました`;
+      const encMsg = await encrypt(sysText, activeMasterKey);
+      push(ref(db, `chat/${hashId}`), { 
+        sys: true, 
+        m: encMsg, 
+        t: serverTimestamp()
+      }).catch(() => {});
+    } catch (e) {}
+
+    try {
+      const pSnap = await get(ref(db, `presence/${hashId}`)).catch(() => null);
+      const members = pSnap ? pSnap.val() : null;
+      const isLast = !members || Object.keys(members).length === 0 || 
+                     (Object.keys(members).length === 1 && members[myUid]);
+      if (isLast) {
+        await wipe(hashId).catch(() => {});
+      } else if (activePresRef) {
+        await remove(activePresRef).catch(() => {});
+      }
+    } catch (e) {}
+  }
+
   _isExiting = false;
 };
 
@@ -1546,15 +1563,15 @@ function clearAll(newHashId = null) {
   isLiveMode = false;
   stopTimerLoop();
   
-  if (!newHashId || curR !== newHashId) {
-    if (!newHashId) {
-      masterKey = null; 
-      decCache.clear();
-      metaCache.clear();
-    }
-    displayedMsgIds.clear();
-    currentRoomMsgs = [];
-    D.tli.textContent = "";
+  // DOMと内部データバッファを同期的に完全リセット (他部屋ログの残存を防ぐ)
+  displayedMsgIds.clear();
+  currentRoomMsgs = [];
+  D.tli.textContent = "";
+
+  if (!newHashId) {
+    masterKey = null; 
+    decCache.clear();
+    metaCache.clear();
   }
 }
 
@@ -2353,11 +2370,23 @@ D_timerApplyBtn.onclick = async () => {
   }
 };
 
-// 【爆速先行ウォームブート】
+// 【爆速先行ウォームブート】のチラつき完全防止調整
 const checkAndWarmboot = async () => {
+  const sp = new URLSearchParams(location.search);
+  const urlR = sp.get("r");
   const savedActiveRi = localStorage.getItem("nz_active_ri");
   const savedActiveCreated = localStorage.getItem("nz_active_created");
   const savedNi = localStorage.getItem("nz_ni");
+
+  // 招待リンクから別部屋に入る際、前に入っていた部屋のログが一瞬チラつくのを完全に防ぎます
+  if (urlR && urlR !== savedActiveRi) {
+    localStorage.removeItem("nz_active_ri");
+    localStorage.removeItem("nz_active_created");
+    localStorage.setItem("nz_is_in_room", "false");
+    D.lobby.style.display = "flex";
+    return;
+  }
+
   if (savedActiveRi && savedActiveCreated && savedNi) {
     const hashId = await getRoomHash(savedActiveRi);
     const previouslyEntered = localStorage.getItem(`nz_entered_${hashId}`) === "true";
@@ -2386,6 +2415,23 @@ const initUserSession = async (user) => {
   const savedTimer = parseInt(localStorage.getItem("nz_timer_val")) || 30;
   
   if (savedActiveRi && savedActiveCreated && savedNi) {
+    // 招待リンクが保存された部屋と異なる場合は、以前の部屋の状態を復元しない
+    if (urlR && urlR !== savedActiveRi) {
+      // 招待された部屋情報でロビーを設定
+      D.ri.value = urlR;
+      localStorage.setItem("nz_ri_val", urlR);
+      const initHash = location.hash ? decodeURIComponent(location.hash.substring(1)) : "";
+      if (initHash) {
+        D.pi.value = initHash;
+        getRoomHash(urlR).then(hashId => {
+          localStorage.setItem(`nz_pi_${hashId}`, initHash);
+          localStorage.setItem("nz_pi_val", initHash);
+        });
+      }
+      showLobby();
+      return;
+    }
+
     try {
       const hashId = await getRoomHash(savedActiveRi);
       const savedPiRoom = localStorage.getItem(`nz_pi_${hashId}`) || savedPi || "";

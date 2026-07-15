@@ -7,8 +7,6 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0f172a">
 <title>NEZU ONETIME CHAT</title>
-<!-- 忍者AdMax 自動広告タグ -->
-<script async src="https://adm.shinobi.jp/st/auto.js" data-admax-id="054d1b55e5fbc208c252569f53d675de"></script>
 <style>
 /* 共通リセット＆変数 */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -46,8 +44,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   max-height: 100dvh;
   display:flex;
   flex-direction:column;
-  /* 忍者AdMaxの全自動広告等が下部に被ってもスクロールして操作できるように、底面の余白を100pxほど確保 */
-  padding:8px 12px calc(100px + var(--safe));
+  padding:8px 12px calc(8px + var(--safe));
   gap:6px;
   justify-content:center;
   max-width:340px;
@@ -227,12 +224,11 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .media-link-container {display:flex; flex-direction:column; gap:3px; margin-top:4px; max-width:100%;}
 .media-inline-row {display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:12px;}
 
-/* 入力バー */
+/* 入力バー：通常の配置、不要な下部余白を一切取り除きます */
 #ib{
   display:none; 
   flex-direction: column; 
-  /* 忍者AdMaxのオーバーレイ広告(50px〜100px)が画面下に被っても入力操作ができるよう、padding-bottomに安全余白(65px)を設定 */
-  padding:3px calc(4px + env(safe-area-inset-right,0px)) calc(65px + var(--safe)) calc(4px + env(safe-area-inset-left,0px)); 
+  padding:3px calc(4px + env(safe-area-inset-right,0px)) calc(3px + var(--safe)) calc(4px + env(safe-area-inset-left,0px)); 
   background:var(--sf); 
   border-top:1px solid var(--bd); 
   gap:3px; 
@@ -1640,7 +1636,7 @@ async function checkCurrentRoomStatus() {
     const hashId = await getRoomHash(lastRi);
     const snap = await get(ref(db, `rooms/${hashId}`));
     
-    // 【自動復帰バグ修正】作成日時(created)のミリ秒単位の完全一致は不要にし、部屋の現存と残り時間を基準として確実に自動入室
+    // 作成日時のミリ秒単位の完全一致を不要にし、部屋の現存と残り時間を基準として確実に入室
     if (snap.exists() && snap.val().expireAt > srvNow()) {
       const savedNi = localStorage.getItem("nz_ni") || "名無し";
       const savedTripKey = localStorage.getItem("nz_tripi") || "";
@@ -1768,7 +1764,7 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
     let roomData = null;
     
     if (!snap.exists()) {
-      // 【完全消滅の保証】部屋が新規作成された場合、過去にブラウザ側で同じ部屋IDとして残していたチャットログキャッシュを同期的に完全破棄する
+      // 新規作成された場合、キャッシュを同期的に完全削除
       localStorage.removeItem(`nz_chat_raw_${hashId}`);
       currentRoomMsgs = [];
       displayedMsgIds.clear();
@@ -1861,8 +1857,7 @@ async function enterChatUI(roomData, pass) {
 
   _pOff = onValue(ref(db, `presence/${curR}`), renderPresenceList);
 
-  // 1ストリーミングに一本化（不要な重複通信の完全なカット）
-  // getによる重複取得を廃止し、onChildAddedのみで一貫して受信
+  // 1ストリーミングに一本化
   const chatQuery = query(ref(db, `chat/${curR}`), limitToLast(100));
   _cOff = onChildAdded(chatQuery, snap => {
     if(!curR || !masterKey) return;
@@ -1905,17 +1900,17 @@ async function forceResync() {
   try {
     const targetRoom = curR;
     
-    // get()が接続状況や遅延によって一時的に失敗した場合、エラーで即退室するのを防ぐためキャッチ
+    // get()がエラーになった場合はキャッチしてロビー戻りを防ぐ
     const roomSnap = await get(ref(db, `rooms/${targetRoom}`)).catch(() => null);
     if (targetRoom !== curR) return;
 
-    // 【生存性の向上】接続障害等によりroomSnapがnullの場合は一時スルーして生存させ、自動退室を完全にブロック
+    // 接続エラーなどで roomSnap が null の場合は待機
     if (roomSnap === null) {
-      console.log("再同期中：サーバーへの一時接続不通のため待機");
+      console.log("再同期中：サーバー一時不通のため待機");
       return; 
     }
 
-    // 部屋が実際に存在しない（本当に削除された）場合のみロビーへ追い出す
+    // 本当に部屋のノードが存在しない場合のみロビーに戻す
     if (!roomSnap.exists() && !_exitLock) {
       _exitLock = true; 
       localStorage.removeItem("nz_active_ri"); 
@@ -1971,7 +1966,7 @@ const triggerFastResync = async () => {
   }
 };
 
-// バッテリーと通信量の節約設計：バックグラウンド時は完全にオフライン化
+// バックグラウンド時は完全にオフライン化
 document.addEventListener("visibilitychange", async () => {
   if (document.visibilityState === "visible") {
     goOnline(db);
@@ -2125,7 +2120,7 @@ D.enBtn.onclick = async () => {
   localStorage.setItem(`nz_pi_${hashId}`, p);
   localStorage.setItem("nz_pi_val", p);
 
-  // 【確実なお知らせログ】ボタンから明示的に入室/作成した時のみお知らせを送信するフラグをセット
+  // ボタンから入室/作成した時のみお知らせを送信
   sessionStorage.setItem("nz_should_send_join_sys", "true");
   sessionStorage.setItem("nz_explicit_join", "true");
 
@@ -2391,7 +2386,7 @@ D_timerApplyBtn.onclick = async () => {
   }
 };
 
-// チラつき防止：早期ウォームブートの適用
+// 早期ウォームブートの適用
 const checkAndWarmboot = async () => {
   const sp = new URLSearchParams(location.search);
   const urlR = sp.get("r");
@@ -2471,7 +2466,7 @@ const initUserSession = async (user) => {
       
       const snap = await get(ref(db, `rooms/${hashId}`));
       
-      // 【自動復帰バグ修正】createdのミリ秒の完全一致を不要に。部屋が存在し、有効期限内であれば、ショートカットからでも確実に自動入室
+      // 有効期限の有無のみでセッションを確実に復帰
       if (snap.exists() && snap.val().expireAt > srvNow()) {
         localStorage.setItem("nz_is_in_room", "true");
         const tripStyled = await makeTrip(savedNi, savedTripKey); 

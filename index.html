@@ -146,7 +146,11 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .pcnt{font-size:12px; font-weight:bold; color:var(--mu); white-space:nowrap}
 
 /* タイムライン */
-#tl{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:4px;background-color:#0d1117;-webkit-overflow-scrolling:touch;touch-action:pan-y!important;overscroll-behavior-y:contain;}
+#tl{
+  flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:4px;background-color:#0d1117;
+  -webkit-overflow-scrolling:touch;touch-action:pan-y!important;overscroll-behavior-y:contain;
+  contain: layout;
+}
 #tl-inner{display:flex;flex-direction:column;justify-content:flex-end;gap:0;width:100%;max-width:600px;margin:0 auto;min-height:100%}
 
 @keyframes slideInUp { 0% { opacity: 0; transform: translateY(4px); } 100% { opacity: 1; transform: translateY(0); } }
@@ -228,7 +232,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .jump-btn:active{background:var(--in); color:#fff;}
 .jump-btn:disabled{opacity:0.3; cursor:not-allowed;}
 
-/* カスタマイズされた補助トグルボタンサイズ：テキスト崩れの完全な防止 */
+/* 補助トグルボタンサイズ：テキスト崩れの完全な防止 */
 .switch-kb { width: 110px !important; height: 32px !important; position:relative; border-radius:16px!important; background:var(--s2)!important; border:1px solid var(--bd); padding:0 2px!important; overflow:hidden; transition:all 0.25s ease; cursor:pointer; display: flex; align-items: center;}
 .switch-kb::after { content:""; position:absolute; top:2px; left:2px; width:26px; height:26px; background:rgba(255,255,255,0.25); border:1px solid rgba(255,255,255,0.45); backdrop-filter:blur(1px); border-radius:50%; transition:transform 0.25s ease; z-index:1; }
 .switch-kb.active { background:var(--in)!important; border-color:var(--i2)!important; }
@@ -294,7 +298,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   margin-top: 8px;
 }
 
-/* 画像プレビューモーダルのレイアウト：詳細度の競合を回避し display: flex を優先適用 */
+/* 画像プレビューモーダル */
 #imgViewMod {
   background: rgba(0,0,0,0.95);
   backdrop-filter: blur(8px);
@@ -308,7 +312,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 }
 #imgViewSrc {
   max-width: 90%;
-  max-height: calc(100dvh - 140px); /* ボタン表示領域を100dvhから確実に除外 */
+  max-height: calc(100dvh - 140px);
   object-fit: contain;
   user-select: none;
   -webkit-user-drag: none;
@@ -648,14 +652,10 @@ let isAutoScroll = true;
 
 const scBottom = (force = false) => {
   if (!isAutoScroll && !force) return;
-  D.tl.scrollTop = D.tl.scrollHeight;
-  updateJumpBtns();
   
   requestAnimationFrame(() => {
     D.tl.scrollTop = D.tl.scrollHeight;
-    setTimeout(() => {
-      D.tl.scrollTop = D.tl.scrollHeight;
-    }, 50);
+    updateJumpBtns();
   });
 };
 
@@ -670,6 +670,11 @@ if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', onViewportChange);
   window.visualViewport.addEventListener('scroll', onViewportChange);
 }
+
+// モバイルでキーボード展開時のフォーカス制御
+D.mi.addEventListener("focus", () => {
+  setTimeout(() => scBottom(true), 250);
+});
 
 const initHashPass = () => {
   if (location.hash) {
@@ -735,7 +740,7 @@ const deriveMasterKey = async (roomId, pass) => {
   );
 };
 
-// 对称鍵のエクスポート / インポート処理
+// 対称鍵のエクスポート / インポート処理
 const exportKeyToHex = async (key) => {
   const exported = await window.crypto.subtle.exportKey("raw", key);
   return bytesToHex(new Uint8Array(exported));
@@ -831,24 +836,19 @@ const decrypt = (c, key = masterKey) => {
         ct
       );
 
-      const plaintext = new TextDecoder().decode(decrypted);
-      // 復号に成功した場合のみキャッシュに登録
-      decCache.set(c, p);
-      return plaintext;
+      return new TextDecoder().decode(decrypted);
     } catch (e) {
       console.error("復号エラー詳細:", e);
-      // 復号に失敗した場合は、誤った「null」結果をキャッシュせずに削除して次回再試行させる
       decCache.delete(c);
       return null;
     }
   })();
 
-  // 一時的に登録するが、エラー時はcatch内で自ら削除する
   decCache.set(c, p);
   return p;
 };
 
-// メタデータ復号の共通処理（安全性向上・キャッシュのnull汚染対策）
+// メタデータ復号の共通処理（安全性向上・キャッシュの汚染対策）
 async function decryptMeta(metaStrEnc) {
   if (!metaStrEnc || !masterKey) return null;
   if (metaCache.has(metaStrEnc)) return metaCache.get(metaStrEnc);
@@ -1155,7 +1155,6 @@ async function cMsg(msg) {
   ]);
 
   if (!meta || !txt) {
-    // ライブ同期モード中で、かつ本当に復号できなかった場合のみエラーを表示
     if (isLiveMode) {
       const d = document.createElement("div");
       d.dataset.mid = msg.id;
@@ -1166,7 +1165,7 @@ async function cMsg(msg) {
       d.textContent = `⚠️ 復号エラー (ID: ${msg.id ? msg.id.substring(0,8) : '???'})`;
       return d;
     }
-    return null; // キャッシュ復元段階では、復号に失敗したものは描画スキップして本接続での再試行に委ねる
+    return null; 
   }
 
   const d = document.createElement("div"); 
@@ -1492,7 +1491,6 @@ window.doExit = async () => {
   
   if (curR && masterKey && localStorage.getItem("nz_is_in_room") === "true") {
     try {
-      // 退室前に確実にシステムメッセージを送信して同期を待つ
       await sendSysMsg(`${curN} ${localStorage.getItem("nz_mytrip_styled")||""} が退室しました`).catch(()=>{});
     } catch (e) {}
 
@@ -1538,10 +1536,12 @@ window.doExit = async () => {
 
 function clearAll(newHashId = null) {
   _lastPresenceStr = "";
+  
+  // バグ修正：Unsubscribe処理を安全に実行してFirebaseリスナーをクリア
   if (typeof _cOff === "function"){ _cOff(); _cOff = null; }
   if (typeof _crOff === "function"){ _crOff(); _crOff = null; }
-  if (typeof _pOff === "function"){ _pOff = null; }
-  if (typeof _rOff === "function"){ _rOff = null; }
+  if (typeof _pOff === "function"){ _pOff(); _pOff = null; }
+  if (typeof _rOff === "function"){ _rOff(); _rOff = null; }
 
   isLiveMode = false;
   stopTimerLoop();
@@ -1617,7 +1617,7 @@ async function checkCurrentRoomStatus() {
   }
 }
 
-// 参加者メンバーリストのレンダリング（モジュールスコープ化し、高速同期＆差分更新に対応）
+// 参加者メンバーリストのレンダリング
 async function renderPresenceList(s) {
   if (!curR) return;
   
@@ -1652,7 +1652,7 @@ async function renderPresenceList(s) {
     }
   }));
 
-  // 差分チェック：プレセンス一覧に変化が無ければDOM操作処理をスキップ
+  // 差分チェック：プレセンス一覧に変化が無ければ処理スキップ
   rawPresenceArrayForDiff.sort();
   const currentPresenceStr = rawPresenceArrayForDiff.join("|");
   if (currentPresenceStr === _lastPresenceStr) {
@@ -1781,7 +1781,6 @@ async function enterChatUI(roomData, pass) {
   const isCreated = sessionStorage.getItem("nz_room_created_flag") === "true";
   const isExplicitJoin = sessionStorage.getItem("nz_explicit_join") === "true";
 
-  // 送信前に多重トリガー防止のためセッション情報を破棄して確実にお知らせログを送信
   if (isCreated) {
     sessionStorage.removeItem("nz_room_created_flag");
     sessionStorage.removeItem("nz_explicit_join");
@@ -1807,7 +1806,7 @@ async function enterChatUI(roomData, pass) {
 
   _pOff = onValue(ref(db, `presence/${curR}`), renderPresenceList);
 
-  // 爆速化1: 初回同期時に100件を get() で高速一括ロードし、バッチレンダリングでDOM負荷とラグを解消
+  // 初回同期時に100件を取得
   try {
     const chatQuery = query(ref(db, `chat/${curR}`), limitToLast(100));
     const chatSnap = await get(chatQuery);
@@ -1826,7 +1825,7 @@ async function enterChatUI(roomData, pass) {
     console.error("過去ログの一括取得に失敗しました:", e);
   }
 
-  // 爆速化2: リアルタイムのストリーミングを開始（既に描画したメッセージは displayedMsgIds で重複ガード）
+  // リアルタイムの追加ストリーミング
   const chatQuery = query(ref(db, `chat/${curR}`), limitToLast(100));
   _cOff = onChildAdded(chatQuery, snap => {
     if(!curR || !masterKey) return;
@@ -1914,11 +1913,10 @@ async function forceResync() {
       }
     }
   } catch (e) {
-    console.error("Resync error:", e);
+    console.error("再同期エラー:", e);
   }
 }
 
-// リフレッシュ時の高速同期用デバウンス制御
 let lastResyncTime = 0;
 const triggerFastResync = async () => {
   const now = Date.now();
@@ -1967,7 +1965,7 @@ async function sendMsg(overrideText = null, imgData = null) {
   const encryptedMeta = await encrypt(JSON.stringify(metaObj), masterKey);
   const encryptedMsg = await encrypt(imgData ? "IMG::" + imgData : txt, masterKey);
 
-  // 爆速化3: 暗号化平文キャッシュの先行追加（サーバー応答受信時の非同期復号プロセスを瞬時にスキップ）
+  // 暗号化平文キャッシュの先行追加（復号の高速化）
   const plainTextVal = imgData ? "IMG::" + imgData : txt;
   decCache.set(encryptedMsg, Promise.resolve(plainTextVal));
   metaCache.set(encryptedMeta, Promise.resolve(metaObj));

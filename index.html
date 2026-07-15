@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0f172a">
 <title>NEZU ONETIME CHAT</title>
-<!-- 忍者AdMax 自動広告タグを推奨位置であるhead内に配置 -->
+<!-- 忍者AdMax 自動広告タグ -->
 <script async src="https://adm.shinobi.jp/st/auto.js" data-admax-id="054d1b55e5fbc208c252569f53d675de"></script>
 <style>
 /* 共通リセット＆変数 */
@@ -46,7 +46,8 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   max-height: 100dvh;
   display:flex;
   flex-direction:column;
-  padding:8px 12px calc(8px + var(--safe));
+  /* 忍者AdMaxの全自動広告等が下部に被ってもスクロールして操作できるように、底面の余白を100pxほど確保 */
+  padding:8px 12px calc(100px + var(--safe));
   gap:6px;
   justify-content:center;
   max-width:340px;
@@ -227,7 +228,17 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .media-inline-row {display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:12px;}
 
 /* 入力バー */
-#ib{display:none; flex-direction: column; padding:3px calc(4px + env(safe-area-inset-right,0px)) calc(3px + var(--safe)) calc(4px + env(safe-area-inset-left,0px)); background:var(--sf); border-top:1px solid var(--bd); gap:3px; flex-shrink:0; width: 100%;}
+#ib{
+  display:none; 
+  flex-direction: column; 
+  /* 忍者AdMaxのオーバーレイ広告(50px〜100px)が画面下に被っても入力操作ができるよう、padding-bottomに安全余白(65px)を設定 */
+  padding:3px calc(4px + env(safe-area-inset-right,0px)) calc(65px + var(--safe)) calc(4px + env(safe-area-inset-left,0px)); 
+  background:var(--sf); 
+  border-top:1px solid var(--bd); 
+  gap:3px; 
+  flex-shrink:0; 
+  width: 100%;
+}
 #ib.show{display:flex}
 
 /* 入力バー上の補助ボタン行 */
@@ -755,7 +766,7 @@ const deriveMasterKey = async (roomId, pass) => {
   );
 };
 
-// 对称鍵のエクスポート / インポート処理
+// 対称鍵のエクスポート / インポート処理
 const exportKeyToHex = async (key) => {
   const exported = await window.crypto.subtle.exportKey("raw", key);
   return bytesToHex(new Uint8Array(exported));
@@ -1573,7 +1584,7 @@ function clearAll(newHashId = null) {
   if (typeof _cOff === "function"){ _cOff(); _cOff = null; }
   if (typeof _crOff === "function"){ _crOff(); _crOff = null; }
   if (typeof _pOff === "function"){ _pOff(); _pOff = null; }
-  if (typeof _rOff === "function"){ _rOff = null; }
+  if (typeof _rOff === "function"){ _rOff(); _rOff = null; }
 
   isLiveMode = false;
   stopTimerLoop();
@@ -1628,7 +1639,9 @@ async function checkCurrentRoomStatus() {
   try {
     const hashId = await getRoomHash(lastRi);
     const snap = await get(ref(db, `rooms/${hashId}`));
-    if (snap.exists() && (lastCreated === "pending" || snap.val().created === parseInt(lastCreated)) && snap.val().expireAt > srvNow()) {
+    
+    // 【自動復帰バグ修正】作成日時(created)のミリ秒単位の完全一致は不要にし、部屋の現存と残り時間を基準として確実に自動入室
+    if (snap.exists() && snap.val().expireAt > srvNow()) {
       const savedNi = localStorage.getItem("nz_ni") || "名無し";
       const savedTripKey = localStorage.getItem("nz_tripi") || "";
       const savedPi = localStorage.getItem(`nz_pi_${hashId}`) || localStorage.getItem("nz_pi_val") || "";
@@ -1755,6 +1768,12 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
     let roomData = null;
     
     if (!snap.exists()) {
+      // 【完全消滅の保証】部屋が新規作成された場合、過去にブラウザ側で同じ部屋IDとして残していたチャットログキャッシュを同期的に完全破棄する
+      localStorage.removeItem(`nz_chat_raw_${hashId}`);
+      currentRoomMsgs = [];
+      displayedMsgIds.clear();
+      D.tli.textContent = "";
+
       const expireAtVal = srvNow() + (initTimer * 60000);
       _roomExpireAt = expireAtVal;
       isHost = true;
@@ -1885,19 +1904,18 @@ async function forceResync() {
   if (!curR || !masterKey) return;
   try {
     const targetRoom = curR;
-    const promises = [
-      get(ref(db, `rooms/${targetRoom}`)),
-      get(ref(db, `chat/${targetRoom}`)),
-      get(ref(db, `presence/${targetRoom}`))
-    ];
-
-    const results = await Promise.all(promises);
-    const roomSnap = results[0];
-    const chatSnap = results[1];
-    const presenceSnap = results[2];
-
+    
+    // get()が接続状況や遅延によって一時的に失敗した場合、エラーで即退室するのを防ぐためキャッチ
+    const roomSnap = await get(ref(db, `rooms/${targetRoom}`)).catch(() => null);
     if (targetRoom !== curR) return;
 
+    // 【生存性の向上】接続障害等によりroomSnapがnullの場合は一時スルーして生存させ、自動退室を完全にブロック
+    if (roomSnap === null) {
+      console.log("再同期中：サーバーへの一時接続不通のため待機");
+      return; 
+    }
+
+    // 部屋が実際に存在しない（本当に削除された）場合のみロビーへ追い出す
     if (!roomSnap.exists() && !_exitLock) {
       _exitLock = true; 
       localStorage.removeItem("nz_active_ri"); 
@@ -1912,11 +1930,16 @@ async function forceResync() {
       localStorage.setItem(`nz_room_expire_${curR}`, rVal.expireAt);
     }
 
-    if (presenceSnap.exists()) {
+    const [chatSnap, presenceSnap] = await Promise.all([
+      get(ref(db, `chat/${targetRoom}`)).catch(() => null),
+      get(ref(db, `presence/${targetRoom}`)).catch(() => null)
+    ]);
+
+    if (presenceSnap && presenceSnap.exists()) {
       await renderPresenceList(presenceSnap);
     }
 
-    if (chatSnap.exists()) {
+    if (chatSnap && chatSnap.exists()) {
       const msgs = [];
       chatSnap.forEach((child) => {
         const val = child.val();
@@ -2447,8 +2470,9 @@ const initUserSession = async (user) => {
       }
       
       const snap = await get(ref(db, `rooms/${hashId}`));
-      const isCreatedMatch = (savedActiveCreated === "pending") || (snap.exists() && snap.val().created === parseInt(savedActiveCreated));
-      if (snap.exists() && isCreatedMatch && snap.val().expireAt > srvNow()) {
+      
+      // 【自動復帰バグ修正】createdのミリ秒の完全一致を不要に。部屋が存在し、有効期限内であれば、ショートカットからでも確実に自動入室
+      if (snap.exists() && snap.val().expireAt > srvNow()) {
         localStorage.setItem("nz_is_in_room", "true");
         const tripStyled = await makeTrip(savedNi, savedTripKey); 
         localStorage.setItem("nz_mytrip_styled", tripStyled);

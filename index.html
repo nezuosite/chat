@@ -22,7 +22,7 @@
 }
 html,body{
   height:100%; height:100dvh; width:100%; overflow:hidden;
-  background:var(--bg);color:var(--tx);
+  background:#070a0f;color:var(--tx);
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Noto Sans JP",sans-serif;
   touch-action:pan-y;overscroll-behavior:none;-webkit-text-size-adjust:100%;
   font-size:15px; 
@@ -88,9 +88,17 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .glink{font-size:11px;color:#a5b4fc;text-align:center;margin-top:4px;padding:6px;text-decoration:underline;cursor:pointer;font-weight:bold;background:rgba(129,140,248,0.05);border:1px solid rgba(129,140,248,0.15);border-radius:4px}
 
 /* アプリ本体 */
-#app{display:none;position:fixed;inset:0;flex-direction:column;overflow:hidden;z-index:50}
+#app{display:none;position:fixed;inset:0;flex-direction:column;overflow:hidden;z-index:50;background:#070a0f;}
+/* PC大画面対応：中央のメイン枠を引き締め、左右に美しい余白を配置 */
+#cp{
+  display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;background:#0d1117;position:relative;
+  max-width:900px;
+  width:100%;
+  margin:0 auto;
+  border-left:1px solid var(--bd);
+  border-right:1px solid var(--bd);
+}
 #app.visible{display:flex}
-#cp{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;background:#0d1117;position:relative}
 
 /* ヘッダーの最適化 */
 #hdr{background:var(--sf);border-bottom:1px solid var(--bd);padding:6px 12px;flex-shrink:0}
@@ -151,7 +159,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   -webkit-overflow-scrolling:touch;touch-action:pan-y!important;overscroll-behavior-y:contain;
   contain: layout;
 }
-#tl-inner{display:flex;flex-direction:column;justify-content:flex-end;gap:0;width:100%;max-width:600px;margin:0 auto;min-height:100%}
+#tl-inner{display:flex;flex-direction:column;justify-content:flex-end;gap:0;width:100%;max-width:800px;margin:0 auto;min-height:100%}
 
 @keyframes slideInUp { 0% { opacity: 0; transform: translateY(4px); } 100% { opacity: 1; transform: translateY(0); } }
 .mw{
@@ -217,7 +225,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .media-inline-row {display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:12px;}
 
 /* 入力バー */
-#ib{display:none; flex-direction: column; padding:3px calc(4px + env(safe-area-inset-right,0px)) calc(3px + var(--safe)) calc(4px + env(safe-area-inset-left,0px)); background:var(--sf); border-top:1px solid var(--bd); gap:3px; flex-shrink:0;}
+#ib{display:none; flex-direction: column; padding:3px calc(4px + env(safe-area-inset-right,0px)) calc(3px + var(--safe)) calc(4px + env(safe-area-inset-left,0px)); background:var(--sf); border-top:1px solid var(--bd); gap:3px; flex-shrink:0; width: 100%;}
 #ib.show{display:flex}
 
 /* 入力バー上の補助ボタン行 */
@@ -605,7 +613,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { getDatabase, ref, push, onValue, set, update, remove, get, serverTimestamp, onChildAdded, onChildRemoved, goOnline, query, limitToLast }
+import { getDatabase, ref, push, onValue, set, update, remove, get, serverTimestamp, onChildAdded, onChildRemoved, goOnline, goOffline, query, limitToLast }
   from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
 // トリップ生成用の鍵
@@ -650,12 +658,17 @@ const D = {
 let keepKbOpen = false;
 let isAutoScroll = true;
 
+// 高速スクロール追従用のRAFフラグ
+let _scPending = false;
 const scBottom = (force = false) => {
   if (!isAutoScroll && !force) return;
+  if (_scPending) return;
+  _scPending = true;
   
   requestAnimationFrame(() => {
     D.tl.scrollTop = D.tl.scrollHeight;
     updateJumpBtns();
+    _scPending = false;
   });
 };
 
@@ -773,7 +786,6 @@ const getRoomHash = async (roomId) => {
 let masterKey = null; 
 let isHost = false;
 let targetDelId = null;
-let hasSentJoinMsgInSession = false;
 
 // メッセージ暗号化を非同期 Promise キャッシュ
 const decCache = new Map(); 
@@ -1296,7 +1308,7 @@ D.delExecuteBtn.onclick = async () => {
 };
 
 let curR = null, curN = null, rawR = null, myUid = null;
-let isW = false, _exitLock = false, isLiveMode = false, unreadCount = 0;
+let isW = false, _exitLock = false, isLiveMode = false;
 let displayedMsgIds = new Set();
 let myPresRef = null, _roomExpireAt = null, _cOff = null, _pOff = null, _rOff = null, _crOff = null;
 let pendingTimeoutTimer = null;
@@ -1435,12 +1447,6 @@ async function renderSingleMessage(m) {
   if (el) {
     insertMessageEl(el);
     displayedMsgIds.add(m.id); 
-    if (m.u !== myUid && !m.sys) {
-        if (!isLiveMode) { 
-            unreadCount++; 
-            updateScrollBtnUI();
-        }
-    }
     trimTimeline();
     scBottom();
   }
@@ -1554,7 +1560,7 @@ window.doExit = async () => {
 function clearAll(newHashId = null) {
   _lastPresenceStr = "";
   
-  // バグ修正：Unsubscribe処理を安全に実行してFirebaseリスナーをクリア
+  // Unsubscribe処理を安全に実行してFirebaseリスナーをクリア
   if (typeof _cOff === "function"){ _cOff(); _cOff = null; }
   if (typeof _crOff === "function"){ _crOff(); _crOff = null; }
   if (typeof _pOff === "function"){ _pOff(); _pOff = null; }
@@ -1823,26 +1829,8 @@ async function enterChatUI(roomData, pass) {
 
   _pOff = onValue(ref(db, `presence/${curR}`), renderPresenceList);
 
-  // 初回同期時に100件を取得
-  try {
-    const chatQuery = query(ref(db, `chat/${curR}`), limitToLast(100));
-    const chatSnap = await get(chatQuery);
-    if (chatSnap.exists()) {
-      const msgs = [];
-      chatSnap.forEach(child => {
-        const val = child.val();
-        val.id = child.key;
-        if (!val.t) val.t = Date.now();
-        msgs.push(val);
-      });
-      msgs.sort((a, b) => (a.t || 0) - (b.t || 0));
-      await processInitialMessages(msgs);
-    }
-  } catch (e) {
-    console.error("過去ログの一括取得に失敗しました:", e);
-  }
-
-  // リアルタイムの追加ストリーミング
+  // 1ストリーミングに一本化（不要な重複通信の完全なカット）
+  // getによる重複取得を廃止し、onChildAddedのみで一貫して受信
   const chatQuery = query(ref(db, `chat/${curR}`), limitToLast(100));
   _cOff = onChildAdded(chatQuery, snap => {
     if(!curR || !masterKey) return;
@@ -1947,9 +1935,13 @@ const triggerFastResync = async () => {
   }
 };
 
+// バッテリーと通信量の節約設計：バックグラウンド時は完全にオフライン化
 document.addEventListener("visibilitychange", async () => {
   if (document.visibilityState === "visible") {
+    goOnline(db);
     await triggerFastResync();
+  } else {
+    goOffline(db);
   }
 });
 
@@ -2145,10 +2137,6 @@ D.autoScrollToggleBtn.onclick = () => {
   D.autoScrollStatusText.textContent = isAutoScroll ? "追従:ON" : "追従:OFF";
   D.autoScrollStatusText.style.color = isAutoScroll ? "#fff" : "var(--tx)";
   showToast(isAutoScroll ? "📜 新着ログに追従スクロールします" : "📜 スクロール追従をオフにしました");
-};
-
-const updateScrollBtnUI = () => {
-  // スクロール追従補助
 };
 
 const updateJumpBtns = () => {
@@ -2370,7 +2358,7 @@ D_timerApplyBtn.onclick = async () => {
   }
 };
 
-// 【爆速先行ウォームブート】のチラつき完全防止調整
+// チラつき防止：早期ウォームブートの適用
 const checkAndWarmboot = async () => {
   const sp = new URLSearchParams(location.search);
   const urlR = sp.get("r");
@@ -2378,7 +2366,6 @@ const checkAndWarmboot = async () => {
   const savedActiveCreated = localStorage.getItem("nz_active_created");
   const savedNi = localStorage.getItem("nz_ni");
 
-  // 招待リンクから別部屋に入る際、前に入っていた部屋のログが一瞬チラつくのを完全に防ぎます
   if (urlR && urlR !== savedActiveRi) {
     localStorage.removeItem("nz_active_ri");
     localStorage.removeItem("nz_active_created");
@@ -2415,9 +2402,7 @@ const initUserSession = async (user) => {
   const savedTimer = parseInt(localStorage.getItem("nz_timer_val")) || 30;
   
   if (savedActiveRi && savedActiveCreated && savedNi) {
-    // 招待リンクが保存された部屋と異なる場合は、以前の部屋の状態を復元しない
     if (urlR && urlR !== savedActiveRi) {
-      // 招待された部屋情報でロビーを設定
       D.ri.value = urlR;
       localStorage.setItem("nz_ri_val", urlR);
       const initHash = location.hash ? decodeURIComponent(location.hash.substring(1)) : "";
@@ -2435,7 +2420,6 @@ const initUserSession = async (user) => {
     try {
       const hashId = await getRoomHash(savedActiveRi);
       const savedPiRoom = localStorage.getItem(`nz_pi_${hashId}`) || savedPi || "";
-      
       const previouslyEntered = localStorage.getItem(`nz_entered_${hashId}`) === "true";
       
       if (previouslyEntered) {

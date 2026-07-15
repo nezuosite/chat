@@ -221,12 +221,13 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   opacity: 0.9;
 }
 
-/* メディアリンク・バッジデザイン */
+/* メディアリンク・バッジデザイン（整列：バッジ → URL → 開くボタン の順に変更） */
 .media-link-container {display:flex; flex-direction:column; gap:4px; margin-top:6px; max-width:100%;}
-.media-inline-row {display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:12px; background:rgba(255,255,255,0.03); padding:4px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.06);}
-.media-badge {display:inline-flex; align-items:center; gap:2px; font-weight:800; padding:2px 5px; border-radius:3px; font-size:9.5px; color:#fff; text-transform:uppercase; vertical-align:middle; line-height:1;}
+.media-inline-row {display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:12px; background:rgba(255,255,255,0.03); padding:4px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.06); max-width:100%;}
+.media-badge {display:inline-flex; align-items:center; gap:2px; font-weight:800; padding:2px 5px; border-radius:3px; font-size:9px; color:#fff; text-transform:uppercase; vertical-align:middle; line-height:1; white-space:nowrap;}
+.media-link {color:#60a5fa; text-decoration:underline; font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px;}
 .open-player-btn {
-  background:var(--in); color:#fff; font-size:10px; font-weight:bold; border-radius:4px; padding:2px 8px; cursor:pointer; border:none; transition:background 0.15s;
+  background:var(--in); color:#fff; font-size:10px; font-weight:bold; border-radius:4px; padding:2px 8px; cursor:pointer; border:none; transition:background 0.15s; white-space:nowrap;
 }
 .open-player-btn:active {background:var(--i2);}
 
@@ -1106,6 +1107,7 @@ function parseTxtSplit(txt) {
     a.rel = "noopener noreferrer";
     a.style.color = "#60a5fa";
     a.style.textDecoration = "underline";
+    a.className = "media-link";
     a.textContent = m[0];
     elements.push(a);
     last = m.index + m[0].length;
@@ -1393,15 +1395,6 @@ async function cMsg(msg) {
             const mRow = document.createElement("div");
             mRow.className = "media-inline-row";
 
-            const mLink = document.createElement("a");
-            mLink.href = url;
-            mLink.target = "_blank";
-            mLink.rel = "noopener noreferrer";
-            mLink.textContent = "リンク";
-            mLink.style.color = "#60a5fa";
-            mLink.style.textDecoration = "underline";
-            mLink.style.fontSize = "11px";
-
             const mBadge = document.createElement("span");
             mBadge.className = `media-badge`;
             mBadge.textContent = target.name;
@@ -1413,6 +1406,13 @@ async function cMsg(msg) {
             else if (target.type === 'instagram') mBadge.style.background = 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366)';
             else if (target.type === 'audio') mBadge.style.background = '#4f46e5';
 
+            const mLink = document.createElement("a");
+            mLink.href = url;
+            mLink.target = "_blank";
+            mLink.rel = "noopener noreferrer";
+            mLink.className = "media-link";
+            mLink.textContent = url;
+
             const mBtn = document.createElement("button");
             mBtn.className = "open-player-btn";
             mBtn.textContent = "開く";
@@ -1421,8 +1421,9 @@ async function cMsg(msg) {
               window.openFloatingPlayer(url, target.type);
             });
 
-            mRow.appendChild(mLink);
+            // 【最適化】指定順序に完全準拠： バッジ（テキスト） → URL（リンク） → 開くボタン
             mRow.appendChild(mBadge);
+            mRow.appendChild(mLink);
             mRow.appendChild(mBtn);
             mContainer.appendChild(mRow);
             mb.appendChild(mContainer);
@@ -1965,7 +1966,7 @@ async function enterChatUI(roomData, pass) {
     localStorage.setItem("nz_pi_val", pass);
   }
 
-  // お知せを送信
+  // お知らせを送信
   const shouldSendJoin = sessionStorage.getItem("nz_should_send_join_sys") === "true";
   if (shouldSendJoin) {
     sessionStorage.removeItem("nz_should_send_join_sys");
@@ -1997,7 +1998,6 @@ async function enterChatUI(roomData, pass) {
 
   _pOff = onValue(ref(db, `presence/${curR}`), renderPresenceList);
 
-  // 1ストリーミングに一本化
   const chatQuery = query(ref(db, `chat/${curR}`), limitToLast(100));
   _cOff = onChildAdded(chatQuery, snap => {
     if(!curR || !masterKey) return;
@@ -2256,7 +2256,6 @@ D.enBtn.onclick = async () => {
   localStorage.setItem(`nz_pi_${hashId}`, p);
   localStorage.setItem("nz_pi_val", p);
 
-  // ボタンから明示的に入室した時のみお知らせ
   sessionStorage.setItem("nz_should_send_join_sys", "true");
   sessionStorage.setItem("nz_explicit_join", "true");
 
@@ -2523,7 +2522,7 @@ D_timerApplyBtn.onclick = async () => {
 };
 
 /* =========================================================
-   【最適化】動的動画・音楽プレイヤー（フローティング型）
+   動的動画・音楽プレイヤー（フローティング型）
    ========================================================= */
 
 const playerNode = $("floatingPlayer");
@@ -2583,32 +2582,42 @@ document.addEventListener('touchend', onEnd, { passive: true });
 
 playerCloseBtn.addEventListener("click", () => {
   playerNode.style.display = "none";
-  $("playerContent").innerHTML = ""; // 完全に消音・アンマウント
+  $("playerContent").innerHTML = ""; // 完全に消去
 });
 
-// TikTok用おEmbedローダー
+// TikTok用メタデータ解析＆おEmbedローダー
 async function embedTikTok(url) {
   $("playerTitle").textContent = "TikTok読み込み中...";
   const contentNode = $("playerContent");
   contentNode.innerHTML = `<div class="spin" style="width:24px; height:24px;"></div>`;
   
   try {
-    const res = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`);
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+    const res = await fetch(proxyUrl);
     if (res.ok) {
-      const data = await res.json();
-      const isPhoto = url.includes("/photo/") || (data.title && data.title.includes("photo"));
+      const wrapper = await res.json();
+      const html = wrapper.contents;
       
-      if (isPhoto && data.thumbnail_url) {
-        // 画像（スライドショー等）投稿時の画像直貼り表現
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, "text/html");
+      const videoMeta = doc.querySelector('meta[property="og:video"]') || doc.querySelector('meta[property="og:video:secure_url"]');
+      const imageMeta = doc.querySelector('meta[property="og:image"]');
+
+      // スライドショー/画像投稿の自動判定
+      const isSlideshow = url.includes("/photo/") || !videoMeta;
+      const imageUrl = imageMeta ? imageMeta.getAttribute("content") : null;
+
+      if (isSlideshow && imageUrl) {
         $("playerTitle").textContent = "TikTok画像";
-        contentNode.innerHTML = `<img src="${data.thumbnail_url}" style="max-width:100%; max-height:100%; object-fit:contain; display:block;">`;
+        contentNode.innerHTML = `<img src="${imageUrl}" style="max-width:100%; max-height:100%; object-fit:contain; display:block;">`;
       } else {
         $("playerTitle").textContent = "TikTok再生";
         const idMatch = url.match(/\/video\/(\d+)/) || url.match(/\/photo\/(\d+)/);
         if (idMatch) {
+          // 即再生(autoplay)はさせないデフォルトの埋め込みiframe
           contentNode.innerHTML = `<iframe src="https://www.tiktok.com/embed/v2/${idMatch[1]}" frameborder="0" allowfullscreen style="width:100%; height:100%;"></iframe>`;
         } else {
-          contentNode.innerHTML = data.html || `<div style="padding:10px; font-size:11px; color:var(--ro);">再生エラー</div>`;
+          contentNode.innerHTML = `<div style="padding:10px; font-size:11px; color:var(--ro);">動画の取得に失敗しました</div>`;
         }
       }
     } else {
@@ -2626,7 +2635,7 @@ async function embedTikTok(url) {
   }
 }
 
-// Instagram用おEmbedローダー
+// Instagram用メタデータ解析＆おEmbedローダー
 async function embedInstagram(url) {
   $("playerTitle").textContent = "Instagram読み込み中...";
   const contentNode = $("playerContent");
@@ -2636,18 +2645,28 @@ async function embedInstagram(url) {
   const id = idMatch ? idMatch[1] : null;
 
   try {
-    // 2026年よりMetaのoEmbed APIがアクセストークン無しで仕様変更されたため直接取得可能に
-    const res = await fetch(`https://graph.facebook.com/v25.0/instagram_oembed?url=${encodeURIComponent(url)}`);
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+    const res = await fetch(proxyUrl);
     if (res.ok) {
-      const data = await res.json();
-      const isReel = url.includes("/reel/");
+      const wrapper = await res.json();
+      const html = wrapper.contents;
       
-      if (!isReel && data.thumbnail_url) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, "text/html");
+      const typeMeta = doc.querySelector('meta[property="og:type"]');
+      const imageMeta = doc.querySelector('meta[property="og:image"]');
+      const videoMeta = doc.querySelector('meta[property="og:video"]');
+      
+      const isVideo = (typeMeta && typeMeta.getAttribute("content") === "video") || url.includes("/reel/") || videoMeta;
+      const imageUrl = imageMeta ? imageMeta.getAttribute("content") : null;
+
+      if (!isVideo && imageUrl) {
         // 画像投稿時は、画像のみをクリーンに表示
         $("playerTitle").textContent = "Instagram画像";
-        contentNode.innerHTML = `<img src="${data.thumbnail_url}" style="max-width:100%; max-height:100%; object-fit:contain; display:block;">`;
+        contentNode.innerHTML = `<img src="${imageUrl}" style="max-width:100%; max-height:100%; object-fit:contain; display:block;">`;
       } else if (id) {
         $("playerTitle").textContent = "Instagram動画";
+        // 即再生(autoplay)はさせないパラメータ構成
         contentNode.innerHTML = `<iframe src="https://www.instagram.com/p/${id}/embed" frameborder="0" scrolling="no" allowtransparency="true" style="width:100%; height:100%;"></iframe>`;
       } else {
         throw new Error();
@@ -2656,7 +2675,7 @@ async function embedInstagram(url) {
       throw new Error();
     }
   } catch {
-    // フォールバック（標準のInstagram埋め込みiframeを使用）
+    // フォールバック（標準のInstagram埋め込みiframeを使用。自動再生なし）
     if (id) {
       $("playerTitle").textContent = "Instagram表示";
       contentNode.innerHTML = `<iframe src="https://www.instagram.com/p/${id}/embed" frameborder="0" scrolling="no" allowtransparency="true" style="width:100%; height:100%;"></iframe>`;
@@ -2682,19 +2701,20 @@ window.openFloatingPlayer = async (url, type) => {
   const contentNode = $("playerContent");
   contentNode.innerHTML = ""; // 前の再生要素を確実に消滅させる (1動画・1音楽制限)
 
+  // すべてautoplayを排除、またはautoplay=0に設定（即再生をブロック）
   if (type === "youtube") {
     const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/i);
     if (ytMatch) {
       const id = ytMatch[1];
       $("playerTitle").textContent = "YouTube再生";
-      contentNode.innerHTML = `<iframe src="https://www.youtube.com/embed/${id}?autoplay=1" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen style="width:100%; height:100%;"></iframe>`;
+      contentNode.innerHTML = `<iframe src="https://www.youtube.com/embed/${id}?autoplay=0" frameborder="0" allow="encrypted-media" allowfullscreen style="width:100%; height:100%;"></iframe>`;
     }
   } else if (type === "niconico") {
     const nicoMatch = url.match(/nicovideo\.jp\/watch\/(sm[0-9]+|so[0-9]+|[0-9]+)/i);
     if (nicoMatch) {
       const id = nicoMatch[1];
       $("playerTitle").textContent = "ニコニコ動画再生";
-      contentNode.innerHTML = `<iframe src="https://embed.nicovideo.jp/watch/${id}?autoplay=1" frameborder="0" allow="autoplay" allowfullscreen style="width:100%; height:100%;"></iframe>`;
+      contentNode.innerHTML = `<iframe src="https://embed.nicovideo.jp/watch/${id}" frameborder="0" allowfullscreen style="width:100%; height:100%;"></iframe>`;
     }
   } else if (type === "tiktok") {
     await embedTikTok(url);
@@ -2702,7 +2722,8 @@ window.openFloatingPlayer = async (url, type) => {
     await embedInstagram(url);
   } else if (type === "audio") {
     $("playerTitle").textContent = "音声再生";
-    contentNode.innerHTML = `<div style="padding:12px; width:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; background:var(--sf); height:100%;"><audio src="${url}" controls autoplay style="width:100%;"></audio><div style="font-size:9.5px; color:var(--mu); margin-top:8px; word-break:break-all; text-align:center;">${url.split('/').pop()}</div></div>`;
+    // controls属性のみとし、autoplay属性を完全に排除
+    contentNode.innerHTML = `<div style="padding:12px; width:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; background:var(--sf); height:100%;"><audio src="${url}" controls style="width:100%;"></audio><div style="font-size:9.5px; color:var(--mu); margin-top:8px; word-break:break-all; text-align:center;">${url.split('/').pop()}</div></div>`;
   }
 };
 

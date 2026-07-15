@@ -221,15 +221,31 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   opacity: 0.9;
 }
 
-/* メディアリンク・バッジデザイン（整列：バッジ → URL → 開くボタン の順に変更） */
+/* メディアリンク・バッジデザイン（整列：バッジ、URL、ボタンを完全改行・縦並び構成に変更） */
 .media-link-container {display:flex; flex-direction:column; gap:4px; margin-top:6px; max-width:100%;}
-.media-inline-row {display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:12px; background:rgba(255,255,255,0.03); padding:4px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.06); max-width:100%;}
-.media-badge {display:inline-flex; align-items:center; gap:2px; font-weight:800; padding:2px 5px; border-radius:3px; font-size:9px; color:#fff; text-transform:uppercase; vertical-align:middle; line-height:1; white-space:nowrap;}
-.media-link {color:#60a5fa; text-decoration:underline; font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px;}
-.open-player-btn {
-  background:var(--in); color:#fff; font-size:10px; font-weight:bold; border-radius:4px; padding:2px 8px; cursor:pointer; border:none; transition:background 0.15s; white-space:nowrap;
+.media-inline-row {
+  display:flex; 
+  flex-direction:column; 
+  align-items:flex-start; 
+  gap:6px; 
+  font-size:12px; 
+  background:rgba(255,255,255,0.03); 
+  padding:8px 12px; 
+  border-radius:6px; 
+  border:1px solid rgba(255,255,255,0.06); 
+  width:100%;
+  max-width:100%;
+  box-sizing:border-box;
 }
-.open-player-btn:active {background:var(--i2);}
+.media-badge {display:inline-flex; align-items:center; gap:2px; font-weight:800; padding:2px 5px; border-radius:3px; font-size:9px; color:#fff; text-transform:uppercase; vertical-align:middle; line-height:1; white-space:nowrap;}
+.media-link {color:#60a5fa; text-decoration:underline; font-size:11px; word-break:break-all; display:block; margin:2px 0; width:100%;}
+.media-btn-row {display:flex; gap:6px; margin-top:4px; flex-wrap:wrap; width:100%;}
+.open-player-btn, .dl-media-btn {
+  background:var(--in); color:#fff; font-size:10px; font-weight:bold; border-radius:4px; padding:3px 10px; cursor:pointer; border:none; transition:background 0.15s; white-space:nowrap;
+}
+.open-player-btn:active, .dl-media-btn:active {background:var(--i2);}
+.dl-media-btn {background:var(--e2);}
+.dl-media-btn:active {background:#059669;}
 
 /* 入力バー */
 #ib{
@@ -1344,7 +1360,7 @@ async function cMsg(msg) {
       mb.appendChild(errSpan);
     }
   } else {
-    // 【最適化】純粋な1つの画像URLのみ貼られた場合はインラインで直出し表示（リンクなし）
+    // 純粋な1つの画像URLのみ貼られた場合はインラインで直出し表示（リンクなし）
     const isImageOnly = /https?:\/\/[^\s\n<>"]+\.(?:jpg|jpeg|png|gif|webp|bmp)(?:\?[^\s\n<>"]*)?/i.test(txt.trim()) && txt.trim().split(/\s+/).length === 1;
 
     if (isImageOnly) {
@@ -1374,11 +1390,11 @@ async function cMsg(msg) {
 
       // リンクから各種音楽・動画メディアのURLをパースし、再生バッジとボタンを出力
       const mediaRegexes = [
-        { type: "youtube", name: "YouTube", regex: /https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/i },
-        { type: "niconico", name: "ニコニコ動画", regex: /https?:\/\/(?:www\.)?nicovideo\.jp\/watch\/(sm[0-9]+|so[0-9]+|[0-9]+)/i },
-        { type: "instagram", name: "Instagram", regex: /https?:\/\/(?:www\.)?instagram\.com\/(?:p|reel|tv)\/([a-zA-Z0-9_-]+)/i },
-        { type: "tiktok", name: "TikTok", regex: /https?:\/\/(?:www\.)?tiktok\.com\/[^\s\n<>"]+/i },
-        { type: "audio", name: "Audio", regex: /https?:\/\/[^\s\n<>"]+\.(?:mp3|wav|ogg|m4a|aac)(?:\?[^\s\n<>"]*)?/i }
+        { type: "youtube", name: "YouTube", regex: /https?:\/\/(?:[a-zA-Z0-9-]+\.)?(?:youtube\.com|youtu\.be)\/[^\s\n<>"]+/i },
+        { type: "niconico", name: "ニコニコ動画", regex: /https?:\/\/(?:[a-zA-Z0-9-]+\.)?(?:nicovideo\.jp|nico\.ms)\/[^\s\n<>"]+/i },
+        { type: "instagram", name: "Instagram", regex: /https?:\/\/(?:[a-zA-Z0-9-]+\.)?instagram\.com\/[^\s\n<>"]+/i },
+        { type: "tiktok", name: "TikTok", regex: /https?:\/\/(?:[a-zA-Z0-9-]+\.)?tiktok\.com\/[^\s\n<>"]+/i },
+        { type: "audio", name: "Audio", regex: /https?:\/\/[^\s\n<>"]+\.(?:mp3|wav|ogg|m4a|aac|flac)(?:\?[^\s\n<>"]*)?/i }
       ];
 
       const urls = txt.match(/https?:\/\/[^\s\n<>"]+/gi) || [];
@@ -1413,6 +1429,9 @@ async function cMsg(msg) {
             mLink.className = "media-link";
             mLink.textContent = url;
 
+            const mBtnRow = document.createElement("div");
+            mBtnRow.className = "media-btn-row";
+
             const mBtn = document.createElement("button");
             mBtn.className = "open-player-btn";
             mBtn.textContent = "開く";
@@ -1421,10 +1440,27 @@ async function cMsg(msg) {
               window.openFloatingPlayer(url, target.type);
             });
 
-            // 【最適化】指定順序に完全準拠： バッジ（テキスト） → URL（リンク） → 開くボタン
+            mBtnRow.appendChild(mBtn);
+
+            // 音声ファイルの場合は非同期でサイズを取得してダウンロードボタンを追加
+            if (target.type === "audio") {
+              const dlBtn = document.createElement("button");
+              dlBtn.className = "dl-media-btn";
+              dlBtn.textContent = "📥 保存 (容量取得中...)";
+              dlBtn.dataset.sizeText = "容量取得中";
+
+              dlBtn.addEventListener("click", () => {
+                window.triggerAudioDownload(url, dlBtn);
+              });
+
+              mBtnRow.appendChild(dlBtn);
+              window.fetchAudioSize(url, dlBtn);
+            }
+
+            // 指定順序：バッジ（テキスト） → 改行 → URL（リンク） → 改行 → 各種ボタン
             mRow.appendChild(mBadge);
             mRow.appendChild(mLink);
-            mRow.appendChild(mBtn);
+            mRow.appendChild(mBtnRow);
             mContainer.appendChild(mRow);
             mb.appendChild(mContainer);
             break;
@@ -2585,6 +2621,98 @@ playerCloseBtn.addEventListener("click", () => {
   $("playerContent").innerHTML = ""; // 完全に消去
 });
 
+// バイト数から読みやすい容量テキストへ変換するヘルパー
+function formatBytes(bytes) {
+  const b = parseInt(bytes);
+  if (isNaN(b) || b <= 0) return "容量不明";
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(b) / Math.log(1024));
+  return `${(b / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
+}
+
+// 非同期で音声ファイルのContent-Lengthを取得してボタンに反映
+window.fetchAudioSize = async (url, btn) => {
+  try {
+    // 1. 直接HEADリクエストの送信（CORS許可対象時）
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000); // 2秒タイムアウト設定
+    const res = await fetch(url, { method: 'HEAD', signal: controller.signal });
+    clearTimeout(timeoutId);
+    const len = res.headers.get('content-length');
+    if (len) {
+      const formatted = formatBytes(len);
+      btn.textContent = `📥 保存 (${formatted})`;
+      btn.dataset.sizeText = formatted;
+      return;
+    }
+  } catch (e) {}
+
+  try {
+    // 2. allorigins raw proxy経由でのHEADリクエスト
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const res = await fetch(proxyUrl, { method: 'HEAD', signal: controller.signal });
+    clearTimeout(timeoutId);
+    const len = res.headers.get('content-length');
+    if (len) {
+      const formatted = formatBytes(len);
+      btn.textContent = `📥 保存 (${formatted})`;
+      btn.dataset.sizeText = formatted;
+      return;
+    }
+  } catch (e) {}
+
+  btn.textContent = "📥 保存 (容量不明)";
+  btn.dataset.sizeText = "容量不明";
+};
+
+// 【ダウンロード支援】一発でBlobデータとして保存をトリガーする機能（CORS回避を含む）
+async function downloadFile(url, filename) {
+  showToast("📥 ダウンロード準備中...");
+  try {
+    let res = await fetch(url).catch(() => null);
+    if (!res || !res.ok) {
+      // CORSをバイパスするためにAllorigins raw proxyを最終解決フォールバックに採用
+      res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
+    }
+    if (res && res.ok) {
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = filename || url.split('/').pop() || "download.mp3";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+      showToast("✅ ダウンロード完了");
+    } else {
+      throw new Error();
+    }
+  } catch {
+    // 最終防衛線：新しいタブでファイルとしてロード
+    const a = document.createElement("a");
+    a.href = url;
+    a.target = "_blank";
+    a.download = filename || url.split('/').pop() || "download.mp3";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    showToast("🔗 外部タブでロードしました（手動保存してください）");
+  }
+}
+
+// 音楽ファイル保存用の確認ダイアログ発火トリガー
+window.triggerAudioDownload = async (url, btn) => {
+  const filename = url.split('/').pop() || "download.mp3";
+  const sizeText = btn.dataset.sizeText || "容量不明";
+  
+  if (confirm(`この音声ファイルを端末に保存しますか？\n\nファイル名: ${filename}\nファイル容量: ${sizeText}`)) {
+    await downloadFile(url, filename);
+  }
+};
+
 // TikTok用メタデータ解析＆おEmbedローダー
 async function embedTikTok(url) {
   $("playerTitle").textContent = "TikTok読み込み中...";
@@ -2614,7 +2742,7 @@ async function embedTikTok(url) {
         $("playerTitle").textContent = "TikTok再生";
         const idMatch = url.match(/\/video\/(\d+)/) || url.match(/\/photo\/(\d+)/);
         if (idMatch) {
-          // 即再生(autoplay)はさせないデフォルトの埋め込みiframe
+          // 即再生(autoplay)はさせない構成
           contentNode.innerHTML = `<iframe src="https://www.tiktok.com/embed/v2/${idMatch[1]}" frameborder="0" allowfullscreen style="width:100%; height:100%;"></iframe>`;
         } else {
           contentNode.innerHTML = `<div style="padding:10px; font-size:11px; color:var(--ro);">動画の取得に失敗しました</div>`;
@@ -2624,7 +2752,6 @@ async function embedTikTok(url) {
       throw new Error();
     }
   } catch {
-    // ネットワーク障害やCORS規制時のフォールバック
     $("playerTitle").textContent = "TikTok再生";
     const idMatch = url.match(/\/video\/(\d+)/) || url.match(/\/photo\/(\d+)/);
     if (idMatch) {
@@ -2661,12 +2788,11 @@ async function embedInstagram(url) {
       const imageUrl = imageMeta ? imageMeta.getAttribute("content") : null;
 
       if (!isVideo && imageUrl) {
-        // 画像投稿時は、画像のみをクリーンに表示
+        // 画像投稿時は、画像のみを表示
         $("playerTitle").textContent = "Instagram画像";
         contentNode.innerHTML = `<img src="${imageUrl}" style="max-width:100%; max-height:100%; object-fit:contain; display:block;">`;
       } else if (id) {
         $("playerTitle").textContent = "Instagram動画";
-        // 即再生(autoplay)はさせないパラメータ構成
         contentNode.innerHTML = `<iframe src="https://www.instagram.com/p/${id}/embed" frameborder="0" scrolling="no" allowtransparency="true" style="width:100%; height:100%;"></iframe>`;
       } else {
         throw new Error();
@@ -2675,7 +2801,6 @@ async function embedInstagram(url) {
       throw new Error();
     }
   } catch {
-    // フォールバック（標準のInstagram埋め込みiframeを使用。自動再生なし）
     if (id) {
       $("playerTitle").textContent = "Instagram表示";
       contentNode.innerHTML = `<iframe src="https://www.instagram.com/p/${id}/embed" frameborder="0" scrolling="no" allowtransparency="true" style="width:100%; height:100%;"></iframe>`;
@@ -2690,18 +2815,17 @@ window.openFloatingPlayer = async (url, type) => {
   const plRect = D.pl.getBoundingClientRect();
   const appRect = D.app.getBoundingClientRect();
   
-  // 初期表示位置を「入室者リストのすぐ真下」に正確に計算
   const topOffset = plRect.bottom - appRect.top;
-  const leftOffset = Math.max(10, (appRect.width - 320) / 2); // 水平中央寄せ
+  const leftOffset = Math.max(10, (appRect.width - 320) / 2);
   
   playerNode.style.top = `${topOffset}px`;
   playerNode.style.left = `${leftOffset}px`;
   playerNode.style.display = "flex";
 
   const contentNode = $("playerContent");
-  contentNode.innerHTML = ""; // 前の再生要素を確実に消滅させる (1動画・1音楽制限)
+  contentNode.innerHTML = ""; // 1動画・1音楽制限の消音リセット
 
-  // すべてautoplayを排除、またはautoplay=0に設定（即再生をブロック）
+  // 即再生(autoplay)を完全に排除
   if (type === "youtube") {
     const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/i);
     if (ytMatch) {
@@ -2722,7 +2846,6 @@ window.openFloatingPlayer = async (url, type) => {
     await embedInstagram(url);
   } else if (type === "audio") {
     $("playerTitle").textContent = "音声再生";
-    // controls属性のみとし、autoplay属性を完全に排除
     contentNode.innerHTML = `<div style="padding:12px; width:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; background:var(--sf); height:100%;"><audio src="${url}" controls style="width:100%;"></audio><div style="font-size:9.5px; color:var(--mu); margin-top:8px; word-break:break-all; text-align:center;">${url.split('/').pop()}</div></div>`;
   }
 };

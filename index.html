@@ -572,6 +572,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
           </div>
         </div>
         <div class="hbs">
+          <button id="callBtn" title="音声通話を開始/参加" style="background:rgba(129,140,248,0.1); border-color:rgba(129,140,248,0.3); color:#a5b4fc;">🎤 通話</button>
           <button id="copyUrlBtn" title="招待URLをコピー">🔗 URL</button>
           <button class="bclr" id="clrBtn" title="カラー設定"><span class="bclr-dot" id="clrDot"></span> 設定</button>
           <button class="bx" id="exBtn" title="退室">退室</button>
@@ -622,6 +623,18 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       <div id="hostRequestListWrapper" style="display:none; background:var(--bg); padding:4px 6px; border-radius:4px; border:1px solid var(--bd); margin-top:2px;">
         <div style="font-weight:bold; font-size:9.5px; color:#818cf8; margin-bottom:2px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:1px;">📥 入室承認待ち</div>
         <div id="hostRequestList" style="max-height:80px; overflow-y:auto; display:flex; flex-direction:column; gap:3px; font-size:9.5px;"></div>
+      </div>
+    </div>
+
+    <!-- 音声通話用管理バー (通話参加時のみ表示) -->
+    <div id="callControlBar" style="display:none; background:var(--s2); border-bottom:1px solid var(--bd); padding:6px 12px; font-size:11px; align-items:center; justify-content:space-between; gap:6px;">
+      <div style="display:flex; align-items:center; gap:6px;">
+        <span style="font-weight:900; color:#818cf8; display:flex; align-items:center; gap:3px;">🔊 音声通話接続中:</span>
+        <span id="callStatusText" style="color:var(--tx); font-weight:bold;">受信専用モード</span>
+      </div>
+      <div style="display:flex; gap:6px;">
+        <button id="micToggleBtn" style="display:none; font-size:10px; font-weight:bold; background:var(--sf); border:1px solid var(--bd); color:var(--tx); padding:2px 8px; border-radius:4px; cursor:pointer;">🎤 ミュート</button>
+        <button id="leaveCallBtn" style="font-size:10px; font-weight:bold; background:rgba(244,63,94,0.15); border:1px solid rgba(244,63,94,0.3); color:#fda4af; padding:2px 8px; border-radius:4px; cursor:pointer;">📞 切断</button>
       </div>
     </div>
 
@@ -776,6 +789,12 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         <h4 style="color: #a5b4fc; font-size: 13px; margin-bottom: 4px;">🤫 1対1個別チャット (シークレット機能)</h4>
         ルーム全体の暗号化とは独立して、1対1のダイレクトメッセージでは「<b>楕円曲線ディフィー・ヘルマン鍵共有 (ECDH)</b>」を応用した独自の暗号化経路を確立します。<br>
         このモードで送信された内容は、指定された宛先の端末以外ではいかなる方法でも復号できません。他の参加者にはメッセージが送信された事実や、暗号文自体もタイムライン上に一切表示されないため、密談の存在自体が外部に漏れません。
+      </div>
+
+      <div class="gs" style="border-left-color: #10b981;">
+        <h4 style="color: #10b981; font-size: 13px; margin-bottom: 4px;">🎙️ 音声通話機能 (受信専用 / 発言モード)</h4>
+        ルームに入室後、「🎤 通話」ボタンを押すことでいつでも安全な音声通話に参加できます。マイクをONにして自身も喋る「発言者モード」のほか、他の発言者の声を聞くだけの「受信専用モード」の選択が可能です。<br>
+        通話データの経路もブラウザ間P2Pで直接接続（STUNサーバー利用）されるため、録音や盗聴のリスクを最小限に抑えます。
       </div>
 
       <div class="gs" style="border-left-color: #fca5a5;">
@@ -1597,7 +1616,7 @@ async function cMsg(msg) {
         }
       });
 
-      // YouTube・ニコニコ・音声ファイルのみの判定 (TikTok, Instagramは非対応)
+      // YouTube・ニコニコ・音声ファイルのみの判定
       const mediaRegexes = [
         { type: "youtube", name: "YouTube", regex: /(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)?(?:youtube\.com|youtu\.be)\/[^\s\n<>"]+/i },
         { type: "niconico", name: "ニコニコ動画", regex: /(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)?(?:nicovideo\.jp|nico\.ms)\/[^\s\n<>"]+/i },
@@ -1851,7 +1870,7 @@ function removeMessageEl(id) {
 
 async function wipe(r) {
   if (!r) return;
-  const updates = { [`rooms/${r}`]: null, [`chat/${r}`]: null, [`presence/${r}`]: null };
+  const updates = { [`rooms/${r}`]: null, [`chat/${r}`]: null, [`presence/${r}`]: null, [`calls/${r}`]: null };
   try { 
     await update(ref(db), updates); 
   } catch (e) { }
@@ -1928,7 +1947,11 @@ window.doExit = async () => {
   if (_isExiting) return;
   _isExiting = true;
   _exitLock = true; 
-  
+
+  if (isCallJoined) {
+    leaveCall();
+  }
+
   const hashId = curR;
   const activeName = curN;
   const activePresRef = myPresRef;
@@ -2091,7 +2114,7 @@ async function checkCurrentRoomStatus() {
 }
 
 /* =========================================================
-   自動承認（事前許可トリップ登録システム）フレンド機能は廃止
+   自動承認（事前許可トリップ登録システム）
    ========================================================= */
 let autoApproveTrips = [];
 
@@ -2246,6 +2269,7 @@ async function renderPresenceList(s) {
      sp.className = "chip" + (m.isHost ? " is-host" : "");
      sp.style.color = m.c; sp.style.borderColor = m.c + "44";
      sp.textContent = m.n; 
+     sp.setAttribute("data-uid", m.id);
 
      // クリックで1対1個別チャットターゲットに設定
      sp.onclick = () => {
@@ -3566,6 +3590,340 @@ window.addEventListener("message", (e) => {
     }
   } catch (err) {}
 });
+
+/* =========================================================
+   P2P音声通話システム (WebRTC)
+   ========================================================= */
+let localStream = null;
+let isSpeaking = false;
+let isCallJoined = false;
+const peerConnections = new Map(); // peerUid -> RTCPeerConnection
+const remoteAudios = new Map(); // peerUid -> HTMLAudioElement
+let _speakersOff = null;
+const _signalsOff = new Map(); // peerUid -> unsubscribe function
+
+const rtcConfig = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' }
+  ]
+};
+
+// 通話コントロールバーの表示切り替え
+function toggleCallBar(show, statusText = "") {
+  const bar = $("callControlBar");
+  if (bar) {
+    bar.style.display = show ? "flex" : "none";
+    if (show && statusText) {
+      $("callStatusText").textContent = statusText;
+    }
+  }
+}
+
+// 接続の方向性制御（衝突を避けるための辞書順解決および配信者優先）
+function shouldInitiateCall(peerUid, speakers) {
+  const iAmSpeaker = !!speakers[myUid];
+  const peerIsSpeaker = !!speakers[peerUid];
+  
+  if (iAmSpeaker && !peerIsSpeaker) return true; // 自分のみ発言者
+  if (!iAmSpeaker && peerIsSpeaker) return false; // 相手のみ発言者（待ち受け）
+  if (iAmSpeaker && peerIsSpeaker) {
+    return myUid < peerUid; // 両者とも発言者の場合はUIDの辞書順で判定
+  }
+  return false; // 両者とも受信専用ならP2P接続は不要
+}
+
+// ピア切断のクリーンアップ
+function closePeer(peerUid) {
+  if (peerConnections.has(peerUid)) {
+    try { peerConnections.get(peerUid).close(); } catch(e){}
+    peerConnections.delete(peerUid);
+  }
+  if (_signalsOff.has(peerUid)) {
+    _signalsOff.get(peerUid)();
+    _signalsOff.delete(peerUid);
+  }
+  if (remoteAudios.has(peerUid)) {
+    remoteAudios.get(peerUid).pause();
+    remoteAudios.get(peerUid).remove();
+    remoteAudios.delete(peerUid);
+  }
+}
+
+// 相手のストリーム再生
+function playRemoteStream(peerUid, stream) {
+  if (remoteAudios.has(peerUid)) {
+    remoteAudios.get(peerUid).pause();
+    remoteAudios.get(peerUid).remove();
+  }
+  
+  const audio = document.createElement("audio");
+  audio.srcObject = stream;
+  audio.autoplay = true;
+  audio.playsInline = true;
+  audio.style.display = "none";
+  document.body.appendChild(audio);
+  
+  remoteAudios.set(peerUid, audio);
+  
+  const peerNode = D.pl.querySelector(`[data-uid="${peerUid}"]`);
+  const name = peerNode ? peerNode.textContent.trim().split(" ")[0] : "発言者";
+  showToast(`🔊 ${name} の音声を受信中`);
+}
+
+// 相手へ Offer を送信する側
+async function initiateCall(peerUid) {
+  if (peerConnections.has(peerUid)) return;
+  
+  const pc = new RTCPeerConnection(rtcConfig);
+  peerConnections.set(peerUid, pc);
+  
+  if (localStream) {
+    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+  }
+  
+  pc.ontrack = (e) => {
+    if (e.streams && e.streams[0]) {
+      playRemoteStream(peerUid, e.streams[0]);
+    }
+  };
+  
+  pc.onicecandidate = (e) => {
+    if (e.candidate) {
+      push(ref(db, `calls/${curR}/${myUid}/${peerUid}/iceCandidates`), e.candidate.toJSON());
+    }
+  };
+  
+  const answerRef = ref(db, `calls/${curR}/${peerUid}/${myUid}/answer`);
+  const answerOff = onValue(answerRef, async (snap) => {
+    const answer = snap.val();
+    if (answer && pc.signalingState !== "stable") {
+      await pc.setRemoteDescription(new RTCSessionDescription(answer)).catch(() => {});
+    }
+  });
+  
+  const remoteIceRef = ref(db, `calls/${curR}/${peerUid}/${myUid}/iceCandidates`);
+  const iceOff = onChildAdded(remoteIceRef, async (snap) => {
+    const cand = snap.val();
+    if (cand) {
+      await pc.addIceCandidate(new RTCIceCandidate(cand)).catch(() => {});
+    }
+  });
+  
+  _signalsOff.set(peerUid, () => {
+    answerOff();
+    iceOff();
+    remove(ref(db, `calls/${curR}/${myUid}/${peerUid}`));
+  });
+  
+  try {
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await set(ref(db, `calls/${curR}/${myUid}/${peerUid}/offer`), {
+      type: offer.type,
+      sdp: offer.sdp
+    });
+  } catch (err) {
+    console.error("Offer作成失敗:", err);
+  }
+}
+
+// 相手からの Offer を待ち受ける側
+async function listenForOffer(peerUid) {
+  if (peerConnections.has(peerUid)) return;
+  
+  const pc = new RTCPeerConnection(rtcConfig);
+  peerConnections.set(peerUid, pc);
+  
+  if (localStream) {
+    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+  }
+  
+  pc.ontrack = (e) => {
+    if (e.streams && e.streams[0]) {
+      playRemoteStream(peerUid, e.streams[0]);
+    }
+  };
+  
+  pc.onicecandidate = (e) => {
+    if (e.candidate) {
+      push(ref(db, `calls/${curR}/${myUid}/${peerUid}/iceCandidates`), e.candidate.toJSON());
+    }
+  };
+  
+  const offerRef = ref(db, `calls/${curR}/${peerUid}/${myUid}/offer`);
+  const offerOff = onValue(offerRef, async (snap) => {
+    const offer = snap.val();
+    if (offer && (pc.signalingState === "stable" || pc.signalingState === "have-local-offer")) {
+      try {
+        await pc.setRemoteDescription(new RTCSessionDescription(offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        await set(ref(db, `calls/${curR}/${myUid}/${peerUid}/answer`), {
+          type: answer.type,
+          sdp: answer.sdp
+        });
+      } catch (err) {
+        console.error("Answer作成失敗:", err);
+      }
+    }
+  });
+  
+  const remoteIceRef = ref(db, `calls/${curR}/${peerUid}/${myUid}/iceCandidates`);
+  const iceOff = onChildAdded(remoteIceRef, async (snap) => {
+    const cand = snap.val();
+    if (cand) {
+      await pc.addIceCandidate(new RTCIceCandidate(cand)).catch(() => {});
+    }
+  });
+  
+  _signalsOff.set(peerUid, () => {
+    offerOff();
+    iceOff();
+    remove(ref(db, `calls/${curR}/${myUid}/${peerUid}`));
+  });
+}
+
+// スピーカーリストの監視とWebRTCメッシュ管理
+function watchSpeakers() {
+  if (_speakersOff) { _speakersOff(); _speakersOff = null; }
+  
+  _speakersOff = onValue(ref(db, `rooms/${curR}/speakers`), async (s) => {
+    if (!isCallJoined) return;
+    const speakers = s.val() || {};
+    
+    const pSnap = await get(ref(db, `presence/${curR}`)).catch(() => null);
+    const presenceList = pSnap ? (pSnap.val() || {}) : {};
+    const activeMembers = Object.keys(presenceList).filter(uid => presenceList[uid] && presenceList[uid].status === "approved");
+    
+    // スピーカーとアクティブメンバーをまとめる
+    const callMembers = new Set([...activeMembers, ...Object.keys(speakers)]);
+    
+    for (const peerUid of callMembers) {
+      if (peerUid === myUid) continue;
+      
+      const needsConnection = speakers[peerUid] || speakers[myUid];
+      
+      if (needsConnection) {
+        if (!peerConnections.has(peerUid)) {
+          if (shouldInitiateCall(peerUid, speakers)) {
+            initiateCall(peerUid);
+          } else {
+            listenForOffer(peerUid);
+          }
+        }
+      } else {
+        if (peerConnections.has(peerUid)) {
+          closePeer(peerUid);
+        }
+      }
+    }
+    
+    peerConnections.forEach((pc, peerUid) => {
+      if (!callMembers.has(peerUid)) {
+        closePeer(peerUid);
+      }
+    });
+  });
+}
+
+// 通話開始 (発言者モード)
+async function startMicrophone() {
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    isSpeaking = true;
+    isCallJoined = true;
+    
+    toggleCallBar(true, "発言中 (マイクON)");
+    $("micToggleBtn").style.display = "inline-block";
+    $("micToggleBtn").textContent = "🎤 ミュート";
+    
+    const speakerRef = ref(db, `rooms/${curR}/speakers/${myUid}`);
+    await set(speakerRef, { n: curN, t: serverTimestamp() });
+    await onDisconnect(speakerRef).remove();
+    await onDisconnect(ref(db, `calls/${curR}/${myUid}`)).remove();
+    
+    watchSpeakers();
+    showToast("🎙️ 発言者モードで通話を開始しました");
+  } catch (err) {
+    console.error("マイク許可エラー:", err);
+    alert("マイクの利用が拒否されたか、デバイスが見つかりません。受信専用モードに切り替えます。");
+    startReceiveOnly();
+  }
+}
+
+// 通話開始 (受信専用モード)
+function startReceiveOnly() {
+  isSpeaking = false;
+  isCallJoined = true;
+  
+  toggleCallBar(true, "受信専用 (聴くだけ)");
+  $("micToggleBtn").style.display = "none";
+  
+  watchSpeakers();
+  showToast("🎧 受信専用モードで参加しました");
+}
+
+// 通話から切断
+async function leaveCall() {
+  if (curR && myUid) {
+    await remove(ref(db, `rooms/${curR}/speakers/${myUid}`));
+    await remove(ref(db, `calls/${curR}/${myUid}`));
+  }
+  
+  if (localStream) {
+    localStream.getTracks().forEach(track => track.stop());
+    localStream = null;
+  }
+  
+  if (_speakersOff) { _speakersOff(); _speakersOff = null; }
+  
+  peerConnections.forEach((pc, peerUid) => {
+    closePeer(peerUid);
+  });
+  peerConnections.clear();
+  remoteAudios.clear();
+  _signalsOff.clear();
+  
+  isSpeaking = false;
+  isCallJoined = false;
+  toggleCallBar(false);
+  showToast("🔇 通話を終了しました");
+}
+
+// 通話ボタンイベント
+$("callBtn").onclick = () => {
+  if (isCallJoined) {
+    showToast("ℹ️ 既に通話に参加しています");
+    return;
+  }
+  
+  if (confirm("音声通話機能を開始しますか？\n\n「OK」：マイクを許可して発言者として参加します。\n「キャンセル」：マイクを起動せず、聴くだけの受信専用モードで参加します。")) {
+    startMicrophone();
+  } else {
+    startReceiveOnly();
+  }
+};
+
+// マイクのオンオフ
+$("micToggleBtn").onclick = () => {
+  if (!localStream) return;
+  const audioTrack = localStream.getAudioTracks()[0];
+  if (audioTrack) {
+    audioTrack.enabled = !audioTrack.enabled;
+    const isMuted = !audioTrack.enabled;
+    $("micToggleBtn").textContent = isMuted ? "🎤 ミュート解除" : "🎤 ミュート";
+    $("callStatusText").textContent = isMuted ? "ミュート中" : "発言中 (マイクON)";
+    showToast(isMuted ? "🔇 マイクをミュートしました" : "🎙️ マイクミュートを解除しました");
+  }
+};
+
+// 切断ボタン
+$("leaveCallBtn").onclick = () => {
+  if (confirm("音声通話から切断しますか？")) {
+    leaveCall();
+  }
+};
 
 // 早期ウォームブート
 const checkAndWarmboot = async () => {

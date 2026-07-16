@@ -1467,12 +1467,12 @@ async function cMsg(msg) {
         }
       });
 
-      // 各種メディアURLのパース (TikTok, Instagramを新規追加)
+      // 各種メディアURLのパース (TikTok, Instagramの全URLに対応するよう正規表現を高度に統合拡張)
       const mediaRegexes = [
-        { type: "youtube", name: "YouTube", regex: /https?:\/\/(?:[a-zA-Z0-9-]+\.)?(?:youtube\.com|youtu\.be)\/[^\s\n<>"]+/i },
-        { type: "niconico", name: "ニコニコ動画", regex: /https?:\/\/(?:[a-zA-Z0-9-]+\.)?(?:nicovideo\.jp|nico\.ms)\/[^\s\n<>"]+/i },
-        { type: "tiktok", name: "TikTok", regex: /https?:\/\/(?:[a-zA-Z0-9-]+\.)?tiktok\.com\/[^\s\n<>"]+/i },
-        { type: "instagram", name: "Instagram", regex: /https?:\/\/(?:[a-zA-Z0-9-]+\.)?instagram\.com\/(?:p|reel|tv)\/([a-zA-Z0-9_-]+)/i },
+        { type: "youtube", name: "YouTube", regex: /(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)?(?:youtube\.com|youtu\.be)\/[^\s\n<>"]+/i },
+        { type: "niconico", name: "ニコニコ動画", regex: /(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)?(?:nicovideo\.jp|nico\.ms)\/[^\s\n<>"]+/i },
+        { type: "tiktok", name: "TikTok", regex: /(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)?tiktok\.com\/[^\s\n<>"]+/i },
+        { type: "instagram", name: "Instagram", regex: /(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)?instagram\.com\/[^\s\n<>"]+/i },
         { type: "audio", name: "Audio", regex: /https?:\/\/[^\s\n<>"]+\.(?:mp3|wav|ogg|m4a|aac|flac)(?:\?[^\s\n<>"]*)?/i }
       ];
 
@@ -1531,11 +1531,11 @@ async function cMsg(msg) {
               mContainer.appendChild(mRow);
               mb.appendChild(mContainer);
             } 
-            // Instagramの処理（画像・動画の非同期自動判別＆表示）
+            // Instagramの処理（Stories、リール、通常投稿、ユーザー名ありなど全てのURL体系を統合的に動的判別＆表示）
             else if (target.type === "instagram") {
-              const match = url.match(/instagram\.com\/(?:p|reel|tv)\/([a-zA-Z0-9_-]+)/i);
+              const match = url.match(/(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)?instagram\.com\/(?:p|reel|tv|stories|[^/]+\/(?:p|reel|tv|stories))\/([a-zA-Z0-9_-]+)/i);
               if (match) {
-                const pathType = url.match(/instagram\.com\/(p|reel|tv)/i)[1];
+                const pathType = (url.match(/instagram\.com\/(?:[^/]+\/)?(p|reel|tv|stories)/i) || [])[1] || "p";
                 const code = match[1];
 
                 const mContainer = document.createElement("div");
@@ -1544,9 +1544,8 @@ async function cMsg(msg) {
                 mb.appendChild(mContainer);
 
                 (async () => {
-                  let isVideo = pathType === "reel" || pathType === "tv";
+                  let isVideo = pathType === "reel" || pathType === "tv" || pathType === "stories";
                   
-                  // /p/ 投稿の場合はプロキシを経由して動的解析 (CORS回避)
                   if (!isVideo) {
                     try {
                       const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://www.instagram.com/p/${code}/`)}`;
@@ -1559,14 +1558,13 @@ async function cMsg(msg) {
                         }
                       }
                     } catch (e) {
-                      isVideo = false; // エラー時は安全のために静止画像と判定
+                      isVideo = false;
                     }
                   }
 
                   mContainer.textContent = "";
 
                   if (isVideo) {
-                    // 動画判定された場合: 埋め込みプレイヤーボタンを表示
                     const mRow = document.createElement("div");
                     mRow.className = "media-inline-row";
 
@@ -1590,7 +1588,6 @@ async function cMsg(msg) {
                     mRow.appendChild(mBtnRow);
                     mContainer.appendChild(mRow);
                   } else {
-                    // 画像判定された場合: 1枚目のCDN画像をログに直接表示
                     const img = document.createElement("img");
                     img.src = `https://www.instagram.com/p/${code}/media/?size=l`;
                     img.className = "inline-img";
@@ -1605,7 +1602,7 @@ async function cMsg(msg) {
                 })();
               }
             }
-            // TikTokの処理 (公式oEmbed APIで画像・動画を自動判別)
+            // TikTokの処理 (公式oEmbed APIで、シェア用・短縮・ユーザーページ付きなど全てのURLを網羅判別)
             else if (target.type === "tiktok") {
               const mContainer = document.createElement("div");
               mContainer.className = "media-link-container";
@@ -1620,7 +1617,6 @@ async function cMsg(msg) {
                     mContainer.textContent = "";
 
                     if (data.type === "video") {
-                      // 動画の場合: 埋め込みプレイヤー再生ボタンを表示
                       const mRow = document.createElement("div");
                       mRow.className = "media-inline-row";
 
@@ -1644,7 +1640,6 @@ async function cMsg(msg) {
                       mRow.appendChild(mBtnRow);
                       mContainer.appendChild(mRow);
                     } else {
-                      // 写真カルーセル等の画像系投稿の場合: 直接カバー画像をログに表示
                       const img = document.createElement("img");
                       img.src = data.thumbnail_url;
                       img.className = "inline-img";
@@ -1660,7 +1655,6 @@ async function cMsg(msg) {
                     throw new Error();
                   }
                 } catch (e) {
-                  // 解析失敗時は安全のために通常リンクテキスト形式にフォールバック
                   mContainer.textContent = "";
                   const mRow = document.createElement("div");
                   mRow.className = "media-inline-row";
@@ -1938,6 +1932,11 @@ async function handleBannedState() {
     localStorage.removeItem(`nz_entered_${curR}`);
   }
   
+  // 入室状態およびアクティブ部屋情報をロバストに消去 (他の部屋への作成・入室干渉を100%防ぐ)
+  localStorage.setItem("nz_is_in_room", "false");
+  localStorage.removeItem("nz_active_ri"); 
+  localStorage.removeItem("nz_active_created"); 
+
   // チャット画面を一掃しロビーに強制退避
   clearAll(); 
   D.app.style.display = "none";
@@ -1945,10 +1944,6 @@ async function handleBannedState() {
   D.lobby.style.display = "flex";
   D.enBtn.disabled = false;
   D.enBtn.textContent = "入室 / 作成";
-
-  localStorage.setItem("nz_is_in_room", "false");
-  localStorage.removeItem("nz_active_ri"); 
-  localStorage.removeItem("nz_active_created"); 
 
   if (window.history?.replaceState) {
     window.history.replaceState({}, document.title, location.pathname);
@@ -2089,7 +2084,7 @@ function startTimerLoop() {
 function stopTimerLoop() { if(_timerRaf) cancelAnimationFrame(_timerRaf); D.timerDsp.textContent = "--:--"; }
 
 function showLobby(msg = "") {
-  clearAll(); localStorage.setItem("nz_is_in_room", "false"); 
+  clearAll(); 
   D.lberr.textContent = msg; D.lberr.style.display = msg ? "block" : "none";
   D.app.style.display = "none"; 
   
@@ -2355,11 +2350,17 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
   try {
     const hashId = await getRoomHash(roomId);
 
-    // 1. BANチェック
+    // 1. BANチェック＆引き戻し不整合の完全解消
     const banCheckSnap = await get(ref(db, `rooms/${hashId}/banList/${myUid}`));
     if (banCheckSnap.exists()) {
       D.enBtn.disabled = false;
       D.enBtn.textContent = "入室 / 作成";
+      
+      // BANで弾かれた時点で部屋ID・状態等のキャッシュを完全リセットし、他の部屋の作成・入室干渉を綺麗に防ぐ
+      localStorage.removeItem("nz_active_ri");
+      localStorage.removeItem("nz_active_created");
+      localStorage.setItem("nz_is_in_room", "false");
+      
       showLobby("❌ この部屋からBANされているため、入室できません。");
       return;
     }
@@ -2383,6 +2384,11 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
         await remove(reqRef);
         D.enBtn.disabled = false;
         D.enBtn.textContent = "入室 / 作成";
+        
+        localStorage.removeItem("nz_active_ri");
+        localStorage.removeItem("nz_active_created");
+        localStorage.setItem("nz_is_in_room", "false");
+        
         showLobby("❌ 入室申請が却下されました。再度申請できます。");
         return;
       } else {
@@ -2425,6 +2431,10 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
             waitArea.style.display = "none";
             $("lobbyInputArea").style.display = "flex";
 
+            // 承認許可での自動入室フラグを送信側セッションへ仕込む
+            sessionStorage.setItem("nz_should_send_join_sys", "true");
+            sessionStorage.setItem("nz_join_reason", "approved");
+
             await doJoin(roomId, pass, name, trip, initTimer);
           } else if (rVal.status === "rejected") {
             if (typeof _lobbyReqOff === "function") _lobbyReqOff();
@@ -2439,6 +2449,11 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
             $("lobbyInputArea").style.display = "flex";
             D.enBtn.disabled = false;
             D.enBtn.textContent = "入室 / 作成";
+            
+            localStorage.removeItem("nz_active_ri");
+            localStorage.removeItem("nz_active_created");
+            localStorage.setItem("nz_is_in_room", "false");
+            
             showLobby("❌ 入室申請が却下されました。再度申請できます。");
           }
         });
@@ -2456,11 +2471,17 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
             $("lobbyInputArea").style.display = "flex";
             D.enBtn.disabled = false;
             D.enBtn.textContent = "入室 / 作成";
+            
+            localStorage.removeItem("nz_active_ri");
+            localStorage.removeItem("nz_active_created");
+            localStorage.setItem("nz_is_in_room", "false");
+            
             showLobby("申請中の部屋が消滅または期限切れになりました。");
             return;
           }
 
           const currentRoomVal = rSnap.val();
+          // ホストが「オープン」モードに切り替えた場合、お知らせ付きで即自動入室
           if (currentRoomVal && currentRoomVal.mode === "open") {
             if (typeof _lobbyReqOff === "function") _lobbyReqOff();
             _lobbyReqOff = null;
@@ -2472,6 +2493,10 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
 
             waitArea.style.display = "none";
             $("lobbyInputArea").style.display = "flex";
+
+            // オープンモード切り替えでの即時入室フラグを送信側セッションへ仕込む
+            sessionStorage.setItem("nz_should_send_join_sys", "true");
+            sessionStorage.setItem("nz_join_reason", "open_mode");
 
             await doJoin(roomId, pass, name, trip, initTimer);
           }
@@ -2491,6 +2516,11 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
           $("lobbyInputArea").style.display = "flex";
           D.enBtn.disabled = false;
           D.enBtn.textContent = "入室 / 作成";
+          
+          localStorage.removeItem("nz_active_ri");
+          localStorage.removeItem("nz_active_created");
+          localStorage.setItem("nz_is_in_room", "false");
+          
           showLobby();
         };
         return; 
@@ -2571,7 +2601,9 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
     if (isNetworkError) {
       showToast("📡 接続が不安定です。再接続を待機中...");
     } else {
-      localStorage.removeItem("nz_is_in_room");
+      localStorage.setItem("nz_is_in_room", "false");
+      localStorage.removeItem("nz_active_ri");
+      localStorage.removeItem("nz_active_created");
       D.enBtn.disabled = false;
       D.enBtn.textContent = "入室 / 作成";
       showLobby("入室エラー: " + e.message); 
@@ -2600,11 +2632,17 @@ async function enterChatUI(roomData, pass) {
     sessionStorage.removeItem("nz_should_send_join_sys");
     const isCreated = sessionStorage.getItem("nz_room_created_flag") === "true";
     sessionStorage.removeItem("nz_room_created_flag");
+    const joinReason = sessionStorage.getItem("nz_join_reason") || "";
+    sessionStorage.removeItem("nz_join_reason");
     
     const trip = localStorage.getItem("nz_mytrip_styled") || "";
     const nameWithTrip = `${curN} ${trip}`.trim();
     if (isCreated) {
       await sendSysMsg(`${nameWithTrip} が部屋を作成しました`);
+    } else if (joinReason === "approved") {
+      await sendSysMsg(`📥 ${nameWithTrip} の入室申請が承認され、自動入室しました`);
+    } else if (joinReason === "open_mode") {
+      await sendSysMsg(`🔓 部屋がオープンモードに切り替わったため、${nameWithTrip} が自動入室しました`);
     } else {
       await sendSysMsg(`${nameWithTrip} が入室しました`);
     }
@@ -3317,7 +3355,7 @@ window.triggerAudioDownload = async (url, btn) => {
 let activeVideoUrl = "";
 let activeVideoType = "";
 
-// プレイヤーコントロールを標準（IFRAME標準など）で利用可能に調整
+// プレイヤーコントロールを標準（IFRAME標準など）で利用可能に調整 (TikTok, Instagramを含めた全URL構造に対応)
 window.openFloatingPlayer = async (url, type, extraData = "") => {
   activeVideoUrl = url;
   activeVideoType = type;
@@ -3336,13 +3374,12 @@ window.openFloatingPlayer = async (url, type, extraData = "") => {
   contentNode.innerHTML = ""; 
 
   if (type === "youtube") {
-    const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i);
+    const ytMatch = url.match(/(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)?(?:youtube\.com\/(?:watch\?.*v=|embed\/|shorts\/|live\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i);
     if (ytMatch) {
       const id = ytMatch[1];
       $("playerTitle").textContent = "YouTube再生";
       
       const iframe = document.createElement("iframe");
-      // IFRAME画質指定(vq)パラメータを撤去し、プレイヤー内部で画質を制御可能に変更
       iframe.src = `https://www.youtube.com/embed/${id}?autoplay=0&enablejsapi=1`;
       iframe.frameBorder = "0";
       iframe.allow = "encrypted-media";
@@ -3358,7 +3395,7 @@ window.openFloatingPlayer = async (url, type, extraData = "") => {
       contentNode.appendChild(iframe);
     }
   } else if (type === "niconico") {
-    const nicoMatch = url.match(/(?:nicovideo\.jp\/watch\/|nico\.ms\/)(sm[0-9]+|so[0-9]+|[0-9]+)/i);
+    const nicoMatch = url.match(/(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)?(?:nicovideo\.jp\/watch\/|nico\.ms\/)(sm[0-9]+|so[0-9]+|nm[0-9]+|[0-9]+)/i);
     if (nicoMatch) {
       const id = nicoMatch[1];
       $("playerTitle").textContent = "ニコニコ動画再生";
@@ -3671,6 +3708,18 @@ authenticateAnonymously()
     D.lberr.style.display = "block"; 
     showLobby();
   });
+
+// 承認待ちはタブを開いている間だけ動作させる仕組み (タブを閉じたら即時で物理キャンセル)
+window.addEventListener("beforeunload", () => {
+  if ($("lobbyWaitingArea").style.display === "flex" && curR && myUid) {
+    localStorage.removeItem("nz_active_ri");
+    localStorage.removeItem("nz_active_created");
+    localStorage.setItem("nz_is_in_room", "false");
+    
+    // WebSocketコネクションを切断させ、FirebaseのonDisconnectタスクを即サーバー側で走らせて削除
+    goOffline(db);
+  }
+});
 </script>
 </body>
 </html>

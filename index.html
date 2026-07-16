@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0f172a">
 <title>NEZU ONETIME CHAT</title>
 <style>
-/* 共通リreset＆変数 */
+/* 共通リセット＆変数 */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
   --bg:#0f172a;--sf:#1e293b;--s2:#0a1628;--bd:#334155;
@@ -87,9 +87,19 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .bp{background:var(--in);color:#fff}
 .glink{font-size:11px;color:#a5b4fc;text-align:center;margin-top:4px;padding:6px;text-decoration:underline;cursor:pointer;font-weight:bold;background:rgba(129,140,248,0.05);border:1px solid rgba(129,140,248,0.15);border-radius:4px}
 
+/* ホスト管理メニュー用CSS */
+#hostPanel label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--mu);
+}
+#hostPanel input[type="radio"] {
+  accent-color: var(--in);
+}
+
 /* アプリ本体 */
 #app{display:none;position:fixed;inset:0;flex-direction:column;overflow:hidden;z-index:50;background:#070a0f;}
-/* PC大画面対応：中央のメイン枠を引き締め、左右に美しい余白を配置 */
+/* PC大画面対応 */
 #cp{
   display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;background:#0d1117;position:relative;
   max-width:900px;
@@ -135,7 +145,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   background:rgba(244,63,94,.3)!important;
 }
 
-/* 1. 入室者リスト（スリム・ミニマル設計） */
+/* 1. 入室者リスト */
 #pl{
   display:flex;gap:6px;overflow-x:auto;padding:4px 8px;white-space:nowrap;scrollbar-width:none;
   border-bottom:1px solid rgba(255,255,255,0.04);background:var(--s2);flex-shrink:0;align-items:center;height:32px;
@@ -453,16 +463,6 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   align-items: center;
   position: relative;
 }
-#playerCloseBtn {
-  margin: 4px;
-  padding: 6px;
-  font-size: 11px;
-  background: var(--ro);
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  font-weight: bold;
-}
 </style>
 </head>
 <body>
@@ -487,54 +487,57 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       <!-- 自動的に再入室するため、表示要素は非表示に設定 -->
       <div id="roomResumeArea" style="display: none !important;"></div>
 
-      <div class="fg">
-        <label class="fl">表示名 *</label>
-        <input type="text" id="ni" class="inp" placeholder="ニックネーム（最大10文字）" maxlength="10" autocomplete="off">
-      </div>
-      
-      <div class="fg">
-        <label class="fl">トリップキー * (必須項目)</label>
-        <input type="text" id="tripi" class="inp" placeholder="本人証明用キー" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
-        <div id="tripPreview">
-          <span id="tripPrevText">プレビュー: 名無し</span>
-          <button class="copy-s-btn" id="lbCopyTripBtn">コピー</button>
+      <div id="lobbyInputArea" style="display:flex; flex-direction:column; gap:6px; width:100%;">
+        <div class="fg">
+          <label class="fl">表示名 *</label>
+          <input type="text" id="ni" class="inp" placeholder="ニックネーム（最大10文字）" maxlength="10" autocomplete="off">
         </div>
-      </div>
+        
+        <div class="fg">
+          <label class="fl">トリップキー * (必須項目)</label>
+          <input type="text" id="tripi" class="inp" placeholder="本人証明用キー" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
+          <div id="tripPreview">
+            <span id="tripPrevText">プレビュー: 名無し</span>
+            <button class="copy-s-btn" id="lbCopyTripBtn">コピー</button>
+          </div>
+        </div>
 
-      <div class="accordion-header" id="accHeader">⚙️ 詳細設定を開く (カラー・時間など)</div>
-      <div class="accordion-body" id="accBody">
-        <div class="clrbox">
-          <div class="clrlbl">ネーム＆吹き出しカラー</div>
-          <div class="clrpick-grid" id="lbClrPick"></div>
+        <div class="accordion-header" id="accHeader">⚙️ 詳細設定を開く (カラー・時間など)</div>
+        <div class="accordion-body" id="accBody">
+          <div class="clrbox">
+            <div class="clrlbl">ネーム＆吹き出しカラー</div>
+            <div class="clrpick-grid" id="lbClrPick"></div>
+          </div>
+          <div class="fg">
+            <label class="fl">部屋の有効時間 (1〜180分) ※直接入力可</label>
+            <input type="number" id="timeri" class="inp" min="1" max="180" value="30">
+          </div>
+        </div>
+
+        <div class="fg">
+          <label class="fl">部屋ID * (必須項目)</label>
+          <input type="text" id="ri" class="inp" placeholder="共有する部屋名" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
         </div>
         <div class="fg">
-          <label class="fl">部屋の有効時間 (1〜180分) ※直接入力可</label>
-          <input type="number" id="timeri" class="inp" min="1" max="180" value="30">
+          <label class="fl">部屋パスワード * (必須項目)</label>
+          <input type="text" id="pi" class="inp" placeholder="共通暗号化パスワード（必須）" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
         </div>
-        <div class="fg">
-          <label class="fl">画像送信時の画質設定</label>
-          <select id="imgQualitySelectLobby" class="inp" style="background:var(--s2); border:1px solid var(--bd);">
-            <option value="low">低画質（最大600px / 品質0.4 / 通信節約）</option>
-            <option value="mid" selected>中画質（最大1000px / 品質0.6 / 推奨）</option>
-            <option value="high">高画質（最大1600px / 品質0.85 / 鮮明）</option>
-          </select>
+
+        <div class="brow">
+          <button class="btn bq" id="gnBtn" title="部屋IDとパスワードをランダム生成">🎲 自動生成</button>
+          <button class="btn bp" id="enBtn">入室 / 作成</button>
         </div>
+        <div class="glink" id="gdBtn">📖 ガイド / セキュリティ仕様を表示</div>
       </div>
 
-      <div class="fg">
-        <label class="fl">部屋ID * (必須項目)</label>
-        <input type="text" id="ri" class="inp" placeholder="共有する部屋名" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
+      <!-- 招待承認待ち画面 (初期非表示) -->
+      <div id="lobbyWaitingArea" style="display:none; flex-direction:column; gap:8px; background:rgba(255,255,255,0.03); border:1px solid var(--bd); padding:12px; border-radius:6px; text-align:center; margin-bottom:8px;">
+        <div style="font-weight:bold; color:#818cf8; font-size:13px;">📥 ホストの承認を待っています...</div>
+        <div style="font-size:11px; color:var(--mu);">この部屋は「招待モード」です。ホストによる承認が必要です。</div>
+        <div id="waitingInfo" style="font-size:11.5px; font-weight:bold; color:var(--em); background:rgba(0,0,0,0.2); padding:6px; border-radius:4px; margin:4px 0;">名無し ◆abcdefghij</div>
+        <div style="display:flex; justify-content:center; margin:4px 0;"><div class="spin" style="width:20px; height:20px; border-width:3px;"></div></div>
+        <button class="btn bq" id="cancelRequestBtn" style="padding:6px; font-size:11px;">申請をキャンセルして戻る</button>
       </div>
-      <div class="fg">
-        <label class="fl">部屋パスワード * (必須項目)</label>
-        <input type="text" id="pi" class="inp" placeholder="共通暗号化パスワード（必須）" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
-      </div>
-
-      <div class="brow">
-        <button class="btn bq" id="gnBtn" title="部屋IDとパスワードをランダム生成">🎲 自動生成</button>
-        <button class="btn bp" id="enBtn">入室 / 作成</button>
-      </div>
-      <div class="glink" id="gdBtn">📖 ガイド / セキュリティ仕様を表示</div>
 
     </div>
   </div>
@@ -548,7 +551,6 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1;">
           <div style="display: flex; align-items: center;">
             <span class="rn" id="rdsp"></span>
-            <!-- 参加人数：部屋名の直後にすっきりと表示を最適化 -->
             <span class="pcnt" id="pcnt">--人</span>
           </div>
           <div style="display: flex; align-items: center; gap: 4px;">
@@ -558,8 +560,39 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         </div>
         <div class="hbs">
           <button id="copyUrlBtn" title="招待URLをコピー">🔗 URL</button>
-          <button class="bclr" id="clrBtn" title="カラー・画質設定"><span class="bclr-dot" id="clrDot"></span> 設定</button>
+          <button class="bclr" id="clrBtn" title="カラー設定"><span class="bclr-dot" id="clrDot"></span> 設定</button>
           <button class="bx" id="exBtn" title="退室">退室</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ホスト専用管理パネル (初期非表示) -->
+    <div id="hostPanel" style="display:none; background:var(--sf); border-bottom:1px solid var(--bd); padding:8px 12px; font-size:12px; flex-direction:column; gap:8px;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-weight:bold; color:#818cf8; font-size:11.5px;">⚙️ ホスト管理メニュー</span>
+        <span style="font-size:10px; color:var(--mu);">モード: <b id="hostRoomModeText" style="color:var(--tx);">オープン</b></span>
+      </div>
+      <div style="display:flex; gap:12px; align-items:center; border-bottom:1px solid rgba(255,255,255,0.04); padding-bottom:6px;">
+        <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+          <input type="radio" name="roomModeRadio" value="open" checked> オープン (標準)
+        </label>
+        <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+          <input type="radio" name="roomModeRadio" value="invite"> 招待モード (要承認)
+        </label>
+      </div>
+      
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <div style="background:var(--bg); padding:6px; border-radius:4px; border:1px solid var(--bd); min-height:80px; display:flex; flex-direction:column;">
+          <div style="font-weight:bold; font-size:10px; color:#818cf8; margin-bottom:4px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:2px;">📥 承認待ちリスト</div>
+          <div id="hostRequestList" style="flex:1; max-height:80px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; font-size:10px;">
+            <span style="color:var(--m2);">申請はありません</span>
+          </div>
+        </div>
+        <div style="background:var(--bg); padding:6px; border-radius:4px; border:1px solid var(--bd); min-height:80px; display:flex; flex-direction:column;">
+          <div style="font-weight:bold; font-size:10px; color:var(--ro); margin-bottom:4px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:2px;">🚫 BANリスト</div>
+          <div id="hostBanList" style="flex:1; max-height:80px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; font-size:10px;">
+            <span style="color:var(--m2);">BANリストは空です</span>
+          </div>
         </div>
       </div>
     </div>
@@ -575,15 +608,12 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <!-- 入力バー -->
     <div id="ib">
       <div id="ibTopBar">
-        <!-- 1. キーボードボタン -->
         <button id="kbToggleBtn" class="switch-kb ib-icon-btn" title="送信後のキーボード設定">
           <span id="kbStatusText" class="switch-text">キーボード:閉</span>
         </button>
-        <!-- 2. 自動追従ON/OFF -->
         <button id="autoScrollToggleBtn" class="switch-scroll ib-icon-btn active" title="新着メッセージへの自動追従">
           <span id="autoScrollStatusText" class="switch-text">追従:ON</span>
         </button>
-        <!-- 4. 上下ジャンプ(▲▼) -->
         <div class="jump-btns">
           <button class="jump-btn" id="jumpUpBtn" title="ログ of 先頭へ" disabled>▲</button>
           <button class="jump-btn" id="jumpDownBtn" title="最新のメッセージへ" disabled>▼</button>
@@ -617,7 +647,19 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         <span style="font-size:9px; color:var(--mu); font-weight:normal;">● ドラッグ移動</span>
       </div>
       <div id="playerContent"></div>
-      <button id="playerCloseBtn">閉じる</button>
+      
+      <!-- 画質コントローラー行 -->
+      <div id="playerControls" style="display:flex; justify-content:space-between; align-items:center; background:var(--sf); padding:6px 10px; border-top:1px solid var(--bd);">
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span style="font-size:10px; color:var(--mu); font-weight:bold;">画質:</span>
+          <select id="playerQualitySelect" style="background:var(--bg); color:var(--tx); border:1px solid var(--bd); font-size:10.5px; padding:2px 6px; border-radius:4px; outline:none; cursor:pointer;">
+            <option value="auto">自動 (標準)</option>
+            <option value="high">高画質 (HD)</option>
+            <option value="low">低画質 (省回線)</option>
+          </select>
+        </div>
+        <button id="playerCloseBtn" style="margin:0; padding:5px 12px; font-size:11px; background:var(--ro); color:#fff; border-radius:4px; font-weight:bold; cursor:pointer;">閉じる</button>
+      </div>
     </div>
 
   </div>
@@ -668,24 +710,14 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   </div>
 </div>
 
-<!-- 設定（カラー・画質）変更モーダル -->
+<!-- カラー設定モーダル -->
 <div id="clrmod" class="mod-overlay">
   <div class="clrmc gc" style="max-width:320px;">
-    <h3 style="font-size:13px; color:var(--tx); border-bottom:1px solid var(--bd); padding-bottom:6px; font-weight:bold;">🎨 設定変更（カラー・画質）</h3>
+    <h3 style="font-size:13px; color:var(--tx); border-bottom:1px solid var(--bd); padding-bottom:6px; font-weight:bold;">🎨 カラー設定</h3>
     <div id="clrPrev" class="clr-prev" style="margin:8px 0; min-height:18px;"></div>
     <div class="clrbox" style="margin-bottom:10px;">
       <div class="clrpick-grid" id="clrPick2"></div>
     </div>
-    
-    <div class="fg" style="margin-bottom:10px;">
-      <label class="fl" style="margin-bottom:4px;">画像送信時の画質設定</label>
-      <select id="imgQualitySelectModal" class="inp" style="background:var(--bg); border:1px solid var(--bd);">
-        <option value="low">低画質（最大600px / 品質0.4 / 通信節約）</option>
-        <option value="mid">中画質（最大1000px / 品質0.6 / 推奨）</option>
-        <option value="high">高画質（最大1600px / 品質0.85 / 鮮明）</option>
-      </select>
-    </div>
-
     <div class="clr-btns">
       <button class="clr-cancel" id="clrCancel">キャンセル</button>
       <button class="clr-ok" id="clrOk">適用</button>
@@ -1402,7 +1434,7 @@ async function cMsg(msg) {
       mb.appendChild(errSpan);
     }
   } else {
-    // 純粋な1つの画像URLのみ貼られた場合はインラインで直出し表示（リンクなし）
+    // 純粋な1つの画像URLのみ貼られた場合はインライン表示（リンクなし）
     const isImageOnly = /https?:\/\/[^\s\n<>"]+\.(?:jpg|jpeg|png|gif|webp|bmp)(?:\?[^\s\n<>"]*)?/i.test(txt.trim()) && txt.trim().split(/\s+/).length === 1;
 
     if (isImageOnly) {
@@ -1430,7 +1462,7 @@ async function cMsg(msg) {
         }
       });
 
-      // リンクから各種音楽・動画メディアのURLをパースし、再生バッジとボタンを出力
+      // 各種メディアURLのパース
       const mediaRegexes = [
         { type: "youtube", name: "YouTube", regex: /https?:\/\/(?:[a-zA-Z0-9-]+\.)?(?:youtube\.com|youtu\.be)\/[^\s\n<>"]+/i },
         { type: "niconico", name: "ニコニコ動画", regex: /https?:\/\/(?:[a-zA-Z0-9-]+\.)?(?:nicovideo\.jp|nico\.ms)\/[^\s\n<>"]+/i },
@@ -1455,7 +1487,7 @@ async function cMsg(msg) {
             mBadge.className = `media-badge`;
             mBadge.textContent = target.name;
             
-            // バッジのカラーリング
+            // バッジカラー
             if (target.type === 'youtube') mBadge.style.background = '#ef4444';
             else if (target.type === 'niconico') mBadge.style.background = '#334155';
             else if (target.type === 'audio') mBadge.style.background = '#4f46e5';
@@ -1473,7 +1505,7 @@ async function cMsg(msg) {
 
             mBtnRow.appendChild(mBtn);
 
-            // 音声ファイルの場合はダウンロードボタンを追加
+            // 音声用
             if (target.type === "audio") {
               const dlBtn = document.createElement("button");
               dlBtn.className = "dl-media-btn";
@@ -1488,7 +1520,7 @@ async function cMsg(msg) {
               window.fetchAudioSize(url, dlBtn);
             }
 
-            // カード内から生のURLテキスト（青い重複リンク）を排除。改行下に並列配置されたバッジとボタンのみを描画。
+            // 生URL重複をカット
             mRow.appendChild(mBadge);
             mRow.appendChild(mBtnRow);
             mContainer.appendChild(mRow);
@@ -1526,9 +1558,15 @@ let displayedMsgIds = new Set();
 let myPresRef = null, _roomExpireAt = null, _cOff = null, _pOff = null, _rOff = null, _crOff = null;
 let pendingTimeoutTimer = null;
 
-// 高速同期のためのフラグ・メモリ空間定義
+// 高速同期用
 let _isExiting = false; 
 let _lastPresenceStr = "";
+
+// ホスト用リスナー
+let _hostReqOff = null;
+let _hostBanOff = null;
+let _hostModeOff = null;
+let _myBanOff = null;
 
 // E2EE生キャッシュストレージの仕組み
 let currentRoomMsgs = [];
@@ -1562,7 +1600,7 @@ function untrackAndCacheMessage(id) {
   localStorage.setItem(`nz_chat_raw_${curR}`, JSON.stringify(currentRoomMsgs));
 }
 
-// 複数メッセージの早期バッチレンダリング処理（リフロー削減・描画の高速化）
+// バッチレンダリング処理（リフロー削減・高速化）
 async function processInitialMessages(msgs) {
   const fragment = document.createDocumentFragment();
   const elements = await Promise.all(msgs.map(async (m) => {
@@ -1625,7 +1663,7 @@ async function renderCachedState(hashId, rawRoomId) {
     } catch(e){}
   }
 
-  // メッセージの早期復元 (並列処理)
+  // メッセージの早期復元
   const cachedMsgs = loadChatCache(hashId);
   if (cachedMsgs.length > 0) {
     currentRoomMsgs = cachedMsgs;
@@ -1697,7 +1735,24 @@ async function sendSysMsg(text) {
   });
 }
 
-// 退室処理
+// 追放（BAN）処理
+window.banUser = async (targetUid, name, trip) => {
+  if (!curR || !isHost) return;
+  
+  const updates = {};
+  updates[`rooms/${curR}/banList/${targetUid}`] = { name: name, trip: trip, t: serverTimestamp() };
+  updates[`presence/${curR}/${targetUid}`] = null;
+  updates[`rooms/${curR}/requests/${targetUid}`] = null;
+  
+  await update(ref(db), updates).catch(e => {
+    showToast("❌ BAN処理に失敗しました");
+  });
+  
+  await sendSysMsg(`${name} ${trip || ""} が強制退室（BAN）されました`);
+  showToast("🚫 ユーザーをBANしました");
+};
+
+// 退室
 window.doExit = async () => {
   if (_isExiting) return;
   _isExiting = true;
@@ -1782,10 +1837,16 @@ function clearAll(newHashId = null) {
   if (typeof _pOff === "function"){ _pOff(); _pOff = null; }
   if (typeof _rOff === "function"){ _rOff = null; }
 
+  // ホストリスナー解除
+  if (typeof _hostReqOff === "function") { _hostReqOff(); _hostReqOff = null; }
+  if (typeof _hostBanOff === "function") { _hostBanOff(); _hostBanOff = null; }
+  if (typeof _hostModeOff === "function") { _hostModeOff(); _hostModeOff = null; }
+  if (typeof _myBanOff === "function") { _myBanOff(); _myBanOff = null; }
+
   isLiveMode = false;
   stopTimerLoop();
   
-  // DOMと内部データバッファリセット
+  // DOMリセット
   displayedMsgIds.clear();
   currentRoomMsgs = [];
   D.tli.textContent = "";
@@ -1889,7 +1950,7 @@ async function renderPresenceList(s) {
     if (u.status === "approved" && u.meta) {
       const m = await decryptMeta(u.meta);
       if (m) {
-         decryptedMembers.push({ n: m.n, c: m.c || "#94a3b8", isHost: u.isHost === true });
+         decryptedMembers.push({ id: id, n: m.n, c: m.c || "#94a3b8", isHost: u.isHost === true, p: m.p || "" });
          rawPresenceArrayForDiff.push(`${id}:${m.n}:${m.c}:${u.isHost}`);
       }
     }
@@ -1913,6 +1974,25 @@ async function renderPresenceList(s) {
      sp.className = "chip" + (m.isHost ? " is-host" : "");
      sp.style.color = m.c; sp.style.borderColor = m.c + "44";
      sp.textContent = m.n; 
+
+     // ホスト専用: 他ユーザーをBAN追放するボタンの表示
+     if (isHost && !m.isHost) {
+       const kickBtn = document.createElement("span");
+       kickBtn.textContent = " 🚫";
+       kickBtn.style.color = "var(--ro)";
+       kickBtn.style.fontSize = "9.5px";
+       kickBtn.style.marginLeft = "4px";
+       kickBtn.style.cursor = "pointer";
+       kickBtn.title = "このユーザーをBAN";
+       kickBtn.onclick = (e) => {
+         e.stopPropagation();
+         if (confirm(`本当に ${m.n} をこの部屋からBAN（追放）しますか？`)) {
+           window.banUser(m.id, m.n, m.p);
+         }
+       };
+       sp.appendChild(kickBtn);
+     }
+
      fg.appendChild(sp);
   });
 
@@ -1923,9 +2003,230 @@ async function renderPresenceList(s) {
   D.pcnt.textContent = `${decryptedMembers.length}人`;
 }
 
+// ホスト管理用監視関数
+function listenToHostRequestsAndBans() {
+  if (!curR || !isHost) return;
+
+  // 1. 部屋モードのライブ同期
+  _hostModeOff = onValue(ref(db, `rooms/${curR}/mode`), s => {
+    const mode = s.val() || "open";
+    const radio = document.querySelector(`input[name="roomModeRadio"][value="${mode}"]`);
+    if (radio) radio.checked = true;
+    $("hostRoomModeText").textContent = mode === "invite" ? "招待モード" : "オープン";
+  });
+
+  // 2. 承認申請リストの監視
+  _hostReqOff = onValue(ref(db, `rooms/${curR}/requests`), s => {
+    const listDiv = $("hostRequestList");
+    listDiv.textContent = "";
+    const reqs = s.val() || {};
+    const entries = Object.entries(reqs).filter(([uid, data]) => data && data.status === "pending");
+    
+    if (entries.length === 0) {
+      const span = document.createElement("span");
+      span.style.color = "var(--m2)";
+      span.textContent = "申請はありません";
+      listDiv.appendChild(span);
+      return;
+    }
+    
+    entries.forEach(([uid, data]) => {
+      const row = document.createElement("div");
+      row.style.display = "flex";
+      row.style.justifyContent = "space-between";
+      row.style.alignItems = "center";
+      row.style.padding = "2px 0";
+      row.style.borderBottom = "1px solid rgba(255,255,255,0.02)";
+      
+      const label = document.createElement("span");
+      label.style.overflow = "hidden";
+      label.style.textOverflow = "ellipsis";
+      label.style.whiteSpace = "nowrap";
+      label.style.flex = "1";
+      label.textContent = `${data.name} ${data.trip || ""}`;
+      
+      const btnGroup = document.createElement("div");
+      btnGroup.style.display = "flex";
+      btnGroup.style.gap = "4px";
+      
+      const okBtn = document.createElement("button");
+      okBtn.textContent = "許可";
+      okBtn.style.background = "var(--em)";
+      okBtn.style.color = "#000";
+      okBtn.style.fontWeight = "bold";
+      okBtn.style.padding = "2px 6px";
+      okBtn.style.borderRadius = "3px";
+      okBtn.style.cursor = "pointer";
+      okBtn.onclick = async () => {
+        await update(ref(db, `rooms/${curR}/requests/${uid}`), { status: "approved" });
+        await sendSysMsg(`${data.name} ${data.trip || ""} の入室申請が承認されました`);
+      };
+      
+      const ngBtn = document.createElement("button");
+      ngBtn.textContent = "拒否";
+      ngBtn.style.background = "var(--ro)";
+      ngBtn.style.color = "#fff";
+      ngBtn.style.fontWeight = "bold";
+      ngBtn.style.padding = "2px 6px";
+      ngBtn.style.borderRadius = "3px";
+      ngBtn.style.cursor = "pointer";
+      ngBtn.onclick = async () => {
+        await update(ref(db, `rooms/${curR}/requests/${uid}`), { status: "rejected" });
+      };
+      
+      btnGroup.appendChild(okBtn);
+      btnGroup.appendChild(ngBtn);
+      row.appendChild(label);
+      row.appendChild(btnGroup);
+      listDiv.appendChild(row);
+    });
+  });
+
+  // 3. BANリストの監視
+  _hostBanOff = onValue(ref(db, `rooms/${curR}/banList`), s => {
+    const listDiv = $("hostBanList");
+    listDiv.textContent = "";
+    const bans = s.val() || {};
+    const entries = Object.entries(bans).filter(([uid, data]) => data);
+    
+    if (entries.length === 0) {
+      const span = document.createElement("span");
+      span.style.color = "var(--m2)";
+      span.textContent = "BANリストは空です";
+      listDiv.appendChild(span);
+      return;
+    }
+    
+    entries.forEach(([uid, data]) => {
+      const row = document.createElement("div");
+      row.style.display = "flex";
+      row.style.justifyContent = "space-between";
+      row.style.alignItems = "center";
+      row.style.padding = "2px 0";
+      row.style.borderBottom = "1px solid rgba(255,255,255,0.02)";
+      
+      const label = document.createElement("span");
+      label.style.overflow = "hidden";
+      label.style.textOverflow = "ellipsis";
+      label.style.whiteSpace = "nowrap";
+      label.style.flex = "1";
+      label.textContent = `${data.name || "不明"} ${data.trip || ""}`;
+      
+      const unbanBtn = document.createElement("button");
+      unbanBtn.textContent = "解除";
+      unbanBtn.style.background = "var(--sf)";
+      unbanBtn.style.border = "1px solid var(--bd)";
+      unbanBtn.style.color = "var(--tx)";
+      unbanBtn.style.padding = "1px 6px";
+      unbanBtn.style.borderRadius = "3px";
+      unbanBtn.style.cursor = "pointer";
+      unbanBtn.onclick = async () => {
+        await remove(ref(db, `rooms/${curR}/banList/${uid}`));
+        showToast("✅ BANを解除しました");
+      };
+      
+      row.appendChild(label);
+      row.appendChild(unbanBtn);
+      listDiv.appendChild(row);
+    });
+  });
+}
+
 async function doJoin(roomId, pass, name, trip, initTimer) {
   try {
     const hashId = await getRoomHash(roomId);
+
+    // 1. BANチェック
+    const banCheckSnap = await get(ref(db, `rooms/${hashId}/banList/${myUid}`));
+    if (banCheckSnap.exists()) {
+      D.enBtn.disabled = false;
+      D.enBtn.textContent = "入室 / 作成";
+      alert("❌ この部屋からBANされているため、入室できません。");
+      showLobby();
+      return;
+    }
+
+    const roomRef = ref(db, `rooms/${hashId}`);
+    let snap = await get(roomRef);
+
+    let roomData = snap.exists() ? snap.val() : null;
+    const isRoomHost = roomData ? (roomData.host === myUid) : true;
+    const roomMode = (roomData && roomData.mode) ? roomData.mode : "open";
+
+    // 2. 招待モード & 承認待ちフロー (ホスト以外の通常ユーザーのみ)
+    if (roomData && roomMode === "invite" && !isRoomHost) {
+      const reqRef = ref(db, `rooms/${hashId}/requests/${myUid}`);
+      const reqSnap = await get(reqRef);
+      const reqData = reqSnap.val();
+
+      if (reqData && reqData.status === "approved") {
+        // 承認済みの場合はそのまま入室
+      } else if (reqData && reqData.status === "rejected") {
+        alert("❌ ホストにより入室申請が却下されました。");
+        D.enBtn.disabled = false;
+        D.enBtn.textContent = "入室 / 作成";
+        showLobby();
+        return;
+      } else {
+        // 申請待ち画面表示
+        const waitArea = $("lobbyWaitingArea");
+        const waitInfo = $("waitingInfo");
+        waitInfo.textContent = `${name} ${trip || ""}`;
+
+        $("lobbyInputArea").style.display = "none";
+        waitArea.style.display = "flex";
+
+        // サーバへ申請を送信
+        await set(reqRef, {
+          name: name,
+          trip: trip,
+          status: "pending",
+          t: serverTimestamp()
+        });
+
+        // 申請結果のリアルタイム監視
+        let _lobbyReqOff = onValue(reqRef, async (s) => {
+          const rVal = s.val();
+          if (!rVal) return;
+
+          if (rVal.status === "approved") {
+            if (typeof _lobbyReqOff === "function") _lobbyReqOff();
+            _lobbyReqOff = null;
+
+            waitArea.style.display = "none";
+            $("lobbyInputArea").style.display = "flex";
+
+            // 承認のため入室実行
+            await doJoin(roomId, pass, name, trip, initTimer);
+          } else if (rVal.status === "rejected") {
+            if (typeof _lobbyReqOff === "function") _lobbyReqOff();
+            _lobbyReqOff = null;
+
+            waitArea.style.display = "none";
+            $("lobbyInputArea").style.display = "flex";
+            D.enBtn.disabled = false;
+            D.enBtn.textContent = "入室 / 作成";
+            alert("❌ 入室申請が却下されました。");
+            showLobby();
+          }
+        });
+
+        // 申請キャンセル
+        $("cancelRequestBtn").onclick = async () => {
+          if (typeof _lobbyReqOff === "function") _lobbyReqOff();
+          _lobbyReqOff = null;
+
+          await remove(reqRef);
+
+          waitArea.style.display = "none";
+          $("lobbyInputArea").style.display = "flex";
+          D.enBtn.disabled = false;
+          D.enBtn.textContent = "入室 / 作成";
+          showLobby();
+        };
+        return; 
+      }
+    }
 
     clearAll(hashId); _exitLock = false;
     localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created");
@@ -1957,16 +2258,6 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
 
     curR = hashId; rawR = roomId; curN = name;
     
-    const roomRef = ref(db, `rooms/${hashId}`);
-    let snap = await get(roomRef);
-
-    if (snap.exists() && snap.val().expireAt < srvNow()) { 
-      await wipe(hashId); 
-      snap = await get(roomRef); 
-    }
-
-    let roomData = null;
-    
     if (!snap.exists()) {
       localStorage.removeItem(`nz_chat_raw_${hashId}`);
       currentRoomMsgs = [];
@@ -1979,7 +2270,7 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
 
       sessionStorage.setItem("nz_room_created_flag", "true");
 
-      roomData = { created: serverTimestamp(), host: myUid, expireAt: expireAtVal };
+      roomData = { created: serverTimestamp(), host: myUid, expireAt: expireAtVal, mode: "open" };
       await set(roomRef, roomData);
       
       myPresRef = ref(db, `presence/${hashId}/${myUid}`);
@@ -1990,7 +2281,6 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
       await enterChatUI(localRoomData, pass);
     } 
     else {
-      roomData = snap.val();
       _roomExpireAt = roomData.expireAt;
       isHost = (roomData.host === myUid);
       myPresRef = ref(db, `presence/${hashId}/${myUid}`);
@@ -2076,6 +2366,28 @@ async function enterChatUI(roomData, pass) {
   _crOff = onChildRemoved(ref(db, `chat/${curR}`), snap => {
     removeMessageEl(snap.key);
   });
+
+  // BAN監視
+  _myBanOff = onValue(ref(db, `rooms/${curR}/banList/${myUid}`), s => {
+    if (s.exists()) {
+      if (typeof _myBanOff === "function") { _myBanOff(); _myBanOff = null; }
+      doExit();
+      alert("この部屋から追放（BAN）されました。");
+    }
+  });
+
+  // ホスト機能の設定
+  if (isHost) {
+    $("hostPanel").style.display = "flex";
+    document.querySelectorAll('input[name="roomModeRadio"]').forEach(r => {
+      r.onclick = (e) => {
+        update(ref(db, `rooms/${curR}`), { mode: e.target.value });
+      };
+    });
+    listenToHostRequestsAndBans();
+  } else {
+    $("hostPanel").style.display = "none";
+  }
   
   isLiveMode = true; setTimeout(()=> scBottom(true), 300);
 }
@@ -2096,7 +2408,7 @@ function initConnectionMonitor() {
   });
 }
 
-// 接続復旧時の完全再同期ロジック
+// 接続復旧時の完全再同期
 async function forceResync() {
   if (!curR || !masterKey) return;
   try {
@@ -2204,28 +2516,6 @@ async function sendMsg(overrideText = null, imgData = null) {
   });
 }
 
-// 画質設定値の同期
-let imgQuality = localStorage.getItem("nz_img_quality") || "mid";
-const D_imgQualitySelectLobby = $("imgQualitySelectLobby");
-const D_imgQualitySelectModal = $("imgQualitySelectModal");
-
-if (D_imgQualitySelectLobby) D_imgQualitySelectLobby.value = imgQuality;
-if (D_imgQualitySelectModal) D_imgQualitySelectModal.value = imgQuality;
-
-const syncImgQuality = (val) => {
-  imgQuality = val;
-  localStorage.setItem("nz_img_quality", val);
-  if (D_imgQualitySelectLobby) D_imgQualitySelectLobby.value = val;
-  if (D_imgQualitySelectModal) D_imgQualitySelectModal.value = val;
-};
-
-if (D_imgQualitySelectLobby) {
-  D_imgQualitySelectLobby.addEventListener("change", (e) => syncImgQuality(e.target.value));
-}
-if (D_imgQualitySelectModal) {
-  D_imgQualitySelectModal.addEventListener("change", (e) => syncImgQuality(e.target.value));
-}
-
 D.imgBtn.onclick = () => D.fileInput.click();
 D.fileInput.onchange = (e) => {
   const file = e.target.files[0]; if (!file) return;
@@ -2245,17 +2535,9 @@ D.fileInput.onchange = (e) => {
       const cvs = document.createElement("canvas"); 
       let w = img.width, h = img.height;
       
-      // 動的解像度/圧縮設定
-      let maxDim = 1000;
-      let quality = 0.6;
-      const selectedQuality = localStorage.getItem("nz_img_quality") || "mid";
-      if (selectedQuality === "low") {
-        maxDim = 600;
-        quality = 0.4;
-      } else if (selectedQuality === "high") {
-        maxDim = 1600;
-        quality = 0.85;
-      }
+      // 動的にアップロード画質を自動最適化（選択なし軽量化）
+      const maxDim = 800;
+      const quality = 0.5;
 
       if (w > maxDim || h > maxDim) {
         if (w > h) {
@@ -2393,7 +2675,7 @@ D.jumpDownBtn.onclick = () => {
   D.tl.scrollTo({ top: D.tl.scrollHeight, behavior: "smooth" });
 };
 
-// 画像拡大モーダル用のピンチズーム・ドラッグ
+// 画像拡大モーダル
 let scale = 1, panX = 0, panY = 0;
 let lastPanX = 0, lastPanY = 0, isPanning = false;
 const imgEl = D.imgViewSrc;
@@ -2628,7 +2910,6 @@ const onMove = (e) => {
   let newLeft = initialLeft + dx;
   let newTop = initialTop + dy;
   
-  // 画面外に飛び出さないようクランプ
   newLeft = Math.max(0, Math.min(appRect.width - playerRect.width, newLeft));
   newTop = Math.max(0, Math.min(appRect.height - playerRect.height, newTop));
   
@@ -2651,13 +2932,12 @@ document.addEventListener('touchend', onEnd, { passive: true });
 function closeFloatingPlayer() {
   if (playerNode) {
     playerNode.style.display = "none";
-    $("playerContent").innerHTML = ""; // 前の再生要素を確実に消滅
+    $("playerContent").innerHTML = ""; 
   }
 }
 
 playerCloseBtn.addEventListener("click", closeFloatingPlayer);
 
-// バイト数から読みやすい容量テキストへ変換するヘルパー
 function formatBytes(bytes) {
   const b = parseInt(bytes);
   if (isNaN(b) || b <= 0) return "容量不明";
@@ -2666,11 +2946,11 @@ function formatBytes(bytes) {
   return `${(b / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
 }
 
-// 非同期で音声ファイルのContent-Lengthを取得してボタンに反映
+// 音声ファイルのContent-Length取得
 window.fetchAudioSize = async (url, btn) => {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000); // 2秒タイムアウト設定
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
     const res = await fetch(url, { method: 'HEAD', signal: controller.signal });
     clearTimeout(timeoutId);
     const len = res.headers.get('content-length');
@@ -2701,7 +2981,7 @@ window.fetchAudioSize = async (url, btn) => {
   btn.dataset.sizeText = "容量不明";
 };
 
-// 【ダウンロード支援】一発でBlobデータとして保存をトリガーする機能（CORS回避を含む）
+// Blob保存をトリガー
 async function downloadFile(url, filename) {
   showToast("📥 ダウンロード準備中...");
   try {
@@ -2735,7 +3015,6 @@ async function downloadFile(url, filename) {
   }
 }
 
-// 音楽ファイル保存用の確認ダイアログ発火トリガー
 window.triggerAudioDownload = async (url, btn) => {
   const filename = url.split('/').pop() || "download.mp3";
   const sizeText = btn.dataset.sizeText || "容量不明";
@@ -2745,8 +3024,14 @@ window.triggerAudioDownload = async (url, btn) => {
   }
 };
 
-// グローバル展開プレイヤー呼び出し
-window.openFloatingPlayer = async (url, type) => {
+let activeVideoUrl = "";
+let activeVideoType = "";
+
+// 音声再生品質・画質の制御に対応したフローティングプレイヤー
+window.openFloatingPlayer = async (url, type, quality = "auto") => {
+  activeVideoUrl = url;
+  activeVideoType = type;
+
   const plRect = D.pl.getBoundingClientRect();
   const appRect = D.app.getBoundingClientRect();
   
@@ -2760,14 +3045,22 @@ window.openFloatingPlayer = async (url, type) => {
   const contentNode = $("playerContent");
   contentNode.innerHTML = ""; 
 
+  // 品質セレクト初期値の同期
+  $("playerQualitySelect").value = quality;
+
   if (type === "youtube") {
     const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i);
     if (ytMatch) {
       const id = ytMatch[1];
       $("playerTitle").textContent = "YouTube再生";
       
+      // クエリ画質指定パラメータマッピング (vq)
+      let ytQualityParam = "";
+      if (quality === "high") ytQualityParam = "&vq=hd1080";
+      else if (quality === "low") ytQualityParam = "&vq=small";
+
       const iframe = document.createElement("iframe");
-      iframe.src = `https://www.youtube.com/embed/${id}?autoplay=0&enablejsapi=1`;
+      iframe.src = `https://www.youtube.com/embed/${id}?autoplay=0&enablejsapi=1${ytQualityParam}`;
       iframe.frameBorder = "0";
       iframe.allow = "encrypted-media";
       iframe.allowFullscreen = true;
@@ -2830,25 +3123,29 @@ window.openFloatingPlayer = async (url, type) => {
   }
 };
 
-// YouTube、ニコニコ動画の再生終了イベントをキャッチして自動クローズ
+// 画質切替イベントハンドラー
+$("playerQualitySelect").addEventListener("change", (e) => {
+  if (activeVideoUrl && activeVideoType) {
+    window.openFloatingPlayer(activeVideoUrl, activeVideoType, e.target.value);
+  }
+});
+
+// 再生終了イベントのキャッチ
 window.addEventListener("message", (e) => {
   try {
     const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
     if (!data) return;
 
-    // YouTube 終了イベント検知
     if (data.event === "infoDelivery" && data.info && data.info.playerState === 0) {
       closeFloatingPlayer();
     }
-
-    // ニコニコ動画 終了イベント検知
     if (data.eventName === "playerStatusChange" && data.data && data.data.playerStatus === 4) {
       closeFloatingPlayer();
     }
   } catch (err) {}
 });
 
-// 早期ウォームブートの適用
+// 早期ウォームブート
 const checkAndWarmboot = async () => {
   const sp = new URLSearchParams(location.search);
   const urlR = sp.get("r");
@@ -2856,15 +3153,21 @@ const checkAndWarmboot = async () => {
   const savedActiveCreated = localStorage.getItem("nz_active_created");
   const savedNi = localStorage.getItem("nz_ni");
 
-  if (urlR && urlR !== savedActiveRi) {
-    localStorage.removeItem("nz_active_ri");
-    localStorage.removeItem("nz_active_created");
-    localStorage.setItem("nz_is_in_room", "false");
-    D.lobby.style.display = "flex";
-    return;
-  }
-
+  // 入室中引き戻し保護
   if (savedActiveRi && savedActiveCreated && savedNi) {
+    if (urlR && urlR !== savedActiveRi) {
+      showToast("⚠️ 既に入室中の部屋があるため、元の部屋へ移動します");
+      const newUrl = `${location.origin}${location.pathname}?r=${encodeURIComponent(savedActiveRi)}${location.hash}`;
+      window.history.replaceState({}, document.title, newUrl);
+      
+      const hashId = await getRoomHash(savedActiveRi);
+      const previouslyEntered = localStorage.getItem(`nz_entered_${hashId}`) === "true";
+      if (previouslyEntered) {
+        await renderCachedState(hashId, savedActiveRi);
+      }
+      return;
+    }
+    
     const hashId = await getRoomHash(savedActiveRi);
     const previouslyEntered = localStorage.getItem(`nz_entered_${hashId}`) === "true";
     if (previouslyEntered) {
@@ -2893,18 +3196,50 @@ const initUserSession = async (user) => {
   
   if (savedActiveRi && savedActiveCreated && savedNi) {
     if (urlR && urlR !== savedActiveRi) {
-      D.ri.value = urlR;
-      localStorage.setItem("nz_ri_val", urlR);
-      const initHash = location.hash ? decodeURIComponent(location.hash.substring(1)) : "";
-      if (initHash) {
-        D.pi.value = initHash;
-        getRoomHash(urlR).then(hashId => {
-          localStorage.setItem(`nz_pi_${hashId}`, initHash);
-          localStorage.setItem("nz_pi_val", initHash);
-        });
+      const newUrl = `${location.origin}${location.pathname}?r=${encodeURIComponent(savedActiveRi)}${location.hash}`;
+      window.history.replaceState({}, document.title, newUrl);
+      
+      try {
+        const hashId = await getRoomHash(savedActiveRi);
+        const savedPiRoom = localStorage.getItem(`nz_pi_${hashId}`) || savedPi || "";
+        const previouslyEntered = localStorage.getItem(`nz_entered_${hashId}`) === "true";
+        
+        if (previouslyEntered) {
+          let cachedKeyHex = localStorage.getItem(`nz_mkey_${hashId}`);
+          if (cachedKeyHex) {
+            masterKey = await importKeyFromHex(cachedKeyHex);
+          } else if (savedPiRoom) {
+            masterKey = await deriveMasterKey(savedActiveRi, savedPiRoom);
+            const exportedHex = await exportKeyToHex(masterKey);
+            localStorage.setItem(`nz_mkey_${hashId}`, exportedHex);
+          }
+          if (masterKey) {
+            await renderCachedState(hashId, savedActiveRi);
+          }
+        }
+        
+        const snap = await get(ref(db, `rooms/${hashId}`));
+        if (snap.exists() && snap.val().expireAt > srvNow()) {
+          localStorage.setItem("nz_is_in_room", "true");
+          const tripStyled = await makeTrip(savedNi, savedTripKey); 
+          localStorage.setItem("nz_mytrip_styled", tripStyled);
+          
+          await doJoin(savedActiveRi, savedPiRoom, savedNi, tripStyled, savedTimer);
+          return;
+        } else {
+          localStorage.removeItem("nz_active_ri"); 
+          localStorage.removeItem("nz_active_created");
+          localStorage.removeItem("nz_is_in_room");
+          localStorage.removeItem(`nz_mkey_${hashId}`);
+          localStorage.removeItem(`nz_pi_${hashId}`);
+          doExit();
+          return;
+        }
+      } catch(e) {
+        console.error("セッション復旧エラー:", e);
+        doExit();
+        return;
       }
-      showLobby();
-      return;
     }
 
     try {

@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0f172a">
 <title>NEZU ONETIME CHAT</title>
 <style>
-/* 共通リセット＆変数 */
+/* 共通リreset＆変数 */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
   --bg:#0f172a;--sf:#1e293b;--s2:#0a1628;--bd:#334155;
@@ -54,7 +54,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .lbt{font-size:16px;font-weight:900;color:#818cf8;text-align:center;letter-spacing:.03em;margin-bottom:0;}
 .lbsub{font-size:10px;font-weight:700;color:var(--m2);text-align:center;letter-spacing:.05em;margin-top:-2px;margin-bottom:2px;}
 .lbi{display:flex;flex-direction:column;gap:6px;width:100%}
-.ibox{background:rgba(79,70,229,.03);border:1px solid rgba(99,102,241,.12);border-radius:4px;padding:6px 10px;font-size:11px;color:var(--mu);line-height:1.45;margin-bottom:2px;}
+.ibox{background:rgba(79,70,229,.03);border:1px solid rgba(99,102,241,.12);border-radius:4px;padding:8px 10px;font-size:11px;color:var(--mu);line-height:1.45;margin-bottom:2px;}
 .ibox b{color:#a5b4fc}
 #lberr{background:var(--rg);border:1px solid rgba(244,63,94,.3);border-radius:4px;padding:4px;font-size:11px;color:#fda4af;display:none;text-align:center;font-weight:bold}
 
@@ -221,7 +221,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   opacity: 0.9;
 }
 
-/* メディアリンク・バッジデザイン（改行・整列最適化： 生のURLの下に [バッジ] と [ボタン] を配置） */
+/* メディアリンク・バッジデザイン（改行・整列最適化： 生URLを排除しスマート化） */
 .media-link-container {
   display: flex; 
   flex-direction: column; 
@@ -239,11 +239,9 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   display: flex; 
   align-items: center; 
   gap: 8px; 
-  margin-top: 2px;
   width: 100%;
 }
 .media-badge {display:inline-flex; align-items:center; gap:2px; font-weight:800; padding:2px 5px; border-radius:3px; font-size:9px; color:#fff; text-transform:uppercase; vertical-align:middle; line-height:1; white-space:nowrap; user-select: none; pointer-events: none;}
-.media-link {color:#60a5fa; text-decoration:underline; font-size:11px; word-break:break-all; display:block; width:100%; margin-bottom: 2px;}
 .media-btn-row {display:flex; gap:6px; flex-wrap:wrap; align-items:center;}
 .open-player-btn, .dl-media-btn {
   background:var(--in); color:#fff; font-size:10px; font-weight:bold; border-radius:4px; padding:3px 10px; cursor:pointer; border:none; transition:background 0.15s; white-space:nowrap;
@@ -478,9 +476,11 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <div class="lbsub">DISPOSABLE & ZERO-KNOWLEDGE E2EE</div>
     <div class="lbi">
       <div class="ibox">
-        🔒 <b>管理者も覗けない完全秘密チャット</b><br>
-        ・<b>二重暗号化 (E2EE):</b> 発言や画像は送信される前にすべてブラウザ内で暗号化されます。暗号を解くキー（部屋パスワード）はサーバーへ送信されないため、システム管理者やサーバー運営者でも会話内容を覗き見することは物理的に不可能です。<br>
-        ・<b>データの完全自動消滅:</b> 部屋の寿命が切れた瞬間にすべてのデータがサーバーから完全に物理削除され消滅します。最後の一人が退室、または制限時間経過により無人になった瞬間に、サーバーからすべてのデータが自動的に完全消滅するためログの収集や復元は一切できません。
+        🔒 <b>管理者も覗けない完全秘密チャット (E2EE)</b>
+        <ul style="margin-left: 14px; margin-top: 4px; padding-left: 0; display: flex; flex-direction: column; gap: 3px;">
+          <li><b>エンドツーエンド二重暗号化:</b> パスワード（共通鍵）はサーバーに送信されず、ブラウザ内で強固に暗号化されます。</li>
+          <li><b>完全自動消滅:</b> 寿命が切れるか、最後の一人が退室した瞬間にサーバー上のデータが物理的に即時完全消去されます。</li>
+        </ul>
       </div>
       <div id="lberr"></div>
 
@@ -510,6 +510,14 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         <div class="fg">
           <label class="fl">部屋の有効時間 (1〜180分) ※直接入力可</label>
           <input type="number" id="timeri" class="inp" min="1" max="180" value="30">
+        </div>
+        <div class="fg">
+          <label class="fl">画像送信時の画質設定</label>
+          <select id="imgQualitySelectLobby" class="inp" style="background:var(--s2); border:1px solid var(--bd);">
+            <option value="low">低画質（最大600px / 品質0.4 / 通信節約）</option>
+            <option value="mid" selected>中画質（最大1000px / 品質0.6 / 推奨）</option>
+            <option value="high">高画質（最大1600px / 品質0.85 / 鮮明）</option>
+          </select>
         </div>
       </div>
 
@@ -550,7 +558,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         </div>
         <div class="hbs">
           <button id="copyUrlBtn" title="招待URLをコピー">🔗 URL</button>
-          <button class="bclr" id="clrBtn"><span class="bclr-dot" id="clrDot"></span> 色</button>
+          <button class="bclr" id="clrBtn" title="カラー・画質設定"><span class="bclr-dot" id="clrDot"></span> 設定</button>
           <button class="bx" id="exBtn" title="退室">退室</button>
         </div>
       </div>
@@ -660,14 +668,24 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   </div>
 </div>
 
-<!-- カラー変更モーダル -->
+<!-- 設定（カラー・画質）変更モーダル -->
 <div id="clrmod" class="mod-overlay">
   <div class="clrmc gc" style="max-width:320px;">
-    <h3 style="font-size:13px; color:var(--tx); border-bottom:1px solid var(--bd); padding-bottom:6px; font-weight:bold;">🎨 カラー設定</h3>
+    <h3 style="font-size:13px; color:var(--tx); border-bottom:1px solid var(--bd); padding-bottom:6px; font-weight:bold;">🎨 設定変更（カラー・画質）</h3>
     <div id="clrPrev" class="clr-prev" style="margin:8px 0; min-height:18px;"></div>
     <div class="clrbox" style="margin-bottom:10px;">
       <div class="clrpick-grid" id="clrPick2"></div>
     </div>
+    
+    <div class="fg" style="margin-bottom:10px;">
+      <label class="fl" style="margin-bottom:4px;">画像送信時の画質設定</label>
+      <select id="imgQualitySelectModal" class="inp" style="background:var(--bg); border:1px solid var(--bd);">
+        <option value="low">低画質（最大600px / 品質0.4 / 通信節約）</option>
+        <option value="mid">中画質（最大1000px / 品質0.6 / 推奨）</option>
+        <option value="high">高画質（最大1600px / 品質0.85 / 鮮明）</option>
+      </select>
+    </div>
+
     <div class="clr-btns">
       <button class="clr-cancel" id="clrCancel">キャンセル</button>
       <button class="clr-ok" id="clrOk">適用</button>
@@ -677,19 +695,38 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 
 <!-- ガイドモーダル -->
 <div id="gmod" class="mod-overlay">
-  <div class="gc" style="max-width:360px;">
-    <h3 style="font-size:14px; color:#818cf8; border-bottom:1px solid var(--bd); padding-bottom:6px; margin-bottom:8px; font-weight:bold;">📖 ガイド & セキュリティ仕様</h3>
-    <div style="display:flex; flex-direction:column; gap:8px; font-size:11px; line-height:1.5;">
-      <div class="gs">
-        <h4>🔒 エンドツーエンド暗号化 (E2EE)</h4>
-        入力されたパスワードからブラウザ内で共通鍵（AES-GCM-256）を安全に生成し、暗号化します。パスワードはサーバーへ一切送信されません。
+  <div class="gc" style="max-width:380px;">
+    <h3 style="font-size:15px; color:#818cf8; border-bottom:1px solid var(--bd); padding-bottom:8px; margin-bottom:10px; font-weight:bold; text-align:center;">📖 使い方・セキュリティガイド</h3>
+    
+    <div style="display:flex; flex-direction:column; gap:10px; font-size:12px; line-height:1.5; max-height:60vh; overflow-y:auto; padding-right:4px;">
+      
+      <div class="gs" style="border-left-color: var(--em);">
+        <h4 style="color: var(--em); font-size: 13px; margin-bottom: 4px;">🚀 3ステップの使い方</h4>
+        <ol style="margin-left: 16px; padding-left: 0; display: flex; flex-direction: column; gap: 4px;">
+          <li><b>表示名</b>と本人証明用の<b>トリップキー</b>を入力します。</li>
+          <li>任意の<b>部屋ID</b>と<b>パスワード</b>を入力し（または🎲で自動生成）、「入室 / 作成」を押します。</li>
+          <li>表示される<b>URL</b>を共有し、相手も同じパスワードを入力すれば安全なチャットを開始できます。</li>
+        </ol>
       </div>
-      <div class="gs">
-        <h4>⚠️ データの完全自動消滅</h4>
-        部屋の寿命が切れるか、最後の一人が退室した瞬間に、サーバー上の該当データは物理的に完全消去され復元不可能になります。
+
+      <div class="gs" style="border-left-color: #60a5fa;">
+        <h4 style="color: #60a5fa; font-size: 13px; margin-bottom: 4px;">🔒 エンドツーエンド暗号化（E2EE）</h4>
+        入力されたパスワードはサーバーに送信されません。ブラウザ上で直接、強力な暗号規格である <b>AES-GCM-256</b> の共通鍵を生成し、メッセージや画像を送信する前にすべて端末内で暗号化します。これにより、中継サーバーでも復号は物理的に不可能です。
       </div>
+
+      <div class="gs" style="border-left-color: var(--ro);">
+        <h4 style="color: var(--ro); font-size: 13px; margin-bottom: 4px;">⏳ データ消滅とライフタイム</h4>
+        部屋には有効期限（寿命）があり、画面内の「⏱ 寿命設定」から調整できます（ホスト専用）。
+        <b>【データが完全に消滅するトリガー】</b>
+        <ul style="margin-left: 14px; padding-left: 0; display: flex; flex-direction: column; gap: 2px; margin-top: 2px;">
+          <li>最後の一人が「退室」ボタンを押して部屋を離れた瞬間</li>
+          <li>設定されたルームの有効時間が経過し、タイムアウトした瞬間</li>
+        </ul>
+        ※消滅したデータはサーバーから物理的に削除され、運営者でも二度と復元できません。
+      </div>
+      
     </div>
-    <button class="btn bq" id="gcBtn" style="margin-top:12px; width:100%;">閉じる</button>
+    <button class="btn bq" id="gcBtn" style="margin-top:14px; width:100%; font-weight:bold;">閉じる</button>
   </div>
 </div>
 
@@ -1216,7 +1253,7 @@ function trimTimeline() {
   }
 }
 
-// 描画処理の完全DOM API化 (innerHTMLの廃止)
+// 描画処理の完全DOM API化 (innerHTMLの廃止、生動画リンク表示をカット)
 async function cMsg(msg) {
   const msgTs = msg.t || srvNow();
 
@@ -1423,19 +1460,11 @@ async function cMsg(msg) {
             else if (target.type === 'niconico') mBadge.style.background = '#334155';
             else if (target.type === 'audio') mBadge.style.background = '#4f46e5';
 
-            const mLink = document.createElement("a");
-            mLink.href = url;
-            mLink.target = "_blank";
-            mLink.rel = "noopener noreferrer";
-            mLink.className = "media-link";
-            mLink.textContent = url;
-
             const mBtnRow = document.createElement("div");
             mBtnRow.className = "media-btn-row";
 
             const mBtn = document.createElement("button");
             mBtn.className = "open-player-btn";
-            // ユーザーに本画面内(チャット内)で再生される挙動であることが明確に伝わる最適な表記に変更
             mBtn.textContent = "チャット内で再生";
 
             mBtn.addEventListener("click", () => {
@@ -1444,7 +1473,7 @@ async function cMsg(msg) {
 
             mBtnRow.appendChild(mBtn);
 
-            // 音声ファイルの場合は非同期でサイズを取得してダウンロードボタンを追加
+            // 音声ファイルの場合はダウンロードボタンを追加
             if (target.type === "audio") {
               const dlBtn = document.createElement("button");
               dlBtn.className = "dl-media-btn";
@@ -1459,8 +1488,7 @@ async function cMsg(msg) {
               window.fetchAudioSize(url, dlBtn);
             }
 
-            // 指定順序：生のままのURL → 改行 → [バッジ] と [ボタン] (並列配置)
-            mContainer.appendChild(mLink);
+            // カード内から生のURLテキスト（青い重複リンク）を排除。改行下に並列配置されたバッジとボタンのみを描画。
             mRow.appendChild(mBadge);
             mRow.appendChild(mBtnRow);
             mContainer.appendChild(mRow);
@@ -1669,7 +1697,7 @@ async function sendSysMsg(text) {
   });
 }
 
-// 確実に即削除
+// 退室処理
 window.doExit = async () => {
   if (_isExiting) return;
   _isExiting = true;
@@ -1763,11 +1791,7 @@ function clearAll(newHashId = null) {
   D.tli.textContent = "";
 
   // プレイヤーの完全停止
-  const playerNode = $("floatingPlayer");
-  if (playerNode) {
-    playerNode.style.display = "none";
-    $("playerContent").innerHTML = "";
-  }
+  closeFloatingPlayer();
 
   if (!newHashId) {
     masterKey = null; 
@@ -2180,6 +2204,28 @@ async function sendMsg(overrideText = null, imgData = null) {
   });
 }
 
+// 画質設定値の同期
+let imgQuality = localStorage.getItem("nz_img_quality") || "mid";
+const D_imgQualitySelectLobby = $("imgQualitySelectLobby");
+const D_imgQualitySelectModal = $("imgQualitySelectModal");
+
+if (D_imgQualitySelectLobby) D_imgQualitySelectLobby.value = imgQuality;
+if (D_imgQualitySelectModal) D_imgQualitySelectModal.value = imgQuality;
+
+const syncImgQuality = (val) => {
+  imgQuality = val;
+  localStorage.setItem("nz_img_quality", val);
+  if (D_imgQualitySelectLobby) D_imgQualitySelectLobby.value = val;
+  if (D_imgQualitySelectModal) D_imgQualitySelectModal.value = val;
+};
+
+if (D_imgQualitySelectLobby) {
+  D_imgQualitySelectLobby.addEventListener("change", (e) => syncImgQuality(e.target.value));
+}
+if (D_imgQualitySelectModal) {
+  D_imgQualitySelectModal.addEventListener("change", (e) => syncImgQuality(e.target.value));
+}
+
 D.imgBtn.onclick = () => D.fileInput.click();
 D.fileInput.onchange = (e) => {
   const file = e.target.files[0]; if (!file) return;
@@ -2198,7 +2244,19 @@ D.fileInput.onchange = (e) => {
     img.onload = async () => {
       const cvs = document.createElement("canvas"); 
       let w = img.width, h = img.height;
-      const maxDim = 1000;
+      
+      // 動的解像度/圧縮設定
+      let maxDim = 1000;
+      let quality = 0.6;
+      const selectedQuality = localStorage.getItem("nz_img_quality") || "mid";
+      if (selectedQuality === "low") {
+        maxDim = 600;
+        quality = 0.4;
+      } else if (selectedQuality === "high") {
+        maxDim = 1600;
+        quality = 0.85;
+      }
+
       if (w > maxDim || h > maxDim) {
         if (w > h) {
           h = Math.round((h * maxDim) / w);
@@ -2210,7 +2268,7 @@ D.fileInput.onchange = (e) => {
       }
       cvs.width = w; cvs.height = h; 
       cvs.getContext("2d").drawImage(img, 0, 0, w, h);
-      await sendMsg(null, cvs.toDataURL("image/jpeg", 0.6));
+      await sendMsg(null, cvs.toDataURL("image/jpeg", quality));
       
       spin.remove();
       if (svgEl) svgEl.style.display = "";
@@ -2590,10 +2648,14 @@ dragHeader.addEventListener('touchstart', onStart, { passive: true });
 document.addEventListener('touchmove', onMove, { passive: true });
 document.addEventListener('touchend', onEnd, { passive: true });
 
-playerCloseBtn.addEventListener("click", () => {
-  playerNode.style.display = "none";
-  $("playerContent").innerHTML = ""; // 完全に消去
-});
+function closeFloatingPlayer() {
+  if (playerNode) {
+    playerNode.style.display = "none";
+    $("playerContent").innerHTML = ""; // 前の再生要素を確実に消滅
+  }
+}
+
+playerCloseBtn.addEventListener("click", closeFloatingPlayer);
 
 // バイト数から読みやすい容量テキストへ変換するヘルパー
 function formatBytes(bytes) {
@@ -2607,7 +2669,6 @@ function formatBytes(bytes) {
 // 非同期で音声ファイルのContent-Lengthを取得してボタンに反映
 window.fetchAudioSize = async (url, btn) => {
   try {
-    // 1. 直接HEADリクエストの送信（CORS許可対象時）
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2000); // 2秒タイムアウト設定
     const res = await fetch(url, { method: 'HEAD', signal: controller.signal });
@@ -2622,7 +2683,6 @@ window.fetchAudioSize = async (url, btn) => {
   } catch (e) {}
 
   try {
-    // 2. allorigins raw proxy経由でのHEADリクエスト
     const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2000);
@@ -2647,7 +2707,6 @@ async function downloadFile(url, filename) {
   try {
     let res = await fetch(url).catch(() => null);
     if (!res || !res.ok) {
-      // CORSをバイパスするためにAllorigins raw proxyを最終解決フォールバックに採用
       res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
     }
     if (res && res.ok) {
@@ -2665,7 +2724,6 @@ async function downloadFile(url, filename) {
       throw new Error();
     }
   } catch {
-    // 最終防衛線：新しいタブでファイルとしてロード
     const a = document.createElement("a");
     a.href = url;
     a.target = "_blank";
@@ -2700,31 +2758,95 @@ window.openFloatingPlayer = async (url, type) => {
   playerNode.style.display = "flex";
 
   const contentNode = $("playerContent");
-  contentNode.innerHTML = ""; // 前の再生要素を確実に消滅させる (1動画・1音楽制限)
+  contentNode.innerHTML = ""; 
 
-  // すべてautoplayを排除、またはautoplay=0に設定（即再生をブロック）
   if (type === "youtube") {
-    // 短縮URLやshortsなども完全にカバーする広域抽出正規表現
     const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i);
     if (ytMatch) {
       const id = ytMatch[1];
       $("playerTitle").textContent = "YouTube再生";
-      contentNode.innerHTML = `<iframe src="https://www.youtube.com/embed/${id}?autoplay=0" frameborder="0" allow="encrypted-media" allowfullscreen style="width:100%; height:100%;"></iframe>`;
+      
+      const iframe = document.createElement("iframe");
+      iframe.src = `https://www.youtube.com/embed/${id}?autoplay=0&enablejsapi=1`;
+      iframe.frameBorder = "0";
+      iframe.allow = "encrypted-media";
+      iframe.allowFullscreen = true;
+      iframe.style.width = "100%";
+      iframe.style.height = "100%";
+      iframe.onload = () => {
+        try {
+          iframe.contentWindow.postMessage(JSON.stringify({ event: "listening", id: 1, channel: "widget" }), "*");
+        } catch(e) {}
+      };
+      
+      contentNode.appendChild(iframe);
     }
   } else if (type === "niconico") {
-    // 広くニコニコ動画のwatch IDを特定するパターン
     const nicoMatch = url.match(/(?:nicovideo\.jp\/watch\/|nico\.ms\/)(sm[0-9]+|so[0-9]+|[0-9]+)/i);
     if (nicoMatch) {
       const id = nicoMatch[1];
       $("playerTitle").textContent = "ニコニコ動画再生";
-      contentNode.innerHTML = `<iframe src="https://embed.nicovideo.jp/watch/${id}" frameborder="0" allowfullscreen style="width:100%; height:100%;"></iframe>`;
+      
+      const iframe = document.createElement("iframe");
+      iframe.src = `https://embed.nicovideo.jp/watch/${id}?jsapi=1`;
+      iframe.frameBorder = "0";
+      iframe.allowFullscreen = true;
+      iframe.style.width = "100%";
+      iframe.style.height = "100%";
+      
+      contentNode.appendChild(iframe);
     }
   } else if (type === "audio") {
     $("playerTitle").textContent = "音声再生";
-    // controls属性のみとし、autoplay属性を完全に排除
-    contentNode.innerHTML = `<div style="padding:12px; width:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; background:var(--sf); height:100%;"><audio src="${url}" controls style="width:100%;"></audio><div style="font-size:9.5px; color:var(--mu); margin-top:8px; word-break:break-all; text-align:center;">${url.split('/').pop()}</div></div>`;
+    const aud = document.createElement("audio");
+    aud.src = url;
+    aud.controls = true;
+    aud.style.width = "100%";
+    aud.addEventListener("ended", () => {
+      closeFloatingPlayer();
+    });
+    
+    const wrapper = document.createElement("div");
+    wrapper.style.padding = "12px";
+    wrapper.style.width = "100%";
+    wrapper.style.display = "flex";
+    wrapper.style.flexDirection = "column";
+    wrapper.style.justifyContent = "center";
+    wrapper.style.alignItems = "center";
+    wrapper.style.background = "var(--sf)";
+    wrapper.style.height = "100%";
+    
+    const label = document.createElement("div");
+    label.style.fontSize = "9.5px";
+    label.style.color = "var(--mu)";
+    label.style.marginTop = "8px";
+    label.style.wordBreak = "break-all";
+    label.style.textAlign = "center";
+    label.textContent = url.split('/').pop();
+    
+    wrapper.appendChild(aud);
+    wrapper.appendChild(label);
+    contentNode.appendChild(wrapper);
   }
 };
+
+// YouTube、ニコニコ動画の再生終了イベントをキャッチして自動クローズ
+window.addEventListener("message", (e) => {
+  try {
+    const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
+    if (!data) return;
+
+    // YouTube 終了イベント検知
+    if (data.event === "infoDelivery" && data.info && data.info.playerState === 0) {
+      closeFloatingPlayer();
+    }
+
+    // ニコニコ動画 終了イベント検知
+    if (data.eventName === "playerStatusChange" && data.data && data.data.playerStatus === 4) {
+      closeFloatingPlayer();
+    }
+  } catch (err) {}
+});
 
 // 早期ウォームブートの適用
 const checkAndWarmboot = async () => {

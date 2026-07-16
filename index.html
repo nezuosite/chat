@@ -242,7 +242,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   opacity: 0.9;
 }
 
-/* メディアリンク・バッジデザイン（改行・整列最適化： 生URLを排除しスマート化） */
+/* メディアリンク・バッジデザイン */
 .media-link-container {
   display: flex; 
   flex-direction: column; 
@@ -519,6 +519,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         <div class="accordion-body" id="accBody">
           <div class="clrbox">
             <div class="clrlbl">ネーム＆吹き出しカラー</div>
+            <div id="lbClrPrev" class="clr-prev" style="margin:4px 0; min-height:18px;"></div>
             <div class="clrpick-grid" id="lbClrPick"></div>
           </div>
           <div class="fg">
@@ -572,7 +573,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
           </div>
         </div>
         <div class="hbs">
-          <button id="callBtn" title="音声通話を開始/参加" style="background:rgba(129,140,248,0.1); border-color:rgba(129,140,248,0.3); color:#a5b4fc;">🎤 通話</button>
+          <button id="callBtn" title="音声通話を開始" style="background:rgba(129,140,248,0.1); border-color:rgba(129,140,248,0.3); color:#a5b4fc;">🎤 通話</button>
           <button id="copyUrlBtn" title="招待URLをコピー">🔗 URL</button>
           <button class="bclr" id="clrBtn" title="カラー設定"><span class="bclr-dot" id="clrDot"></span> 設定</button>
           <button class="bx" id="exBtn" title="退室">退室</button>
@@ -630,9 +631,10 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <div id="callControlBar" style="display:none; background:var(--s2); border-bottom:1px solid var(--bd); padding:6px 12px; font-size:11px; align-items:center; justify-content:space-between; gap:6px;">
       <div style="display:flex; align-items:center; gap:6px;">
         <span style="font-weight:900; color:#818cf8; display:flex; align-items:center; gap:3px;">🔊 音声通話接続中:</span>
-        <span id="callStatusText" style="color:var(--tx); font-weight:bold;">受信専用モード</span>
+        <span id="callStatusText" style="color:var(--tx); font-weight:bold;">受信専用 (聴くだけ)</span>
       </div>
       <div style="display:flex; gap:6px;">
+        <button id="callModeToggleBtn" style="font-size:10px; font-weight:bold; background:var(--in); border:1px solid var(--i2); color:#fff; padding:2px 8px; border-radius:4px; cursor:pointer;">🎙️ 話すモードに切替</button>
         <button id="micToggleBtn" style="display:none; font-size:10px; font-weight:bold; background:var(--sf); border:1px solid var(--bd); color:var(--tx); padding:2px 8px; border-radius:4px; cursor:pointer;">🎤 ミュート</button>
         <button id="leaveCallBtn" style="font-size:10px; font-weight:bold; background:rgba(244,63,94,0.15); border:1px solid rgba(244,63,94,0.3); color:#fda4af; padding:2px 8px; border-radius:4px; cursor:pointer;">📞 切断</button>
       </div>
@@ -792,8 +794,8 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       </div>
 
       <div class="gs" style="border-left-color: #10b981;">
-        <h4 style="color: #10b981; font-size: 13px; margin-bottom: 4px;">🎙️ 音声通話機能 (受信専用 / 発言モード)</h4>
-        ルームに入室後、「🎤 通話」ボタンを押すことでいつでも安全な音声通話に参加できます。マイクをONにして自身も喋る「発言者モード」のほか、他の発言者の声を聞くだけの「受信専用モード」の選択が可能です。<br>
+        <h4 style="color: #10b981; font-size: 13px; margin-bottom: 4px;">🎙️ 音声通話機能 (話す / 聴くだけ)</h4>
+        ルームに入室後、「🎤 通話」ボタンを押すことで、カメラの起動はなくマイクのみを使用して安全な音声通話に参加できます。参加後に、マイクで話せる「発言モード」と、他の発言者の声を聞くだけの「受信専用モード」を瞬時に相互切り替え可能です。<br>
         通話データの経路もブラウザ間P2Pで直接接続（STUNサーバー利用）されるため、録音や盗聴のリスクを最小限に抑えます。
       </div>
 
@@ -863,7 +865,8 @@ const D = {
   accHeader:$("accHeader"), accBody:$("accBody"),
   imgViewMod:$("imgViewMod"), imgViewSrc:$("imgViewSrc"), imgViewCloseBtn:$("imgViewCloseBtn"),
   delConfirmMod:$("delConfirmMod"), delConfirmPreview:$("delConfirmPreview"), delCancelBtn:$("delCancelBtn"), delExecuteBtn:$("delExecuteBtn"),
-  toastContainer:$("toastContainer")
+  toastContainer:$("toastContainer"),
+  callBtn:$("callBtn") // 追加
 };
 
 let keepKbOpen = false;
@@ -1169,7 +1172,16 @@ const copyToClip = (text) => {
     showToast("✅ コピーしました"); 
   }); 
 };
-D.lbCopyTripBtn.onclick = () => copyToClip(`${D.ni.value || "名無し"} ${localStorage.getItem("nz_mytrip_styled")||""}`);
+
+// コピー機能はトリップのみに制限
+D.lbCopyTripBtn.onclick = () => {
+  const t = localStorage.getItem("nz_mytrip_styled") || "";
+  if (t) {
+    copyToClip(t);
+  } else {
+    showToast("❌ コピーするトリップがありません（トリップキーを入力してください）");
+  }
+};
 
 D.copyUrlBtn.onclick = () => {
   const passVal = D.pi.value || localStorage.getItem("nz_pi_val") || "";
@@ -1222,7 +1234,22 @@ let tmpColor = curColor;
 const setGlobalColor = c => { document.documentElement.style.setProperty("--usr-color", c); if(D.clrDot) D.clrDot.style.background = c; };
 setGlobalColor(curColor);
 
-const syncPickers = v => { if(D.lbClrPick) D.lbClrPick.querySelectorAll("button").forEach(b => b.classList.toggle("sel", b.dataset.color === v)); };
+// ロビー用プレビュー表示の同期更新
+const updateLobbyColorPreview = (color) => {
+  const con = $("lbClrPrev");
+  if (!con) return;
+  con.textContent = "";
+  const prevSpan = document.createElement("span");
+  prevSpan.style.color = color;
+  prevSpan.style.fontWeight = "bold";
+  prevSpan.textContent = "■ この色で名前、トリップ、発言時刻が同期表示されます";
+  con.appendChild(prevSpan);
+};
+
+const syncPickers = v => { 
+  if(D.lbClrPick) D.lbClrPick.querySelectorAll("button").forEach(b => b.classList.toggle("sel", b.dataset.color === v)); 
+};
+
 function buildPicker(con, sel, cls, onChange) {
   if (!con) return; 
   while (con.firstChild) con.removeChild(con.firstChild);
@@ -1232,8 +1259,17 @@ function buildPicker(con, sel, cls, onChange) {
     b.addEventListener("click", () => onChange(v)); con.appendChild(b);
   });
 }
-const onColorSelect = v => { curColor = v; setGlobalColor(v); localStorage.setItem("nz_color",v); syncPickers(v); };
+
+const onColorSelect = v => { 
+  curColor = v; 
+  setGlobalColor(v); 
+  localStorage.setItem("nz_color",v); 
+  syncPickers(v); 
+  updateLobbyColorPreview(v);
+};
+
 buildPicker(D.lbClrPick, curColor, "clrc",  onColorSelect);
+updateLobbyColorPreview(curColor);
 
 D.clrBtn.addEventListener("click", () => {
   tmpColor = curColor;
@@ -1255,6 +1291,7 @@ D.clrBtn.addEventListener("click", () => {
 });
 D.clrOk.addEventListener("click", async () => {
   curColor = tmpColor; setGlobalColor(curColor); localStorage.setItem("nz_color",curColor); syncPickers(curColor);
+  updateLobbyColorPreview(curColor);
   if (curR && myPresRef && masterKey) { 
     try {
       const myPubJwk = myECDHKeyPair ? await exportPublicKey(myECDHKeyPair.publicKey) : null;
@@ -2126,9 +2163,20 @@ const loadAutoApproveTrips = () => {
     autoApproveTrips = [];
   }
 };
-const saveAutoApproveTrips = () => {
+
+// サーバー上に事前許可トリップを暗号化保存 (即時自動承認パス用)
+const saveAutoApproveTrips = async () => {
   localStorage.setItem("nz_auto_approve_trips", JSON.stringify(autoApproveTrips));
   renderPreApproveList();
+  
+  if (curR && masterKey) {
+    try {
+      const encrypted = await encrypt(JSON.stringify(autoApproveTrips), masterKey);
+      await update(ref(db, `rooms/${curR}`), { preApprovedTrips: encrypted }).catch(() => {});
+    } catch(e) {
+      console.error(e);
+    }
+  }
 };
 
 const renderPreApproveList = () => {
@@ -2320,7 +2368,7 @@ function listenToHostRequestsAndBans() {
     }
   });
 
-  _hostReqOff = onValue(ref(db, `rooms/${curR}/requests`), async (s) => {
+  _hostReqOff = onValue(ref(db, `rooms/${curR}/requests`), (s) => {
     const listDiv = $("hostRequestList");
     listDiv.textContent = "";
     const reqs = s.val() || {};
@@ -2336,11 +2384,14 @@ function listenToHostRequestsAndBans() {
     wrapper.style.display = "block";
     wrapper.classList.add("pulse-border");
     
+    // 高速反映用の DocumentFragment
+    const fragment = document.createDocumentFragment();
+    
     for (const [uid, data] of entries) {
       // 事前登録トリップ判定による自動即時承認
       if (data.trip && autoApproveTrips.includes(data.trip)) {
-        await update(ref(db, `rooms/${curR}/requests/${uid}`), { status: "approved" });
-        await sendSysMsg(`📥 ${data.name} ${data.trip} を事前登録トリップにより自動承認しました`);
+        update(ref(db, `rooms/${curR}/requests/${uid}`), { status: "approved" });
+        sendSysMsg(`📥 ${data.name} ${data.trip} を事前登録トリップにより自動承認しました`);
         continue;
       }
 
@@ -2370,9 +2421,9 @@ function listenToHostRequestsAndBans() {
       okBtn.style.padding = "2px 6px";
       okBtn.style.borderRadius = "3px";
       okBtn.style.cursor = "pointer";
-      okBtn.onclick = async () => {
-        await update(ref(db, `rooms/${curR}/requests/${uid}`), { status: "approved" });
-        await sendSysMsg(`${data.name} ${data.trip || ""} の入室申請が承認されました`);
+      okBtn.onclick = () => {
+        update(ref(db, `rooms/${curR}/requests/${uid}`), { status: "approved" });
+        sendSysMsg(`${data.name} ${data.trip || ""} の入室申請が承認されました`);
       };
       
       const ngBtn = document.createElement("button");
@@ -2383,16 +2434,18 @@ function listenToHostRequestsAndBans() {
       ngBtn.style.padding = "2px 6px";
       ngBtn.style.borderRadius = "3px";
       ngBtn.style.cursor = "pointer";
-      ngBtn.onclick = async () => {
-        await update(ref(db, `rooms/${curR}/requests/${uid}`), { status: "rejected" });
+      ngBtn.onclick = () => {
+        update(ref(db, `rooms/${curR}/requests/${uid}`), { status: "rejected" });
       };
       
       btnGroup.appendChild(okBtn);
       btnGroup.appendChild(ngBtn);
       row.appendChild(label);
       row.appendChild(btnGroup);
-      listDiv.appendChild(row);
+      fragment.appendChild(row);
     }
+    
+    listDiv.appendChild(fragment);
   });
 
   _hostBanOff = onValue(ref(db, `rooms/${curR}/banList`), s => {
@@ -2477,20 +2530,27 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
     const isRoomHost = roomData ? (roomData.host === myUid) : true;
     const roomMode = (roomData && roomData.mode) ? roomData.mode : "open";
 
-    // 招待承認モードでの自動承認ロジック
-    if (roomData && roomMode === "invite" && !isRoomHost) {
+    // 事前許可トリップに含まれるかを安全に判定
+    let isPreApproved = false;
+    if (roomData && roomData.preApprovedTrips && masterKey) {
+      try {
+        const decListStr = await decrypt(roomData.preApprovedTrips, masterKey);
+        if (decListStr) {
+          const preApprovedList = JSON.parse(decListStr);
+          if (Array.isArray(preApprovedList) && preApprovedList.includes(trip)) {
+            isPreApproved = true;
+          }
+        }
+      } catch(e) {
+        console.error("事前許可トリップ復号エラー:", e);
+      }
+    }
+
+    // 招待承認モードでの承認・即時入室ロジック
+    if (roomData && roomMode === "invite" && !isRoomHost && !isPreApproved) {
       const reqRef = ref(db, `rooms/${hashId}/requests/${myUid}`);
       const reqSnap = await get(reqRef);
       const reqData = reqSnap.val();
-
-      // ローカルストレージ内の自動承認トリップに適合する場合は申請表示せずにスルー承認
-      if (trip && autoApproveTrips.includes(trip)) {
-        await set(reqRef, { name: name, trip: trip, status: "approved", t: serverTimestamp() });
-        sessionStorage.setItem("nz_should_send_join_sys", "true");
-        sessionStorage.setItem("nz_join_reason", "approved");
-        await doJoin(roomId, pass, name, trip, initTimer);
-        return;
-      }
 
       if (reqData && reqData.status === "approved") {
         // 承認済みの場合は入室
@@ -2671,6 +2731,12 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
     // 自公開鍵の JWK エクスポート
     const myPubJwk = myECDHKeyPair ? await exportPublicKey(myECDHKeyPair.publicKey) : null;
 
+    if (isPreApproved) {
+      // 事前登録トリップ合致のため、即時承認ステートをデータベースに直接書き込み
+      const reqRef = ref(db, `rooms/${hashId}/requests/${myUid}`);
+      await set(reqRef, { name: name, trip: trip, status: "approved", t: serverTimestamp() });
+    }
+
     if (!snap.exists()) {
       localStorage.removeItem(`nz_chat_raw_${hashId}`);
       currentRoomMsgs = [];
@@ -2755,7 +2821,7 @@ async function enterChatUI(roomData, pass) {
     if (isCreated) {
       await sendSysMsg(`${nameWithTrip} が部屋を作成しました`);
     } else if (joinReason === "approved") {
-      await sendSysMsg(`📥 ${nameWithTrip} が承認され入室しました`);
+      await sendSysMsg(`📥 ${nameWithTrip} が入室しました`);
     } else if (joinReason === "open_mode") {
       await sendSysMsg(`🔓 部屋がオープンモードになり、${nameWithTrip} が自動入室しました`);
     } else {
@@ -3592,7 +3658,7 @@ window.addEventListener("message", (e) => {
 });
 
 /* =========================================================
-   P2P音声通話システム (WebRTC)
+   P2P音声通話システム (WebRTC) カメラは利用せずマイクのみ
    ========================================================= */
 let localStream = null;
 let isSpeaking = false;
@@ -3827,7 +3893,74 @@ function watchSpeakers() {
   });
 }
 
-// 通話開始 (発言者モード)
+// 接続の能動的再構築
+function updateAllConnections() {
+  peerConnections.forEach((pc, peerUid) => {
+    closePeer(peerUid);
+  });
+  peerConnections.clear();
+  remoteAudios.clear();
+  watchSpeakers();
+}
+
+// 音声モード（発言者）へ手動切り替え
+async function switchToSpeaking() {
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    isSpeaking = true;
+    
+    const speakerRef = ref(db, `rooms/${curR}/speakers/${myUid}`);
+    await set(speakerRef, { n: curN, t: serverTimestamp() });
+    await onDisconnect(speakerRef).remove();
+    await onDisconnect(ref(db, `calls/${curR}/${myUid}`)).remove();
+    
+    updateAllConnections();
+    
+    $("callModeToggleBtn").textContent = "🎧 受信のみに切替";
+    $("callModeToggleBtn").style.background = "var(--sf)";
+    $("micToggleBtn").style.display = "inline-block";
+    $("micToggleBtn").textContent = "🎤 ミュート";
+    $("callStatusText").textContent = "発言中 (マイクON)";
+    showToast("🎙️ 発言者モードに切り替えました。マイクが有効です");
+  } catch (err) {
+    console.error("マイク許可エラー:", err);
+    alert("マイクの利用が許可されませんでした。");
+    switchToReceiveOnly();
+  }
+}
+
+// 受信モード（聴くだけ）へ手動切り替え
+async function switchToReceiveOnly() {
+  isSpeaking = false;
+  
+  if (localStream) {
+    localStream.getTracks().forEach(track => track.stop());
+    localStream = null;
+  }
+  
+  if (curR && myUid) {
+    await remove(ref(db, `rooms/${curR}/speakers/${myUid}`));
+  }
+  
+  updateAllConnections();
+  
+  $("callModeToggleBtn").textContent = "🎙️ 話すモードに切替";
+  $("callModeToggleBtn").style.background = "var(--in)";
+  $("micToggleBtn").style.display = "none";
+  $("callStatusText").textContent = "受信専用 (聴くだけ)";
+  showToast("🎧 受信専用モード（聴くだけ）に切り替えました");
+}
+
+// 手動モード切り替えトグルのトリガー設定
+$("callModeToggleBtn").onclick = async () => {
+  if (isSpeaking) {
+    await switchToReceiveOnly();
+  } else {
+    await switchToSpeaking();
+  }
+};
+
+// 通話開始 (初期マイク起動)
 async function startMicrophone() {
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
@@ -3835,6 +3968,8 @@ async function startMicrophone() {
     isCallJoined = true;
     
     toggleCallBar(true, "発言中 (マイクON)");
+    $("callModeToggleBtn").textContent = "🎧 受信のみに切替";
+    $("callModeToggleBtn").style.background = "var(--sf)";
     $("micToggleBtn").style.display = "inline-block";
     $("micToggleBtn").textContent = "🎤 ミュート";
     
@@ -3844,24 +3979,12 @@ async function startMicrophone() {
     await onDisconnect(ref(db, `calls/${curR}/${myUid}`)).remove();
     
     watchSpeakers();
-    showToast("🎙️ 発言者モードで通話を開始しました");
+    showToast("🎙️ 通話を開始しました (発言中)");
   } catch (err) {
     console.error("マイク許可エラー:", err);
-    alert("マイクの利用が拒否されたか、デバイスが見つかりません。受信専用モードに切り替えます。");
-    startReceiveOnly();
+    alert("マイクの利用が許可されませんでした。");
+    switchToReceiveOnly();
   }
-}
-
-// 通話開始 (受信専用モード)
-function startReceiveOnly() {
-  isSpeaking = false;
-  isCallJoined = true;
-  
-  toggleCallBar(true, "受信専用 (聴くだけ)");
-  $("micToggleBtn").style.display = "none";
-  
-  watchSpeakers();
-  showToast("🎧 受信専用モードで参加しました");
 }
 
 // 通話から切断
@@ -3891,21 +4014,27 @@ async function leaveCall() {
   showToast("🔇 通話を終了しました");
 }
 
-// 通話ボタンイベント
-$("callBtn").onclick = () => {
+// 通話ボタンイベント (OK押下で機能開始、キャンセルで戻る)
+D.callBtn.onclick = () => {
   if (isCallJoined) {
     showToast("ℹ️ 既に通話に参加しています");
     return;
   }
   
-  if (confirm("音声通話機能を開始しますか？\n\n「OK」：マイクを許可して発言者として参加します。\n「キャンセル」：マイクを起動せず、聴くだけの受信専用モードで参加します。")) {
+  const desc = "【音声通話機能について】\n" +
+               "・ルーム内のメンバーとブラウザ間で直接、安全に通話を行います。\n" +
+               "・通信データは暗号化され、P2P（端末間直接通信）でやり取りされます。\n" +
+               "・カメラの起動や許可を求めることはありません（マイクのみ）。\n\n" +
+               "通話に参加しますか？\n" +
+               "「OK」を押すとマイク利用の許可を求めて通話へ参加します。\n" +
+               "「キャンセル」を押すと、通話に参加せず元の画面に戻ります。";
+               
+  if (confirm(desc)) {
     startMicrophone();
-  } else {
-    startReceiveOnly();
   }
 };
 
-// マイクのオンオフ
+// マイクのオンオフ (発言モード中のミュート制御)
 $("micToggleBtn").onclick = () => {
   if (!localStream) return;
   const audioTrack = localStream.getAudioTracks()[0];
@@ -3913,7 +4042,7 @@ $("micToggleBtn").onclick = () => {
     audioTrack.enabled = !audioTrack.enabled;
     const isMuted = !audioTrack.enabled;
     $("micToggleBtn").textContent = isMuted ? "🎤 ミュート解除" : "🎤 ミュート";
-    $("callStatusText").textContent = isMuted ? "ミュート中" : "発言中 (マイクON)";
+    $("callStatusText").textContent = isMuted ? "マイクミュート中" : "発言中 (マイクON)";
     showToast(isMuted ? "🔇 マイクをミュートしました" : "🎙️ マイクミュートを解除しました");
   }
 };

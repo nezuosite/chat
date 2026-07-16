@@ -48,7 +48,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .inp[type="number"] {border: 1px solid #818cf8; background: rgba(79,70,229,0.03); font-weight: bold; text-align: center; padding:5px 8px;}
 #tripPreview{font-size:11px; font-weight:bold; color:var(--em); display:flex; justify-content:space-between; align-items:center;}
 .copy-s-btn {background:rgba(255,255,255,0.08); border:none; color:var(--tx); padding:2px 6px; border-radius:3px; font-size:10px; cursor:pointer;}
-.accordion-header{background:var(--sf);border:1px solid var(--bd);border-radius:4px;padding:6px 10px;font-size:11px;font-weight:bold;color:#a5b4fc;cursor:pointer;display:flex;align-items:center;justify-content:between;user-select:none;margin-top:1px}
+.accordion-header{background:var(--sf);border:1px solid var(--bd);border-radius:4px;padding:6px 10px;font-size:11px;font-weight:bold;color:#a5b4fc;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;margin-top:1px}
 .accordion-header:hover{background:rgba(255,255,255,0.03)}
 .accordion-body{display:none;flex-direction:column;gap:6px;border:1px dashed var(--bd);padding:8px;border-radius:4px;background:rgba(0,0,0,0.15)}
 .clrbox{display:flex;flex-direction:column;gap:2px;background:var(--s2);padding:6px 10px;border-radius:4px;border:1px solid var(--bd)}
@@ -173,17 +173,17 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <div class="lbsub">DISPOSABLE & ZERO-KNOWLEDGE E2EE</div>
     <div class="lbi">
       <div class="ibox">
-        🔒 <b>セキュリティとプライバシー最優先の使い捨て空間</b>
-        <ul style="margin-left: 14px; margin-top: 4px; padding-left: 0; display: flex; flex-direction: column; gap: 3px;">
-          <li><b>ゼロ知識共通鍵(AES-GCM-256):</b> 入力したパスワードは一切外部へ送信されません。メッセージや画像は、送信前に端末内ですべて暗号化されます。</li>
-          <li><b>即時物理削除＆不保持:</b> 部屋の期限が切れるか、最後の一人が退室した瞬間にサーバー上のデータは即時完全消去され、復旧は不可能です。</li>
-          <li><b>アクセスログ等の一切の不保持:</b> 個人情報やアクセス元情報、IPアドレスなどは運営側で一切収集・記録・保持しません。</li>
-          <li><b>個別会話(1to1シークレット):</b> メンバーの名前をタップすることで、第三者やサーバーでも解読不可能な1対1の個別暗号化(ECDH)チャットが可能です。</li>
+        🔒 <b>完全ゼロ知識(E2EE)＆データ不保持の極秘空間</b>
+        <ul style="margin-left: 14px; margin-top: 4px; padding-left: 0; display: flex; flex-direction: column; gap: 4.5px;">
+          <li><b>端末内での絶対暗号化:</b> パスワードはサーバーへ一切転送されず、ブラウザ内で強固な共通鍵（AES-GCM-256）へ直接変換。すべての文面や画像は送信前に「端末内部」で完全に暗号化されます。</li>
+          <li><b>中継サーバー・管理者も覗き見不可:</b> データベースには強固な暗号文のみが格納されるため、中継サーバーの管理者、プロバイダー、第三者による傍受・解読は科学的・物理的に不可能です。</li>
+          <li><b>即時物理削除＆不保持:</b> 部屋の有効期限が切れるか、最後の一人が退室した瞬間に、該当するメッセージ・Presence情報などの全データは痕跡なく即時抹消され、復元手段は一切ありません。</li>
+          <li><b>通信ログ・個人データの不保持:</b> 接続元IPアドレス、通信のメタデータ、ログなどは一切記録も蓄積もしないため、究極のプライバシーが保たれます。</li>
+          <li><b>1to1秘密個別経路(ECDH):</b> 参加者リストのユーザー名をタップすれば、二人のブラウザ間のみで暗号経路を一時構築し、ルーム全体にも内容が見えない個別極秘会話が可能です。</li>
         </ul>
       </div>
       <div id="lberr"></div>
 
-      <!-- 自動的に再入室するため、表示要素は非表示に設定 -->
       <div id="roomResumeArea" style="display: none !important;"></div>
 
       <div id="lobbyInputArea" style="display:flex; flex-direction:column; gap:6px; width:100%;">
@@ -270,7 +270,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       </div>
     </div>
 
-    <!-- ホスト専用管理パネル -->
+    <!-- ホスト専用管理パネル (事前承認アコーディオン化) -->
     <div id="hostPanel" style="display:none; background:var(--sf); border-bottom:1px solid var(--bd); padding:4px 8px; font-size:11px; flex-direction:column; gap:4px;">
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
         <div style="display:flex; align-items:center; gap:6px;">
@@ -292,14 +292,18 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         </div>
       </div>
       
-      <!-- 事前許可トリップ設定 -->
-      <div id="hostPreApproveWrapper" style="display:none; align-items:center; gap:6px; background:var(--bg); padding:4px 6px; border-radius:4px; border:1px solid var(--bd); margin-top:2px; flex-wrap:wrap; max-height:80px; overflow-y:auto;">
-        <span style="font-weight:bold; font-size:9.5px; color:#818cf8; white-space:nowrap;">🔑 トリップ自動承認:</span>
-        <div style="display:flex; gap:3px; align-items:center; flex:1; min-width:140px;">
-          <input type="text" id="preApproveInput" class="inp" placeholder="◆トリップを入力" style="font-size:10px; padding:2px 6px; height:22px; width:100px; flex:1;">
-          <button id="addPreApproveBtn" style="background:var(--in); color:#fff; font-size:10px; padding:0 6px; border-radius:3px; font-weight:bold; cursor:pointer; height:22px; white-space:nowrap;">追加</button>
+      <!-- 事前許可トリップ設定 (アコーディオン化で省スペース) -->
+      <div id="hostPreApproveWrapper" style="display:none; flex-direction:column; gap:4px; margin-top:2px;">
+        <div class="accordion-header" id="preApproveAccHeader" style="margin:0; padding:4px 8px; font-size:10px; background:var(--bg); border:1px solid var(--bd); color:#a5b4fc; cursor:pointer;">
+          🔑 トリップ自動承認設定を開く
         </div>
-        <div id="preApproveList" style="max-height:36px; overflow-y:auto; display:flex; flex-wrap:wrap; gap:3px; flex:1; min-width:120px;"></div>
+        <div id="preApproveAccBody" style="display:none; flex-direction:column; gap:4px; background:var(--bg); padding:6.5px; border-radius:4px; border:1px solid var(--bd); max-height:100px; overflow-y:auto;">
+          <div style="display:flex; gap:3px; align-items:center;">
+            <input type="text" id="preApproveInput" class="inp" placeholder="◆トリップを入力" style="font-size:10px; padding:2px 6px; height:22px; width:100px; flex:1;">
+            <button id="addPreApproveBtn" style="background:var(--in); color:#fff; font-size:10px; padding:0 6px; border-radius:3px; font-weight:bold; cursor:pointer; height:22px; white-space:nowrap;">追加</button>
+          </div>
+          <div id="preApproveList" style="max-height:36px; overflow-y:auto; display:flex; flex-wrap:wrap; gap:3px; margin-top:2px;"></div>
+        </div>
       </div>
 
       <!-- BANリスト (折りたたみ式) -->
@@ -317,7 +321,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       </div>
     </div>
 
-    <!-- 音声通話用管理バー -->
+    <!-- 音声通話用管理バー (ノイズを最小化したWebRTC状態) -->
     <div id="callControlBar" style="display:none; background:var(--s2); border-bottom:1px solid var(--bd); padding:6px 12px; font-size:11px; align-items:center; justify-content:space-between; gap:6px;">
       <div style="display:flex; align-items:center; gap:6px;">
         <span style="font-weight:900; color:#818cf8; display:flex; align-items:center; gap:3px;">🔊 音声通話接続中:</span>
@@ -348,8 +352,8 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
           <span id="autoScrollStatusText" class="switch-text">追従:ON</span>
         </button>
         <div class="jump-btns">
-          <button class="jump-btn" id="jumpUpBtn" title="ログの先頭へ" disabled>▲</button>
-          <button class="jump-btn" id="jumpDownBtn" title="最新のメッセージへ" disabled>▼</button>
+          <button class="jump-btn" id="jumpUpBtn" title="タイムラインの最上部へ" disabled>▲</button>
+          <button class="jump-btn" id="jumpDownBtn" title="タイムラインの最下部へ" disabled>▼</button>
         </div>
       </div>
 
@@ -398,6 +402,23 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 
 <div id="toastContainer"></div>
 
+<!-- 通話参加設定モーダル (confirmに代わる安全ですっきりした設計) -->
+<div id="callJoinMod" class="mod-overlay">
+  <div class="gc" style="max-width:340px;">
+    <h3 style="font-size:13px; color:#818cf8; border-bottom:1px solid var(--bd); padding-bottom:6px; font-weight:bold; display:flex; align-items:center; gap:4px;">🎤 音声通話への参加設定</h3>
+    <div style="font-size:11px; color:var(--mu); line-height:1.5; margin:6px 0 12px; display:flex; flex-direction:column; gap:4px;">
+      <span>・ルーム内メンバーとの完全P2P（端末間直接暗号化）通話です。</span>
+      <span>・通話はマイクノイズ・雑音低減、ハウリングエコーキャンセラー、自動ゲイン調整が標準で有効になります。</span>
+      <span>・カメラを起動することは一切なく、マイク（音声）のみを利用します。</span>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:6.5px; width:100%;">
+      <button class="btn bp" id="joinCallSpeakBtn" style="background:var(--in); color:#fff; font-weight:bold;">🎙️ 発言モードで参加 (マイクON)</button>
+      <button class="btn bq" id="joinCallListenBtn" style="background:var(--sf); color:var(--tx); border:1px solid var(--bd); font-weight:bold;">🎧 受信専用モードで参加 (マイクOFF/聴くだけ)</button>
+      <button class="btn bq" id="joinCallCancelBtn" style="font-weight:bold;">キャンセル</button>
+    </div>
+  </div>
+</div>
+
 <!-- 寿命設定変更用モーダル -->
 <div id="timerSettingMod" class="mod-overlay">
   <div class="gc" style="max-width:320px;">
@@ -428,7 +449,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   </div>
 </div>
 
-<!-- 发言削除確認モーダル -->
+<!-- 発言削除確認モーダル -->
 <div id="delConfirmMod" class="mod-overlay">
   <div class="gc" style="max-width:320px;">
     <h3 style="font-size:13px; color:var(--ro);">⚠️ 発言の削除確認</h3>
@@ -464,40 +485,41 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <div style="display:flex; flex-direction:column; gap:10px; font-size:12px; line-height:1.5; max-height:60vh; overflow-y:auto; padding-right:4px;">
       
       <div class="gs" style="border-left-color: var(--em);">
-        <h4 style="color: var(--em); font-size: 13px; margin-bottom: 4px;">🚀 3ステップの使い方</h4>
+        <h4 style="color: var(--em); font-size: 13px; margin-bottom: 4px;">🚀 クイックスタートガイド</h4>
         <ol style="margin-left: 16px; padding-left: 0; display: flex; flex-direction: column; gap: 4px;">
-          <li><b>表示名</b>と本人証明用の<b>トリップキー</b>を入力します。</li>
+          <li>任意の<b>表示名</b>と、なりすましを防ぐ<b>トリップキー</b>を入力します。</li>
           <li>任意の<b>部屋ID</b>と<b>パスワード</b>を入力し（または🎲で自動生成）、「入室 / 作成」を押します。</li>
-          <li>表示される<b>URL</b>を共有し、相手も同じパスワードを入力すれば安全なチャットを開始できます。</li>
+          <li>部屋に入ったら、ヘッダーの「🔗 URL」から<b>招待用URL</b>を相手に送ります。相手も同じパスワードを入力することで、安全なチャットがすぐに開始されます。</li>
         </ol>
       </div>
 
       <div class="gs" style="border-left-color: #60a5fa;">
-        <h4 style="color: #60a5fa; font-size: 13px; margin-bottom: 4px;">🔒 端末内でのゼロ知識暗号化 (共通鍵E2EE)</h4>
-        入力される暗号化パスワードは、サーバー側へは一切転送されません。Web Cryptography APIを用いてブラウザ端末内でのみ共通鍵（<b>AES-GCM-256</b>）へ導出・変換されます。すべてのメッセージや画像データは送信前に端末内で暗号化され、サーバーのデータベースにも暗号文の状態で格納されるため、中継サーバーの管理者であっても内容を覗き見ることは物理的に不可能です。
+        <h4 style="color: #60a5fa; font-size: 13px; margin-bottom: 4px;">🔒 ゼロ知識・クライアントサイド暗号化 (E2EE)</h4>
+        本システムは、入力された部屋パスワードを外部のサーバーへ一切送信しません。Web Cryptography APIを用い、端末内部の保護領域でのみ共通鍵（<b>AES-GCM-256</b>）を生成・処理する「完全なゼロ知識証明」アプローチを採用しています。<br>
+        テキスト、画像などのあらゆるデータは、インターネットに送り出される前に「ブラウザ内部」で強固に暗号化されます。サーバーのデータベースには完全な暗号文のみが配置されるため、中継ホストやデータベースの生テキストを覗き見られたとしても、復号パスワードを知り得ない第三者が内容を復号・解読することは物理的・数学的に不可能です。
       </div>
 
       <div class="gs" style="border-left-color: #a5b4fc;">
-        <h4 style="color: #a5b4fc; font-size: 13px; margin-bottom: 4px;">🤫 1対1個別チャット (シークレット機能)</h4>
-        ルーム全体の暗号化とは独立して、1対1のダイレクトメッセージでは「<b>楕円曲線ディフィー・ヘルマン鍵共有 (ECDH)</b>」を応用した独自の暗号化経路を確立します。<br>
-        このモードで送信された内容は、指定された宛先の端末以外ではいかなる方法でも復号できません。他の参加者にはメッセージが送信された事実や、暗号文自体もタイムライン上に一切表示されないため、密談の存在自体が外部に漏れません。
+        <h4 style="color: #a5b4fc; font-size: 13px; margin-bottom: 4px;">🤫 1to1シークレットチャット (ECDH鍵共有)</h4>
+        ルーム全体の暗号化とは独立して、1対1の秘匿会話専用パスを構築可能です。参加メンバーの名前をタップすると、互いの端末間で「<b>楕円曲線ディフィー・ヘルマン鍵共有 (ECDH)</b>」を瞬時に実行。その二者だけの動的なセッション鍵を一時的に確立します。<br>
+        この状態で送信したメッセージは、該当する相手の端末以外では絶対に復号されず、他の参加者のブラウザやサーバーへ暗号文すら流れません。これにより密談の存在自体を完璧に保護します。
       </div>
 
       <div class="gs" style="border-left-color: #10b981;">
-        <h4 style="color: #10b981; font-size: 13px; margin-bottom: 4px;">🎙️ 音声通話機能 (話す / 聴くだけ)</h4>
-        ルームに入室後、「🎤 通話」ボタンを押すことで、カメラの起動はなくマイクのみを使用して安全な音声通話に参加できます。参加後に、マイクで話せる「発言モード」と、他の発言者の声を聞くだけの「受信専用モード」を瞬時に相互切り替え可能です。<br>
-        通話データの経路もブラウザ間P2Pで直接接続（STUNサーバー利用）されるため、録音や盗聴のリスクを最小限に抑えます。
+        <h4 style="color: #10b981; font-size: 13px; margin-bottom: 4px;">🎙️ 音声通話 (ノイズ低減・P2P接続)</h4>
+        「🎤 通話」ボタンから安全な音声通話へ参加できます。必要に応じて「話すモード（マイクON）」と「受信専用（聴くだけ）」をいつでも相互に切り替えられます。<br>
+        ノイズや雑音への対策として、Web標準APIによる高度な<b>エコーキャンセラー(AEC)、ノイズサプレッサー(ANS)、自動ゲインコントロール(AGC)</b>を有効化。クリアで無駄なノイズのない自然な音声を届けます。通信自体もメッシュ型のブラウザ間直接P2P接続（WebRTC）を最優先するため、非常に機密性の高いやり取りが可能です。
       </div>
 
       <div class="gs" style="border-left-color: #fca5a5;">
         <h4 style="color: #fca5a5; font-size: 13px; margin-bottom: 4px;">🔑 招待制（承認制）と自動承認トリップ</h4>
-        ルームを「招待制」に設定している場合、ホストは事前に許可したい相手の「トリップキー（例: ◆abcdefghij）」をリストに手動登録できます。これにより、登録済みのトリップキーを持つメンバーが申請すると、ホストが不在の場合でもシステムが検知してバックグラウンドで自動的に入室を承認します。
+        ルームを「招待制」に設定している場合、ホストが申請を確認して手動承認するまで入室できません。さらに、ホストは事前許可リストに相手の「トリップキー（例: ◆abcdefghij）」を安全に設定しておくことができます。登録されたメンバーが参加申請を行うと、ホスト不在時であってもシステムがバックグラウンドで認証を行い、自動的に即時入室を承認します。
       </div>
 
       <div class="gs" style="border-left-color: var(--ro);">
-        <h4 style="color: var(--ro); font-size: 13px; margin-bottom: 4px;">🧼 サーバーからの徹底した物理消去と不保持</h4>
-        設定された部屋のタイムアウト、またはメンバー全員の退室（最後の一人の退室ボタン操作）をトリガーとして、ルーム、メッセージ、Presence（接続ステート）など、サーバー上の関連するすべての物理データは痕跡を残さず即座に完全抹消されます。<br>
-        運営側はアクセス元情報、接続IPアドレス、行動履歴などのログを一切保持しない仕様となっており、バックアップも作成されないため、消去完了したデータの復元は法律上の開示要請を含めいかなる手段でも不可能です。
+        <h4 style="color: var(--ro); font-size: 13px; margin-bottom: 4px;">🧼 サーバーデータ即時物理消去の仕様</h4>
+        設定された部屋のタイムアウト残り時間がゼロになるか、メンバー全員が退室（最後の一人が退室ボタンを押して退出を完了する、または通信が途切れて一定時間放置される）した瞬間、データベース上のルーム、タイムライン、 Presence状態、 WebRTCセッション等を含む<b>すべての関連する暗号化物理データはサーバーから即時完全消去</b>されます。<br>
+        ログファイルやバックアップは設計上一切作成・不保持のため、一度削除が実行されたデータはいかなる手段を尽くしても絶対に復旧できません。
       </div>
       
     </div>
@@ -2376,8 +2398,8 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
 
             await onDisconnect(reqRef).cancel();
 
+            // チラつき防止：通常ロビーを一切チラつかせず即時doJoinを実行
             waitArea.style.display = "none";
-            $("lobbyInputArea").style.display = "flex";
 
             sessionStorage.setItem("nz_should_send_join_sys", "true");
             sessionStorage.setItem("nz_join_reason", "approved");
@@ -2393,6 +2415,7 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
             await onDisconnect(reqRef).cancel();
             await remove(reqRef);
 
+            // 拒否時のみロビー入力フォームに戻す
             waitArea.style.display = "none";
             $("lobbyInputArea").style.display = "flex";
             D.enBtn.disabled = false;
@@ -2440,8 +2463,8 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
             await onDisconnect(reqRef).cancel();
             await remove(reqRef);
 
+            // チラつき防止：通常ロビーのチラつきを防ぐ
             waitArea.style.display = "none";
-            $("lobbyInputArea").style.display = "flex";
 
             sessionStorage.setItem("nz_should_send_join_sys", "true");
             sessionStorage.setItem("nz_join_reason", "open_mode");
@@ -3089,7 +3112,7 @@ D.mi.addEventListener("compositionstart", () => { isCmp = true; });
 D.mi.addEventListener("compositionend", () => { isCmp = false; });
 D.mi.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) {
-    if (isCmp) return; // IME入力中は送信しない
+    if (isCmp) return; 
     e.preventDefault();
     sendMsg();
   }
@@ -3612,7 +3635,15 @@ function updateAllConnections() {
 
 async function switchToSpeaking() {
   try {
-    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    // ノイズ除去、雑音サプレッサー、エコー除去、自動ゲイン調整を高度に最適化
+    localStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      },
+      video: false
+    });
     isSpeaking = true;
     
     const speakerRef = ref(db, `rooms/${curR}/speakers/${myUid}`);
@@ -3666,7 +3697,15 @@ $("callModeToggleBtn").onclick = async () => {
 
 async function startMicrophone() {
   try {
-    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    // ノイズ除去、雑音サプレッサー、エコー除去、自動ゲイン調整を適用
+    localStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      },
+      video: false
+    });
     isSpeaking = true;
     isCallJoined = true;
     
@@ -3684,9 +3723,13 @@ async function startMicrophone() {
     watchSpeakers();
     showToast("🎙️ 通話を開始しました (発言中)");
   } catch (err) {
-    console.error("マイク許可エラー:", err);
-    alert("マイクの利用が許可されませんでした。");
-    switchToReceiveOnly();
+    console.error("マイク許可エラー、またはデバイス未接続:", err);
+    showToast("⚠️ マイクの利用許可が得られないか接続されていません。受信専用モードで開始します。");
+    // 話すモードに失敗した場合、自動的に「聴くだけ（受信専用）」へ安全にフォールバック
+    isCallJoined = true;
+    toggleCallBar(true, "受信専用 (聴くだけ)");
+    watchSpeakers();
+    await switchToReceiveOnly();
   }
 }
 
@@ -3716,23 +3759,31 @@ async function leaveCall() {
   showToast("🔇 通話を終了しました");
 }
 
+// 🎤 通話ボタン押下で、スマートな説明・選択モーダルを表示
 D.callBtn.onclick = () => {
   if (isCallJoined) {
     showToast("ℹ️ 既に通話に参加しています");
     return;
   }
+  $("callJoinMod").classList.add("show");
+};
+
+$("joinCallCancelBtn").onclick = () => {
+  $("callJoinMod").classList.remove("show");
+};
+
+$("joinCallSpeakBtn").onclick = () => {
+  $("callJoinMod").classList.remove("show");
+  startMicrophone();
+};
+
+$("joinCallListenBtn").onclick = async () => {
+  $("callJoinMod").classList.remove("show");
+  isCallJoined = true;
+  toggleCallBar(true, "受信専用 (聴くだけ)");
   
-  const desc = "【音声通話機能について】\n" +
-               "・ルーム内のメンバーとブラウザ間で直接、安全に通話を行います。\n" +
-               "・通信データは暗号化され、P2P（端末間直接通信）でやり取りされます。\n" +
-               "・カメラの起動や許可を求めることはありません（マイクのみ）。\n\n" +
-               "通話に参加しますか？\n" +
-               "「OK」を押すとマイク利用の許可を求めて通話へ参加します。\n" +
-               "「キャンセル」を押すと、通話に参加せず元の画面に戻ります。";
-               
-  if (confirm(desc)) {
-    startMicrophone();
-  }
+  watchSpeakers();
+  await switchToReceiveOnly();
 };
 
 $("micToggleBtn").onclick = () => {
@@ -3956,6 +4007,12 @@ const authenticateAnonymously = () => {
 
 initConnectionMonitor();
 
+// Web Cryptography APIがセキュアコンテキスト以外で利用できない場合の親切な警告
+if (!window.isSecureContext) {
+  D.lberr.textContent = "⚠️ セキュリティ警告: 暗号化機能(AES/ECDH)は、HTTPS接続またはlocalhost開発環境でのみ完全に動作します。file://や非SSL通信環境ではチャット機能が初期化されません。";
+  D.lberr.style.display = "block";
+}
+
 authenticateAnonymously()
   .then(async (user) => {
     await initUserSession(user);
@@ -3965,6 +4022,17 @@ authenticateAnonymously()
     D.lberr.style.display = "block"; 
     showLobby();
   });
+
+// ホスト：事前許可設定の折りたたみ挙動制御
+const paHeader = $("preApproveAccHeader");
+const paBody = $("preApproveAccBody");
+if (paHeader && paBody) {
+  paHeader.onclick = () => {
+    const isOpen = paBody.style.display === "flex";
+    paBody.style.display = isOpen ? "none" : "flex";
+    paHeader.textContent = isOpen ? "🔑 トリップ自動承認設定を開く" : "🔑 トリップ自動承認設定を閉じる";
+  };
+}
 
 window.addEventListener("beforeunload", () => {
   if ($("lobbyWaitingArea").style.display === "flex" && curR && myUid) {

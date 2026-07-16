@@ -873,8 +873,7 @@ const D = {
 let keepKbOpen = false;
 let isAutoScroll = true;
 
-// 高スクロール追従用のRAFフラグおよびスクロール追従処理 (定義引き上げによるエラーを完全に防ぐため、通常のfunction形式で宣言)
-let _scPending = false;
+// ホイスティングによるエラーを防止するため、ユーティリティ関数は通常の function で宣言
 function scBottom(force = false) {
   if (!isAutoScroll && !force) return;
   if (_scPending) return;
@@ -889,24 +888,6 @@ function scBottom(force = false) {
   });
 }
 
-if (window.visualViewport) {
-  const onViewportChange = () => {
-    const vh = window.visualViewport.height;
-    document.documentElement.style.setProperty('--app-viewport-height', `${vh}px`);
-    D.app.style.height = `${vh}px`;
-    D.lobby.style.height = `${vh}px`;
-    scBottom(true);
-  };
-  window.visualViewport.addEventListener('resize', onViewportChange);
-  window.visualViewport.addEventListener('scroll', onViewportChange);
-}
-
-// モバイルでキーボード展開時のフォーカス制御
-D.mi.addEventListener("focus", () => {
-  setTimeout(() => scBottom(true), 250);
-});
-
-// ホイスティングによるスクリプト強制停止を完全防止するため、ユーティリティ関数を通常宣言(function)へ修正
 function updateLobbyColorPreview(color) {
   const con = $("lbClrPrev");
   if (!con) return;
@@ -1141,7 +1122,7 @@ const decrypt = (c, key = masterKey) => {
   return p;
 };
 
-// メタデータ復号の共通処理
+// メタデータ復号 of 共通処理
 async function decryptMeta(metaStrEnc) {
   if (!metaStrEnc || !masterKey) return null;
   if (metaCache.has(metaStrEnc)) return metaCache.get(metaStrEnc);
@@ -1658,8 +1639,8 @@ async function cMsg(msg) {
 
       // YouTube・ニコニコ・音声ファイルのみの判定
       const mediaRegexes = [
-        { type: "youtube", name: "YouTube", regex: /(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)?(?:youtube\.com|youtu\.be)\/[^\s\n<>"]+/i },
-        { type: "niconico", name: "ニコニコ動画", regex: /(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)?(?:nicovideo\.jp|nico\.ms)\/[^\s\n<>"]+/i },
+        { type: "youtube", name: "YouTube", regex: /(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)?(?:youtube\.com\/(?:watch\?.*v=|embed\/|shorts\/|live\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i },
+        { type: "niconico", name: "ニコニコ動画", regex: /(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)?(?:nicovideo\.jp\/watch\/|nico\.ms\/)(sm[0-9]+|so[0-9]+|nm[0-9]+|[0-9]+)/i },
         { type: "audio", name: "Audio", regex: /https?:\/\/[^\s\n<>"]+\.(?:mp3|wav|ogg|m4a|aac|flac)(?:\?[^\s\n<>"]*)?/i }
       ];
 
@@ -1752,6 +1733,9 @@ let pendingTimeoutTimer = null;
 // 高速同期用
 let _isExiting = false; 
 let _lastPresenceStr = "";
+
+// 招待制承認の即時自動キャンセル用のグローバル監視フラグ
+let isWaitingApproval = false;
 
 // ロビー招待承認待ちリアルタイムリスナー
 let _lobbyReqOff = null;
@@ -2495,16 +2479,6 @@ function listenToHostRequestsAndBans() {
       };
       
       row.appendChild(label);
-      unbanBtn.style.color = "var(--tx)";
-      unbanBtn.style.padding = "1px 6px";
-      unbanBtn.style.borderRadius = "3px";
-      unbanBtn.style.cursor = "pointer";
-      unbanBtn.onclick = async () => {
-        await remove(ref(db, `rooms/${curR}/banList/${uid}`));
-        showToast("✅ BANを解除しました");
-      };
-      
-      row.appendChild(label);
       row.appendChild(unbanBtn);
       listDiv.appendChild(row);
     });
@@ -2518,6 +2492,31 @@ $("toggleBanListBtn").onclick = () => {
   wrapper.style.display = isHidden ? "block" : "none";
   $("toggleBanListBtn").textContent = isHidden ? "🚫 BANリスト非表示" : "🚫 BANリスト表示";
 };
+
+// 承認待ちを安全にクリーンアップしてロビー（入力画面）へ戻す統合関数 (再接続時・手動キャンセル時共通)
+async function cancelPendingRequest() {
+  isWaitingApproval = false;
+  
+  if (typeof _lobbyReqOff === "function") { _lobbyReqOff(); _lobbyReqOff = null; }
+  if (typeof _lobbyRoomOff === "function") { _lobbyRoomOff(); _lobbyRoomOff = null; }
+
+  if (curR && myUid) {
+    const reqRef = ref(db, `rooms/${curR}/requests/${myUid}`);
+    await onDisconnect(reqRef).cancel();
+    await remove(reqRef).catch(() => {});
+  }
+
+  $("lobbyWaitingArea").style.display = "none";
+  $("lobbyInputArea").style.display = "flex";
+  D.enBtn.disabled = false;
+  D.enBtn.textContent = "入室 / 作成";
+  
+  localStorage.removeItem("nz_active_ri");
+  localStorage.removeItem("nz_active_created");
+  localStorage.setItem("nz_is_in_room", "false");
+  
+  showLobby();
+}
 
 async function doJoin(roomId, pass, name, trip, initTimer) {
   try {
@@ -2544,7 +2543,27 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
     const isRoomHost = roomData ? (roomData.host === myUid) : true;
     const roomMode = (roomData && roomData.mode) ? roomData.mode : "open";
 
-    // 事前許可トリップに含まれるかを安全に判定
+    clearAll(hashId); _exitLock = false;
+    localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created");
+
+    // 1. 先に E2EE 共通鍵 (masterKey) 導出と準備を100%完了させる (事前トリップのスムーズ復号に必須)
+    let cachedKeyHex = localStorage.getItem(`nz_mkey_${hashId}`);
+    if (cachedKeyHex) {
+      masterKey = await importKeyFromHex(cachedKeyHex);
+    } else if (pass) {
+      masterKey = await deriveMasterKey(roomId, pass);
+      const exportedHex = await exportKeyToHex(masterKey);
+      localStorage.setItem(`nz_mkey_${hashId}`, exportedHex);
+    } else {
+      throw new Error("パスワード情報が見つかりません。");
+    }
+
+    if (pass) {
+      localStorage.setItem(`nz_pi_${hashId}`, pass);
+      localStorage.setItem("nz_pi_val", pass);
+    }
+
+    // 2. 鍵の導出完了後、安全に事前許可トリップを照合 (待機フローを確実にスキップするため)
     let isPreApproved = false;
     if (roomData && roomData.preApprovedTrips && masterKey) {
       try {
@@ -2560,7 +2579,7 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
       }
     }
 
-    // 招待承認モードでの承認・即時入室ロジック
+    // 招待承認モード判定 (事前承認ユーザーはパスして即時入室)
     if (roomData && roomMode === "invite" && !isRoomHost && !isPreApproved) {
       const reqRef = ref(db, `rooms/${hashId}/requests/${myUid}`);
       const reqSnap = await get(reqRef);
@@ -2580,7 +2599,8 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
         showLobby("❌ 入室申請が却下されました。");
         return;
       } else {
-        // 申請待ち画面
+        // 申請待ち画面表示
+        isWaitingApproval = true;
         const waitArea = $("lobbyWaitingArea");
         const waitInfo = $("waitingInfo");
         waitInfo.textContent = `${name} ${trip || ""}`;
@@ -2605,6 +2625,7 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
           if (!rVal) return;
 
           if (rVal.status === "approved") {
+            isWaitingApproval = false;
             if (typeof _lobbyReqOff === "function") _lobbyReqOff();
             _lobbyReqOff = null;
             if (typeof _lobbyRoomOff === "function") _lobbyRoomOff();
@@ -2620,6 +2641,7 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
 
             await doJoin(roomId, pass, name, trip, initTimer);
           } else if (rVal.status === "rejected") {
+            isWaitingApproval = false;
             if (typeof _lobbyReqOff === "function") _lobbyReqOff();
             _lobbyReqOff = null;
             if (typeof _lobbyRoomOff === "function") _lobbyRoomOff();
@@ -2643,6 +2665,7 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
 
         _lobbyRoomOff = onValue(roomRef, async (rSnap) => {
           if (!rSnap.exists() || (rSnap.val().expireAt < srvNow())) {
+            isWaitingApproval = false;
             if (typeof _lobbyReqOff === "function") _lobbyReqOff();
             _lobbyReqOff = null;
             if (typeof _lobbyRoomOff === "function") _lobbyRoomOff();
@@ -2665,6 +2688,7 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
 
           const currentRoomVal = rSnap.val();
           if (currentRoomVal && currentRoomVal.mode === "open") {
+            isWaitingApproval = false;
             if (typeof _lobbyReqOff === "function") _lobbyReqOff();
             _lobbyReqOff = null;
             if (typeof _lobbyRoomOff === "function") _lobbyRoomOff();
@@ -2684,51 +2708,16 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
         });
 
         $("cancelRequestBtn").onclick = async () => {
-          if (typeof _lobbyReqOff === "function") _lobbyReqOff();
-          _lobbyReqOff = null;
-          if (typeof _lobbyRoomOff === "function") _lobbyRoomOff();
-          _lobbyRoomOff = null;
-
-          await onDisconnect(reqRef).cancel();
-          await remove(reqRef);
-
-          waitArea.style.display = "none";
-          $("lobbyInputArea").style.display = "flex";
-          D.enBtn.disabled = false;
-          D.enBtn.textContent = "入室 / 作成";
-          
-          localStorage.removeItem("nz_active_ri");
-          localStorage.removeItem("nz_active_created");
-          localStorage.setItem("nz_is_in_room", "false");
-          
-          showLobby();
+          await cancelPendingRequest();
         };
         return; 
       }
     }
 
-    clearAll(hashId); _exitLock = false;
-    localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created");
-
-    // 1対1暗号化用の ECDH キーペアを準備
-    if (!myECDHKeyPair) {
-      myECDHKeyPair = await generateECDHKey();
-    }
-
-    let cachedKeyHex = localStorage.getItem(`nz_mkey_${hashId}`);
-    if (cachedKeyHex) {
-      masterKey = await importKeyFromHex(cachedKeyHex);
-    } else if (pass) {
-      masterKey = await deriveMasterKey(roomId, pass);
-      const exportedHex = await exportKeyToHex(masterKey);
-      localStorage.setItem(`nz_mkey_${hashId}`, exportedHex);
-    } else {
-      throw new Error("パスワード情報が見つかりません。");
-    }
-
-    if (pass) {
-      localStorage.setItem(`nz_pi_${hashId}`, pass);
-      localStorage.setItem("nz_pi_val", pass);
+    if (isPreApproved) {
+      // 事前許可に合致しているため、データベース上へ approved ステートを直接即座に書き込み
+      const reqRef = ref(db, `rooms/${hashId}/requests/${myUid}`);
+      await set(reqRef, { name: name, trip: trip, status: "approved", t: serverTimestamp() });
     }
 
     const previouslyEntered = localStorage.getItem(`nz_entered_${hashId}`) === "true";
@@ -2744,12 +2733,6 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
     
     // 自公開鍵の JWK エクスポート
     const myPubJwk = myECDHKeyPair ? await exportPublicKey(myECDHKeyPair.publicKey) : null;
-
-    if (isPreApproved) {
-      // 事前登録トリップ合致のため、即時承認ステートをデータベースに直接書き込み
-      const reqRef = ref(db, `rooms/${hashId}/requests/${myUid}`);
-      await set(reqRef, { name: name, trip: trip, status: "approved", t: serverTimestamp() });
-    }
 
     if (!snap.exists()) {
       localStorage.removeItem(`nz_chat_raw_${hashId}`);
@@ -2901,14 +2884,24 @@ async function enterChatUI(roomData, pass) {
 let _wasDisconnected = false;
 
 function initConnectionMonitor() {
-  onValue(ref(db, ".info/connected"), (snap) => {
+  onValue(ref(db, ".info/connected"), async (snap) => {
     const connected = snap.val() === true;
     if (!connected) {
       _wasDisconnected = true;
-    } else if (_wasDisconnected) {
-      _wasDisconnected = false;
-      if (curR) {
-        forceResync();
+    } else {
+      if (_wasDisconnected) {
+        _wasDisconnected = false;
+        
+        // 追加仕様：承認待ち中の状態のときに再接続(切断復旧)が走ったら、申請を自動キャンセルしてロビーへ戻す
+        if (isWaitingApproval && curR) {
+          showToast("📡 接続が寸断されたため、申請をキャンセルしました");
+          await cancelPendingRequest();
+          return;
+        }
+
+        if (curR) {
+          forceResync();
+        }
       }
     }
   });
@@ -3657,20 +3650,6 @@ window.openFloatingPlayer = async (url, type, extraData = "") => {
   }
 };
 
-window.addEventListener("message", (e) => {
-  try {
-    const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
-    if (!data) return;
-
-    if (data.event === "infoDelivery" && data.info && data.info.playerState === 0) {
-      closeFloatingPlayer();
-    }
-    if (data.eventName === "playerStatusChange" && data.data && data.data.playerStatus === 4) {
-      closeFloatingPlayer();
-    }
-  } catch (err) {}
-});
-
 /* =========================================================
    P2P音声通話システム (WebRTC) カメラは利用せずマイクのみ
    ========================================================= */
@@ -3906,63 +3885,6 @@ function watchSpeakers() {
     });
   });
 }
-
-// 音声モード（発言者）へ手動切り替え
-async function switchToSpeaking() {
-  try {
-    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-    isSpeaking = true;
-    
-    const speakerRef = ref(db, `rooms/${curR}/speakers/${myUid}`);
-    await set(speakerRef, { n: curN, t: serverTimestamp() });
-    await onDisconnect(speakerRef).remove();
-    await onDisconnect(ref(db, `calls/${curR}/${myUid}`)).remove();
-    
-    updateAllConnections();
-    
-    $("callModeToggleBtn").textContent = "🎧 受信のみに切替";
-    $("callModeToggleBtn").style.background = "var(--sf)";
-    $("micToggleBtn").style.display = "inline-block";
-    $("micToggleBtn").textContent = "🎤 ミュート";
-    $("callStatusText").textContent = "発言中 (マイクON)";
-    showToast("🎙️ 発言者モードに切り替えました。マイクが有効です");
-  } catch (err) {
-    console.error("マイク許可エラー:", err);
-    alert("マイクの利用が許可されませんでした。");
-    switchToReceiveOnly();
-  }
-}
-
-// 受信モード（聴くだけ）へ手動切り替え
-async function switchToReceiveOnly() {
-  isSpeaking = false;
-  
-  if (localStream) {
-    localStream.getTracks().forEach(track => track.stop());
-    localStream = null;
-  }
-  
-  if (curR && myUid) {
-    await remove(ref(db, `rooms/${curR}/speakers/${myUid}`));
-  }
-  
-  updateAllConnections();
-  
-  $("callModeToggleBtn").textContent = "🎙️ 話すモードに切替";
-  $("callModeToggleBtn").style.background = "var(--in)";
-  $("micToggleBtn").style.display = "none";
-  $("callStatusText").textContent = "受信専用 (聴くだけ)";
-  showToast("🎧 受信専用モード（聴くだけ）に切り替えました");
-}
-
-// 手動モード切り替えトグルのトリガー設定
-$("callModeToggleBtn").onclick = async () => {
-  if (isSpeaking) {
-    await switchToReceiveOnly();
-  } else {
-    await switchToSpeaking();
-  }
-};
 
 // 通話開始 (初期マイク起動)
 async function startMicrophone() {

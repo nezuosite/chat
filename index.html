@@ -8,7 +8,6 @@
 <meta name="theme-color" content="#0f172a">
 <title>NEZU ONETIME CHAT</title>
 <style>
-/* 共通リセット＆変数 */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
   --bg:#0f172a;--sf:#1e293b;--s2:#0a1628;--bd:#334155;
@@ -21,460 +20,146 @@
   --app-viewport-height: 100dvh;
 }
 html,body{
-  height:100%; height:100dvh; width:100%; overflow:hidden;
-  background:#070a0f;color:var(--tx);
+  height:100%; height:100dvh; width:100%; overflow:hidden; background:#070a0f; color:var(--tx);
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Noto Sans JP",sans-serif;
-  touch-action:pan-y;overscroll-behavior:none;-webkit-text-size-adjust:100%;
-  font-size:15px; 
+  touch-action:pan-y;overscroll-behavior:none;-webkit-text-size-adjust:100%; font-size:15px; 
 }
 input,textarea,select{font-family:inherit;-webkit-user-select:text;user-select:text;font-size:15px!important}
 button{cursor:pointer;font-family:inherit;border:none;background:none}
 button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
-
-/* アプリケーション全体の高さ追従 */
-#app, #lobby {
-  height: 100vh;
-  height: var(--app-viewport-height, 100dvh);
-}
-
-/* ロビーUI */
+#app, #lobby { height: 100vh; height: var(--app-viewport-height, 100dvh); }
 #lobby{display:none;position:fixed;inset:0;background:var(--bg);z-index:100;overflow-y:auto;align-items:center;justify-content:center;}
 .lbo{
-  height:auto;
-  max-height: 100dvh;
-  display:flex;
-  flex-direction:column;
-  padding:8px 12px calc(8px + var(--safe));
-  gap:6px;
-  justify-content:center;
-  max-width:340px;
-  width: 100%;
-  margin:0 auto;
+  height:auto; max-height: 100dvh; display:flex; flex-direction:column;
+  padding:8px 12px calc(8px + var(--safe)); gap:6px; justify-content:center;
+  max-width:340px; width: 100%; margin:0 auto;
 }
-.lbt{font-size:16px;font-weight:900;color:#818cf8;text-align:center;letter-spacing:.03em;margin-bottom:0;}
-.lbsub{font-size:10px;font-weight:700;color:var(--m2);text-align:center;letter-spacing:.05em;margin-top:-2px;margin-bottom:2px;}
+.lbt{font-size:16px;font-weight:900;color:#818cf8;text-align:center;letter-spacing:.03em;}
+.lbsub{font-size:10px;font-weight:700;color:var(--m2);text-align:center;letter-spacing:.05em;margin-top:-2px;}
 .lbi{display:flex;flex-direction:column;gap:6px;width:100%}
-.ibox{background:rgba(79,70,229,.03);border:1px solid rgba(99,102,241,.12);border-radius:4px;padding:8px 10px;font-size:11px;color:var(--mu);line-height:1.45;margin-bottom:2px;}
+.ibox{background:rgba(79,70,229,.03);border:1px solid rgba(99,102,241,.12);border-radius:4px;padding:8px 10px;font-size:11px;color:var(--mu);line-height:1.45;}
 .ibox b{color:#a5b4fc}
 #lberr{background:var(--rg);border:1px solid rgba(244,63,94,.3);border-radius:4px;padding:4px;font-size:11px;color:#fda4af;display:none;text-align:center;font-weight:bold}
-
-/* 自動的に再入室するため、表示要素は非表示に設定 */
 #roomResumeArea{display:none!important;}
-
 .fg{display:flex;flex-direction:column;gap:1px}
 .fl{font-size:11px;font-weight:700;color:var(--mu)}
 .inp{width:100%;background:var(--sf);border:1px solid var(--bd);border-radius:4px;padding:6px 10px;color:var(--tx);outline:none;font-size:13px}
 .inp:focus{border-color:var(--in)}
 .inp[type="number"] {border: 1px solid #818cf8; background: rgba(79,70,229,0.03); font-weight: bold; text-align: center; padding:5px 8px;}
-#tripPreview{font-size:11.5px; font-weight:bold; color:var(--em); margin-top:2px; display:flex; justify-content:space-between; align-items:center; gap:8px;}
-.copy-s-btn {background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:var(--tx); padding:3px 8px; border-radius:4px; font-size:10.5px; cursor:pointer; white-space:nowrap;}
-.copy-s-btn:active{background:rgba(255,255,255,0.16);}
-
+#tripPreview{font-size:11px; font-weight:bold; color:var(--em); display:flex; justify-content:space-between; align-items:center;}
+.copy-s-btn {background:rgba(255,255,255,0.08); border:none; color:var(--tx); padding:2px 6px; border-radius:3px; font-size:10px; cursor:pointer;}
 .accordion-header{background:var(--sf);border:1px solid var(--bd);border-radius:4px;padding:6px 10px;font-size:11px;font-weight:bold;color:#a5b4fc;cursor:pointer;display:flex;align-items:center;justify-content:between;user-select:none;margin-top:1px}
 .accordion-header:hover{background:rgba(255,255,255,0.03)}
 .accordion-body{display:none;flex-direction:column;gap:6px;border:1px dashed var(--bd);padding:8px;border-radius:4px;background:rgba(0,0,0,0.15)}
-
 .clrbox{display:flex;flex-direction:column;gap:2px;background:var(--s2);padding:6px 10px;border-radius:4px;border:1px solid var(--bd)}
 .clrlbl{font-size:10px;font-weight:700;color:var(--mu)}
 .clrpick-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:4px}
 .clrc,.wclrc,.clrc2{aspect-ratio:1;width:100%;max-width:18px;border-radius:50%;margin:0 auto;border:1px solid transparent;cursor:pointer}
 .clrc.sel,.wclrc.sel,.clrc2.sel{border-color:var(--tx);transform:scale(1.1)}
-
-.brow{display:grid;grid-template-columns:1fr 1.5fr;gap:6px;margin-top:2px}
-.btn{padding:8px 10px;border-radius:4px;font-size:12.5px;font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:opacity 0.2s}
+.brow{display:grid;grid-template-columns:1fr 1.6fr;gap:4px;margin-top:2px}
+.btn{padding:8px 6px;border-radius:4px;font-size:12px;font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:opacity 0.2s}
 .btn:active{opacity:0.8}
 .btn:disabled{opacity:0.5;cursor:not-allowed}
 .bq{background:var(--sf);color:var(--tx);border:1px solid var(--bd)}
 .bp{background:var(--in);color:#fff}
 .glink{font-size:11px;color:#a5b4fc;text-align:center;margin-top:4px;padding:6px;text-decoration:underline;cursor:pointer;font-weight:bold;background:rgba(129,140,248,0.05);border:1px solid rgba(129,140,248,0.15);border-radius:4px}
-
-/* ホスト管理メニュー用CSS */
-#hostPanel label {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--mu);
-}
-#hostPanel input[type="radio"] {
-  accent-color: var(--in);
-}
-
-/* 承認待ちリストの穏やかなパルスアニメーション */
-@keyframes pulseBorder {
-  0% { border-color: var(--bd); box-shadow: 0 0 0 rgba(79, 70, 229, 0); }
-  50% { border-color: var(--in); box-shadow: 0 0 6px rgba(79, 70, 229, 0.2); }
-  100% { border-color: var(--bd); box-shadow: 0 0 0 rgba(79, 70, 229, 0); }
-}
-.pulse-border {
-  animation: pulseBorder 2s infinite ease-in-out;
-}
-
-/* アプリ本体 */
+#hostPanel label { font-size: 10px; font-weight: 700; color: var(--mu); }
+#hostPanel input[type="radio"] { accent-color: var(--in); }
 #app{display:none;position:fixed;inset:0;flex-direction:column;overflow:hidden;z-index:50;background:#070a0f;}
-/* PC大画面対応 */
 #cp{
   display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;background:#0d1117;position:relative;
-  max-width:900px;
-  width:100%;
-  margin:0 auto;
-  border-left:1px solid var(--bd);
-  border-right:1px solid var(--bd);
+  max-width:900px; width:100%; margin:0 auto; border-left:1px solid var(--bd); border-right:1px solid var(--bd);
 }
 #app.visible{display:flex}
-
-/* ヘッダーの最適化 */
 #hdr{background:var(--sf);border-bottom:1px solid var(--bd);padding:6px 12px;flex-shrink:0}
 .hr{display:flex;align-items:center;justify-content:space-between;gap:8px;height:auto;padding:4px 0}
 .rn{font-weight:800;font-size:14px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px;}
 .pcnt{font-size:11px;font-weight:900;color:var(--tx);background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;white-space:nowrap;margin-left:6px;line-height:1;}
-.hbs{display:flex;gap:6px;align-items:center;flex-shrink:0;}
+.hbs{display:flex;gap:8px;align-items:center;flex-shrink:0;}
 .hbs button{
-  padding:4px 10px;
-  height:34px;
-  border-radius:6px;
-  font-size:11.5px;
-  font-weight:700;
-  background:var(--bg);
-  border:1px solid var(--bd);
-  color:var(--tx);
-  display:flex;
-  align-items:center;
-  gap:4px;
-  transition:background 0.15s, border-color 0.15s;
+  padding:6px 14px; height:38px; border-radius:6px; font-size:12px; font-weight:700;
+  background:var(--bg); border:1px solid var(--bd); color:var(--tx); display:flex; align-items:center; gap:6px;
 }
-.hbs button:active{background:rgba(255,255,255,0.08);}
 .bclr-dot{width:6px;height:6px;border-radius:50%;display:inline-block}
-
-/* 退室ボタン */
-.bx{
-  background:rgba(244,63,94,.16)!important; 
-  border-color:rgba(244,63,94,.4)!important; 
-  color:#fda4af!important; 
-  font-weight:900!important;
-  padding:4px 12px!important;
-}
-.bx:active{
-  background:rgba(244,63,94,.3)!important;
-}
-
-/* 1. 入室者リスト */
+.bx{ background:rgba(244,63,94,.16)!important; border-color:rgba(244,63,94,.4)!important; color:#fda4af!important; font-weight:900!important; padding:6px 16px!important; }
 #pl{
-  display:flex;gap:6px;overflow-x:auto;padding:4px 8px;white-space:nowrap;scrollbar-width:none;
-  border-bottom:1px solid rgba(255,255,255,0.04);background:var(--s2);flex-shrink:0;align-items:center;height:32px;
+  display:flex;gap:6px;padding:4px 8px;background:var(--s2); border-bottom:1px solid rgba(255,255,255,0.04);flex-shrink:0;align-items:center;
+  flex-wrap:wrap; min-height:32px; max-height: 58px; overflow-y:auto; overflow-x:hidden;
 }
-#pl::-webkit-scrollbar{display:none;}
+#pl::-webkit-scrollbar{width:4px;}
+#pl::-webkit-scrollbar-track{background:rgba(0,0,0,0.05);}
+#pl::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1); border-radius:2px;}
 .chip{
-  font-size:9.5px;
-  font-weight:700;
-  padding: 2px 6px;
-  border-radius:4px;
-  background: var(--bg);
-  border: 1px solid rgba(255,255,255,0.08);
-  display:inline-flex;
-  align-items:center;
-  color:var(--tx);
-  height: 22px;
-  cursor: pointer;
+  font-size:9.5px; font-weight:700; padding: 2px 6px; border-radius:4px; background: var(--bg);
+  border: 1px solid rgba(255,255,255,0.08); display:inline-flex; align-items:center; color:var(--tx); height: 22px; cursor: pointer;
 }
 .chip.is-host::before {content:"★ ";color:var(--em);margin-right:2px;font-weight:bold;}
-
-/* タイムライン */
-#tl{
-  flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:4px;background-color:#0d1117;
-  -webkit-overflow-scrolling:touch;touch-action:pan-y!important;overscroll-behavior-y:contain;
-  contain: layout;
-}
+#tl{ flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:4px;background-color:#0d1117; -webkit-overflow-scrolling:touch;overscroll-behavior-y:contain; }
 #tl-inner{display:flex;flex-direction:column;justify-content:flex-end;gap:0;width:100%;max-width:800px;margin:0 auto;min-height:100%}
-
-@keyframes slideInUp { 0% { opacity: 0; transform: translateY(4px); } 100% { opacity: 1; transform: translateY(0); } }
 .mw{
-  position:relative; 
-  display:flex;
-  flex-direction:column;
-  width:100%;
-  opacity:0;
-  animation:slideInUp 0.1s cubic-bezier(0.22, 1, 0.36, 1) forwards; 
-  user-select:text; 
-  -webkit-user-select:text; 
-  padding:8px 12px; 
-  border-bottom:1px solid rgba(51, 65, 85, 0.25);
-  will-change: transform, opacity;
+  position:relative; display:flex; flex-direction:column; width:100%; opacity:0;
+  animation:slideInUp 0.1s cubic-bezier(0.22, 1, 0.36, 1) forwards; user-select:text; -webkit-user-select:text; 
+  padding:8px 12px; border-bottom:1px solid rgba(51, 65, 85, 0.25); will-change: transform, opacity;
 }
 .mm{display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:4px;}
 .ts{color:var(--m2);font-size:11px;margin-left:auto;font-family:monospace;}
 .mb{align-self:start;background:transparent;border:none;padding:0;font-size:15px;line-height:1.55;max-width:100%;word-break:break-all;white-space:pre-wrap;color:var(--tx);}
 .sys-msg{text-align:center;font-size:12px;font-weight:bold;color:var(--mu);margin:6px 0;background:rgba(255,255,255,0.03);padding:6px 12px;border-radius:4px;width:100%;align-self:center;border:1px solid rgba(255,255,255,0.05);}
-
-/* インライン削除ボタン */
-.del-btn-inline {
-  background: rgba(244, 63, 94, 0.15);
-  color: #fda4af;
-  border: 1px solid rgba(244, 63, 94, 0.3);
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: bold;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 22px;
-  transition: background 0.1s;
-}
-.del-btn-inline:active {
-  background: rgba(244, 63, 94, 0.3);
-}
-
-/* インライン画像 */
-.inline-img {
-  max-width: 240px;
-  max-height: 200px;
-  width: auto;
-  height: auto;
-  border-radius: 4px; 
-  margin: 6px 0;
-  display: block;
-  cursor: zoom-in;
-  object-fit: contain;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: #000;
-  transition: opacity 0.15s;
-}
-.inline-img:hover {
-  opacity: 0.9;
-}
-
-/* メディアリンク・バッジデザイン */
-.media-link-container {
-  display: flex; 
-  flex-direction: column; 
-  gap: 4px; 
-  margin-top: 6px; 
-  background: rgba(255, 255, 255, 0.02); 
-  padding: 8px 12px; 
-  border-radius: 6px; 
-  border: 1px solid rgba(255, 255, 255, 0.05); 
-  width: 100%; 
-  max-width: 100%; 
-  box-sizing: border-box;
-}
-.media-inline-row {
-  display: flex; 
-  align-items: center; 
-  gap: 8px; 
-  width: 100%;
-}
-.media-badge {display:inline-flex; align-items:center; gap:2px; font-weight:800; padding:2px 5px; border-radius:3px; font-size:9px; color:#fff; text-transform:uppercase; vertical-align:middle; line-height:1; white-space:nowrap; user-select: none; pointer-events: none;}
+.del-btn-inline { background: rgba(244, 63, 94, 0.15); color: #fda4af; border: 1px solid rgba(244, 63, 94, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; height: 20px; }
+.inline-img { max-width: 240px; max-height: 200px; width: auto; height: auto; border-radius: 4px; margin: 6px 0; display: block; cursor: zoom-in; object-fit: contain; border: 1px solid rgba(255, 255, 255, 0.1); background: #000; }
+.media-link-container { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; background: rgba(255, 255, 255, 0.02); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.05); width: 100%; max-width: 100%; box-sizing: border-box;}
+.media-inline-row { display: flex; align-items: center; gap: 8px; width: 100%;}
+.media-badge {display:inline-flex; align-items:center; gap:2px; font-weight:800; padding:2px 5px; border-radius:3px; font-size:9px; color:#fff; text-transform:uppercase; line-height:1; white-space:nowrap; pointer-events: none;}
 .media-btn-row {display:flex; gap:6px; flex-wrap:wrap; align-items:center;}
-.open-player-btn, .dl-media-btn {
-  background:var(--in); color:#fff; font-size:10px; font-weight:bold; border-radius:4px; padding:3px 10px; cursor:pointer; border:none; transition:background 0.15s; white-space:nowrap;
-}
-.open-player-btn:active, .dl-media-btn:active {background:var(--i2);}
+.open-player-btn, .dl-media-btn { background:var(--in); color:#fff; font-size:10px; font-weight:bold; border-radius:4px; padding:3px 10px; cursor:pointer; border:none; transition:background 0.15s; white-space:nowrap; }
 .dl-media-btn {background:var(--e2);}
-.dl-media-btn:active {background:#059669;}
-
-/* 入力バー */
-#ib{
-  display:none; 
-  flex-direction: column; 
-  padding:3px calc(4px + env(safe-area-inset-right,0px)) calc(3px + var(--safe)) calc(4px + env(safe-area-inset-left,0px)); 
-  background:var(--sf); 
-  border-top:1px solid var(--bd); 
-  gap:3px; 
-  flex-shrink:0; 
-  width: 100%;
-}
+#ib{ display:none; flex-direction: column; padding:3px calc(4px + env(safe-area-inset-right,0px)) calc(3px + var(--safe)) calc(4px + env(safe-area-inset-left,0px)); background:var(--sf); border-top:1px solid var(--bd); gap:3px; flex-shrink:0; width: 100%; }
 #ib.show{display:flex}
-
-/* 入力バー上の補助ボタン行 */
 #ibTopBar { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.04); }
-
-/* 入力フォーム本体 */
-#ibToolbar { width:100%; align-items: center; display: flex; gap:4px; padding: 0; }
-.ib-icon-btn{flex-shrink:0;}
-
+#ibToolbar { width:100%; align-items: center; display: flex; gap:4px; }
 .jump-btns{display:flex; flex-direction:row; gap:6px; flex-shrink:0;}
 .jump-btn{width:56px; height:32px; border-radius:6px; background:var(--s2); border:1px solid var(--bd); color:var(--tx); font-size:11px; font-weight:bold; display:flex; align-items:center; justify-content:center; line-height:1; padding:0; cursor:pointer;}
 .jump-btn:active{background:var(--in); color:#fff;}
 .jump-btn:disabled{opacity:0.3; cursor:not-allowed;}
-
-/* 補助トグルボタンサイズ */
-.switch-kb { width: 114px !important; height: 32px !important; position:relative; border-radius:16px!important; background:var(--s2)!important; border:1px solid var(--bd); padding:0 2px!important; overflow:hidden; transition:all 0.25s ease; cursor:pointer; display: flex; align-items: center;}
-.switch-kb::after { content:""; position:absolute; top:2px; left:2px; width:26px; height:26px; background:rgba(255,255,255,0.25); border:1px solid rgba(255,255,255,0.45); backdrop-filter:blur(1px); border-radius:50%; transition:transform 0.25s ease; z-index:1; }
+.switch-kb { width: 110px !important; height: 32px !important; position:relative; border-radius:16px!important; background:var(--s2)!important; border:1px solid var(--bd); padding:0 2px!important; overflow:hidden; transition:all 0.25s ease; cursor:pointer; display: flex; align-items: center;}
+.switch-kb::after { content:""; position:absolute; top:2px; left:2px; width:26px; height:26px; background:rgba(255,255,255,0.25); border:1px solid rgba(255,255,255,0.45); border-radius:50%; transition:transform 0.25s ease; z-index:1; }
 .switch-kb.active { background:var(--in)!important; border-color:var(--i2)!important; }
 .switch-kb.active::after { transform: translateX(53px) !important; }
-
-.switch-scroll { width: 90px !important; height: 32px !important; position:relative; border-radius:16px!important; background:var(--s2)!important; border:1px solid var(--bd); padding:0 2px!important; overflow:hidden; transition:all 0.25s ease; cursor:pointer; display: flex; align-items: center;}
-.switch-scroll::after { content:""; position:absolute; top:2px; left:2px; width:26px; height:26px; background:rgba(255,255,255,0.25); border:1px solid rgba(255,255,255,0.45); backdrop-filter:blur(1px); border-radius:50%; transition:transform 0.25s ease; z-index:1; }
+.switch-scroll { width: 85px !important; height: 32px !important; position:relative; border-radius:16px!important; background:var(--s2)!important; border:1px solid var(--bd); padding:0 2px!important; overflow:hidden; transition:all 0.25s ease; cursor:pointer; display: flex; align-items: center;}
+.switch-scroll::after { content:""; position:absolute; top:2px; left:2px; width:26px; height:26px; background:rgba(255,255,255,0.25); border:1px solid rgba(255,255,255,0.45); border-radius:50%; transition:transform 0.25s ease; z-index:1; }
 .switch-scroll.active { background:var(--in)!important; border-color:var(--i2)!important; }
 .switch-scroll.active::after { transform: translateX(53px) !important; }
-
 .switch-text {font-size:11px; font-weight:bold; pointer-events:none; color:var(--tx); position:relative; z-index:2; width: 100%; text-align: center;}
-
-/* 入力エリア */
 .mi-container{position:relative;flex:1;display:flex;align-items:center;background:var(--bg);border:1px solid var(--bd);border-radius:18px;min-height:38px;padding:4px 34px 4px 38px;}
-.battach{position:absolute;left:4px;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--mu);transition:color 0.15s, background 0.15s; cursor:pointer;}
-.battach:active{background:rgba(255,255,255,0.08);color:var(--tx)}
+.battach{position:absolute;left:4px;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--mu);cursor:pointer;}
 .battach svg{width:18px;height:18px}
 #mi{width:100%;background:none;border:none;color:var(--tx);outline:none;resize:none;font-size:15px;max-height:120px;line-height:1.5;padding:4px 0}
-.bclrm{position:absolute;right:4px;width:28px;height:28px;border-radius:50%;color:var(--m2);font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background 0.15s;}
-.bclrm:active{background:rgba(255,255,255,0.08);color:var(--tx)}
-.bsd{width:40px;height:40px;border-radius:50%;background:var(--in);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity 0.15s;margin-bottom:0; box-shadow: 0 1px 6px rgba(79,70,229,0.3);}
-.bsd:active{opacity:0.7;}
+.bclrm{position:absolute;right:4px;width:28px;height:28px;border-radius:50%;color:var(--m2);font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.bsd{width:38px;height:38px;border-radius:50%;background:var(--in);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-bottom:0; box-shadow: 0 1px 6px rgba(79,70,229,0.3);}
 .bsd svg{width:18px;height:18px;transform:rotate(45deg);margin-top:-1px;margin-right:1px}
-
-/* モーダル */
 .mod-overlay{position:fixed;inset:0;background:rgba(15,23,42,.8);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:10000;padding:12px}
 .mod-overlay.show{display:flex}
 .gc,.clrmc{background:var(--sf);border:1px solid var(--bd);border-radius:8px;width:100%;max-width:400px;display:flex;flex-direction:column;gap:6px;padding:8px;max-height:80vh;overflow-y:auto}
 .gs{border-left:3px solid var(--in);padding:6px 8px;font-size:12px;color:var(--tx);line-height:1.4;background:rgba(255,255,255,0.01);border-radius:3px}
 .gs h4{font-size:12px;margin-bottom:2px;font-weight:800}
-
 .clr-prev{background:var(--bg);padding:8px;border-radius:6px;text-align:center;font-size:11px;font-weight:700}
 .clr-btns{display:flex;gap:6px;margin-top:2px}
 .clr-cancel,.clr-ok{flex:1;padding:8px;border-radius:6px;font-size:11px;font-weight:700;text-align:center}
 .clr-cancel{background:var(--bg);border:1px solid var(--bd);color:var(--tx)}
 .clr-ok{background:var(--in);color:#fff}
-
-/* スピナー定義 */
-.spin {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.25);
-  border-radius: 50%;
-  border-top-color: var(--tx);
-  animation: spin 0.8s linear infinite;
-}
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* 削除プレビューエリアを含むダイアログ用CSS */
-.del-modal-text {
-  background: var(--bg);
-  border: 1px solid var(--bd);
-  border-radius: 4px;
-  padding: 8px;
-  font-size: 12px;
-  color: var(--tx);
-  max-height: 150px;
-  overflow-y: auto;
-  word-break: break-all;
-  margin-top: 8px;
-}
-
-/* 画像プレビューモーダル */
-#imgViewMod {
-  background: rgba(0,0,0,0.95);
-  backdrop-filter: blur(8px);
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  touch-action: none;
-}
-#imgViewMod.show {
-  display: flex !important;
-}
-#imgViewSrc {
-  max-width: 90%;
-  max-height: calc(100dvh - 140px);
-  object-fit: contain;
-  user-select: none;
-  -webkit-user-drag: none;
-  transition: transform 0.05s ease-out;
-  transform-origin: center center;
-  margin-bottom: 20px;
-}
-.modal-bottom-close-container {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  padding: 16px 0 calc(16px + var(--safe));
-  background: linear-gradient(to top, rgba(0,0,0,0.8) 40%, rgba(0,0,0,0));
-  backdrop-filter: blur(2px);
-  z-index: 10001;
-}
-.modal-bottom-close {
-  width: auto;
-  min-width: 160px;
-  padding: 10px 24px;
-  background: var(--ro);
-  color: #fff;
-  border-radius: 24px;
-  font-weight: bold;
-  font-size: 13px;
-  text-align: center;
-  border: none;
-  box-shadow: 0 4px 12px rgba(244, 63, 94, 0.4);
-  cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
-}
-.modal-bottom-close:active {
-  background: #e11d48;
-  transform: scale(0.96);
-}
-
-#toastContainer {
-  position: fixed;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10005;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  pointer-events: none;
-}
-.toast {
-  background: rgba(16, 185, 129, 0.95);
-  color: #fff;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: bold;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-  animation: slideInUp 0.15s ease forwards;
-  transition: opacity 0.3s;
-}
-
-/* 独立型フローティングプレイヤー */
-#floatingPlayer {
-  display: none;
-  position: absolute;
-  z-index: 9999;
-  background: #0d1117;
-  border: 1px solid var(--bd);
-  border-radius: 8px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-  width: 320px;
-  flex-direction: column;
-  overflow: hidden;
-  touch-action: none;
-}
-#playerDragHeader {
-  cursor: move;
-  background: var(--sf);
-  padding: 6px 10px;
-  font-size: 11px;
-  font-weight: bold;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid var(--bd);
-  user-select: none;
-}
-#playerContent {
-  width: 100%;
-  aspect-ratio: 16/9;
-  background: #000;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: relative;
-}
+.spin { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255, 255, 255, 0.25); border-radius: 50%; border-top-color: var(--tx); animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.del-modal-text { background: var(--bg); border: 1px solid var(--bd); border-radius: 4px; padding: 8px; font-size: 12px; color: var(--tx); max-height: 150px; overflow-y: auto; word-break: break-all; margin-top: 8px; }
+#imgViewMod { background: rgba(0,0,0,0.95); backdrop-filter: blur(8px); flex-direction: column; align-items: center; justify-content: center; touch-action: none; }
+#imgViewMod.show { display: flex !important; }
+#imgViewSrc { max-width: 90%; max-height: calc(100dvh - 140px); object-fit: contain; margin-bottom: 20px; }
+.modal-bottom-close-container { width: 100%; display: flex; justify-content: center; position: absolute; bottom: 0; left: 0; padding: 16px 0 calc(16px + var(--safe)); background: linear-gradient(to top, rgba(0,0,0,0.8) 40%, rgba(0,0,0,0)); backdrop-filter: blur(2px); z-index: 10001; }
+.modal-bottom-close { width: auto; min-width: 160px; padding: 10px 24px; background: var(--ro); color: #fff; border-radius: 24px; font-weight: bold; font-size: 13px; text-align: center; border: none; box-shadow: 0 4px 12px rgba(244, 63, 94, 0.4); cursor: pointer; }
+#toastContainer { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 10005; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
+.toast { background: rgba(16, 185, 129, 0.95); color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: bold; box-shadow: 0 2px 10px rgba(0,0,0,0.3); animation: slideInUp 0.15s ease forwards; transition: opacity 0.3s; }
+#floatingPlayer { display: none; position: absolute; z-index: 9999; background: #0d1117; border: 1px solid var(--bd); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); width: 320px; flex-direction: column; overflow: hidden; touch-action: none; }
+#playerDragHeader { cursor: move; background: var(--sf); padding: 6px 10px; font-size: 11px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--bd); user-select: none; }
+#playerContent { width: 100%; aspect-ratio: 16/9; background: #000; display: flex; justify-content: center; align-items: center; position: relative; }
 </style>
 </head>
 <body>
@@ -539,8 +224,8 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         </div>
 
         <div class="brow">
-          <button class="btn bq" id="gnBtn" title="部屋IDとパスワードをランダム生成">🎲 ランダム生成</button>
-          <button class="btn bp" id="enBtn" style="font-size: 13px;">入室 / 作成</button>
+          <button class="btn bq" id="gnBtn" title="部屋IDとパスワードをランダム生成">🎲 自動生成</button>
+          <button class="btn bp" id="enBtn">入室 / 作成</button>
         </div>
         <div class="glink" id="gdBtn">📖 ガイド / セキュリティ仕様を表示</div>
       </div>
@@ -579,13 +264,13 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         <div class="hbs">
           <button id="callBtn" title="音声通話を開始" style="background:rgba(129,140,248,0.1); border-color:rgba(129,140,248,0.3); color:#a5b4fc;">🎤 通話</button>
           <button id="copyUrlBtn" title="招待URLをコピー">🔗 URL</button>
-          <button class="bclr" id="clrBtn" title="カラー設定"><span class="bclr-dot" id="clrDot"></span> 🎨 カラー</button>
+          <button class="bclr" id="clrBtn" title="カラー設定"><span class="bclr-dot" id="clrDot"></span> 設定</button>
           <button class="bx" id="exBtn" title="退室">退室</button>
         </div>
       </div>
     </div>
 
-    <!-- ホスト専用管理パネル (省スペース化) -->
+    <!-- ホスト専用管理パネル (施錠モード追加・省スペース化) -->
     <div id="hostPanel" style="display:none; background:var(--sf); border-bottom:1px solid var(--bd); padding:4px 8px; font-size:11px; flex-direction:column; gap:4px;">
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
         <div style="display:flex; align-items:center; gap:6px;">
@@ -597,6 +282,9 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
             <label style="display:flex; align-items:center; gap:2px; cursor:pointer; font-size:10px;">
               <input type="radio" name="roomModeRadio" value="invite" style="width:11px; height:11px;"> 招待制
             </label>
+            <label style="display:flex; align-items:center; gap:4px; cursor:pointer; font-size:10px; margin-left:6px; border-left:1px solid var(--bd); padding-left:6px; color:#f87171;" title="施錠すると、現在のメンバーと事前承認トリップの人以外は新しく入れなくなります（再入室は可能）">
+              <input type="checkbox" id="roomLockCheckbox" style="width:11px; height:11px; accent-color:#ef4444;"> 🔒 部屋を施錠 (完全ロック)
+            </label>
           </div>
         </div>
         <div style="display:flex; gap:6px; align-items:center;">
@@ -604,8 +292,8 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         </div>
       </div>
       
-      <!-- 事前許可トリップ設定 (招待モードでのみ1行でスマートに横並び表示されるよう極限まで省スペース化) -->
-      <div id="hostPreApproveWrapper" style="display:none; align-items:center; gap:6px; background:var(--bg); padding:4px 6px; border-radius:4px; border:1px solid var(--bd); margin-top:2px; flex-wrap:wrap;">
+      <!-- 事前許可トリップ設定 (招待モードでのみ1行でスマートに横並び表示されるよう極限まで省スペース化・最大高も制限) -->
+      <div id="hostPreApproveWrapper" style="display:none; align-items:center; gap:6px; background:var(--bg); padding:4px 6px; border-radius:4px; border:1px solid var(--bd); margin-top:2px; flex-wrap:wrap; max-height:80px; overflow-y:auto;">
         <span style="font-weight:bold; font-size:9.5px; color:#818cf8; white-space:nowrap;">🔑 トリップ自動承認:</span>
         <div style="display:flex; gap:3px; align-items:center; flex:1; min-width:140px;">
           <input type="text" id="preApproveInput" class="inp" placeholder="◆トリップを入力" style="font-size:10px; padding:2px 6px; height:22px; width:100px; flex:1;">
@@ -614,7 +302,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         <div id="preApproveList" style="max-height:36px; overflow-y:auto; display:flex; flex-wrap:wrap; gap:3px; flex:1; min-width:120px;"></div>
       </div>
 
-      <!-- BANリスト (折りたたみ式) -->
+      <!-- BANリスト (折りたたみ式・高さ制限) -->
       <div id="hostBanListWrapper" style="display:none; background:var(--bg); padding:4px 6px; border-radius:4px; border:1px solid var(--bd); margin-top:2px;">
         <div style="font-weight:bold; font-size:9.5px; color:var(--ro); margin-bottom:2px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:1px;">🚫 BANリスト</div>
         <div id="hostBanList" style="max-height:60px; overflow-y:auto; display:flex; flex-direction:column; gap:3px; font-size:9.5px;">
@@ -622,10 +310,10 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         </div>
       </div>
 
-      <!-- 承認待ちリスト (承認待ちがいるときのみ自動展開) -->
+      <!-- 承認待ちリスト (承認待ちがいるときのみ自動展開・高さ制限) -->
       <div id="hostRequestListWrapper" style="display:none; background:var(--bg); padding:4px 6px; border-radius:4px; border:1px solid var(--bd); margin-top:2px;">
         <div style="font-weight:bold; font-size:9.5px; color:#818cf8; margin-bottom:2px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:1px;">📥 入室承認待ち</div>
-        <div id="hostRequestList" style="max-height:80px; overflow-y:auto; display:flex; flex-direction:column; gap:3px; font-size:9.5px;"></div>
+        <div id="hostRequestList" style="max-height:70px; overflow-y:auto; display:flex; flex-direction:column; gap:3px; font-size:9.5px;"></div>
       </div>
     </div>
 
@@ -642,7 +330,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       </div>
     </div>
 
-    <!-- 1. 入室者リスト -->
+    <!-- 1. 入室者リスト (人数増加時に自動折り返し・最大高さを制御して縦スクロール化) -->
     <div id="pl"></div>
 
     <!-- タイムライン -->
@@ -808,7 +496,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 
       <div class="gs" style="border-left-color: var(--ro);">
         <h4 style="color: var(--ro); font-size: 13px; margin-bottom: 4px;">🧼 サーバーからの徹底した物理消去と不保持</h4>
-        設定された部屋のタイムアウト、またはメンバー全員の退室（最後の一人の退室ボタン操作）をトリガーとして、ルーム、メッセージ、Presence（接続ステート）など、サーバー上の関連するすべての物理データは痕跡を残さず即座に完全抹消されます。<br>
+        設定された部屋 of タイムアウト、またはメンバー全員 of 退室（最後の一人の退室ボタン操作）をトリガーとして、ルーム、メッセージ、Presence（接続ステート）など、サーバー上の関連するすべての物理データは痕跡を残さず即座に完全抹消されます。<br>
         運営側はアクセス元情報、接続IPアドレス、行動履歴などのログを一切保持しない仕様となっており、バックアップも作成されないため、消去完了したデータの復元は法律上の開示要請を含めいかなる手段でも不可能です。
       </div>
       
@@ -873,7 +561,6 @@ const D = {
 
 let keepKbOpen = false;
 let isAutoScroll = true;
-let _scPending = false; // 未定義エラーを回避するためにここで明示的に宣言
 
 // ホイスティングによるエラーを防止するため、ユーティリティ関数は通常の function で宣言
 function scBottom(force = false) {
@@ -900,6 +587,27 @@ function updateLobbyColorPreview(color) {
   prevSpan.textContent = "■ この色で名前、トリップ、発言時刻が同期表示されます";
   con.appendChild(prevSpan);
 }
+
+// ローカルストレージからの即時入力復元処理
+const initLobbyInputs = () => {
+  D.ni.value = localStorage.getItem("nz_ni") || "";
+  D.tripi.value = localStorage.getItem("nz_tripi") || "";
+  D.ri.value = localStorage.getItem("nz_ri_val") || "";
+  D.pi.value = localStorage.getItem("nz_pi_val") || "";
+  D.timeri.value = localStorage.getItem("nz_timer_val") || "30";
+};
+initLobbyInputs();
+
+const initHashPass = () => {
+  if (location.hash) {
+    const hashPass = decodeURIComponent(location.hash.substring(1));
+    if (hashPass) {
+      D.pi.value = hashPass;
+      localStorage.setItem("nz_pi_val", hashPass);
+    }
+  }
+};
+initHashPass();
 
 /* =========================================================
    Web Cryptography API (AES-GCM 256 & ECDH 1対1鍵共有)
@@ -1103,7 +811,7 @@ const decrypt = (c, key = masterKey) => {
   return p;
 };
 
-// メタデータ復号 of 共通処理
+// メタデータ復号の共通処理
 async function decryptMeta(metaStrEnc) {
   if (!metaStrEnc || !masterKey) return null;
   if (metaCache.has(metaStrEnc)) return metaCache.get(metaStrEnc);
@@ -1138,31 +846,6 @@ const updateTripPreview = async () => {
   localStorage.setItem("nz_mytrip_styled", t);
   localStorage.setItem("nz_myname", n);
 };
-
-// --- 初期ロード即時復元とプレビュー生成 ---
-const initLobbyInputs = () => {
-  D.ni.value = localStorage.getItem("nz_ni") || "";
-  D.tripi.value = localStorage.getItem("nz_tripi") || "";
-  D.ri.value = localStorage.getItem("nz_ri_val") || "";
-  D.pi.value = localStorage.getItem("nz_pi_val") || "";
-  D.timeri.value = localStorage.getItem("nz_timer_val") || "30";
-};
-
-const initHashPass = () => {
-  if (location.hash) {
-    const hashPass = decodeURIComponent(location.hash.substring(1));
-    if (hashPass) {
-      D.pi.value = hashPass;
-      localStorage.setItem("nz_pi_val", hashPass);
-    }
-  }
-};
-
-// 関数定義が終わったので、ロード時即座に入力を復元＆プレビューを即時同期
-initLobbyInputs();
-initHashPass();
-updateTripPreview();
-
 D.ni.addEventListener("input", async () => { localStorage.setItem("nz_ni", D.ni.value); await updateTripPreview(); });
 D.tripi.addEventListener("input", async () => { localStorage.setItem("nz_tripi", D.tripi.value); await updateTripPreview(); });
 
@@ -1235,6 +918,18 @@ let tmpColor = curColor;
 
 const setGlobalColor = c => { document.documentElement.style.setProperty("--usr-color", c); if(D.clrDot) D.clrDot.style.background = c; };
 setGlobalColor(curColor);
+
+// ロビー用プレビュー表示の同期更新
+const updateLobbyColorPreview = (color) => {
+  const con = $("lbClrPrev");
+  if (!con) return;
+  con.textContent = "";
+  const prevSpan = document.createElement("span");
+  prevSpan.style.color = color;
+  prevSpan.style.fontWeight = "bold";
+  prevSpan.textContent = "■ この色で名前、トリップ、発言時刻が同期表示されます";
+  con.appendChild(prevSpan);
+};
 
 const syncPickers = v => { 
   if(D.lbClrPick) D.lbClrPick.querySelectorAll("button").forEach(b => b.classList.toggle("sel", b.dataset.color === v)); 
@@ -1752,6 +1447,7 @@ let _hostReqOff = null;
 let _hostBanOff = null;
 let _hostModeOff = null;
 let _myBanOff = null;
+let _hostLockOff = null; // 施錠トグル同期用
 
 // E2EE生キャッシュストレージの仕組み
 let currentRoomMsgs = [];
@@ -1785,9 +1481,18 @@ function untrackAndCacheMessage(id) {
   localStorage.setItem(`nz_chat_raw_${curR}`, JSON.stringify(currentRoomMsgs));
 }
 
-// バッチレンダリング処理
-async function processInitialMessages(msgs) {
-  const fragment = document.createDocumentFragment();
+// 高速化：全メッセージの一括並列復号＆1バッチ高速描画
+async function processMessageBatch(snaps) {
+  const msgs = [];
+  snaps.forEach(child => {
+    const val = child.val();
+    val.id = child.key;
+    msgs.push(val);
+  });
+
+  msgs.sort((a, b) => (a.t || 0) - (b.t || 0));
+
+  // Promise.allによる並列復号化処理で劇的に処理を高速化
   const elements = await Promise.all(msgs.map(async (m) => {
     if (displayedMsgIds.has(m.id)) return null;
     trackAndCacheMessage(m);
@@ -1799,16 +1504,16 @@ async function processInitialMessages(msgs) {
     return null;
   }));
 
+  const fragment = document.createDocumentFragment();
   elements
     .filter(x => x !== null)
-    .sort((a, b) => a.ts - b.ts)
     .forEach(item => {
       fragment.appendChild(item.el);
     });
 
   D.tli.appendChild(fragment);
   trimTimeline();
-  scBottom();
+  scBottom(true);
 }
 
 async function renderCachedState(hashId, rawRoomId) {
@@ -1849,7 +1554,9 @@ async function renderCachedState(hashId, rawRoomId) {
   const cachedMsgs = loadChatCache(hashId);
   if (cachedMsgs.length > 0) {
     currentRoomMsgs = cachedMsgs;
-    await processInitialMessages(cachedMsgs);
+    // キャッシュメッセージもバッチで高速描画
+    const dummySnaps = cachedMsgs.map(m => ({ key: m.id, val: () => m }));
+    await processMessageBatch(dummySnaps);
   }
 }
 
@@ -2062,6 +1769,7 @@ function clearAll(newHashId = null) {
   if (typeof _hostBanOff === "function") { _hostBanOff(); _hostBanOff = null; }
   if (typeof _hostModeOff === "function") { _hostModeOff(); _hostModeOff = null; }
   if (typeof _myBanOff === "function") { _myBanOff(); _myBanOff = null; }
+  if (typeof _hostLockOff === "function") { _hostLockOff(); _hostLockOff = null; }
 
   if (typeof _lobbyReqOff === "function") { _lobbyReqOff(); _lobbyReqOff = null; }
   if (typeof _lobbyRoomOff === "function") { _lobbyRoomOff(); _lobbyRoomOff = null; }
@@ -2362,6 +2070,19 @@ function listenToHostRequestsAndBans() {
     }
   });
 
+  // 施錠(完全ロック)トグルの同期監視
+  _hostLockOff = onValue(ref(db, `rooms/${curR}/locked`), s => {
+    const locked = s.val() === true;
+    const chk = $("roomLockCheckbox");
+    if (chk) chk.checked = locked;
+  });
+
+  // 施錠操作の登録
+  $("roomLockCheckbox").onchange = (e) => {
+    update(ref(db, `rooms/${curR}`), { locked: e.target.checked });
+    sendSysMsg(e.target.checked ? "🔒 部屋が施錠（完全ロック）されました。新規メンバーは入室できません。" : "🔓 部屋の施錠（完全ロック）が解除されました。");
+  };
+
   _hostReqOff = onValue(ref(db, `rooms/${curR}/requests`), (s) => {
     const listDiv = $("hostRequestList");
     listDiv.textContent = "";
@@ -2491,16 +2212,8 @@ function listenToHostRequestsAndBans() {
   });
 }
 
-// BANリストトグルバインド
-$("toggleBanListBtn").onclick = () => {
-  const wrapper = $("hostBanListWrapper");
-  const isHidden = wrapper.style.display === "none";
-  wrapper.style.display = isHidden ? "block" : "none";
-  $("toggleBanListBtn").textContent = isHidden ? "🚫 BANリスト非表示" : "🚫 BANリスト表示";
-};
-
 // 承認待ちを安全にクリーンアップしてロビー（入力画面）へ戻す統合関数 (再接続時・手動キャンセル時共通)
-async function cancelPendingRequest() {
+function cancelPendingRequest() {
   isWaitingApproval = false;
   
   if (typeof _lobbyReqOff === "function") { _lobbyReqOff(); _lobbyReqOff = null; }
@@ -2508,8 +2221,8 @@ async function cancelPendingRequest() {
 
   if (curR && myUid) {
     const reqRef = ref(db, `rooms/${curR}/requests/${myUid}`);
-    await onDisconnect(reqRef).cancel();
-    await remove(reqRef).catch(() => {});
+    onDisconnect(reqRef).cancel();
+    remove(reqRef).catch(() => {});
   }
 
   $("lobbyWaitingArea").style.display = "none";
@@ -2548,11 +2261,12 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
     let roomData = snap.exists() ? snap.val() : null;
     const isRoomHost = roomData ? (roomData.host === myUid) : true;
     const roomMode = (roomData && roomData.mode) ? roomData.mode : "open";
+    const isRoomLocked = roomData ? (roomData.locked === true) : false;
 
     clearAll(hashId); _exitLock = false;
     localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created");
 
-    // 1. 先に E2EE 共通鍵 (masterKey) 導出と準備を100%完了させる (事前トリップのスムーズ復号に必須)
+    // 1. 先に E2EE 共通鍵 (masterKey) 導出と準備を100%完了させる (事前トリップ・パスワード検証に必須)
     let cachedKeyHex = localStorage.getItem(`nz_mkey_${hashId}`);
     if (cachedKeyHex) {
       masterKey = await importKeyFromHex(cachedKeyHex);
@@ -2569,7 +2283,53 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
       localStorage.setItem("nz_pi_val", pass);
     }
 
-    // 2. 鍵の導出完了後、安全に事前許可トリップを照合 (待機フローを確実にスキップするため)
+    // 2. 同じ部屋の重複作成を100%防止するゼロ知識パスワード正当性検証
+    if (!snap.exists()) {
+      localStorage.removeItem(`nz_chat_raw_${hashId}`);
+      currentRoomMsgs = [];
+      displayedMsgIds.clear();
+      D.tli.textContent = "";
+
+      const expireAtVal = srvNow() + (initTimer * 60000);
+      _roomExpireAt = expireAtVal;
+      isHost = true;
+
+      sessionStorage.setItem("nz_room_created_flag", "true");
+
+      // 新規作成時に検証用暗号トークンを登録
+      const verifyToken = await encrypt("ROOM_VALID", masterKey);
+      roomData = { 
+        created: serverTimestamp(), 
+        host: myUid, 
+        expireAt: expireAtVal, 
+        mode: "open",
+        verify: verifyToken
+      };
+      await set(roomRef, roomData);
+    } else {
+      // 既存の部屋の場合：上書きを一切不許可にし、パスワード（共通鍵）の検証を行う
+      if (roomData.verify) {
+        try {
+          const decVerify = await decrypt(roomData.verify, masterKey);
+          if (decVerify !== "ROOM_VALID") {
+            throw new Error("パスワード不一致");
+          }
+        } catch (e) {
+          // パスワード不一致時は部屋の作成・侵入を完全に拒否
+          D.enBtn.disabled = false;
+          D.enBtn.textContent = "入室 / 作成";
+          localStorage.removeItem("nz_active_ri");
+          localStorage.removeItem("nz_active_created");
+          localStorage.setItem("nz_is_in_room", "false");
+          showLobby("❌ パスワードが異なるか、既に別のパスワードで部屋が存在するため作成・入室できません。");
+          return;
+        }
+      }
+      _roomExpireAt = roomData.expireAt;
+      isHost = (roomData.host === myUid);
+    }
+
+    // 3. 鍵の導出・検証完了後、安全に事前許可トリップを照合 (待機フローを確実にスキップするため)
     let isPreApproved = false;
     if (roomData && roomData.preApprovedTrips && masterKey) {
       try {
@@ -2583,6 +2343,23 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
       } catch(e) {
         console.error("事前許可トリップ復号エラー:", e);
       }
+    }
+
+    // 過去の承認・入室完了履歴があるユーザーか判別
+    let hasEnteredBefore = false;
+    if (roomData && roomData.approvedUsers && roomData.approvedUsers[myUid]) {
+      hasEnteredBefore = true;
+    }
+
+    // 4. 【完全施錠 (ルームロック) モード】判定 (新規ユーザーの接続をブロック、現在メンバーと再入室のみパス)
+    if (isRoomLocked && !isRoomHost && !isPreApproved && !hasEnteredBefore) {
+      D.enBtn.disabled = false;
+      D.enBtn.textContent = "入室 / 作成";
+      localStorage.removeItem("nz_active_ri");
+      localStorage.removeItem("nz_active_created");
+      localStorage.setItem("nz_is_in_room", "false");
+      showLobby("🔒 この部屋は現在、完全ロック（施錠）されています。新規の参加者は入室できません。");
+      return;
     }
 
     // 招待承認モード判定 (事前承認ユーザーはパスして即時入室)
@@ -2726,6 +2503,9 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
       await set(reqRef, { name: name, trip: trip, status: "approved", t: serverTimestamp() });
     }
 
+    // 入室履歴 (approvedUsers) への登録 (完全施錠中の再入室を許可するため)
+    await set(ref(db, `rooms/${hashId}/approvedUsers/${myUid}`), true).catch(() => {});
+
     const previouslyEntered = localStorage.getItem(`nz_entered_${hashId}`) === "true";
     if (previouslyEntered) {
       await renderCachedState(hashId, roomId);
@@ -2740,42 +2520,13 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
     // 自公開鍵の JWK エクスポート
     const myPubJwk = myECDHKeyPair ? await exportPublicKey(myECDHKeyPair.publicKey) : null;
 
-    if (!snap.exists()) {
-      localStorage.removeItem(`nz_chat_raw_${hashId}`);
-      currentRoomMsgs = [];
-      displayedMsgIds.clear();
-      D.tli.textContent = "";
+    myPresRef = ref(db, `presence/${hashId}/${myUid}`);
+    const metaStr = JSON.stringify({ n: name, p: trip, c: curColor, epub: myPubJwk });
+    await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: isHost });
+    
+    await onDisconnect(myPresRef).remove();
+    await enterChatUI(roomData, pass);
 
-      const expireAtVal = srvNow() + (initTimer * 60000);
-      _roomExpireAt = expireAtVal;
-      isHost = true;
-
-      sessionStorage.setItem("nz_room_created_flag", "true");
-
-      roomData = { created: serverTimestamp(), host: myUid, expireAt: expireAtVal, mode: "open" };
-      await set(roomRef, roomData);
-      
-      myPresRef = ref(db, `presence/${hashId}/${myUid}`);
-      const metaStr = JSON.stringify({ n: name, p: trip, c: curColor, epub: myPubJwk });
-      await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: true });
-      
-      await onDisconnect(myPresRef).remove();
-      
-      const localRoomData = { ...roomData, created: Date.now() };
-      await enterChatUI(localRoomData, pass);
-    } 
-    else {
-      _roomExpireAt = roomData.expireAt;
-      isHost = (roomData.host === myUid);
-      myPresRef = ref(db, `presence/${hashId}/${myUid}`);
-
-      const metaStr = JSON.stringify({ n: name, p: trip, c: curColor, epub: myPubJwk });
-      await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: isHost });
-      
-      await onDisconnect(myPresRef).remove();
-      
-      await enterChatUI(roomData, pass);
-    }
   } catch (e) { 
     console.error("入室処理中のエラー:", e);
     const isNetworkError = !navigator.onLine || e.message.includes("offline") || e.message.includes("network");
@@ -2848,15 +2599,26 @@ async function enterChatUI(roomData, pass) {
 
   _pOff = onValue(ref(db, `presence/${curR}`), renderPresenceList);
 
+  // 高速化：初回ロード時に過去の最大100件を並列復号し一括バッチ即時描画
   const chatQuery = query(ref(db, `chat/${curR}`), limitToLast(100));
-  _cOff = onChildAdded(chatQuery, snap => {
+  try {
+    const snap = await get(chatQuery);
+    if (snap.exists()) {
+      await processMessageBatch(snap);
+    }
+  } catch (e) {
+    console.error("初回メッセージ取得エラー:", e);
+  }
+
+  // 以降はリアルタイム新着メッセージのみを追加処理
+  _cOff = onChildAdded(chatQuery, async snap => {
     if(!curR || !masterKey) return;
     const m = snap.val(); 
     if(m) { 
       m.id = snap.key; 
       if (!m.t) m.t = Date.now(); 
       if (!displayedMsgIds.has(m.id)) {
-        queueIncomingMessage(m);
+        await queueIncomingMessage(m);
       }
     } 
   });
@@ -3110,14 +2872,6 @@ D.fileInput.onchange = (e) => {
   };
   reader.readAsDataURL(file);
 };
-
-let isCmp = false;
-D.mi.addEventListener("compositionstart", () => { isCmp = true; });
-D.mi.addEventListener("compositionend", () => { isCmp = false; });
-D.mi.addEventListener("keydown", e => { if(e.key === "Enter" && !e.shiftKey && !isCmp) { e.preventDefault(); sendMsg(); } });
-D.mi.addEventListener("input", () => { D.mi.style.height = "auto"; D.mi.style.height = Math.min(D.mi.scrollHeight, 90) + "px"; });
-D.sdBtn.onclick = () => sendMsg();
-D.clrMsgBtn.onclick = () => { D.mi.value = ""; D.mi.style.height = "auto"; D.mi.focus(); };
 
 D.enBtn.onclick = async () => {
   const savedActiveRi = localStorage.getItem("nz_active_ri");
@@ -3824,7 +3578,7 @@ async function listenForOffer(peerUid) {
         await pc.setRemoteDescription(new RTCSessionDescription(offer));
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
-        await set(ref(db, `calls/${curR}/${peerUid}/${myUid}/answer`), {
+        await set(ref(db, `calls/${curR}/${myUid}/${peerUid}/answer`), {
           type: answer.type,
           sdp: answer.sdp
         });
@@ -3892,6 +3646,73 @@ function watchSpeakers() {
   });
 }
 
+// 接続の能動的再構築
+function updateAllConnections() {
+  peerConnections.forEach((pc, peerUid) => {
+    closePeer(peerUid);
+  });
+  peerConnections.clear();
+  remoteAudios.clear();
+  watchSpeakers();
+}
+
+// 音声モード（発言者）へ手動切り替え
+async function switchToSpeaking() {
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    isSpeaking = true;
+    
+    const speakerRef = ref(db, `rooms/${curR}/speakers/${myUid}`);
+    await set(speakerRef, { n: curN, t: serverTimestamp() });
+    await onDisconnect(speakerRef).remove();
+    await onDisconnect(ref(db, `calls/${curR}/${myUid}`)).remove();
+    
+    updateAllConnections();
+    
+    $("callModeToggleBtn").textContent = "🎧 受信のみに切替";
+    $("callModeToggleBtn").style.background = "var(--sf)";
+    $("micToggleBtn").style.display = "inline-block";
+    $("micToggleBtn").textContent = "🎤 ミュート";
+    $("callStatusText").textContent = "発言中 (マイクON)";
+    showToast("🎙️ 発言者モードに切り替えました。マイクが有効です");
+  } catch (err) {
+    console.error("マイク許可エラー:", err);
+    alert("マイクの利用が許可されませんでした。");
+    switchToReceiveOnly();
+  }
+}
+
+// 受信モード（聴くだけ）へ手動切り替え
+async function switchToReceiveOnly() {
+  isSpeaking = false;
+  
+  if (localStream) {
+    localStream.getTracks().forEach(track => track.stop());
+    localStream = null;
+  }
+  
+  if (curR && myUid) {
+    await remove(ref(db, `rooms/${curR}/speakers/${myUid}`));
+  }
+  
+  updateAllConnections();
+  
+  $("callModeToggleBtn").textContent = "🎙️ 話すモードに切替";
+  $("callModeToggleBtn").style.background = "var(--in)";
+  $("micToggleBtn").style.display = "none";
+  $("callStatusText").textContent = "受信専用 (聴くだけ)";
+  showToast("🎧 受信専用モード（聴くだけ）に切り替えました");
+}
+
+// 手動モード切り替えトグルのトリガー設定
+$("callModeToggleBtn").onclick = async () => {
+  if (isSpeaking) {
+    await switchToReceiveOnly();
+  } else {
+    await switchToSpeaking();
+  }
+};
+
 // 通話開始 (初期マイク起動)
 async function startMicrophone() {
   try {
@@ -3958,7 +3779,7 @@ D.callBtn.onclick = () => {
                "・通信データは暗号化され、P2P（端末間直接通信）でやり取りされます。\n" +
                "・カメラの起動や許可を求めることはありません（マイクのみ）。\n\n" +
                "通話に参加しますか？\n" +
-               "「OK」を押すとマイク利用の許可を求めて通話へ参加します。\n" +
+               "「OK」を押すとマイク利用 of 許可を求めて通話へ参加します。\n" +
                "「キャンセル」を押すと、通話に参加せず元の画面に戻ります。";
                
   if (confirm(desc)) {

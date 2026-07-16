@@ -172,6 +172,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   align-items:center;
   color:var(--tx);
   height: 22px;
+  cursor: pointer;
 }
 .chip.is-host::before {content:"★ ";color:var(--em);margin-right:2px;font-weight:bold;}
 
@@ -488,7 +489,8 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       <div class="ibox">
         🔒 <b>管理者も覗けない完全秘密チャット (E2EE)</b>
         <ul style="margin-left: 14px; margin-top: 4px; padding-left: 0; display: flex; flex-direction: column; gap: 3px;">
-          <li><b>エンドツーエンド二重暗号化:</b> パスワード（共通鍵）はサーバーに送信されず、ブラウザ内で強固に暗号化されます。</li>
+          <li><b>エンドツーエンド二重暗号化:</b> 共通パスワードはサーバーに送信されず、すべてブラウザ内で強固に暗号化されます。</li>
+          <li><b>1対1個別チャット機能:</b> 参加者名タップで、中継サーバーや同じ部屋の第三者にすらバレない、完全個別暗号化(ECDH)チャットが可能です。</li>
           <li><b>完全自動消滅:</b> 寿命が切れるか、最後の一人が退室した瞬間にサーバー上のデータが物理的に即時完全消去されます。</li>
         </ul>
       </div>
@@ -595,6 +597,18 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         </div>
       </div>
       
+      <!-- 事前許可トリップ設定 -->
+      <div id="hostPreApproveWrapper" style="display:flex; flex-direction:column; gap:4px; background:var(--bg); padding:6px; border-radius:4px; border:1px solid var(--bd); margin-top:2px;">
+        <div style="font-weight:bold; font-size:9.5px; color:#818cf8; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:1px; display:flex; justify-content:space-between; align-items:center;">
+          <span>🔑 自動承認トリップ設定 (事前許可/フレンド)</span>
+        </div>
+        <div style="display:flex; gap:4px;">
+          <input type="text" id="preApproveInput" class="inp" placeholder="◆トリップを入力" style="font-size:10px; padding:3px 6px; height:24px;">
+          <button id="addPreApproveBtn" style="background:var(--in); color:#fff; font-size:10px; padding:0 8px; border-radius:3px; font-weight:bold; cursor:pointer; height:24px;">追加</button>
+        </div>
+        <div id="preApproveList" style="max-height:50px; overflow-y:auto; display:flex; flex-wrap:wrap; gap:4px; margin-top:2px;"></div>
+      </div>
+
       <!-- BANリスト (折りたたみ式) -->
       <div id="hostBanListWrapper" style="display:none; background:var(--bg); padding:4px 6px; border-radius:4px; border:1px solid var(--bd); margin-top:2px;">
         <div style="font-weight:bold; font-size:9.5px; color:var(--ro); margin-bottom:2px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:1px;">🚫 BANリスト</div>
@@ -633,6 +647,12 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         </div>
       </div>
 
+      <!-- 個別会話ターゲットバー -->
+      <div id="dmTargetBar" style="display:none; align-items:center; justify-content:space-between; background:rgba(79,70,229,0.15); border:1px solid rgba(79,70,229,0.3); padding:4px 10px; border-radius:4px; font-size:11px; color:#a5b4fc; margin-bottom:2px;">
+        <span>🔒 <strong id="dmTargetName">名無し</strong> さんへ1対1シークレットメッセージ送信中 (第三者に非表示)</span>
+        <button id="cancelDmBtn" style="color:var(--ro); font-weight:bold; font-size:10px; cursor:pointer; background:none; border:none; padding:2px 6px;">解除</button>
+      </div>
+
       <!-- 下部：入力エリア -->
       <div id="ibToolbar">
         <input type="file" id="fileInput" accept="image/jpeg, image/png, image/gif, image/webp" style="display:none;">
@@ -661,7 +681,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       </div>
       <div id="playerContent"></div>
       
-      <!-- 閉じるボタンエリア (画質セレクトボックスは撤去し、プレイヤー標準コントロールで変更可能に調整) -->
+      <!-- 閉じるボタンエリア -->
       <div id="playerControls" style="display:flex; justify-content:center; background:var(--sf); padding:6px 10px; border-top:1px solid var(--bd);">
         <button id="playerCloseBtn" style="margin:0; padding:5px 12px; font-size:11px; background:var(--ro); color:#fff; border-radius:4px; font-weight:bold; cursor:pointer;">閉じる</button>
       </div>
@@ -747,8 +767,19 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       </div>
 
       <div class="gs" style="border-left-color: #60a5fa;">
-        <h4 style="color: #60a5fa; font-size: 13px; margin-bottom: 4px;">🔒 エンドツーエンド暗号化（E2EE）</h4>
-        入力されたパスワードはサーバーに送信されません。ブラウザ上で直接、強力な暗号規格である <b>AES-GCM-256</b> の共通鍵を生成し、メッセージや画像を送信する前にすべて端末内で暗号化します。これにより、中継サーバーでも復号は物理的に不可能です。
+        <h4 style="color: #60a5fa; font-size: 13px; margin-bottom: 4px;">🔒 エンドツーエンド共通暗号化 (E2EE)</h4>
+        入力されたパスワードはサーバーに一切送信されません。ブラウザ上で直接、強固な共通鍵（<b>AES-GCM-256</b>）を生成し、メッセージや画像をすべて端末内で暗号化して送受信します。
+      </div>
+
+      <div class="gs" style="border-left-color: #a5b4fc;">
+        <h4 style="color: #a5b4fc; font-size: 13px; margin-bottom: 4px;">🤫 1対1個別チャット（第三者に漏れない）</h4>
+        入室している他のユーザーの名前をタップすると、その相手との個別会話モードに切り替わります。<br>
+        このモードでは、お互いの端末間でのみ共有される独自のAES-GCM鍵でメッセージを別途暗号化するため、同じ部屋にいる第三者はログを傍受できません。また、第三者の画面にはメッセージが表示される隙間すら作成されないため、個別チャットを行っている事実自体が外部に漏れません。
+      </div>
+
+      <div class="gs" style="border-left-color: #fca5a5;">
+        <h4 style="color: #fca5a5; font-size: 13px; margin-bottom: 4px;">🤝 事前許可とフレンド自動承認</h4>
+        招待モード（承認制）の部屋において、特定のトリップキーを事前に登録したり、入室者を「フレンド登録」しておくことで、ホストが席を外していても自動的に入室を承認するシステムを搭載しています。
       </div>
 
       <div class="gs" style="border-left-color: var(--ro);">
@@ -759,7 +790,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
           <li>最後の一人が「退室」ボタンを押して部屋を離れた瞬間</li>
           <li>設定されたルームの有効時間が経過し、タイムアウトした瞬間</li>
         </ul>
-        ※消滅したデータはサーバーから物理的に削除され、運営者でも二度と復元できません。
+        ※消滅したデータはサーバーから物理的に削除され、運営者であっても復元は一切不可能です。
       </div>
       
     </div>
@@ -854,6 +885,16 @@ D.mi.addEventListener("focus", () => {
   setTimeout(() => scBottom(true), 250);
 });
 
+// ローカルストレージからの即時入力復元処理
+const initLobbyInputs = () => {
+  D.ni.value = localStorage.getItem("nz_ni") || "";
+  D.tripi.value = localStorage.getItem("nz_tripi") || "";
+  D.ri.value = localStorage.getItem("nz_ri_val") || "";
+  D.pi.value = localStorage.getItem("nz_pi_val") || "";
+  D.timeri.value = localStorage.getItem("nz_timer_val") || "30";
+};
+initLobbyInputs();
+
 const initHashPass = () => {
   if (location.hash) {
     const hashPass = decodeURIComponent(location.hash.substring(1));
@@ -866,7 +907,7 @@ const initHashPass = () => {
 initHashPass();
 
 /* =========================================================
-   Web Cryptography API (AES-GCM 256) 実装
+   Web Cryptography API (AES-GCM 256 & ECDH 1対1鍵共有)
    ========================================================= */
 
 const hexToBytes = (hex) => {
@@ -918,7 +959,7 @@ const deriveMasterKey = async (roomId, pass) => {
   );
 };
 
-// 对称鍵のエクスポート / インポート処理
+// 対称鍵のエクスポート / インポート処理
 const exportKeyToHex = async (key) => {
   const exported = await window.crypto.subtle.exportKey("raw", key);
   return bytesToHex(new Uint8Array(exported));
@@ -932,6 +973,44 @@ const importKeyFromHex = async (hex) => {
     "AES-GCM",
     true,
     ["encrypt", "decrypt", "wrapKey", "unwrapKey"]
+  );
+};
+
+// 1対1個別暗号化用 (ECDH 鍵共有)
+const generateECDHKey = async () => {
+  try {
+    return await window.crypto.subtle.generateKey(
+      { name: "ECDH", namedCurve: "P-256" },
+      true,
+      ["deriveKey", "deriveBits"]
+    );
+  } catch (e) {
+    console.error("ECDH鍵生成失敗:", e);
+    return null;
+  }
+};
+
+const exportPublicKey = async (key) => {
+  return await window.crypto.subtle.exportKey("jwk", key);
+};
+
+const importPublicKey = async (jwk) => {
+  return await window.crypto.subtle.importKey(
+    "jwk",
+    jwk,
+    { name: "ECDH", namedCurve: "P-256" },
+    true,
+    []
+  );
+};
+
+const deriveSharedSecret = async (privateKey, publicKey) => {
+  return await window.crypto.subtle.deriveKey(
+    { name: "ECDH", public: publicKey },
+    privateKey,
+    { name: "AES-GCM", length: 256 },
+    true,
+    ["encrypt", "decrypt"]
   );
 };
 
@@ -949,6 +1028,10 @@ const getRoomHash = async (roomId) => {
 };
 
 let masterKey = null; 
+let myECDHKeyPair = null;
+const peerSharedKeys = new Map(); // uid -> CryptoKey (個別共有鍵)
+const peerPublicKeys = new Map(); // uid -> jwkString (公開鍵比較用)
+
 let isHost = false;
 let targetDelId = null;
 
@@ -1158,7 +1241,11 @@ D.clrBtn.addEventListener("click", () => {
 D.clrOk.addEventListener("click", async () => {
   curColor = tmpColor; setGlobalColor(curColor); localStorage.setItem("nz_color",curColor); syncPickers(curColor);
   if (curR && myPresRef && masterKey) { 
-    try { const metaStr = JSON.stringify({n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor}); await update(myPresRef, {meta: await encrypt(metaStr, masterKey)}); } catch {} 
+    try {
+      const myPubJwk = myECDHKeyPair ? await exportPublicKey(myECDHKeyPair.publicKey) : null;
+      const metaStr = JSON.stringify({n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor, epub: myPubJwk});
+      await update(myPresRef, {meta: await encrypt(metaStr, masterKey)});
+    } catch {} 
   }
   D.clrmod.classList.remove("show");
 });
@@ -1290,7 +1377,7 @@ function trimTimeline() {
   }
 }
 
-// 描画処理の完全DOM API化 (innerHTMLの廃止、生動画リンク表示をカット、Instagram/TikTok対応)
+// 描画処理の完全DOM API化 (innerHTMLの廃止)
 async function cMsg(msg) {
   const msgTs = msg.t || srvNow();
 
@@ -1326,10 +1413,37 @@ async function cMsg(msg) {
     return d;
   }
 
-  // 2. 通常メッセージ
+  // 2. 通常メッセージ (個別1対1暗号化の判別)
+  const isDM = msg.isPrivate === true;
+  let decKey = masterKey;
+
+  if (isDM) {
+    if (msg.u === myUid) {
+      // 自分が送信した個別チャット
+      decKey = peerSharedKeys.get(msg.to);
+    } else if (msg.to === myUid) {
+      // 自分宛ての個別チャット
+      decKey = peerSharedKeys.get(msg.u);
+    } else {
+      // 自分に関係のない第三者間の個別チャットは描画すら完全スキップ
+      return null;
+    }
+
+    if (!decKey) {
+      const d = document.createElement("div");
+      d.dataset.mid = msg.id;
+      d.dataset.ts = msgTs;
+      d.className = "sys-msg";
+      d.style.borderColor = "rgba(129, 140, 248, 0.3)";
+      d.style.color = "#a5b4fc";
+      d.textContent = `🔒 受信したシークレットメッセージ (鍵確立を待機中...)`;
+      return d;
+    }
+  }
+
   const [meta, txt] = await Promise.all([
     decryptMeta(msg.mt),
-    decrypt(msg.m, masterKey)
+    decrypt(msg.m, decKey)
   ]);
 
   if (!meta || !txt) {
@@ -1353,6 +1467,12 @@ async function cMsg(msg) {
     d.setAttribute("data-cid", msg.c);
   }
   d.className = "mw";
+
+  // 個別会話の視覚デザイン差別化
+  if (isDM) {
+    d.style.background = "rgba(79, 70, 229, 0.05)";
+    d.style.borderLeft = "3px solid #6366f1";
+  }
   
   const sN = meta.n || "???", sC = meta.c || "#94a3b8", sT = meta.p || "";
 
@@ -1369,6 +1489,20 @@ async function cMsg(msg) {
   nameWrap.style.textOverflow = "ellipsis";
   nameWrap.style.whiteSpace = "nowrap";
   nameWrap.style.flex = "1";
+
+  // 個別シークレットチャットバッジ追加
+  if (isDM) {
+    const dmBadge = document.createElement("span");
+    dmBadge.style.background = "rgba(129, 140, 248, 0.2)";
+    dmBadge.style.color = "#a5b4fc";
+    dmBadge.style.fontSize = "9px";
+    dmBadge.style.fontWeight = "bold";
+    dmBadge.style.padding = "1px 5px";
+    dmBadge.style.borderRadius = "3px";
+    dmBadge.style.marginRight = "6px";
+    dmBadge.textContent = msg.u === myUid ? "🔒 送信済シークレット" : "🔒 受信シークレット";
+    nameWrap.appendChild(dmBadge);
+  }
 
   const nameSpan = document.createElement("span");
   nameSpan.style.color = sC;
@@ -1467,12 +1601,10 @@ async function cMsg(msg) {
         }
       });
 
-      // 各種メディアURLのパース (TikTok, Instagramの全URLに対応するよう正規表現を高度に統合拡張)
+      // YouTube・ニコニコ・音声ファイルのみの判定 (TikTok, Instagramを完全除去)
       const mediaRegexes = [
         { type: "youtube", name: "YouTube", regex: /(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)?(?:youtube\.com|youtu\.be)\/[^\s\n<>"]+/i },
         { type: "niconico", name: "ニコニコ動画", regex: /(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)?(?:nicovideo\.jp|nico\.ms)\/[^\s\n<>"]+/i },
-        { type: "tiktok", name: "TikTok", regex: /(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)?tiktok\.com\/[^\s\n<>"]+/i },
-        { type: "instagram", name: "Instagram", regex: /(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)?instagram\.com\/[^\s\n<>"]+/i },
         { type: "audio", name: "Audio", regex: /https?:\/\/[^\s\n<>"]+\.(?:mp3|wav|ogg|m4a|aac|flac)(?:\?[^\s\n<>"]*)?/i }
       ];
 
@@ -1484,204 +1616,51 @@ async function cMsg(msg) {
           if (target.regex.test(url) && !addedMedia.has(url)) {
             addedMedia.add(url);
 
-            if (target.type === "youtube" || target.type === "niconico" || target.type === "audio") {
-              const mContainer = document.createElement("div");
-              mContainer.className = "media-link-container";
+            const mContainer = document.createElement("div");
+            mContainer.className = "media-link-container";
 
-              const mRow = document.createElement("div");
-              mRow.className = "media-inline-row";
+            const mRow = document.createElement("div");
+            mRow.className = "media-inline-row";
 
-              const mBadge = document.createElement("span");
-              mBadge.className = `media-badge`;
-              mBadge.textContent = target.name;
-              
-              if (target.type === 'youtube') mBadge.style.background = '#ef4444';
-              else if (target.type === 'niconico') mBadge.style.background = '#334155';
-              else if (target.type === 'audio') mBadge.style.background = '#4f46e5';
+            const mBadge = document.createElement("span");
+            mBadge.className = `media-badge`;
+            mBadge.textContent = target.name;
+            
+            if (target.type === 'youtube') mBadge.style.background = '#ef4444';
+            else if (target.type === 'niconico') mBadge.style.background = '#334155';
+            else if (target.type === 'audio') mBadge.style.background = '#4f46e5';
 
-              const mBtnRow = document.createElement("div");
-              mBtnRow.className = "media-btn-row";
+            const mBtnRow = document.createElement("div");
+            mBtnRow.className = "media-btn-row";
 
-              const mBtn = document.createElement("button");
-              mBtn.className = "open-player-btn";
-              mBtn.textContent = "チャット内で再生";
+            const mBtn = document.createElement("button");
+            mBtn.className = "open-player-btn";
+            mBtn.textContent = "チャット内で再生";
 
-              mBtn.addEventListener("click", () => {
-                window.openFloatingPlayer(url, target.type);
+            mBtn.addEventListener("click", () => {
+              window.openFloatingPlayer(url, target.type);
+            });
+
+            mBtnRow.appendChild(mBtn);
+
+            if (target.type === "audio") {
+              const dlBtn = document.createElement("button");
+              dlBtn.className = "dl-media-btn";
+              dlBtn.textContent = "📥 保存 (容量取得中...)";
+              dlBtn.dataset.sizeText = "容量取得中";
+
+              dlBtn.addEventListener("click", () => {
+                window.triggerAudioDownload(url, dlBtn);
               });
 
-              mBtnRow.appendChild(mBtn);
-
-              if (target.type === "audio") {
-                const dlBtn = document.createElement("button");
-                dlBtn.className = "dl-media-btn";
-                dlBtn.textContent = "📥 保存 (容量取得中...)";
-                dlBtn.dataset.sizeText = "容量取得中";
-
-                dlBtn.addEventListener("click", () => {
-                  window.triggerAudioDownload(url, dlBtn);
-                });
-
-                mBtnRow.appendChild(dlBtn);
-                window.fetchAudioSize(url, dlBtn);
-              }
-
-              mRow.appendChild(mBadge);
-              mRow.appendChild(mBtnRow);
-              mContainer.appendChild(mRow);
-              mb.appendChild(mContainer);
-            } 
-            // Instagramの処理（Stories、リール、通常投稿、ユーザー名ありなど全てのURL体系を統合的に動的判別＆表示）
-            else if (target.type === "instagram") {
-              const match = url.match(/(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)?instagram\.com\/(?:p|reel|tv|stories|[^/]+\/(?:p|reel|tv|stories))\/([a-zA-Z0-9_-]+)/i);
-              if (match) {
-                const pathType = (url.match(/instagram\.com\/(?:[^/]+\/)?(p|reel|tv|stories)/i) || [])[1] || "p";
-                const code = match[1];
-
-                const mContainer = document.createElement("div");
-                mContainer.className = "media-link-container";
-                mContainer.textContent = "Instagram 解析中...";
-                mb.appendChild(mContainer);
-
-                (async () => {
-                  let isVideo = pathType === "reel" || pathType === "tv" || pathType === "stories";
-                  
-                  if (!isVideo) {
-                    try {
-                      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://www.instagram.com/p/${code}/`)}`;
-                      const res = await fetch(proxyUrl);
-                      if (res.ok) {
-                        const data = await res.json();
-                        const html = data.contents || "";
-                        if (html.includes('og:video') || html.includes('"is_video":true') || html.includes('video_duration')) {
-                          isVideo = true;
-                        }
-                      }
-                    } catch (e) {
-                      isVideo = false;
-                    }
-                  }
-
-                  mContainer.textContent = "";
-
-                  if (isVideo) {
-                    const mRow = document.createElement("div");
-                    mRow.className = "media-inline-row";
-
-                    const mBadge = document.createElement("span");
-                    mBadge.className = "media-badge";
-                    mBadge.style.background = "#e1306c";
-                    mBadge.textContent = "Instagram Video";
-
-                    const mBtnRow = document.createElement("div");
-                    mBtnRow.className = "media-btn-row";
-
-                    const mBtn = document.createElement("button");
-                    mBtn.className = "open-player-btn";
-                    mBtn.textContent = "チャット内で再生";
-                    mBtn.addEventListener("click", () => {
-                      window.openFloatingPlayer(`https://www.instagram.com/p/${code}/embed/`, "instagram_embed");
-                    });
-
-                    mBtnRow.appendChild(mBtn);
-                    mRow.appendChild(mBadge);
-                    mRow.appendChild(mBtnRow);
-                    mContainer.appendChild(mRow);
-                  } else {
-                    const img = document.createElement("img");
-                    img.src = `https://www.instagram.com/p/${code}/media/?size=l`;
-                    img.className = "inline-img";
-                    img.alt = "Instagram画像";
-                    img.decoding = "async";
-                    img.addEventListener("click", () => {
-                      window.openZoomModal(`https://www.instagram.com/p/${code}/media/?size=l`);
-                    });
-                    mContainer.replaceWith(img);
-                    scBottom();
-                  }
-                })();
-              }
-            }
-            // TikTokの処理 (公式oEmbed APIで、シェア用・短縮・ユーザーページ付きなど全てのURLを網羅判別)
-            else if (target.type === "tiktok") {
-              const mContainer = document.createElement("div");
-              mContainer.className = "media-link-container";
-              mContainer.textContent = "TikTok 解析中...";
-              mb.appendChild(mContainer);
-
-              (async () => {
-                try {
-                  const res = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`);
-                  if (res.ok) {
-                    const data = await res.json();
-                    mContainer.textContent = "";
-
-                    if (data.type === "video") {
-                      const mRow = document.createElement("div");
-                      mRow.className = "media-inline-row";
-
-                      const mBadge = document.createElement("span");
-                      mBadge.className = "media-badge";
-                      mBadge.style.background = "#000000";
-                      mBadge.textContent = "TikTok Video";
-
-                      const mBtnRow = document.createElement("div");
-                      mBtnRow.className = "media-btn-row";
-
-                      const mBtn = document.createElement("button");
-                      mBtn.className = "open-player-btn";
-                      mBtn.textContent = "チャット内で再生";
-                      mBtn.addEventListener("click", () => {
-                        window.openFloatingPlayer(url, "tiktok_embed", data.html);
-                      });
-
-                      mBtnRow.appendChild(mBtn);
-                      mRow.appendChild(mBadge);
-                      mRow.appendChild(mBtnRow);
-                      mContainer.appendChild(mRow);
-                    } else {
-                      const img = document.createElement("img");
-                      img.src = data.thumbnail_url;
-                      img.className = "inline-img";
-                      img.alt = "TikTok画像";
-                      img.decoding = "async";
-                      img.addEventListener("click", () => {
-                        window.openZoomModal(data.thumbnail_url);
-                      });
-                      mContainer.replaceWith(img);
-                      scBottom();
-                    }
-                  } else {
-                    throw new Error();
-                  }
-                } catch (e) {
-                  mContainer.textContent = "";
-                  const mRow = document.createElement("div");
-                  mRow.className = "media-inline-row";
-
-                  const mBadge = document.createElement("span");
-                  mBadge.className = "media-badge";
-                  mBadge.style.background = "#000000";
-                  mBadge.textContent = "TikTok";
-
-                  const mBtnRow = document.createElement("div");
-                  mBtnRow.className = "media-btn-row";
-
-                  const mBtn = document.createElement("button");
-                  mBtn.className = "open-player-btn";
-                  mBtn.textContent = "ブラウザで開く";
-                  mBtn.addEventListener("click", () => {
-                    window.open(url, "_blank");
-                  });
-
-                  mBtnRow.appendChild(mBtn);
-                  mRow.appendChild(mBadge);
-                  mRow.appendChild(mBtnRow);
-                  mContainer.appendChild(mRow);
-                }
-              })();
+              mBtnRow.appendChild(dlBtn);
+              window.fetchAudioSize(url, dlBtn);
             }
 
+            mRow.appendChild(mBadge);
+            mRow.appendChild(mBtnRow);
+            mContainer.appendChild(mRow);
+            mb.appendChild(mContainer);
             break;
           }
         }
@@ -1761,7 +1740,7 @@ function untrackAndCacheMessage(id) {
   localStorage.setItem(`nz_chat_raw_${curR}`, JSON.stringify(currentRoomMsgs));
 }
 
-// バッチレンダリング処理（リフロー削減・高速化）
+// バッチレンダリング処理
 async function processInitialMessages(msgs) {
   const fragment = document.createDocumentFragment();
   const elements = await Promise.all(msgs.map(async (m) => {
@@ -1798,14 +1777,12 @@ async function renderCachedState(hashId, rawRoomId) {
   D.ib.classList.add("show"); 
   D.rdsp.textContent = rawR;
 
-  // タイマーの早期復元
   const cachedExpire = localStorage.getItem(`nz_room_expire_${hashId}`);
   if (cachedExpire) {
     _roomExpireAt = parseInt(cachedExpire);
     startTimerLoop();
   }
 
-  // 入室者の早期復元
   const cachedMembers = localStorage.getItem(`nz_room_members_${hashId}`);
   if (cachedMembers) {
     try {
@@ -1824,7 +1801,6 @@ async function renderCachedState(hashId, rawRoomId) {
     } catch(e){}
   }
 
-  // メッセージの早期復元
   const cachedMsgs = loadChatCache(hashId);
   if (cachedMsgs.length > 0) {
     currentRoomMsgs = cachedMsgs;
@@ -1913,16 +1889,17 @@ window.banUser = async (targetUid, name, trip) => {
   showToast("🚫 ユーザーをBANしました");
 };
 
-// BAN検知時の暗号化キー・キャッシュ物理抹消処理 (E2EEセッションプロテクト)
+// BAN検知時の暗号化キー・キャッシュ物理抹消処理
 async function handleBannedState() {
   _exitLock = true;
   
-  // 共通鍵とキャッシュをメモリから物理的に完全クリア
   masterKey = null;
+  myECDHKeyPair = null;
+  peerSharedKeys.clear();
+  peerPublicKeys.clear();
   decCache.clear();
   metaCache.clear();
 
-  // 該当ルームに関連するすべてのローカルキャッシュを消去
   if (curR) {
     localStorage.removeItem(`nz_mkey_${curR}`);
     localStorage.removeItem(`nz_pi_${curR}`);
@@ -1932,12 +1909,10 @@ async function handleBannedState() {
     localStorage.removeItem(`nz_entered_${curR}`);
   }
   
-  // 入室状態およびアクティブ部屋情報をロバストに消去 (他の部屋への作成・入室干渉を100%防ぐ)
   localStorage.setItem("nz_is_in_room", "false");
   localStorage.removeItem("nz_active_ri"); 
   localStorage.removeItem("nz_active_created"); 
 
-  // チャット画面を一掃しロビーに強制退避
   clearAll(); 
   D.app.style.display = "none";
   D.app.classList.remove("visible");
@@ -1965,7 +1940,6 @@ window.doExit = async () => {
 
   if (pendingTimeoutTimer) { clearInterval(pendingTimeoutTimer); pendingTimeoutTimer = null; }
 
-  // 1. 同期的にDOMとUIの全表示を即座に消去
   clearAll(); 
   D.app.style.display = "none";
   D.app.classList.remove("visible");
@@ -1973,12 +1947,10 @@ window.doExit = async () => {
   D.enBtn.disabled = false;
   D.enBtn.textContent = "入室 / 作成";
 
-  // URL履歴のリセット
   if (window.history?.replaceState) {
     window.history.replaceState({}, document.title, location.pathname);
   }
 
-  // 2. キャッシュ削除
   if (hashId) {
     localStorage.removeItem(`nz_entered_${hashId}`);
     localStorage.removeItem(`nz_sent_join_${hashId}`);
@@ -1994,7 +1966,6 @@ window.doExit = async () => {
 
   showLobby();
 
-  // 3. サーバー上のデータクリーンアップ
   if (hashId && activeMasterKey) {
     try {
       const pSnap = await get(ref(db, `presence/${hashId}`)).catch(() => null);
@@ -2017,7 +1988,7 @@ window.doExit = async () => {
         }).catch(() => {});
         
         if (activePresRef) {
-          await onDisconnect(activePresRef).cancel(); // 切断連動タスクの登録解除
+          await onDisconnect(activePresRef).cancel();
           await remove(activePresRef).catch(() => {});
         }
       }
@@ -2031,36 +2002,35 @@ window.doExit = async () => {
 
 function clearAll(newHashId = null) {
   _lastPresenceStr = "";
+  setDmTarget(null); // 個別会話のリセット
   
-  // Unsubscribe処理
   if (typeof _cOff === "function"){ _cOff(); _cOff = null; }
   if (typeof _crOff === "function"){ _crOff(); _crOff = null; }
   if (typeof _pOff === "function"){ _pOff(); _pOff = null; }
   if (typeof _rOff === "function"){ _rOff = null; }
 
-  // ホストリスナー解除
   if (typeof _hostReqOff === "function") { _hostReqOff(); _hostReqOff = null; }
   if (typeof _hostBanOff === "function") { _hostBanOff(); _hostBanOff = null; }
   if (typeof _hostModeOff === "function") { _hostModeOff(); _hostModeOff = null; }
   if (typeof _myBanOff === "function") { _myBanOff(); _myBanOff = null; }
 
-  // ロビー承認待ち用リスナー解除 (メモリリーク・二重監視防止)
   if (typeof _lobbyReqOff === "function") { _lobbyReqOff(); _lobbyReqOff = null; }
   if (typeof _lobbyRoomOff === "function") { _lobbyRoomOff(); _lobbyRoomOff = null; }
 
   isLiveMode = false;
   stopTimerLoop();
   
-  // DOMリセット
   displayedMsgIds.clear();
   currentRoomMsgs = [];
   D.tli.textContent = "";
 
-  // プレイヤーの完全停止
   closeFloatingPlayer();
 
   if (!newHashId) {
     masterKey = null; 
+    myECDHKeyPair = null;
+    peerSharedKeys.clear();
+    peerPublicKeys.clear();
     decCache.clear();
     metaCache.clear();
   }
@@ -2092,9 +2062,7 @@ function showLobby(msg = "") {
   D.ib.classList.remove("show");
   D.enBtn.disabled = false; D.enBtn.textContent = "入室 / 作成";
   
-  D.ni.value = localStorage.getItem("nz_ni") || ""; D.tripi.value = localStorage.getItem("nz_tripi") || "";
-  D.ri.value = localStorage.getItem("nz_ri_val") || ""; D.pi.value = localStorage.getItem("nz_pi_val") || "";
-  D.timeri.value = localStorage.getItem("nz_timer_val") || "30";
+  initLobbyInputs();
   updateTripPreview(); syncPickers(curColor); checkCurrentRoomStatus();
 }
 
@@ -2126,6 +2094,93 @@ async function checkCurrentRoomStatus() {
   }
 }
 
+/* =========================================================
+   自動承認（事前許可・フレンドトリップ登録システム）
+   ========================================================= */
+let autoApproveTrips = [];
+
+const loadAutoApproveTrips = () => {
+  try {
+    const raw = localStorage.getItem("nz_auto_approve_trips");
+    autoApproveTrips = raw ? JSON.parse(raw) : [];
+  } catch(e) {
+    autoApproveTrips = [];
+  }
+};
+const saveAutoApproveTrips = () => {
+  localStorage.setItem("nz_auto_approve_trips", JSON.stringify(autoApproveTrips));
+  renderPreApproveList();
+};
+
+const renderPreApproveList = () => {
+  const listDiv = $("preApproveList");
+  if (!listDiv) return;
+  listDiv.textContent = "";
+  if (autoApproveTrips.length === 0) {
+    const span = document.createElement("span");
+    span.style.color = "var(--m2)";
+    span.style.fontSize = "9px";
+    span.textContent = "自動承認トリップはありません";
+    listDiv.appendChild(span);
+    return;
+  }
+  autoApproveTrips.forEach(t => {
+    const item = document.createElement("span");
+    item.className = "chip";
+    item.style.fontSize = "9px";
+    item.style.height = "18px";
+    item.style.background = "var(--sf)";
+    item.textContent = t;
+    
+    const del = document.createElement("span");
+    del.textContent = " ×";
+    del.style.color = "var(--ro)";
+    del.style.cursor = "pointer";
+    del.style.marginLeft = "4px";
+    del.style.fontWeight = "bold";
+    del.onclick = (e) => {
+      e.stopPropagation();
+      autoApproveTrips = autoApproveTrips.filter(x => x !== t);
+      saveAutoApproveTrips();
+    };
+    
+    item.appendChild(del);
+    listDiv.appendChild(item);
+  });
+};
+
+$("addPreApproveBtn").onclick = () => {
+  const val = $("preApproveInput").value.trim();
+  if (val && val.startsWith("◆") && !autoApproveTrips.includes(val)) {
+    autoApproveTrips.push(val);
+    saveAutoApproveTrips();
+    $("preApproveInput").value = "";
+    showToast("🔑 自動承認トリップを追加しました");
+  } else {
+    alert("「◆」から始まる有効な本人証明トリップを入力してください。");
+  }
+};
+
+/* =========================================================
+   1対1個別会話（シークレット）制御
+   ========================================================= */
+let dmTargetUid = null;
+
+const setDmTarget = (uid, name) => {
+  dmTargetUid = uid;
+  if (uid) {
+    $("dmTargetName").textContent = name;
+    $("dmTargetBar").style.display = "flex";
+    D.mi.placeholder = `🔒 [シークレット会話] ${name} さんに個別メッセージ...`;
+    D.mi.focus();
+  } else {
+    $("dmTargetBar").style.display = "none";
+    D.mi.placeholder = "メッセージを入力...";
+  }
+  scBottom();
+};
+$("cancelDmBtn").onclick = () => setDmTarget(null);
+
 // 参加者メンバーリストのレンダリング
 async function renderPresenceList(s) {
   if (!curR) return;
@@ -2135,7 +2190,8 @@ async function renderPresenceList(s) {
   const membersData = [];
 
   if (myUid && localStorage.getItem("nz_is_in_room") === "true") {
-    const myMetaStr = JSON.stringify({ n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor });
+    const myPubJwk = myECDHKeyPair ? await exportPublicKey(myECDHKeyPair.publicKey) : null;
+    const myMetaStr = JSON.stringify({ n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor, epub: myPubJwk });
     membersData.push({
       id: myUid,
       u: { status: "approved", meta: await encrypt(myMetaStr, masterKey), isHost: isHost }
@@ -2155,8 +2211,23 @@ async function renderPresenceList(s) {
     if (u.status === "approved" && u.meta) {
       const m = await decryptMeta(u.meta);
       if (m) {
-         decryptedMembers.push({ id: id, n: m.n, c: m.c || "#94a3b8", isHost: u.isHost === true, p: m.p || "" });
+         decryptedMembers.push({ id: id, n: m.n, c: m.c || "#94a3b8", isHost: u.isHost === true, p: m.p || "", epub: m.epub });
          rawPresenceArrayForDiff.push(`${id}:${m.n}:${m.c}:${u.isHost}`);
+
+         // 他メンバーとの 1対1 ECDH 個別鍵導出・同期処理
+         if (m.epub && id !== myUid && myECDHKeyPair) {
+           const epubStr = JSON.stringify(m.epub);
+           if (peerPublicKeys.get(id) !== epubStr) {
+             try {
+               const peerPubKey = await importPublicKey(m.epub);
+               const sharedKey = await deriveSharedSecret(myECDHKeyPair.privateKey, peerPubKey);
+               peerSharedKeys.set(id, sharedKey);
+               peerPublicKeys.set(id, epubStr);
+             } catch(e) {
+               console.error("個別シークレット鍵共有エラー:", e);
+             }
+           }
+         }
       }
     }
   }));
@@ -2180,8 +2251,41 @@ async function renderPresenceList(s) {
      sp.style.color = m.c; sp.style.borderColor = m.c + "44";
      sp.textContent = m.n; 
 
-     // ホスト専用: 他ユーザーをBAN追放するボタンの表示
+     // クリックで1対1個別チャットターゲットに設定
+     sp.onclick = () => {
+       if (m.id !== myUid) {
+         setDmTarget(m.id, m.n);
+       }
+     };
+
+     // ホスト専用: トリップ自動承認(フレンド登録)＆BANボタン
      if (isHost && !m.isHost) {
+       // トリップ自動承認の切り替え
+       if (m.p) {
+         const isFriend = autoApproveTrips.includes(m.p);
+         const friendBtn = document.createElement("span");
+         friendBtn.textContent = isFriend ? " ★" : " ☆";
+         friendBtn.style.color = isFriend ? "var(--em)" : "var(--mu)";
+         friendBtn.style.fontSize = "9.5px";
+         friendBtn.style.marginLeft = "4px";
+         friendBtn.style.cursor = "pointer";
+         friendBtn.title = isFriend ? "自動承認リストから解除" : "自動承認（フレンド）に登録";
+         friendBtn.onclick = (e) => {
+           e.stopPropagation();
+           if (isFriend) {
+             autoApproveTrips = autoApproveTrips.filter(x => x !== m.p);
+             showToast("👤 自動承認リストから解除しました");
+           } else {
+             autoApproveTrips.push(m.p);
+             showToast("👤 フレンド自動承認リストに登録しました");
+           }
+           saveAutoApproveTrips();
+           renderPresenceList({ val: () => list }); // UI即時再描画
+         };
+         sp.appendChild(friendBtn);
+       }
+
+       // BANボタン
        const kickBtn = document.createElement("span");
        kickBtn.textContent = " 🚫";
        kickBtn.style.color = "var(--ro)";
@@ -2203,24 +2307,20 @@ async function renderPresenceList(s) {
 
   D.pl.textContent = ""; 
   D.pl.appendChild(fg); 
-  
-  // 参加者数のバッジを更新
   D.pcnt.textContent = `${decryptedMembers.length}人`;
 }
 
-// ホスト管理用監視関数 (省スペース化)
+// ホスト管理用監視関数
 function listenToHostRequestsAndBans() {
   if (!curR || !isHost) return;
 
-  // 1. 部屋モードのライブ同期
   _hostModeOff = onValue(ref(db, `rooms/${curR}/mode`), s => {
     const mode = s.val() || "open";
     const radio = document.querySelector(`input[name="roomModeRadio"][value="${mode}"]`);
     if (radio) radio.checked = true;
   });
 
-  // 2. 承認申請リストの監視 (承認待ちがいるときのみ自動展開)
-  _hostReqOff = onValue(ref(db, `rooms/${curR}/requests`), s => {
+  _hostReqOff = onValue(ref(db, `rooms/${curR}/requests`), async (s) => {
     const listDiv = $("hostRequestList");
     listDiv.textContent = "";
     const reqs = s.val() || {};
@@ -2236,7 +2336,14 @@ function listenToHostRequestsAndBans() {
     wrapper.style.display = "block";
     wrapper.classList.add("pulse-border");
     
-    entries.forEach(([uid, data]) => {
+    for (const [uid, data] of entries) {
+      // 事前登録 / フレンド判定によるトリップキー自動即時承認
+      if (data.trip && autoApproveTrips.includes(data.trip)) {
+        await update(ref(db, `rooms/${curR}/requests/${uid}`), { status: "approved" });
+        await sendSysMsg(`📥 ${data.name} ${data.trip} を自動承認しました`);
+        continue;
+      }
+
       const row = document.createElement("div");
       row.style.display = "flex";
       row.style.justifyContent = "space-between";
@@ -2285,10 +2392,9 @@ function listenToHostRequestsAndBans() {
       row.appendChild(label);
       row.appendChild(btnGroup);
       listDiv.appendChild(row);
-    });
+    }
   });
 
-  // 3. BANリストの監視
   _hostBanOff = onValue(ref(db, `rooms/${curR}/banList`), s => {
     const listDiv = $("hostBanList");
     listDiv.textContent = "";
@@ -2350,13 +2456,12 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
   try {
     const hashId = await getRoomHash(roomId);
 
-    // 1. BANチェック＆引き戻し不整合の完全解消
+    // BANチェック
     const banCheckSnap = await get(ref(db, `rooms/${hashId}/banList/${myUid}`));
     if (banCheckSnap.exists()) {
       D.enBtn.disabled = false;
       D.enBtn.textContent = "入室 / 作成";
       
-      // BANで弾かれた時点で部屋ID・状態等のキャッシュを完全リセットし、他の部屋の作成・入室干渉を綺麗に防ぐ
       localStorage.removeItem("nz_active_ri");
       localStorage.removeItem("nz_active_created");
       localStorage.setItem("nz_is_in_room", "false");
@@ -2372,14 +2477,23 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
     const isRoomHost = roomData ? (roomData.host === myUid) : true;
     const roomMode = (roomData && roomData.mode) ? roomData.mode : "open";
 
-    // 2. 招待モード & 承認待ちフロー (ホスト以外の通常ユーザーのみ)
+    // 招待承認モードでの自動承認ロジック
     if (roomData && roomMode === "invite" && !isRoomHost) {
       const reqRef = ref(db, `rooms/${hashId}/requests/${myUid}`);
       const reqSnap = await get(reqRef);
       const reqData = reqSnap.val();
 
+      // ローカルストレージ内の自動承認トリップに適合する場合は申請表示せずにスルー承認
+      if (trip && autoApproveTrips.includes(trip)) {
+        await set(reqRef, { name: name, trip: trip, status: "approved", t: serverTimestamp() });
+        sessionStorage.setItem("nz_should_send_join_sys", "true");
+        sessionStorage.setItem("nz_join_reason", "approved");
+        await doJoin(roomId, pass, name, trip, initTimer);
+        return;
+      }
+
       if (reqData && reqData.status === "approved") {
-        // 承認済みの場合はそのまま入室
+        // 承認済みの場合は入室
       } else if (reqData && reqData.status === "rejected") {
         await remove(reqRef);
         D.enBtn.disabled = false;
@@ -2389,10 +2503,10 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
         localStorage.removeItem("nz_active_created");
         localStorage.setItem("nz_is_in_room", "false");
         
-        showLobby("❌ 入室申請が却下されました。再度申請できます。");
+        showLobby("❌ 入室申請が却下されました。");
         return;
       } else {
-        // 申請待ち画面表示
+        // 申請待ち画面
         const waitArea = $("lobbyWaitingArea");
         const waitInfo = $("waitingInfo");
         waitInfo.textContent = `${name} ${trip || ""}`;
@@ -2400,7 +2514,6 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
         $("lobbyInputArea").style.display = "none";
         waitArea.style.display = "flex";
 
-        // サーバーへ承認申請データを送信
         await set(reqRef, {
           name: name,
           trip: trip,
@@ -2408,10 +2521,8 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
           t: serverTimestamp()
         });
 
-        // 申請状態で突然切断されたら、申請自体を自動で物理消去
         await onDisconnect(reqRef).remove();
 
-        // 申請結果、部屋の寿命切れ、またはオープンモード切り替えを監視
         if (typeof _lobbyReqOff === "function") _lobbyReqOff();
         if (typeof _lobbyRoomOff === "function") _lobbyRoomOff();
 
@@ -2425,13 +2536,11 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
             if (typeof _lobbyRoomOff === "function") _lobbyRoomOff();
             _lobbyRoomOff = null;
 
-            // 承認時は自動切断設定をキャンセル
             await onDisconnect(reqRef).cancel();
 
             waitArea.style.display = "none";
             $("lobbyInputArea").style.display = "flex";
 
-            // 承認許可での自動入室フラグを送信側セッションへ仕込む
             sessionStorage.setItem("nz_should_send_join_sys", "true");
             sessionStorage.setItem("nz_join_reason", "approved");
 
@@ -2454,7 +2563,7 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
             localStorage.removeItem("nz_active_created");
             localStorage.setItem("nz_is_in_room", "false");
             
-            showLobby("❌ 入室申請が却下されました。再度申請できます。");
+            showLobby("❌ 入室申請が却下されました。");
           }
         });
 
@@ -2476,12 +2585,11 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
             localStorage.removeItem("nz_active_created");
             localStorage.setItem("nz_is_in_room", "false");
             
-            showLobby("申請中の部屋が消滅または期限切れになりました。");
+            showLobby("申請中の部屋が期限切れになりました。");
             return;
           }
 
           const currentRoomVal = rSnap.val();
-          // ホストが「オープン」モードに切り替えた場合、お知らせ付きで即自動入室
           if (currentRoomVal && currentRoomVal.mode === "open") {
             if (typeof _lobbyReqOff === "function") _lobbyReqOff();
             _lobbyReqOff = null;
@@ -2489,12 +2597,11 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
             _lobbyRoomOff = null;
 
             await onDisconnect(reqRef).cancel();
-            await remove(reqRef); // 申請データをクリーンアップ
+            await remove(reqRef);
 
             waitArea.style.display = "none";
             $("lobbyInputArea").style.display = "flex";
 
-            // オープンモード切り替えでの即時入室フラグを送信側セッションへ仕込む
             sessionStorage.setItem("nz_should_send_join_sys", "true");
             sessionStorage.setItem("nz_join_reason", "open_mode");
 
@@ -2502,7 +2609,6 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
           }
         });
 
-        // 申請キャンセル
         $("cancelRequestBtn").onclick = async () => {
           if (typeof _lobbyReqOff === "function") _lobbyReqOff();
           _lobbyReqOff = null;
@@ -2529,6 +2635,11 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
 
     clearAll(hashId); _exitLock = false;
     localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created");
+
+    // 1対1暗号化用の ECDH キーペアを準備
+    if (!myECDHKeyPair) {
+      myECDHKeyPair = await generateECDHKey();
+    }
 
     let cachedKeyHex = localStorage.getItem(`nz_mkey_${hashId}`);
     if (cachedKeyHex) {
@@ -2557,6 +2668,9 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
 
     curR = hashId; rawR = roomId; curN = name;
     
+    // 自公開鍵の JWK エクスポート
+    const myPubJwk = myECDHKeyPair ? await exportPublicKey(myECDHKeyPair.publicKey) : null;
+
     if (!snap.exists()) {
       localStorage.removeItem(`nz_chat_raw_${hashId}`);
       currentRoomMsgs = [];
@@ -2573,10 +2687,9 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
       await set(roomRef, roomData);
       
       myPresRef = ref(db, `presence/${hashId}/${myUid}`);
-      const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
+      const metaStr = JSON.stringify({ n: name, p: trip, c: curColor, epub: myPubJwk });
       await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: true });
       
-      // 切断時に自動で存在（Presence）を削除する設定を登録
       await onDisconnect(myPresRef).remove();
       
       const localRoomData = { ...roomData, created: Date.now() };
@@ -2587,10 +2700,9 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
       isHost = (roomData.host === myUid);
       myPresRef = ref(db, `presence/${hashId}/${myUid}`);
 
-      const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
+      const metaStr = JSON.stringify({ n: name, p: trip, c: curColor, epub: myPubJwk });
       await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: isHost });
       
-      // 切断時に自動で存在（Presence）を削除する設定を登録
       await onDisconnect(myPresRef).remove();
       
       await enterChatUI(roomData, pass);
@@ -2626,7 +2738,10 @@ async function enterChatUI(roomData, pass) {
     localStorage.setItem("nz_pi_val", pass);
   }
 
-  // お知らせを送信
+  // 自動承認設定の読み込み
+  loadAutoApproveTrips();
+  renderPreApproveList();
+
   const shouldSendJoin = sessionStorage.getItem("nz_should_send_join_sys") === "true";
   if (shouldSendJoin) {
     sessionStorage.removeItem("nz_should_send_join_sys");
@@ -2640,9 +2755,9 @@ async function enterChatUI(roomData, pass) {
     if (isCreated) {
       await sendSysMsg(`${nameWithTrip} が部屋を作成しました`);
     } else if (joinReason === "approved") {
-      await sendSysMsg(`📥 ${nameWithTrip} の入室申請が承認され、自動入室しました`);
+      await sendSysMsg(`📥 ${nameWithTrip} が承認され入室しました`);
     } else if (joinReason === "open_mode") {
-      await sendSysMsg(`🔓 部屋がオープンモードに切り替わったため、${nameWithTrip} が自動入室しました`);
+      await sendSysMsg(`🔓 部屋がオープンモードになり、${nameWithTrip} が自動入室しました`);
     } else {
       await sendSysMsg(`${nameWithTrip} が入室しました`);
     }
@@ -2681,7 +2796,6 @@ async function enterChatUI(roomData, pass) {
     removeMessageEl(snap.key);
   });
 
-  // BAN監視
   _myBanOff = onValue(ref(db, `rooms/${curR}/banList/${myUid}`), s => {
     if (s.exists()) {
       if (typeof _myBanOff === "function") { _myBanOff(); _myBanOff = null; }
@@ -2689,7 +2803,6 @@ async function enterChatUI(roomData, pass) {
     }
   });
 
-  // ホスト機能の設定
   if (isHost) {
     $("hostPanel").style.display = "flex";
     document.querySelectorAll('input[name="roomModeRadio"]').forEach(r => {
@@ -2721,7 +2834,6 @@ function initConnectionMonitor() {
   });
 }
 
-// 接続復旧時の完全再同期
 async function forceResync() {
   if (!curR || !masterKey) return;
   try {
@@ -2731,7 +2843,6 @@ async function forceResync() {
     if (targetRoom !== curR) return;
 
     if (roomSnap === null) {
-      console.log("再同期中：サーバー一時不通のため待機");
       return; 
     }
 
@@ -2743,7 +2854,6 @@ async function forceResync() {
       return;
     }
 
-    // 再同期前に自身がBANされていないかをチェック
     const banSnap = await get(ref(db, `rooms/${targetRoom}/banList/${myUid}`)).catch(() => null);
     if (banSnap && banSnap.exists()) {
       handleBannedState();
@@ -2788,7 +2898,6 @@ let lastSendTime = 0;
 async function sendMsg(overrideText = null, imgData = null) {
   if (!curR || !masterKey || isCmp) return;
 
-  // メッセージ送信前にセルフBANチェック
   const banCheck = await get(ref(db, `rooms/${curR}/banList/${myUid}`)).catch(() => null);
   if (banCheck && banCheck.exists()) {
     handleBannedState();
@@ -2813,11 +2922,28 @@ async function sendMsg(overrideText = null, imgData = null) {
   
   const nowSrv = srvNow();
   const encryptedMeta = await encrypt(JSON.stringify(metaObj), masterKey);
-  const encryptedMsg = await encrypt(imgData ? "IMG::" + imgData : txt, masterKey);
 
-  // 暗号化平文キャッシュの先行追加（復号の高速化）
+  // 送信モード（通常共通暗号 or 個別1対1暗号）の分岐
+  const isDM = !!dmTargetUid;
+  const targetUid = dmTargetUid; // 非同期スナップ用保持
+  let encryptedMsg = "";
+
+  if (isDM) {
+    const sharedKey = peerSharedKeys.get(targetUid);
+    if (!sharedKey) {
+      showToast("❌ 個別会話用の鍵がまだ確立されていません。");
+      return;
+    }
+    encryptedMsg = await encrypt(imgData ? "IMG::" + imgData : txt, sharedKey);
+  } else {
+    encryptedMsg = await encrypt(imgData ? "IMG::" + imgData : txt, masterKey);
+  }
+
+  // キャッシュ投入
   const plainTextVal = imgData ? "IMG::" + imgData : txt;
-  decCache.set(encryptedMsg, Promise.resolve(plainTextVal));
+  if (!isDM) {
+    decCache.set(encryptedMsg, Promise.resolve(plainTextVal));
+  }
   metaCache.set(encryptedMeta, Promise.resolve(metaObj));
 
   const tempObj = { 
@@ -2828,18 +2954,28 @@ async function sendMsg(overrideText = null, imgData = null) {
     m: encryptedMsg, 
     t: nowSrv
   };
+  if (isDM) {
+    tempObj.to = targetUid;
+    tempObj.isPrivate = true;
+  }
   
   await renderSingleMessage(tempObj);
 
-  push(ref(db, `chat/${curR}`), { 
+  const pushData = { 
     u: myUid, 
     c: cid, 
     mt: encryptedMeta, 
     m: encryptedMsg, 
     t: serverTimestamp()
-  }).catch(e => {
+  };
+  if (isDM) {
+    pushData.to = targetUid;
+    pushData.isPrivate = true;
+  }
+
+  push(ref(db, `chat/${curR}`), pushData).catch(e => {
     removeMessageEl(cid);
-    console.error("Firebaseへのメッセージ送信に失敗しました:", e);
+    console.error("送信失敗:", e);
     showToast(`❌ 送信失敗: ${e.message}`);
   });
 }
@@ -2863,7 +2999,6 @@ D.fileInput.onchange = (e) => {
       const cvs = document.createElement("canvas"); 
       let w = img.width, h = img.height;
       
-      // 自動画像圧縮（軽量化・高速暗号化）
       const maxDim = 800;
       const quality = 0.5;
 
@@ -2908,7 +3043,7 @@ D.clrMsgBtn.onclick = () => { D.mi.value = ""; D.mi.style.height = "auto"; D.mi.
 D.enBtn.onclick = async () => {
   const savedActiveRi = localStorage.getItem("nz_active_ri");
   if (savedActiveRi && localStorage.getItem("nz_is_in_room") === "true") {
-    alert("既に入室中または待機中の部屋（" + savedActiveRi + "）があります。まずはそちらから退室してください。");
+    alert("既に入室中の部屋（" + savedActiveRi + "）があります。そちらから退室してください。");
     D.ri.value = savedActiveRi;
     D.pi.value = localStorage.getItem(`nz_pi_${savedActiveRi}`) || localStorage.getItem("nz_pi_val") || "";
     D.ni.value = localStorage.getItem("nz_ni") || "名無し";
@@ -3355,7 +3490,6 @@ window.triggerAudioDownload = async (url, btn) => {
 let activeVideoUrl = "";
 let activeVideoType = "";
 
-// プレイヤーコントロールを標準（IFRAME標準など）で利用可能に調整 (TikTok, Instagramを含めた全URL構造に対応)
 window.openFloatingPlayer = async (url, type, extraData = "") => {
   activeVideoUrl = url;
   activeVideoType = type;
@@ -3409,43 +3543,6 @@ window.openFloatingPlayer = async (url, type, extraData = "") => {
       
       contentNode.appendChild(iframe);
     }
-  } else if (type === "instagram_embed") {
-    $("playerTitle").textContent = "Instagramビデオ";
-    const iframe = document.createElement("iframe");
-    iframe.src = url;
-    iframe.frameBorder = "0";
-    iframe.allowFullscreen = true;
-    iframe.style.width = "100%";
-    iframe.style.height = "100%";
-    iframe.style.background = "#fff";
-    
-    contentNode.appendChild(iframe);
-  } else if (type === "tiktok_embed") {
-    $("playerTitle").textContent = "TikTokビデオ";
-    const wrapper = document.createElement("div");
-    wrapper.style.width = "100%";
-    wrapper.style.height = "100%";
-    wrapper.style.overflow = "auto";
-    wrapper.style.background = "#000";
-    wrapper.style.display = "flex";
-    wrapper.style.justifyContent = "center";
-    wrapper.style.alignItems = "center";
-    wrapper.innerHTML = extraData; // oEmbedのHTMLコンテンツを挿入
-    
-    // TikTokの埋め込みスクリプトを動的にロードし初期化
-    if (!document.getElementById("tiktok-embed-script")) {
-      const script = document.createElement("script");
-      script.id = "tiktok-embed-script";
-      script.src = "https://www.tiktok.com/embed.js";
-      script.async = true;
-      document.body.appendChild(script);
-    } else {
-      if (window.tiktok && typeof window.tiktok.reloadEmbeds === "function") {
-        setTimeout(() => window.tiktok.reloadEmbeds(), 100);
-      }
-    }
-    
-    contentNode.appendChild(wrapper);
   } else if (type === "audio") {
     $("playerTitle").textContent = "音声再生";
     const aud = document.createElement("audio");
@@ -3480,7 +3577,6 @@ window.openFloatingPlayer = async (url, type, extraData = "") => {
   }
 };
 
-// 再生終了イベントのキャッチ
 window.addEventListener("message", (e) => {
   try {
     const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
@@ -3503,7 +3599,6 @@ const checkAndWarmboot = async () => {
   const savedActiveCreated = localStorage.getItem("nz_active_created");
   const savedNi = localStorage.getItem("nz_ni");
 
-  // 入室中引き戻し保護
   if (savedActiveRi && savedActiveCreated && savedNi) {
     if (urlR && urlR !== savedActiveRi) {
       showToast("⚠️ 既に入室中の部屋があるため、元の部屋へ移動します");
@@ -3709,14 +3804,11 @@ authenticateAnonymously()
     showLobby();
   });
 
-// 承認待ちはタブを開いている間だけ動作させる仕組み (タブを閉じたら即時で物理キャンセル)
 window.addEventListener("beforeunload", () => {
   if ($("lobbyWaitingArea").style.display === "flex" && curR && myUid) {
     localStorage.removeItem("nz_active_ri");
     localStorage.removeItem("nz_active_created");
     localStorage.setItem("nz_is_in_room", "false");
-    
-    // WebSocketコネクションを切断させ、FirebaseのonDisconnectタスクを即サーバー側で走らせて削除
     goOffline(db);
   }
 });

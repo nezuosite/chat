@@ -567,9 +567,12 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
             <span class="rn" id="rdsp"></span>
             <span class="pcnt" id="pcnt">--人</span>
           </div>
-          <div style="display: flex; align-items: center; gap: 4px;">
-            <span id="timerDsp" style="cursor: pointer; font-family: monospace; font-weight: bold; color: #f87171; font-size: 11px; background: rgba(244,63,94,0.08); padding: 1px 4px; border-radius: 3px; border: 1px solid rgba(244,63,94,0.2);" title="クリックして残り時間を調整">--:--</span>
-            <span id="timerBtnIcon" style="cursor: pointer; font-size: 9.5px; color: var(--mu); font-weight: bold;" title="寿命を調整">⏱ 寿命設定</span>
+          <!-- タイマー設定ボタン最適化 (1つのスタイリッシュな複合ボタンへ統合) -->
+          <div style="display: flex; align-items: center; gap: 4px; margin-top: 1px;">
+            <div id="timerTrigger" style="cursor: pointer; display: flex; align-items: center; gap: 4px; background: rgba(244,63,94,0.08); padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(244,63,94,0.15);" title="クリックして寿命残り時間を調整">
+              <span id="timerDsp" style="font-family: monospace; font-weight: bold; color: #f87171; font-size: 11px;">--:--</span>
+              <span id="timerBtnIcon" style="font-size: 9px; color: var(--mu); font-weight: bold;">⏱ 寿命設定</span>
+            </div>
           </div>
         </div>
         <div class="hbs">
@@ -600,16 +603,14 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         </div>
       </div>
       
-      <!-- 事前許可トリップ設定 (招待モードでのみ表示されるよう制御) -->
-      <div id="hostPreApproveWrapper" style="display:none; flex-direction:column; gap:4px; background:var(--bg); padding:6px; border-radius:4px; border:1px solid var(--bd); margin-top:2px;">
-        <div style="font-weight:bold; font-size:9.5px; color:#818cf8; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:1px; display:flex; justify-content:space-between; align-items:center;">
-          <span>🔑 トリップ事前許可設定 (合致する申請は自動承認)</span>
+      <!-- 事前許可トリップ設定 (招待モードでのみ1行でスマートに横並び表示されるよう極限まで省スペース化) -->
+      <div id="hostPreApproveWrapper" style="display:none; align-items:center; gap:6px; background:var(--bg); padding:4px 6px; border-radius:4px; border:1px solid var(--bd); margin-top:2px; flex-wrap:wrap;">
+        <span style="font-weight:bold; font-size:9.5px; color:#818cf8; white-space:nowrap;">🔑 トリップ自動承認:</span>
+        <div style="display:flex; gap:3px; align-items:center; flex:1; min-width:140px;">
+          <input type="text" id="preApproveInput" class="inp" placeholder="◆トリップを入力" style="font-size:10px; padding:2px 6px; height:22px; width:100px; flex:1;">
+          <button id="addPreApproveBtn" style="background:var(--in); color:#fff; font-size:10px; padding:0 6px; border-radius:3px; font-weight:bold; cursor:pointer; height:22px; white-space:nowrap;">追加</button>
         </div>
-        <div style="display:flex; gap:4px;">
-          <input type="text" id="preApproveInput" class="inp" placeholder="◆トリップを入力" style="font-size:10px; padding:3px 6px; height:24px;">
-          <button id="addPreApproveBtn" style="background:var(--in); color:#fff; font-size:10px; padding:0 8px; border-radius:3px; font-weight:bold; cursor:pointer; height:24px;">追加</button>
-        </div>
-        <div id="preApproveList" style="max-height:50px; overflow-y:auto; display:flex; flex-wrap:wrap; gap:4px; margin-top:2px;"></div>
+        <div id="preApproveList" style="max-height:36px; overflow-y:auto; display:flex; flex-wrap:wrap; gap:3px; flex:1; min-width:120px;"></div>
       </div>
 
       <!-- BANリスト (折りたたみ式) -->
@@ -789,7 +790,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 
       <div class="gs" style="border-left-color: #a5b4fc;">
         <h4 style="color: #a5b4fc; font-size: 13px; margin-bottom: 4px;">🤫 1対1個別チャット (シークレット機能)</h4>
-        ルーム全体の暗号化とは独立して、1対1のダイレクトメッセージでは「<b>楕円曲線ディフィー・ヘルマン鍵共有 (ECDH)</b>」を応用した独自の暗号化経路を確立します。<br>
+        ルーム全体の暗号化とは独立して、1対1 of ダイレクトメッセージでは「<b>楕円曲線ディフィー・ヘルマン鍵共有 (ECDH)</b>」を応用した独自の暗号化経路を確立します。<br>
         このモードで送信された内容は、指定された宛先の端末以外ではいかなる方法でも復号できません。他の参加者にはメッセージが送信された事実や、暗号文自体もタイムライン上に一切表示されないため、密談の存在自体が外部に漏れません。
       </div>
 
@@ -866,25 +867,27 @@ const D = {
   imgViewMod:$("imgViewMod"), imgViewSrc:$("imgViewSrc"), imgViewCloseBtn:$("imgViewCloseBtn"),
   delConfirmMod:$("delConfirmMod"), delConfirmPreview:$("delConfirmPreview"), delCancelBtn:$("delCancelBtn"), delExecuteBtn:$("delExecuteBtn"),
   toastContainer:$("toastContainer"),
-  callBtn:$("callBtn") // 追加
+  callBtn:$("callBtn")
 };
 
 let keepKbOpen = false;
 let isAutoScroll = true;
 
-// 高スクロール追従用のRAFフラグ
+// 高スクロール追従用のRAFフラグおよびスクロール追従処理 (定義引き上げによるエラーを完全に防ぐため、通常のfunction形式で宣言)
 let _scPending = false;
-const scBottom = (force = false) => {
+function scBottom(force = false) {
   if (!isAutoScroll && !force) return;
   if (_scPending) return;
   _scPending = true;
   
   requestAnimationFrame(() => {
-    D.tl.scrollTop = D.tl.scrollHeight;
-    updateJumpBtns();
+    if (D.tl) {
+      D.tl.scrollTop = D.tl.scrollHeight;
+      updateJumpBtns();
+    }
     _scPending = false;
   });
-};
+}
 
 if (window.visualViewport) {
   const onViewportChange = () => {
@@ -902,6 +905,18 @@ if (window.visualViewport) {
 D.mi.addEventListener("focus", () => {
   setTimeout(() => scBottom(true), 250);
 });
+
+// ホイスティングによるスクリプト強制停止を完全防止するため、ユーティリティ関数を通常宣言(function)へ修正
+function updateLobbyColorPreview(color) {
+  const con = $("lbClrPrev");
+  if (!con) return;
+  con.textContent = "";
+  const prevSpan = document.createElement("span");
+  prevSpan.style.color = color;
+  prevSpan.style.fontWeight = "bold";
+  prevSpan.textContent = "■ この色で名前、トリップ、発言時刻が同期表示されます";
+  con.appendChild(prevSpan);
+}
 
 // ローカルストレージからの即時入力復元処理
 const initLobbyInputs = () => {
@@ -1233,18 +1248,6 @@ let tmpColor = curColor;
 
 const setGlobalColor = c => { document.documentElement.style.setProperty("--usr-color", c); if(D.clrDot) D.clrDot.style.background = c; };
 setGlobalColor(curColor);
-
-// ロビー用プレビュー表示の同期更新
-const updateLobbyColorPreview = (color) => {
-  const con = $("lbClrPrev");
-  if (!con) return;
-  con.textContent = "";
-  const prevSpan = document.createElement("span");
-  prevSpan.style.color = color;
-  prevSpan.style.fontWeight = "bold";
-  prevSpan.textContent = "■ この色で名前、トリップ、発言時刻が同期表示されます";
-  con.appendChild(prevSpan);
-};
 
 const syncPickers = v => { 
   if(D.lbClrPick) D.lbClrPick.querySelectorAll("button").forEach(b => b.classList.toggle("sel", b.dataset.color === v)); 
@@ -2155,17 +2158,18 @@ async function checkCurrentRoomStatus() {
    ========================================================= */
 let autoApproveTrips = [];
 
-const loadAutoApproveTrips = () => {
+// 定義順エラーによるフリーズを防ぐため、通常の関数宣言にリファクタリング
+function loadAutoApproveTrips() {
   try {
     const raw = localStorage.getItem("nz_auto_approve_trips");
     autoApproveTrips = raw ? JSON.parse(raw) : [];
   } catch(e) {
     autoApproveTrips = [];
   }
-};
+}
 
-// サーバー上に事前許可トリップを暗号化保存 (即時自動承認パス用)
-const saveAutoApproveTrips = async () => {
+// サーバー上に事前許可トリップを暗号化保存
+async function saveAutoApproveTrips() {
   localStorage.setItem("nz_auto_approve_trips", JSON.stringify(autoApproveTrips));
   renderPreApproveList();
   
@@ -2177,9 +2181,9 @@ const saveAutoApproveTrips = async () => {
       console.error(e);
     }
   }
-};
+}
 
-const renderPreApproveList = () => {
+function renderPreApproveList() {
   const listDiv = $("preApproveList");
   if (!listDiv) return;
   listDiv.textContent = "";
@@ -2214,7 +2218,7 @@ const renderPreApproveList = () => {
     item.appendChild(del);
     listDiv.appendChild(item);
   });
-};
+}
 
 $("addPreApproveBtn").onclick = () => {
   const val = $("preApproveInput").value.trim();
@@ -2481,6 +2485,16 @@ function listenToHostRequestsAndBans() {
       unbanBtn.textContent = "解除";
       unbanBtn.style.background = "var(--sf)";
       unbanBtn.style.border = "1px solid var(--bd)";
+      unbanBtn.style.color = "var(--tx)";
+      unbanBtn.style.padding = "1px 6px";
+      unbanBtn.style.borderRadius = "3px";
+      unbanBtn.style.cursor = "pointer";
+      unbanBtn.onclick = async () => {
+        await remove(ref(db, `rooms/${curR}/banList/${uid}`));
+        showToast("✅ BANを解除しました");
+      };
+      
+      row.appendChild(label);
       unbanBtn.style.color = "var(--tx)";
       unbanBtn.style.padding = "1px 6px";
       unbanBtn.style.borderRadius = "3px";
@@ -3364,8 +3378,8 @@ const openTimerMod = () => {
   D_timerSettingMod.classList.add("show");
 };
 
-$("timerDsp").onclick = openTimerMod;
-$("timerBtnIcon").onclick = openTimerMod;
+// タイマー設定ボタン最適化
+$("timerTrigger").onclick = openTimerMod;
 D_timerSettingCloseBtn.onclick = () => { D_timerSettingMod.classList.remove("show"); };
 D.imgViewCloseBtn.onclick = () => { D.imgViewMod.classList.remove("show"); };
 
@@ -3891,16 +3905,6 @@ function watchSpeakers() {
       }
     });
   });
-}
-
-// 接続の能動的再構築
-function updateAllConnections() {
-  peerConnections.forEach((pc, peerUid) => {
-    closePeer(peerUid);
-  });
-  peerConnections.clear();
-  remoteAudios.clear();
-  watchSpeakers();
 }
 
 // 音声モード（発言者）へ手動切り替え

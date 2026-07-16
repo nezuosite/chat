@@ -241,7 +241,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   opacity: 0.9;
 }
 
-/* メディアリンク・バッジデザイン */
+/* メディアリンク・バッジデザイン（改行・整列最適化： 生URLを排除しスマート化） */
 .media-link-container {
   display: flex; 
   flex-direction: column; 
@@ -603,7 +603,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         </div>
       </div>
 
-      <!-- 承認待ちリスト (承認待ちがいるときのみ自動展開・点滅枠線適用) -->
+      <!-- 承認待ちリスト (承認待ちがいるときのみ自動展開) -->
       <div id="hostRequestListWrapper" style="display:none; background:var(--bg); padding:4px 6px; border-radius:4px; border:1px solid var(--bd); margin-top:2px;">
         <div style="font-weight:bold; font-size:9.5px; color:#818cf8; margin-bottom:2px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:1px;">📥 入室承認待ち</div>
         <div id="hostRequestList" style="max-height:80px; overflow-y:auto; display:flex; flex-direction:column; gap:3px; font-size:9.5px;"></div>
@@ -661,16 +661,8 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       </div>
       <div id="playerContent"></div>
       
-      <!-- 画質コントローラー行 -->
-      <div id="playerControls" style="display:flex; justify-content:space-between; align-items:center; background:var(--sf); padding:6px 10px; border-top:1px solid var(--bd);">
-        <div style="display:flex; align-items:center; gap:6px;">
-          <span style="font-size:10px; color:var(--mu); font-weight:bold;">画質:</span>
-          <select id="playerQualitySelect" style="background:var(--bg); color:var(--tx); border:1px solid var(--bd); font-size:10.5px; padding:2px 6px; border-radius:4px; outline:none; cursor:pointer;">
-            <option value="auto">自動 (標準)</option>
-            <option value="high">高画質 (HD)</option>
-            <option value="low">低画質 (省回線)</option>
-          </select>
-        </div>
+      <!-- 閉じるボタンエリア (画質セレクトボックスは撤去し、プレイヤー標準コントロールで変更可能に調整) -->
+      <div id="playerControls" style="display:flex; justify-content:center; background:var(--sf); padding:6px 10px; border-top:1px solid var(--bd);">
         <button id="playerCloseBtn" style="margin:0; padding:5px 12px; font-size:11px; background:var(--ro); color:#fff; border-radius:4px; font-weight:bold; cursor:pointer;">閉じる</button>
       </div>
     </div>
@@ -1298,7 +1290,7 @@ function trimTimeline() {
   }
 }
 
-// 描画処理の完全DOM API化 (innerHTMLの廃止、生動画リンク表示をカット)
+// 描画処理の完全DOM API化 (innerHTMLの廃止、生動画リンク表示をカット、Instagram/TikTok対応)
 async function cMsg(msg) {
   const msgTs = msg.t || srvNow();
 
@@ -1475,14 +1467,16 @@ async function cMsg(msg) {
         }
       });
 
-      // 各種メディアURLのパース
+      // 各種メディアURLのパース (TikTok, Instagramを新規追加)
       const mediaRegexes = [
         { type: "youtube", name: "YouTube", regex: /https?:\/\/(?:[a-zA-Z0-9-]+\.)?(?:youtube\.com|youtu\.be)\/[^\s\n<>"]+/i },
         { type: "niconico", name: "ニコニコ動画", regex: /https?:\/\/(?:[a-zA-Z0-9-]+\.)?(?:nicovideo\.jp|nico\.ms)\/[^\s\n<>"]+/i },
+        { type: "tiktok", name: "TikTok", regex: /https?:\/\/(?:[a-zA-Z0-9-]+\.)?tiktok\.com\/[^\s\n<>"]+/i },
+        { type: "instagram", name: "Instagram", regex: /https?:\/\/(?:[a-zA-Z0-9-]+\.)?instagram\.com\/(?:p|reel|tv)\/([a-zA-Z0-9_-]+)/i },
         { type: "audio", name: "Audio", regex: /https?:\/\/[^\s\n<>"]+\.(?:mp3|wav|ogg|m4a|aac|flac)(?:\?[^\s\n<>"]*)?/i }
       ];
 
-      const urls = txt.match(/https?:\/\/[^\s\n<>"]+/gi) || [];
+      const urls = txt.match(/https?:\/\/[^\s\n<>]+/gi) || [];
       const addedMedia = new Set();
 
       urls.forEach(url => {
@@ -1490,54 +1484,210 @@ async function cMsg(msg) {
           if (target.regex.test(url) && !addedMedia.has(url)) {
             addedMedia.add(url);
 
-            const mContainer = document.createElement("div");
-            mContainer.className = "media-link-container";
+            if (target.type === "youtube" || target.type === "niconico" || target.type === "audio") {
+              const mContainer = document.createElement("div");
+              mContainer.className = "media-link-container";
 
-            const mRow = document.createElement("div");
-            mRow.className = "media-inline-row";
+              const mRow = document.createElement("div");
+              mRow.className = "media-inline-row";
 
-            const mBadge = document.createElement("span");
-            mBadge.className = `media-badge`;
-            mBadge.textContent = target.name;
-            
-            // バッジカラー
-            if (target.type === 'youtube') mBadge.style.background = '#ef4444';
-            else if (target.type === 'niconico') mBadge.style.background = '#334155';
-            else if (target.type === 'audio') mBadge.style.background = '#4f46e5';
+              const mBadge = document.createElement("span");
+              mBadge.className = `media-badge`;
+              mBadge.textContent = target.name;
+              
+              if (target.type === 'youtube') mBadge.style.background = '#ef4444';
+              else if (target.type === 'niconico') mBadge.style.background = '#334155';
+              else if (target.type === 'audio') mBadge.style.background = '#4f46e5';
 
-            const mBtnRow = document.createElement("div");
-            mBtnRow.className = "media-btn-row";
+              const mBtnRow = document.createElement("div");
+              mBtnRow.className = "media-btn-row";
 
-            const mBtn = document.createElement("button");
-            mBtn.className = "open-player-btn";
-            mBtn.textContent = "チャット内で再生";
+              const mBtn = document.createElement("button");
+              mBtn.className = "open-player-btn";
+              mBtn.textContent = "チャット内で再生";
 
-            mBtn.addEventListener("click", () => {
-              window.openFloatingPlayer(url, target.type);
-            });
-
-            mBtnRow.appendChild(mBtn);
-
-            // 音声用
-            if (target.type === "audio") {
-              const dlBtn = document.createElement("button");
-              dlBtn.className = "dl-media-btn";
-              dlBtn.textContent = "📥 保存 (容量取得中...)";
-              dlBtn.dataset.sizeText = "容量取得中";
-
-              dlBtn.addEventListener("click", () => {
-                window.triggerAudioDownload(url, dlBtn);
+              mBtn.addEventListener("click", () => {
+                window.openFloatingPlayer(url, target.type);
               });
 
-              mBtnRow.appendChild(dlBtn);
-              window.fetchAudioSize(url, dlBtn);
+              mBtnRow.appendChild(mBtn);
+
+              if (target.type === "audio") {
+                const dlBtn = document.createElement("button");
+                dlBtn.className = "dl-media-btn";
+                dlBtn.textContent = "📥 保存 (容量取得中...)";
+                dlBtn.dataset.sizeText = "容量取得中";
+
+                dlBtn.addEventListener("click", () => {
+                  window.triggerAudioDownload(url, dlBtn);
+                });
+
+                mBtnRow.appendChild(dlBtn);
+                window.fetchAudioSize(url, dlBtn);
+              }
+
+              mRow.appendChild(mBadge);
+              mRow.appendChild(mBtnRow);
+              mContainer.appendChild(mRow);
+              mb.appendChild(mContainer);
+            } 
+            // Instagramの処理（画像・動画の非同期自動判別＆表示）
+            else if (target.type === "instagram") {
+              const match = url.match(/instagram\.com\/(?:p|reel|tv)\/([a-zA-Z0-9_-]+)/i);
+              if (match) {
+                const pathType = url.match(/instagram\.com\/(p|reel|tv)/i)[1];
+                const code = match[1];
+
+                const mContainer = document.createElement("div");
+                mContainer.className = "media-link-container";
+                mContainer.textContent = "Instagram 解析中...";
+                mb.appendChild(mContainer);
+
+                (async () => {
+                  let isVideo = pathType === "reel" || pathType === "tv";
+                  
+                  // /p/ 投稿の場合はプロキシを経由して動的解析 (CORS回避)
+                  if (!isVideo) {
+                    try {
+                      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://www.instagram.com/p/${code}/`)}`;
+                      const res = await fetch(proxyUrl);
+                      if (res.ok) {
+                        const data = await res.json();
+                        const html = data.contents || "";
+                        if (html.includes('og:video') || html.includes('"is_video":true') || html.includes('video_duration')) {
+                          isVideo = true;
+                        }
+                      }
+                    } catch (e) {
+                      isVideo = false; // エラー時は安全のために静止画像と判定
+                    }
+                  }
+
+                  mContainer.textContent = "";
+
+                  if (isVideo) {
+                    // 動画判定された場合: 埋め込みプレイヤーボタンを表示
+                    const mRow = document.createElement("div");
+                    mRow.className = "media-inline-row";
+
+                    const mBadge = document.createElement("span");
+                    mBadge.className = "media-badge";
+                    mBadge.style.background = "#e1306c";
+                    mBadge.textContent = "Instagram Video";
+
+                    const mBtnRow = document.createElement("div");
+                    mBtnRow.className = "media-btn-row";
+
+                    const mBtn = document.createElement("button");
+                    mBtn.className = "open-player-btn";
+                    mBtn.textContent = "チャット内で再生";
+                    mBtn.addEventListener("click", () => {
+                      window.openFloatingPlayer(`https://www.instagram.com/p/${code}/embed/`, "instagram_embed");
+                    });
+
+                    mBtnRow.appendChild(mBtn);
+                    mRow.appendChild(mBadge);
+                    mRow.appendChild(mBtnRow);
+                    mContainer.appendChild(mRow);
+                  } else {
+                    // 画像判定された場合: 1枚目のCDN画像をログに直接表示
+                    const img = document.createElement("img");
+                    img.src = `https://www.instagram.com/p/${code}/media/?size=l`;
+                    img.className = "inline-img";
+                    img.alt = "Instagram画像";
+                    img.decoding = "async";
+                    img.addEventListener("click", () => {
+                      window.openZoomModal(`https://www.instagram.com/p/${code}/media/?size=l`);
+                    });
+                    mContainer.replaceWith(img);
+                    scBottom();
+                  }
+                })();
+              }
+            }
+            // TikTokの処理 (公式oEmbed APIで画像・動画を自動判別)
+            else if (target.type === "tiktok") {
+              const mContainer = document.createElement("div");
+              mContainer.className = "media-link-container";
+              mContainer.textContent = "TikTok 解析中...";
+              mb.appendChild(mContainer);
+
+              (async () => {
+                try {
+                  const res = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`);
+                  if (res.ok) {
+                    const data = await res.json();
+                    mContainer.textContent = "";
+
+                    if (data.type === "video") {
+                      // 動画の場合: 埋め込みプレイヤー再生ボタンを表示
+                      const mRow = document.createElement("div");
+                      mRow.className = "media-inline-row";
+
+                      const mBadge = document.createElement("span");
+                      mBadge.className = "media-badge";
+                      mBadge.style.background = "#000000";
+                      mBadge.textContent = "TikTok Video";
+
+                      const mBtnRow = document.createElement("div");
+                      mBtnRow.className = "media-btn-row";
+
+                      const mBtn = document.createElement("button");
+                      mBtn.className = "open-player-btn";
+                      mBtn.textContent = "チャット内で再生";
+                      mBtn.addEventListener("click", () => {
+                        window.openFloatingPlayer(url, "tiktok_embed", data.html);
+                      });
+
+                      mBtnRow.appendChild(mBtn);
+                      mRow.appendChild(mBadge);
+                      mRow.appendChild(mBtnRow);
+                      mContainer.appendChild(mRow);
+                    } else {
+                      // 写真カルーセル等の画像系投稿の場合: 直接カバー画像をログに表示
+                      const img = document.createElement("img");
+                      img.src = data.thumbnail_url;
+                      img.className = "inline-img";
+                      img.alt = "TikTok画像";
+                      img.decoding = "async";
+                      img.addEventListener("click", () => {
+                        window.openZoomModal(data.thumbnail_url);
+                      });
+                      mContainer.replaceWith(img);
+                      scBottom();
+                    }
+                  } else {
+                    throw new Error();
+                  }
+                } catch (e) {
+                  // 解析失敗時は安全のために通常リンクテキスト形式にフォールバック
+                  mContainer.textContent = "";
+                  const mRow = document.createElement("div");
+                  mRow.className = "media-inline-row";
+
+                  const mBadge = document.createElement("span");
+                  mBadge.className = "media-badge";
+                  mBadge.style.background = "#000000";
+                  mBadge.textContent = "TikTok";
+
+                  const mBtnRow = document.createElement("div");
+                  mBtnRow.className = "media-btn-row";
+
+                  const mBtn = document.createElement("button");
+                  mBtn.className = "open-player-btn";
+                  mBtn.textContent = "ブラウザで開く";
+                  mBtn.addEventListener("click", () => {
+                    window.open(url, "_blank");
+                  });
+
+                  mBtnRow.appendChild(mBtn);
+                  mRow.appendChild(mBadge);
+                  mRow.appendChild(mBtnRow);
+                  mContainer.appendChild(mRow);
+                }
+              })();
             }
 
-            // 生URL重複をカット
-            mRow.appendChild(mBadge);
-            mRow.appendChild(mBtnRow);
-            mContainer.appendChild(mRow);
-            mb.appendChild(mContainer);
             break;
           }
         }
@@ -1575,7 +1725,7 @@ let pendingTimeoutTimer = null;
 let _isExiting = false; 
 let _lastPresenceStr = "";
 
-// 申請・招待制のロビー用リアルタイムリスナー
+// ロビー招待承認待ちリアルタイムリスナー
 let _lobbyReqOff = null;
 let _lobbyRoomOff = null;
 
@@ -1773,7 +1923,7 @@ window.banUser = async (targetUid, name, trip) => {
 async function handleBannedState() {
   _exitLock = true;
   
-  // 共通鍵とキャッシュをメモリから物理的に完全クリア (JS改造によるパッシブ傍受を物理的に防御)
+  // 共通鍵とキャッシュをメモリから物理的に完全クリア
   masterKey = null;
   decCache.clear();
   metaCache.clear();
@@ -2074,7 +2224,7 @@ function listenToHostRequestsAndBans() {
     if (radio) radio.checked = true;
   });
 
-  // 2. 承認申請リストの監視 (承認待ちがいるときのみ自動展開・パルス警告適用)
+  // 2. 承認申請リストの監視 (承認待ちがいるときのみ自動展開)
   _hostReqOff = onValue(ref(db, `rooms/${curR}/requests`), s => {
     const listDiv = $("hostRequestList");
     listDiv.textContent = "";
@@ -2084,12 +2234,12 @@ function listenToHostRequestsAndBans() {
     const wrapper = $("hostRequestListWrapper");
     if (entries.length === 0) {
       wrapper.style.display = "none";
-      wrapper.classList.remove("pulse-border"); // 申請なしでアニメーション除去
+      wrapper.classList.remove("pulse-border");
       return;
     }
     
     wrapper.style.display = "block";
-    wrapper.classList.add("pulse-border"); // 申請ありでパルス(点滅)を付与
+    wrapper.classList.add("pulse-border");
     
     entries.forEach(([uid, data]) => {
       const row = document.createElement("div");
@@ -2252,10 +2402,10 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
           t: serverTimestamp()
         });
 
-        // 【最適化】申請状態で突然切断されたら、申請自体を自動で物理消去 (ゾンビ申請の防止)
+        // 申請状態で突然切断されたら、申請自体を自動で物理消去
         await onDisconnect(reqRef).remove();
 
-        // 申請結果、部屋の寿命切れ、またはオープンモード切り替えを監視 (リスナー変数の一元管理)
+        // 申請結果、部屋の寿命切れ、またはオープンモード切り替えを監視
         if (typeof _lobbyReqOff === "function") _lobbyReqOff();
         if (typeof _lobbyRoomOff === "function") _lobbyRoomOff();
 
@@ -2396,7 +2546,7 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
       const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
       await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: true });
       
-      // 【最適化】切断時に自動で存在（Presence）を削除する設定を登録 (ゾンビユーザー防止)
+      // 切断時に自動で存在（Presence）を削除する設定を登録
       await onDisconnect(myPresRef).remove();
       
       const localRoomData = { ...roomData, created: Date.now() };
@@ -2410,7 +2560,7 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
       const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
       await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: isHost });
       
-      // 【最適化】切断時に自動で存在（Presence）を削除する設定を登録
+      // 切断時に自動で存在（Presence）を削除する設定を登録
       await onDisconnect(myPresRef).remove();
       
       await enterChatUI(roomData, pass);
@@ -2493,7 +2643,7 @@ async function enterChatUI(roomData, pass) {
     removeMessageEl(snap.key);
   });
 
-  // BAN監視 (検知時にセキュリティプロテクションを適用)
+  // BAN監視
   _myBanOff = onValue(ref(db, `rooms/${curR}/banList/${myUid}`), s => {
     if (s.exists()) {
       if (typeof _myBanOff === "function") { _myBanOff(); _myBanOff = null; }
@@ -2600,7 +2750,7 @@ let lastSendTime = 0;
 async function sendMsg(overrideText = null, imgData = null) {
   if (!curR || !masterKey || isCmp) return;
 
-  // 【最適化】メッセージ送信前にセルフBANチェック (クライアント改ざんによる不正送信をプロテクト)
+  // メッセージ送信前にセルフBANチェック
   const banCheck = await get(ref(db, `rooms/${curR}/banList/${myUid}`)).catch(() => null);
   if (banCheck && banCheck.exists()) {
     handleBannedState();
@@ -3167,8 +3317,8 @@ window.triggerAudioDownload = async (url, btn) => {
 let activeVideoUrl = "";
 let activeVideoType = "";
 
-// 音声再生品質・画質の制御に対応したフローティングプレイヤー
-window.openFloatingPlayer = async (url, type, quality = "auto") => {
+// プレイヤーコントロールを標準（IFRAME標準など）で利用可能に調整
+window.openFloatingPlayer = async (url, type, extraData = "") => {
   activeVideoUrl = url;
   activeVideoType = type;
 
@@ -3185,22 +3335,15 @@ window.openFloatingPlayer = async (url, type, quality = "auto") => {
   const contentNode = $("playerContent");
   contentNode.innerHTML = ""; 
 
-  // 品質セレクト初期値の同期
-  $("playerQualitySelect").value = quality;
-
   if (type === "youtube") {
     const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i);
     if (ytMatch) {
       const id = ytMatch[1];
       $("playerTitle").textContent = "YouTube再生";
       
-      // クエリ画質指定パラメータマッピング (vq)
-      let ytQualityParam = "";
-      if (quality === "high") ytQualityParam = "&vq=hd1080";
-      else if (quality === "low") ytQualityParam = "&vq=small";
-
       const iframe = document.createElement("iframe");
-      iframe.src = `https://www.youtube.com/embed/${id}?autoplay=0&enablejsapi=1${ytQualityParam}`;
+      // IFRAME画質指定(vq)パラメータを撤去し、プレイヤー内部で画質を制御可能に変更
+      iframe.src = `https://www.youtube.com/embed/${id}?autoplay=0&enablejsapi=1`;
       iframe.frameBorder = "0";
       iframe.allow = "encrypted-media";
       iframe.allowFullscreen = true;
@@ -3229,6 +3372,43 @@ window.openFloatingPlayer = async (url, type, quality = "auto") => {
       
       contentNode.appendChild(iframe);
     }
+  } else if (type === "instagram_embed") {
+    $("playerTitle").textContent = "Instagramビデオ";
+    const iframe = document.createElement("iframe");
+    iframe.src = url;
+    iframe.frameBorder = "0";
+    iframe.allowFullscreen = true;
+    iframe.style.width = "100%";
+    iframe.style.height = "100%";
+    iframe.style.background = "#fff";
+    
+    contentNode.appendChild(iframe);
+  } else if (type === "tiktok_embed") {
+    $("playerTitle").textContent = "TikTokビデオ";
+    const wrapper = document.createElement("div");
+    wrapper.style.width = "100%";
+    wrapper.style.height = "100%";
+    wrapper.style.overflow = "auto";
+    wrapper.style.background = "#000";
+    wrapper.style.display = "flex";
+    wrapper.style.justifyContent = "center";
+    wrapper.style.alignItems = "center";
+    wrapper.innerHTML = extraData; // oEmbedのHTMLコンテンツを挿入
+    
+    // TikTokの埋め込みスクリプトを動的にロードし初期化
+    if (!document.getElementById("tiktok-embed-script")) {
+      const script = document.createElement("script");
+      script.id = "tiktok-embed-script";
+      script.src = "https://www.tiktok.com/embed.js";
+      script.async = true;
+      document.body.appendChild(script);
+    } else {
+      if (window.tiktok && typeof window.tiktok.reloadEmbeds === "function") {
+        setTimeout(() => window.tiktok.reloadEmbeds(), 100);
+      }
+    }
+    
+    contentNode.appendChild(wrapper);
   } else if (type === "audio") {
     $("playerTitle").textContent = "音声再生";
     const aud = document.createElement("audio");
@@ -3262,13 +3442,6 @@ window.openFloatingPlayer = async (url, type, quality = "auto") => {
     contentNode.appendChild(wrapper);
   }
 };
-
-// 画質切替イベントハンドラー
-$("playerQualitySelect").addEventListener("change", (e) => {
-  if (activeVideoUrl && activeVideoType) {
-    window.openFloatingPlayer(activeVideoUrl, activeVideoType, e.target.value);
-  }
-});
 
 // 再生終了イベントのキャッチ
 window.addEventListener("message", (e) => {

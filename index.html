@@ -2147,13 +2147,12 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
   try {
     const hashId = await getRoomHash(roomId);
 
-    // 1. BANチェック
+    // 1. BANチェック (ダイアログ不要・非ブロッキング仕様)
     const banCheckSnap = await get(ref(db, `rooms/${hashId}/banList/${myUid}`));
     if (banCheckSnap.exists()) {
       D.enBtn.disabled = false;
       D.enBtn.textContent = "入室 / 作成";
-      alert("❌ この部屋からBANされているため、入室できません。");
-      showLobby();
+      showLobby("❌ この部屋からBANされているため、入室できません。");
       return;
     }
 
@@ -2173,10 +2172,11 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
       if (reqData && reqData.status === "approved") {
         // 承認済みの場合はそのまま入室
       } else if (reqData && reqData.status === "rejected") {
-        alert("❌ ホストにより入室申請が却下されました。");
+        // 却下状態をクリアし、再びロビーから申請可能なクリーン状態にする
+        await remove(reqRef);
         D.enBtn.disabled = false;
         D.enBtn.textContent = "入室 / 作成";
-        showLobby();
+        showLobby("❌ 入室申請が却下されました。再度申請できます。");
         return;
       } else {
         // 申請待ち画面表示
@@ -2220,12 +2220,14 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
             if (typeof _lobbyRoomOff === "function") _lobbyRoomOff();
             _lobbyRoomOff = null;
 
+            // 却下状態をDBからクリアして、ブラウザダイアログなしで再度申請可能に
+            await remove(reqRef);
+
             waitArea.style.display = "none";
             $("lobbyInputArea").style.display = "flex";
             D.enBtn.disabled = false;
             D.enBtn.textContent = "入室 / 作成";
-            alert("❌ 入室申請が却下されました。");
-            showLobby();
+            showLobby("❌ 入室申請が却下されました。再度申請できます。");
           }
         });
 
@@ -2425,7 +2427,7 @@ async function enterChatUI(roomData, pass) {
     if (s.exists()) {
       if (typeof _myBanOff === "function") { _myBanOff(); _myBanOff = null; }
       doExit();
-      alert("この部屋から追放（BAN）されました。");
+      showLobby("❌ この部屋から追放（BAN）されました。");
     }
   });
 

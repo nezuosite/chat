@@ -179,7 +179,6 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
           <li><b>中継サーバー・管理者も覗き見不可:</b> データベースには強固な暗号文のみが格納されるため、中継サーバーの管理者、プロバイダー、第三者による傍受・解読は科学的・物理的に不可能です。</li>
           <li><b>即時物理削除＆不保持:</b> 部屋の有効期限が切れるか、最後の一人が退室した瞬間に、該当するメッセージ・Presence情報などの全データは痕跡なく即時抹消され、復元手段は一切ありません。</li>
           <li><b>通信ログ・個人データの不保持:</b> 接続元IPアドレス、通信のメタデータ、ログなどは一切記録も蓄積もしないため、究極のプライバシーが保たれます。</li>
-          <li><b>1to1秘密個別経路(ECDH):</b> 参加者リストのユーザー名をタップすれば、二人のブラウザ間のみで暗号経路を一時構築し、ルーム全体にも内容が見えない個別極秘会話が可能です。</li>
         </ul>
       </div>
       <div id="lberr"></div>
@@ -282,9 +281,6 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
             <label style="display:flex; align-items:center; gap:2px; cursor:pointer; font-size:10px;">
               <input type="radio" name="roomModeRadio" value="invite" style="width:11px; height:11px;"> 招待制
             </label>
-            <label style="display:flex; align-items:center; gap:4px; cursor:pointer; font-size:10px; margin-left:6px; border-left:1px solid var(--bd); padding-left:6px; color:#f87171;" title="施錠すると、現在のメンバーと事前承認トリップの人以外は新しく入れなくなります（再入室は可能）">
-              <input type="checkbox" id="roomLockCheckbox" style="width:11px; height:11px; accent-color:#ef4444;"> 🔒 部屋を施錠 (完全ロック)
-            </label>
           </div>
         </div>
         <div style="display:flex; gap:6px; align-items:center;">
@@ -342,7 +338,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       <div id="tl-inner"></div>
     </div>
 
-    <!-- 入力バー -->
+    <!-- 入力バー (1to1会話バーは廃止) -->
     <div id="ib">
       <div id="ibTopBar">
         <button id="kbToggleBtn" class="switch-kb ib-icon-btn" title="送信後のキーボード設定">
@@ -355,12 +351,6 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
           <button class="jump-btn" id="jumpUpBtn" title="タイムラインの最上部へ" disabled>▲</button>
           <button class="jump-btn" id="jumpDownBtn" title="タイムラインの最下部へ" disabled>▼</button>
         </div>
-      </div>
-
-      <!-- 個別会話ターゲットバー -->
-      <div id="dmTargetBar" style="display:none; align-items:center; justify-content:space-between; background:rgba(79,70,229,0.15); border:1px solid rgba(79,70,229,0.3); padding:4px 10px; border-radius:4px; font-size:11px; color:#a5b4fc; margin-bottom:2px;">
-        <span>🔒 <strong id="dmTargetName">名無し</strong> さんへ1対1シークレットメッセージ送信中 (第三者に非表示)</span>
-        <button id="cancelDmBtn" style="color:var(--ro); font-weight:bold; font-size:10px; cursor:pointer; background:none; border:none; padding:2px 6px;">解除</button>
       </div>
 
       <!-- 下部：入力エリア -->
@@ -402,7 +392,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 
 <div id="toastContainer"></div>
 
-<!-- 通話参加設定モーダル (confirmに代わる安全ですっきりした設計) -->
+<!-- 通話参加設定モーダル -->
 <div id="callJoinMod" class="mod-overlay">
   <div class="gc" style="max-width:340px;">
     <h3 style="font-size:13px; color:#818cf8; border-bottom:1px solid var(--bd); padding-bottom:6px; font-weight:bold; display:flex; align-items:center; gap:4px;">🎤 音声通話への参加設定</h3>
@@ -499,12 +489,6 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         テキスト、画像などのあらゆるデータは、インターネットに送り出される前に「ブラウザ内部」で強固に暗号化されます。サーバーのデータベースには完全な暗号文のみが配置されるため、中継ホストやデータベースの生テキストを覗き見られたとしても、復号パスワードを知り得ない第三者が内容を復号・解読することは物理的・数学的に不可能です。
       </div>
 
-      <div class="gs" style="border-left-color: #a5b4fc;">
-        <h4 style="color: #a5b4fc; font-size: 13px; margin-bottom: 4px;">🤫 1to1シークレットチャット (ECDH鍵共有)</h4>
-        ルーム全体の暗号化とは独立して、1対1の秘匿会話専用パスを構築可能です。参加メンバーの名前をタップすると、互いの端末間で「<b>楕円曲線ディフィー・ヘルマン鍵共有 (ECDH)</b>」を瞬時に実行。その二者だけの動的なセッション鍵を一時的に確立します。<br>
-        この状態で送信したメッセージは、該当する相手の端末以外では絶対に復号されず、他の参加者のブラウザやサーバーへ暗号文すら流れません。これにより密談の存在自体を完璧に保護します。
-      </div>
-
       <div class="gs" style="border-left-color: #10b981;">
         <h4 style="color: #10b981; font-size: 13px; margin-bottom: 4px;">🎙️ 音声通話 (ノイズ低減・P2P接続)</h4>
         「🎤 通話」ボタンから安全な音声通話へ参加できます。必要に応じて「話すモード（マイクON）」と「受信専用（聴くだけ）」をいつでも相互に切り替えられます。<br>
@@ -584,7 +568,6 @@ const D = {
 // 状態管理用変数
 let keepKbOpen = false;
 let isAutoScroll = true;
-let isCmp = false; // IME日本語入力中の判定用フラグ
 let _scPending = false; // 追従スクロールの排他処理用フラグ
 
 // 追従スクロール
@@ -636,7 +619,7 @@ const initHashPass = () => {
 initHashPass();
 
 /* =========================================================
-   Web Cryptography API (AES-GCM 256 & ECDH 1対1鍵共有)
+   Web Cryptography API (AES-GCM 256)
    ========================================================= */
 
 const hexToBytes = (hex) => {
@@ -705,44 +688,6 @@ const importKeyFromHex = async (hex) => {
   );
 };
 
-// 1対1個別暗号化用 (ECDH 鍵共有)
-const generateECDHKey = async () => {
-  try {
-    return await window.crypto.subtle.generateKey(
-      { name: "ECDH", namedCurve: "P-256" },
-      true,
-      ["deriveKey", "deriveBits"]
-    );
-  } catch (e) {
-    console.error("ECDH鍵生成失敗:", e);
-    return null;
-  }
-};
-
-const exportPublicKey = async (key) => {
-  return await window.crypto.subtle.exportKey("jwk", key);
-};
-
-const importPublicKey = async (jwk) => {
-  return await window.crypto.subtle.importKey(
-    "jwk",
-    jwk,
-    { name: "ECDH", namedCurve: "P-256" },
-    true,
-    []
-  );
-};
-
-const deriveSharedSecret = async (privateKey, publicKey) => {
-  return await window.crypto.subtle.deriveKey(
-    { name: "ECDH", public: publicKey },
-    privateKey,
-    { name: "AES-GCM", length: 256 },
-    true,
-    ["encrypt", "decrypt"]
-  );
-};
-
 // トリップキー生成
 const makeTrip = async (name, tripKey) => {
   if (!tripKey) return "";
@@ -757,9 +702,6 @@ const getRoomHash = async (roomId) => {
 };
 
 let masterKey = null; 
-let myECDHKeyPair = null;
-const peerSharedKeys = new Map(); // uid -> CryptoKey (個別共有鍵)
-const peerPublicKeys = new Map(); // uid -> jwkString (公開鍵比較用)
 
 let isHost = false;
 let targetDelId = null;
@@ -993,8 +935,7 @@ D.clrOk.addEventListener("click", async () => {
   updateLobbyColorPreview(curColor);
   if (curR && myPresRef && masterKey) { 
     try {
-      const myPubJwk = myECDHKeyPair ? await exportPublicKey(myECDHKeyPair.publicKey) : null;
-      const metaStr = JSON.stringify({n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor, epub: myPubJwk});
+      const metaStr = JSON.stringify({n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor});
       await update(myPresRef, {meta: await encrypt(metaStr, masterKey)});
     } catch {} 
   }
@@ -1128,7 +1069,7 @@ function trimTimeline() {
   }
 }
 
-// 描画処理の完全DOM API化 (innerHTMLの廃止)
+// 描画処理の完全DOM API化 (innerHTMLの廃止・一律共通鍵復号)
 async function cMsg(msg) {
   const msgTs = msg.t || srvNow();
 
@@ -1164,34 +1105,10 @@ async function cMsg(msg) {
     return d;
   }
 
-  // 2. 通常メッセージ (個別1対1暗号化の判別)
-  const isDM = msg.isPrivate === true;
-  let decKey = masterKey;
-
-  if (isDM) {
-    if (msg.u === myUid) {
-      decKey = peerSharedKeys.get(msg.to);
-    } else if (msg.to === myUid) {
-      decKey = peerSharedKeys.get(msg.u);
-    } else {
-      return null;
-    }
-
-    if (!decKey) {
-      const d = document.createElement("div");
-      d.dataset.mid = msg.id;
-      d.dataset.ts = msgTs;
-      d.className = "sys-msg";
-      d.style.borderColor = "rgba(129, 140, 248, 0.3)";
-      d.style.color = "#a5b4fc";
-      d.textContent = `🔒 受信したシークレットメッセージ (鍵確立を待機中...)`;
-      return d;
-    }
-  }
-
+  // 2. 通常メッセージ (一律 masterKey で復号)
   const [meta, txt] = await Promise.all([
     decryptMeta(msg.mt),
-    decrypt(msg.m, decKey)
+    decrypt(msg.m, masterKey)
   ]);
 
   if (!meta || !txt) {
@@ -1215,11 +1132,6 @@ async function cMsg(msg) {
     d.setAttribute("data-cid", msg.c);
   }
   d.className = "mw";
-
-  if (isDM) {
-    d.style.background = "rgba(79, 70, 229, 0.05)";
-    d.style.borderLeft = "3px solid #6366f1";
-  }
   
   const sN = meta.n || "???", sC = meta.c || "#94a3b8", sT = meta.p || "";
 
@@ -1236,19 +1148,6 @@ async function cMsg(msg) {
   nameWrap.style.textOverflow = "ellipsis";
   nameWrap.style.whiteSpace = "nowrap";
   nameWrap.style.flex = "1";
-
-  if (isDM) {
-    const dmBadge = document.createElement("span");
-    dmBadge.style.background = "rgba(129, 140, 248, 0.2)";
-    dmBadge.style.color = "#a5b4fc";
-    dmBadge.style.fontSize = "9px";
-    dmBadge.style.fontWeight = "bold";
-    dmBadge.style.padding = "1px 5px";
-    dmBadge.style.borderRadius = "3px";
-    dmBadge.style.marginRight = "6px";
-    dmBadge.textContent = msg.u === myUid ? "🔒 送信済シークレット" : "🔒 受信シークレット";
-    nameWrap.appendChild(dmBadge);
-  }
 
   const nameSpan = document.createElement("span");
   nameSpan.style.color = sC;
@@ -1445,7 +1344,6 @@ let _hostReqOff = null;
 let _hostBanOff = null;
 let _hostModeOff = null;
 let _myBanOff = null;
-let _hostLockOff = null;
 
 // E2EEキャッシュストレージ
 let currentRoomMsgs = [];
@@ -1640,9 +1538,6 @@ async function handleBannedState() {
   _exitLock = true;
   
   masterKey = null;
-  myECDHKeyPair = null;
-  peerSharedKeys.clear();
-  peerPublicKeys.clear();
   decCache.clear();
   metaCache.clear();
 
@@ -1751,7 +1646,6 @@ window.doExit = async () => {
 
 function clearAll(newHashId = null) {
   _lastPresenceStr = "";
-  setDmTarget(null);
   
   if (typeof _cOff === "function"){ _cOff(); _cOff = null; }
   if (typeof _crOff === "function"){ _crOff(); _crOff = null; }
@@ -1762,7 +1656,6 @@ function clearAll(newHashId = null) {
   if (typeof _hostBanOff === "function") { _hostBanOff(); _hostBanOff = null; }
   if (typeof _hostModeOff === "function") { _hostModeOff(); _hostModeOff = null; }
   if (typeof _myBanOff === "function") { _myBanOff(); _myBanOff = null; }
-  if (typeof _hostLockOff === "function") { _hostLockOff(); _hostLockOff = null; }
 
   if (typeof _lobbyReqOff === "function") { _lobbyReqOff(); _lobbyReqOff = null; }
   if (typeof _lobbyRoomOff === "function") { _lobbyRoomOff(); _lobbyRoomOff = null; }
@@ -1778,9 +1671,6 @@ function clearAll(newHashId = null) {
 
   if (!newHashId) {
     masterKey = null; 
-    myECDHKeyPair = null;
-    peerSharedKeys.clear();
-    peerPublicKeys.clear();
     decCache.clear();
     metaCache.clear();
   }
@@ -1921,26 +1811,6 @@ $("addPreApproveBtn").onclick = () => {
   }
 };
 
-/* =========================================================
-   1対1個別会話（シークレット）制御
-   ========================================================= */
-let dmTargetUid = null;
-
-const setDmTarget = (uid, name) => {
-  dmTargetUid = uid;
-  if (uid) {
-    $("dmTargetName").textContent = name;
-    $("dmTargetBar").style.display = "flex";
-    D.mi.placeholder = `🔒 [シークレット会話] ${name} さんに個別メッセージ...`;
-    D.mi.focus();
-  } else {
-    $("dmTargetBar").style.display = "none";
-    D.mi.placeholder = "メッセージを入力...";
-  }
-  scBottom();
-};
-$("cancelDmBtn").onclick = () => setDmTarget(null);
-
 // 参加者メンバーリスト
 async function renderPresenceList(s) {
   if (!curR) return;
@@ -1950,8 +1820,7 @@ async function renderPresenceList(s) {
   const membersData = [];
 
   if (myUid && localStorage.getItem("nz_is_in_room") === "true") {
-    const myPubJwk = myECDHKeyPair ? await exportPublicKey(myECDHKeyPair.publicKey) : null;
-    const myMetaStr = JSON.stringify({ n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor, epub: myPubJwk });
+    const myMetaStr = JSON.stringify({ n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor });
     membersData.push({
       id: myUid,
       u: { status: "approved", meta: await encrypt(myMetaStr, masterKey), isHost: isHost }
@@ -1971,23 +1840,8 @@ async function renderPresenceList(s) {
     if (u.status === "approved" && u.meta) {
       const m = await decryptMeta(u.meta);
       if (m) {
-         decryptedMembers.push({ id: id, n: m.n, c: m.c || "#94a3b8", isHost: u.isHost === true, p: m.p || "", epub: m.epub });
+         decryptedMembers.push({ id: id, n: m.n, c: m.c || "#94a3b8", isHost: u.isHost === true, p: m.p || "" });
          rawPresenceArrayForDiff.push(`${id}:${m.n}:${m.c}:${u.isHost}`);
-
-         // 1対1 ECDH 鍵共有
-         if (m.epub && id !== myUid && myECDHKeyPair) {
-           const epubStr = JSON.stringify(m.epub);
-           if (peerPublicKeys.get(id) !== epubStr) {
-             try {
-               const peerPubKey = await importPublicKey(m.epub);
-               const sharedKey = await deriveSharedSecret(myECDHKeyPair.privateKey, peerPubKey);
-               peerSharedKeys.set(id, sharedKey);
-               peerPublicKeys.set(id, epubStr);
-             } catch(e) {
-               console.error("個別シークレット鍵共有エラー:", e);
-             }
-           }
-         }
       }
     }
   }));
@@ -2011,9 +1865,13 @@ async function renderPresenceList(s) {
      sp.textContent = m.n; 
      sp.setAttribute("data-uid", m.id);
 
+     // 名前をタップした際、入力欄に返信メンションを追加
      sp.onclick = () => {
        if (m.id !== myUid) {
-         setDmTarget(m.id, m.n);
+         D.mi.value += `@${m.n} `;
+         D.mi.style.height = "auto";
+         D.mi.style.height = Math.min(120, D.mi.scrollHeight) + "px";
+         D.mi.focus();
        }
      };
 
@@ -2056,17 +1914,6 @@ function listenToHostRequestsAndBans() {
       approveWrapper.style.display = (mode === "invite") ? "flex" : "none";
     }
   });
-
-  _hostLockOff = onValue(ref(db, `rooms/${curR}/locked`), s => {
-    const locked = s.val() === true;
-    const chk = $("roomLockCheckbox");
-    if (chk) chk.checked = locked;
-  });
-
-  $("roomLockCheckbox").onchange = (e) => {
-    update(ref(db, `rooms/${curR}`), { locked: e.target.checked });
-    sendSysMsg(e.target.checked ? "🔒 部屋が施錠（完全ロック）されました。新規メンバーは入室できません。" : "🔓 部屋の施錠（完全ロック）が解除されました。");
-  };
 
   _hostReqOff = onValue(ref(db, `rooms/${curR}/requests`), (s) => {
     const listDiv = $("hostRequestList");
@@ -2243,7 +2090,6 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
     let roomData = snap.exists() ? snap.val() : null;
     const isRoomHost = roomData ? (roomData.host === myUid) : true;
     const roomMode = (roomData && roomData.mode) ? roomData.mode : "open";
-    const isRoomLocked = roomData ? (roomData.locked === true) : false;
 
     clearAll(hashId); _exitLock = false;
     localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created");
@@ -2263,11 +2109,6 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
     if (pass) {
       localStorage.setItem(`nz_pi_${hashId}`, pass);
       localStorage.setItem("nz_pi_val", pass);
-    }
-
-    // 1対1個別チャット用の鍵ペア生成
-    if (!myECDHKeyPair) {
-      myECDHKeyPair = await generateECDHKey();
     }
 
     // 2. 重複作成の防止とパスワード正当性検証
@@ -2329,22 +2170,6 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
       }
     }
 
-    let hasEnteredBefore = false;
-    if (roomData && roomData.approvedUsers && roomData.approvedUsers[myUid]) {
-      hasEnteredBefore = true;
-    }
-
-    // 4. 完全施錠（ルームロック）判定
-    if (isRoomLocked && !isRoomHost && !isPreApproved && !hasEnteredBefore) {
-      D.enBtn.disabled = false;
-      D.enBtn.textContent = "入室 / 作成";
-      localStorage.removeItem("nz_active_ri");
-      localStorage.removeItem("nz_active_created");
-      localStorage.setItem("nz_is_in_room", "false");
-      showLobby("🔒 この部屋は現在、完全ロック（施錠）されています。新規の参加者は入室できません。");
-      return;
-    }
-
     // 招待承認判定
     if (roomData && roomMode === "invite" && !isRoomHost && !isPreApproved) {
       const reqRef = ref(db, `rooms/${hashId}/requests/${myUid}`);
@@ -2398,7 +2223,7 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
 
             await onDisconnect(reqRef).cancel();
 
-            // チラつき防止：通常ロビーを一切チラつかせず即時doJoinを実行
+            // チラつき防止：通常ロビーを一切表示させず即時doJoinを実行
             waitArea.style.display = "none";
 
             sessionStorage.setItem("nz_should_send_join_sys", "true");
@@ -2498,10 +2323,8 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
 
     curR = hashId; rawR = roomId; curN = name;
     
-    const myPubJwk = myECDHKeyPair ? await exportPublicKey(myECDHKeyPair.publicKey) : null;
-
     myPresRef = ref(db, `presence/${hashId}/${myUid}`);
-    const metaStr = JSON.stringify({ n: name, p: trip, c: curColor, epub: myPubJwk });
+    const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
     await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: isHost });
     
     await onDisconnect(myPresRef).remove();
@@ -2715,7 +2538,7 @@ async function forceResync() {
 
 let lastSendTime = 0;
 async function sendMsg(overrideText = null, imgData = null) {
-  if (!curR || !masterKey || isCmp) return;
+  if (!curR || !masterKey) return;
 
   const banCheck = await get(ref(db, `rooms/${curR}/banList/${myUid}`)).catch(() => null);
   if (banCheck && banCheck.exists()) {
@@ -2741,26 +2564,9 @@ async function sendMsg(overrideText = null, imgData = null) {
   
   const nowSrv = srvNow();
   const encryptedMeta = await encrypt(JSON.stringify(metaObj), masterKey);
+  const encryptedMsg = await encrypt(imgData ? "IMG::" + imgData : txt, masterKey);
 
-  const isDM = !!dmTargetUid;
-  const targetUid = dmTargetUid; 
-  let encryptedMsg = "";
-
-  if (isDM) {
-    const sharedKey = peerSharedKeys.get(targetUid);
-    if (!sharedKey) {
-      showToast("❌ 個別会話用の鍵がまだ確立されていません。");
-      return;
-    }
-    encryptedMsg = await encrypt(imgData ? "IMG::" + imgData : txt, sharedKey);
-  } else {
-    encryptedMsg = await encrypt(imgData ? "IMG::" + imgData : txt, masterKey);
-  }
-
-  const plainTextVal = imgData ? "IMG::" + imgData : txt;
-  if (!isDM) {
-    decCache.set(encryptedMsg, Promise.resolve(plainTextVal));
-  }
+  decCache.set(encryptedMsg, Promise.resolve(imgData ? "IMG::" + imgData : txt));
   metaCache.set(encryptedMeta, Promise.resolve(metaObj));
 
   const tempObj = { 
@@ -2771,10 +2577,6 @@ async function sendMsg(overrideText = null, imgData = null) {
     m: encryptedMsg, 
     t: nowSrv
   };
-  if (isDM) {
-    tempObj.to = targetUid;
-    tempObj.isPrivate = true;
-  }
   
   await renderSingleMessage(tempObj);
 
@@ -2785,10 +2587,6 @@ async function sendMsg(overrideText = null, imgData = null) {
     m: encryptedMsg, 
     t: serverTimestamp()
   };
-  if (isDM) {
-    pushData.to = targetUid;
-    pushData.isPrivate = true;
-  }
 
   push(ref(db, `chat/${curR}`), pushData).catch(e => {
     removeMessageEl(cid);
@@ -3107,16 +2905,35 @@ const openTimerMod = () => {
   D_timerSettingMod.classList.add("show");
 };
 
-// キーイベントとIME制御
-D.mi.addEventListener("compositionstart", () => { isCmp = true; });
-D.mi.addEventListener("compositionend", () => { isCmp = false; });
+// --- 発言機能：イベントリスナーバインド (重要修正部分) ---
+
+// 入力欄の自動縦リサイズ処理 (最大120px)
+D.mi.addEventListener("input", () => {
+  D.mi.style.height = "auto";
+  D.mi.style.height = Math.min(120, D.mi.scrollHeight) + "px";
+});
+
+// キーボードでの確実なEnter送信制御 (IME変換の確定Enterでは発火しない構造)
 D.mi.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) {
-    if (isCmp) return; 
+    if (e.isComposing) return; // IME未確定時は送信しない
     e.preventDefault();
     sendMsg();
   }
 });
+
+// 画面上の送信（紙飛行機）ボタンのクリック処理を確実に紐付け
+D.sdBtn.onclick = () => {
+  sendMsg();
+};
+
+// 入力欄クリア（×）ボタンのクリック処理を確実に紐付け
+D.clrMsgBtn.onclick = () => {
+  D.mi.value = "";
+  D.mi.style.height = "auto";
+};
+
+// ----------------------------------------------------
 
 // タイマー設定ボタン
 $("timerTrigger").onclick = openTimerMod;
@@ -3635,7 +3452,6 @@ function updateAllConnections() {
 
 async function switchToSpeaking() {
   try {
-    // ノイズ除去、雑音サプレッサー、エコー除去、自動ゲイン調整を高度に最適化
     localStream = await navigator.mediaDevices.getUserMedia({
       audio: {
         echoCancellation: true,
@@ -3697,7 +3513,6 @@ $("callModeToggleBtn").onclick = async () => {
 
 async function startMicrophone() {
   try {
-    // ノイズ除去、雑音サプレッサー、エコー除去、自動ゲイン調整を適用
     localStream = await navigator.mediaDevices.getUserMedia({
       audio: {
         echoCancellation: true,
@@ -3725,7 +3540,6 @@ async function startMicrophone() {
   } catch (err) {
     console.error("マイク許可エラー、またはデバイス未接続:", err);
     showToast("⚠️ マイクの利用許可が得られないか接続されていません。受信専用モードで開始します。");
-    // 話すモードに失敗した場合、自動的に「聴くだけ（受信専用）」へ安全にフォールバック
     isCallJoined = true;
     toggleCallBar(true, "受信専用 (聴くだけ)");
     watchSpeakers();
@@ -4007,9 +3821,9 @@ const authenticateAnonymously = () => {
 
 initConnectionMonitor();
 
-// Web Cryptography APIがセキュアコンテキスト以外で利用できない場合の親切な警告
+// Web Cryptography APIがセキュアコンテキスト以外で利用できない場合の警告表示
 if (!window.isSecureContext) {
-  D.lberr.textContent = "⚠️ セキュリティ警告: 暗号化機能(AES/ECDH)は、HTTPS接続またはlocalhost開発環境でのみ完全に動作します。file://や非SSL通信環境ではチャット機能が初期化されません。";
+  D.lberr.textContent = "⚠️ セキュリティ警告: 暗号化機能(AES)は、HTTPS接続またはlocalhost開発環境でのみ完全に動作します。非SSL環境ではチャット機能が動作しません。";
   D.lberr.style.display = "block";
 }
 

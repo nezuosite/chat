@@ -487,11 +487,12 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     <div class="lbsub">DISPOSABLE & ZERO-KNOWLEDGE E2EE</div>
     <div class="lbi">
       <div class="ibox">
-        🔒 <b>管理者も覗けない完全秘密チャット (E2EE)</b>
+        🔒 <b>セキュリティとプライバシー最優先の使い捨て空間</b>
         <ul style="margin-left: 14px; margin-top: 4px; padding-left: 0; display: flex; flex-direction: column; gap: 3px;">
-          <li><b>エンドツーエンド二重暗号化:</b> 共通パスワードはサーバーに送信されず、すべてブラウザ内で強固に暗号化されます。</li>
-          <li><b>1対1個別チャット機能:</b> 参加者名タップで、中継サーバーや同じ部屋の第三者にすらバレない、完全個別暗号化(ECDH)チャットが可能です。</li>
-          <li><b>完全自動消滅:</b> 寿命が切れるか、最後の一人が退室した瞬間にサーバー上のデータが物理的に即時完全消去されます。</li>
+          <li><b>ゼロ知識共通鍵(AES-GCM-256):</b> 入力したパスワードは一切外部へ送信されません。メッセージや画像は、送信前に端末内ですべて暗号化されます。</li>
+          <li><b>即時物理削除＆不保持:</b> 部屋の期限が切れるか、最後の一人が退室した瞬間にサーバー上のデータは即時完全消去され、復旧は不可能です。</li>
+          <li><b>アクセスログ等の一切の不保持:</b> 個人情報やアクセス元情報、IPアドレスなどは運営側で一切収集・記録・保持しません。</li>
+          <li><b>個別会話(1to1シークレット):</b> メンバーの名前をタップすることで、第三者やサーバーでも解読不可能な1対1の個別暗号化(ECDH)チャットが可能です。</li>
         </ul>
       </div>
       <div id="lberr"></div>
@@ -597,10 +598,10 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         </div>
       </div>
       
-      <!-- 事前許可トリップ設定 -->
-      <div id="hostPreApproveWrapper" style="display:flex; flex-direction:column; gap:4px; background:var(--bg); padding:6px; border-radius:4px; border:1px solid var(--bd); margin-top:2px;">
+      <!-- 事前許可トリップ設定 (招待モードでのみ表示されるよう制御) -->
+      <div id="hostPreApproveWrapper" style="display:none; flex-direction:column; gap:4px; background:var(--bg); padding:6px; border-radius:4px; border:1px solid var(--bd); margin-top:2px;">
         <div style="font-weight:bold; font-size:9.5px; color:#818cf8; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:1px; display:flex; justify-content:space-between; align-items:center;">
-          <span>🔑 自動承認トリップ設定 (事前許可/フレンド)</span>
+          <span>🔑 トリップ事前許可設定 (合致する申請は自動承認)</span>
         </div>
         <div style="display:flex; gap:4px;">
           <input type="text" id="preApproveInput" class="inp" placeholder="◆トリップを入力" style="font-size:10px; padding:3px 6px; height:24px;">
@@ -767,30 +768,25 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       </div>
 
       <div class="gs" style="border-left-color: #60a5fa;">
-        <h4 style="color: #60a5fa; font-size: 13px; margin-bottom: 4px;">🔒 エンドツーエンド共通暗号化 (E2EE)</h4>
-        入力されたパスワードはサーバーに一切送信されません。ブラウザ上で直接、強固な共通鍵（<b>AES-GCM-256</b>）を生成し、メッセージや画像をすべて端末内で暗号化して送受信します。
+        <h4 style="color: #60a5fa; font-size: 13px; margin-bottom: 4px;">🔒 端末内でのゼロ知識暗号化 (共通鍵E2EE)</h4>
+        入力される暗号化パスワードは、サーバー側へは一切転送されません。Web Cryptography APIを用いてブラウザ端末内でのみ共通鍵（<b>AES-GCM-256</b>）へ導出・変換されます。すべてのメッセージや画像データは送信前に端末内で暗号化され、サーバーのデータベースにも暗号文の状態で格納されるため、中継サーバーの管理者であっても内容を覗き見ることは物理的に不可能です。
       </div>
 
       <div class="gs" style="border-left-color: #a5b4fc;">
-        <h4 style="color: #a5b4fc; font-size: 13px; margin-bottom: 4px;">🤫 1対1個別チャット（第三者に漏れない）</h4>
-        入室している他のユーザーの名前をタップすると、その相手との個別会話モードに切り替わります。<br>
-        このモードでは、お互いの端末間でのみ共有される独自のAES-GCM鍵でメッセージを別途暗号化するため、同じ部屋にいる第三者はログを傍受できません。また、第三者の画面にはメッセージが表示される隙間すら作成されないため、個別チャットを行っている事実自体が外部に漏れません。
+        <h4 style="color: #a5b4fc; font-size: 13px; margin-bottom: 4px;">🤫 1対1個別チャット (シークレット機能)</h4>
+        ルーム全体の暗号化とは独立して、1対1のダイレクトメッセージでは「<b>楕円曲線ディフィー・ヘルマン鍵共有 (ECDH)</b>」を応用した独自の暗号化経路を確立します。<br>
+        このモードで送信された内容は、指定された宛先の端末以外ではいかなる方法でも復号できません。他の参加者にはメッセージが送信された事実や、暗号文自体もタイムライン上に一切表示されないため、密談の存在自体が外部に漏れません。
       </div>
 
       <div class="gs" style="border-left-color: #fca5a5;">
-        <h4 style="color: #fca5a5; font-size: 13px; margin-bottom: 4px;">🤝 事前許可とフレンド自動承認</h4>
-        招待モード（承認制）の部屋において、特定のトリップキーを事前に登録したり、入室者を「フレンド登録」しておくことで、ホストが席を外していても自動的に入室を承認するシステムを搭載しています。
+        <h4 style="color: #fca5a5; font-size: 13px; margin-bottom: 4px;">🔑 招待制（承認制）と自動承認トリップ</h4>
+        ルームを「招待制」に設定している場合、ホストは事前に許可したい相手の「トリップキー（例: ◆abcdefghij）」をリストに手動登録できます。これにより、登録済みのトリップキーを持つメンバーが申請すると、ホストが不在の場合でもシステムが検知してバックグラウンドで自動的に入室を承認します。
       </div>
 
       <div class="gs" style="border-left-color: var(--ro);">
-        <h4 style="color: var(--ro); font-size: 13px; margin-bottom: 4px;">⏳ データ消滅とライフタイム</h4>
-        部屋には有効期限（寿命）があり、画面内の「⏱ 寿命設定」から調整できます（ホスト専用）。
-        <b>【データが完全に消滅するトリガー】</b>
-        <ul style="margin-left: 14px; padding-left: 0; display: flex; flex-direction: column; gap: 2px; margin-top: 2px;">
-          <li>最後の一人が「退室」ボタンを押して部屋を離れた瞬間</li>
-          <li>設定されたルームの有効時間が経過し、タイムアウトした瞬間</li>
-        </ul>
-        ※消滅したデータはサーバーから物理的に削除され、運営者であっても復元は一切不可能です。
+        <h4 style="color: var(--ro); font-size: 13px; margin-bottom: 4px;">🧼 サーバーからの徹底した物理消去と不保持</h4>
+        設定された部屋のタイムアウト、またはメンバー全員の退室（最後の一人の退室ボタン操作）をトリガーとして、ルーム、メッセージ、Presence（接続ステート）など、サーバー上の関連するすべての物理データは痕跡を残さず即座に完全抹消されます。<br>
+        運営側はアクセス元情報、接続IPアドレス、行動履歴などのログを一切保持しない仕様となっており、バックアップも作成されないため、消去完了したデータの復元は法律上の開示要請を含めいかなる手段でも不可能です。
       </div>
       
     </div>
@@ -854,7 +850,7 @@ const D = {
 let keepKbOpen = false;
 let isAutoScroll = true;
 
-// 高速スクロール追従用のRAFフラグ
+// 高スクロール追従用のRAFフラグ
 let _scPending = false;
 const scBottom = (force = false) => {
   if (!isAutoScroll && !force) return;
@@ -1601,7 +1597,7 @@ async function cMsg(msg) {
         }
       });
 
-      // YouTube・ニコニコ・音声ファイルのみの判定 (TikTok, Instagramを完全除去)
+      // YouTube・ニコニコ・音声ファイルのみの判定 (TikTok, Instagramは非対応)
       const mediaRegexes = [
         { type: "youtube", name: "YouTube", regex: /(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)?(?:youtube\.com|youtu\.be)\/[^\s\n<>"]+/i },
         { type: "niconico", name: "ニコニコ動画", regex: /(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)?(?:nicovideo\.jp|nico\.ms)\/[^\s\n<>"]+/i },
@@ -2095,7 +2091,7 @@ async function checkCurrentRoomStatus() {
 }
 
 /* =========================================================
-   自動承認（事前許可・フレンドトリップ登録システム）
+   自動承認（事前許可トリップ登録システム）フレンド機能は廃止
    ========================================================= */
 let autoApproveTrips = [];
 
@@ -2258,34 +2254,8 @@ async function renderPresenceList(s) {
        }
      };
 
-     // ホスト専用: トリップ自動承認(フレンド登録)＆BANボタン
+     // ホスト専用: トリップ自動承認＆フレンドトグルは廃止、BANボタンのみ維持
      if (isHost && !m.isHost) {
-       // トリップ自動承認の切り替え
-       if (m.p) {
-         const isFriend = autoApproveTrips.includes(m.p);
-         const friendBtn = document.createElement("span");
-         friendBtn.textContent = isFriend ? " ★" : " ☆";
-         friendBtn.style.color = isFriend ? "var(--em)" : "var(--mu)";
-         friendBtn.style.fontSize = "9.5px";
-         friendBtn.style.marginLeft = "4px";
-         friendBtn.style.cursor = "pointer";
-         friendBtn.title = isFriend ? "自動承認リストから解除" : "自動承認（フレンド）に登録";
-         friendBtn.onclick = (e) => {
-           e.stopPropagation();
-           if (isFriend) {
-             autoApproveTrips = autoApproveTrips.filter(x => x !== m.p);
-             showToast("👤 自動承認リストから解除しました");
-           } else {
-             autoApproveTrips.push(m.p);
-             showToast("👤 フレンド自動承認リストに登録しました");
-           }
-           saveAutoApproveTrips();
-           renderPresenceList({ val: () => list }); // UI即時再描画
-         };
-         sp.appendChild(friendBtn);
-       }
-
-       // BANボタン
        const kickBtn = document.createElement("span");
        kickBtn.textContent = " 🚫";
        kickBtn.style.color = "var(--ro)";
@@ -2318,6 +2288,12 @@ function listenToHostRequestsAndBans() {
     const mode = s.val() || "open";
     const radio = document.querySelector(`input[name="roomModeRadio"][value="${mode}"]`);
     if (radio) radio.checked = true;
+
+    // トリップ事前許可設定を「招待モード(invite)」のときだけ表示するようトグル
+    const approveWrapper = $("hostPreApproveWrapper");
+    if (approveWrapper) {
+      approveWrapper.style.display = (mode === "invite") ? "flex" : "none";
+    }
   });
 
   _hostReqOff = onValue(ref(db, `rooms/${curR}/requests`), async (s) => {
@@ -2337,10 +2313,10 @@ function listenToHostRequestsAndBans() {
     wrapper.classList.add("pulse-border");
     
     for (const [uid, data] of entries) {
-      // 事前登録 / フレンド判定によるトリップキー自動即時承認
+      // 事前登録トリップ判定による自動即時承認
       if (data.trip && autoApproveTrips.includes(data.trip)) {
         await update(ref(db, `rooms/${curR}/requests/${uid}`), { status: "approved" });
-        await sendSysMsg(`📥 ${data.name} ${data.trip} を自動承認しました`);
+        await sendSysMsg(`📥 ${data.name} ${data.trip} を事前登録トリップにより自動承認しました`);
         continue;
       }
 

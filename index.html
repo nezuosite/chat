@@ -97,6 +97,16 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   accent-color: var(--in);
 }
 
+/* 承認待ちリストの穏やかなパルスアニメーション */
+@keyframes pulseBorder {
+  0% { border-color: var(--bd); box-shadow: 0 0 0 rgba(79, 70, 229, 0); }
+  50% { border-color: var(--in); box-shadow: 0 0 6px rgba(79, 70, 229, 0.2); }
+  100% { border-color: var(--bd); box-shadow: 0 0 0 rgba(79, 70, 229, 0); }
+}
+.pulse-border {
+  animation: pulseBorder 2s infinite ease-in-out;
+}
+
 /* アプリ本体 */
 #app{display:none;position:fixed;inset:0;flex-direction:column;overflow:hidden;z-index:50;background:#070a0f;}
 /* PC大画面対応 */
@@ -231,7 +241,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   opacity: 0.9;
 }
 
-/* メディアリンク・バッジデザイン（改行・整列最適化： 生URLを排除しスマート化） */
+/* メディアリンク・バッジデザイン */
 .media-link-container {
   display: flex; 
   flex-direction: column; 
@@ -593,7 +603,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         </div>
       </div>
 
-      <!-- 承認待ちリスト (承認待ちがいるときのみ自動展開) -->
+      <!-- 承認待ちリスト (承認待ちがいるときのみ自動展開・点滅枠線適用) -->
       <div id="hostRequestListWrapper" style="display:none; background:var(--bg); padding:4px 6px; border-radius:4px; border:1px solid var(--bd); margin-top:2px;">
         <div style="font-weight:bold; font-size:9.5px; color:#818cf8; margin-bottom:2px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:1px;">📥 入室承認待ち</div>
         <div id="hostRequestList" style="max-height:80px; overflow-y:auto; display:flex; flex-direction:column; gap:3px; font-size:9.5px;"></div>
@@ -776,7 +786,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { getDatabase, ref, push, onValue, set, update, remove, get, serverTimestamp, onChildAdded, onChildRemoved, goOnline, goOffline, query, limitToLast }
+import { getDatabase, ref, push, onValue, set, update, remove, get, serverTimestamp, onChildAdded, onChildRemoved, goOnline, goOffline, query, limitToLast, onDisconnect }
   from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
 // トリップ生成用の鍵
@@ -1073,7 +1083,7 @@ D.lbCopyTripBtn.onclick = () => copyToClip(`${D.ni.value || "名無し"} ${local
 
 D.copyUrlBtn.onclick = () => {
   const passVal = D.pi.value || localStorage.getItem("nz_pi_val") || "";
-  const url = `${location.origin}${location.pathname}?r=${encodeURIComponent(rawR)}#${encodeURIComponent(passVal)}`;
+  const url = `${location.origin}${location.pathname}?r=${encodeURIComponent(rawR)}${passVal ? "#" + encodeURIComponent(passVal) : ""}`;
   copyToClip(url);
 };
 
@@ -1565,6 +1575,10 @@ let pendingTimeoutTimer = null;
 let _isExiting = false; 
 let _lastPresenceStr = "";
 
+// 申請・招待制のロビー用リアルタイムリスナー
+let _lobbyReqOff = null;
+let _lobbyRoomOff = null;
+
 // ホスト用リスナー
 let _hostReqOff = null;
 let _hostBanOff = null;
@@ -1755,6 +1769,44 @@ window.banUser = async (targetUid, name, trip) => {
   showToast("🚫 ユーザーをBANしました");
 };
 
+// BAN検知時の暗号化キー・キャッシュ物理抹消処理 (E2EEセッションプロテクト)
+async function handleBannedState() {
+  _exitLock = true;
+  
+  // 共通鍵とキャッシュをメモリから物理的に完全クリア (JS改造によるパッシブ傍受を物理的に防御)
+  masterKey = null;
+  decCache.clear();
+  metaCache.clear();
+
+  // 該当ルームに関連するすべてのローカルキャッシュを消去
+  if (curR) {
+    localStorage.removeItem(`nz_mkey_${curR}`);
+    localStorage.removeItem(`nz_pi_${curR}`);
+    localStorage.removeItem(`nz_chat_raw_${curR}`);
+    localStorage.removeItem(`nz_room_expire_${curR}`);
+    localStorage.removeItem(`nz_room_members_${curR}`);
+    localStorage.removeItem(`nz_entered_${curR}`);
+  }
+  
+  // チャット画面を一掃しロビーに強制退避
+  clearAll(); 
+  D.app.style.display = "none";
+  D.app.classList.remove("visible");
+  D.lobby.style.display = "flex";
+  D.enBtn.disabled = false;
+  D.enBtn.textContent = "入室 / 作成";
+
+  localStorage.setItem("nz_is_in_room", "false");
+  localStorage.removeItem("nz_active_ri"); 
+  localStorage.removeItem("nz_active_created"); 
+
+  if (window.history?.replaceState) {
+    window.history.replaceState({}, document.title, location.pathname);
+  }
+
+  showLobby("❌ この部屋から追放（BAN）されました。");
+}
+
 // 退室
 window.doExit = async () => {
   if (_isExiting) return;
@@ -1820,6 +1872,7 @@ window.doExit = async () => {
         }).catch(() => {});
         
         if (activePresRef) {
+          await onDisconnect(activePresRef).cancel(); // 切断連動タスクの登録解除
           await remove(activePresRef).catch(() => {});
         }
       }
@@ -1845,6 +1898,10 @@ function clearAll(newHashId = null) {
   if (typeof _hostBanOff === "function") { _hostBanOff(); _hostBanOff = null; }
   if (typeof _hostModeOff === "function") { _hostModeOff(); _hostModeOff = null; }
   if (typeof _myBanOff === "function") { _myBanOff(); _myBanOff = null; }
+
+  // ロビー承認待ち用リスナー解除 (メモリリーク・二重監視防止)
+  if (typeof _lobbyReqOff === "function") { _lobbyReqOff(); _lobbyReqOff = null; }
+  if (typeof _lobbyRoomOff === "function") { _lobbyRoomOff(); _lobbyRoomOff = null; }
 
   isLiveMode = false;
   stopTimerLoop();
@@ -2015,10 +2072,9 @@ function listenToHostRequestsAndBans() {
     const mode = s.val() || "open";
     const radio = document.querySelector(`input[name="roomModeRadio"][value="${mode}"]`);
     if (radio) radio.checked = true;
-    $("hostRoomModeText").textContent = mode === "invite" ? "招待制" : "オープン";
   });
 
-  // 2. 承認申請リストの監視 (承認待ちがいるときのみ自動展開)
+  // 2. 承認申請リストの監視 (承認待ちがいるときのみ自動展開・パルス警告適用)
   _hostReqOff = onValue(ref(db, `rooms/${curR}/requests`), s => {
     const listDiv = $("hostRequestList");
     listDiv.textContent = "";
@@ -2028,10 +2084,12 @@ function listenToHostRequestsAndBans() {
     const wrapper = $("hostRequestListWrapper");
     if (entries.length === 0) {
       wrapper.style.display = "none";
+      wrapper.classList.remove("pulse-border"); // 申請なしでアニメーション除去
       return;
     }
     
     wrapper.style.display = "block";
+    wrapper.classList.add("pulse-border"); // 申請ありでパルス(点滅)を付与
     
     entries.forEach(([uid, data]) => {
       const row = document.createElement("div");
@@ -2147,7 +2205,7 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
   try {
     const hashId = await getRoomHash(roomId);
 
-    // 1. BANチェック (ダイアログ不要・非ブロッキング仕様)
+    // 1. BANチェック
     const banCheckSnap = await get(ref(db, `rooms/${hashId}/banList/${myUid}`));
     if (banCheckSnap.exists()) {
       D.enBtn.disabled = false;
@@ -2172,7 +2230,6 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
       if (reqData && reqData.status === "approved") {
         // 承認済みの場合はそのまま入室
       } else if (reqData && reqData.status === "rejected") {
-        // 却下状態をクリアし、再びロビーから申請可能なクリーン状態にする
         await remove(reqRef);
         D.enBtn.disabled = false;
         D.enBtn.textContent = "入室 / 作成";
@@ -2187,7 +2244,7 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
         $("lobbyInputArea").style.display = "none";
         waitArea.style.display = "flex";
 
-        // サーバへ申請を送信 (相手がタブを閉じていても承認リストに残るように永続化)
+        // サーバーへ承認申請データを送信
         await set(reqRef, {
           name: name,
           trip: trip,
@@ -2195,9 +2252,12 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
           t: serverTimestamp()
         });
 
-        // 申請結果及び部屋消滅/モード切り替えのリアルタイム監視
-        let _lobbyReqOff = null;
-        let _lobbyRoomOff = null;
+        // 【最適化】申請状態で突然切断されたら、申請自体を自動で物理消去 (ゾンビ申請の防止)
+        await onDisconnect(reqRef).remove();
+
+        // 申請結果、部屋の寿命切れ、またはオープンモード切り替えを監視 (リスナー変数の一元管理)
+        if (typeof _lobbyReqOff === "function") _lobbyReqOff();
+        if (typeof _lobbyRoomOff === "function") _lobbyRoomOff();
 
         _lobbyReqOff = onValue(reqRef, async (s) => {
           const rVal = s.val();
@@ -2209,10 +2269,12 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
             if (typeof _lobbyRoomOff === "function") _lobbyRoomOff();
             _lobbyRoomOff = null;
 
+            // 承認時は自動切断設定をキャンセル
+            await onDisconnect(reqRef).cancel();
+
             waitArea.style.display = "none";
             $("lobbyInputArea").style.display = "flex";
 
-            // 承認のため入室実行
             await doJoin(roomId, pass, name, trip, initTimer);
           } else if (rVal.status === "rejected") {
             if (typeof _lobbyReqOff === "function") _lobbyReqOff();
@@ -2220,7 +2282,7 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
             if (typeof _lobbyRoomOff === "function") _lobbyRoomOff();
             _lobbyRoomOff = null;
 
-            // 却下状態をDBからクリアして、ブラウザダイアログなしで再度申請可能に
+            await onDisconnect(reqRef).cancel();
             await remove(reqRef);
 
             waitArea.style.display = "none";
@@ -2231,13 +2293,14 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
           }
         });
 
-        // 部屋の消滅監視 & オープンモードへの動的切替検知
         _lobbyRoomOff = onValue(roomRef, async (rSnap) => {
           if (!rSnap.exists() || (rSnap.val().expireAt < srvNow())) {
             if (typeof _lobbyReqOff === "function") _lobbyReqOff();
             _lobbyReqOff = null;
             if (typeof _lobbyRoomOff === "function") _lobbyRoomOff();
             _lobbyRoomOff = null;
+
+            await onDisconnect(reqRef).cancel();
 
             waitArea.style.display = "none";
             $("lobbyInputArea").style.display = "flex";
@@ -2248,14 +2311,14 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
           }
 
           const currentRoomVal = rSnap.val();
-          // オープンモードに切り替わったときは、即時に自動入室させる
           if (currentRoomVal && currentRoomVal.mode === "open") {
             if (typeof _lobbyReqOff === "function") _lobbyReqOff();
             _lobbyReqOff = null;
             if (typeof _lobbyRoomOff === "function") _lobbyRoomOff();
             _lobbyRoomOff = null;
 
-            await remove(reqRef); // 申請をクリーンアップ
+            await onDisconnect(reqRef).cancel();
+            await remove(reqRef); // 申請データをクリーンアップ
 
             waitArea.style.display = "none";
             $("lobbyInputArea").style.display = "flex";
@@ -2264,13 +2327,14 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
           }
         });
 
-        // 申請キャンセルボタン
+        // 申請キャンセル
         $("cancelRequestBtn").onclick = async () => {
           if (typeof _lobbyReqOff === "function") _lobbyReqOff();
           _lobbyReqOff = null;
           if (typeof _lobbyRoomOff === "function") _lobbyRoomOff();
           _lobbyRoomOff = null;
 
+          await onDisconnect(reqRef).cancel();
           await remove(reqRef);
 
           waitArea.style.display = "none";
@@ -2332,6 +2396,9 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
       const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
       await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: true });
       
+      // 【最適化】切断時に自動で存在（Presence）を削除する設定を登録 (ゾンビユーザー防止)
+      await onDisconnect(myPresRef).remove();
+      
       const localRoomData = { ...roomData, created: Date.now() };
       await enterChatUI(localRoomData, pass);
     } 
@@ -2342,6 +2409,10 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
 
       const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
       await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: isHost });
+      
+      // 【最適化】切断時に自動で存在（Presence）を削除する設定を登録
+      await onDisconnect(myPresRef).remove();
+      
       await enterChatUI(roomData, pass);
     }
   } catch (e) { 
@@ -2422,12 +2493,11 @@ async function enterChatUI(roomData, pass) {
     removeMessageEl(snap.key);
   });
 
-  // BAN監視
+  // BAN監視 (検知時にセキュリティプロテクションを適用)
   _myBanOff = onValue(ref(db, `rooms/${curR}/banList/${myUid}`), s => {
     if (s.exists()) {
       if (typeof _myBanOff === "function") { _myBanOff(); _myBanOff = null; }
-      doExit();
-      showLobby("❌ この部屋から追放（BAN）されました。");
+      handleBannedState();
     }
   });
 
@@ -2485,6 +2555,13 @@ async function forceResync() {
       return;
     }
 
+    // 再同期前に自身がBANされていないかをチェック
+    const banSnap = await get(ref(db, `rooms/${targetRoom}/banList/${myUid}`)).catch(() => null);
+    if (banSnap && banSnap.exists()) {
+      handleBannedState();
+      return;
+    }
+
     const rVal = roomSnap.val();
     if (rVal && rVal.expireAt) {
       _roomExpireAt = rVal.expireAt;
@@ -2522,6 +2599,14 @@ async function forceResync() {
 let lastSendTime = 0;
 async function sendMsg(overrideText = null, imgData = null) {
   if (!curR || !masterKey || isCmp) return;
+
+  // 【最適化】メッセージ送信前にセルフBANチェック (クライアント改ざんによる不正送信をプロテクト)
+  const banCheck = await get(ref(db, `rooms/${curR}/banList/${myUid}`)).catch(() => null);
+  if (banCheck && banCheck.exists()) {
+    handleBannedState();
+    return;
+  }
+
   const txt = overrideText !== null ? overrideText : D.mi.value.trim();
   if (!txt && !imgData) return;
   const now = Date.now(); if (now - lastSendTime < 350) return; lastSendTime = now;

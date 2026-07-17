@@ -93,7 +93,8 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   font-size:9.5px; font-weight:700; padding: 2px 6px; border-radius:4px; background: var(--bg);
   border: 1px solid rgba(255,255,255,0.08); display:inline-flex; align-items:center; color:var(--tx); height: 22px; cursor: pointer;
 }
-.chip.is-host::before {content:"★ ";color:var(--em);margin-right:2px;font-weight:bold;}
+/* ホストの★マークを名前の色（親要素のcolor）と同じにするように修正 */
+.chip.is-host::before {content:"★ ";color:currentColor;margin-right:2px;font-weight:bold;}
 #tl{ flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:4px;background-color:#0d1117; -webkit-overflow-scrolling:touch;overscroll-behavior-y:contain; }
 #tl-inner{display:flex;flex-direction:column;justify-content:flex-end;gap:0;width:100%;max-width:800px;margin:0 auto;min-height:100%}
 .mw{
@@ -781,6 +782,7 @@ const updateTripPreview = async () => {
   const tk = D.tripi.value;
   const t = tk ? await makeTrip(n, tk) : "";
   D.tripPrevText.textContent = `プレビュー: ${n} ${t}`;
+  D.tripPrevText.style.color = curColor; // 選択カラーに文字色をリアルタイム同期する
   localStorage.setItem("nz_mytrip_styled", t);
   localStorage.setItem("nz_myname", n);
 };
@@ -877,6 +879,7 @@ const onColorSelect = v => {
   localStorage.setItem("nz_color",v); 
   syncPickers(v); 
   updateLobbyColorPreview(v);
+  updateTripPreview(); // 設定した配色をロビーのプレビュー文字色に即時同期
 };
 
 buildPicker(D.lbClrPick, curColor, "clrc",  onColorSelect);
@@ -904,6 +907,7 @@ D.clrBtn.addEventListener("click", () => {
 D.clrOk.addEventListener("click", async () => {
   curColor = tmpColor; setGlobalColor(curColor); localStorage.setItem("nz_color",curColor); syncPickers(curColor);
   updateLobbyColorPreview(curColor);
+  updateTripPreview(); // カラー決定時にもプレビュー配色を即時適用する
   if (curR && myPresRef && masterKey) { 
     try {
       const metaStr = JSON.stringify({n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor});
@@ -1714,12 +1718,8 @@ async function checkCurrentRoomStatus() {
 let autoApproveTrips = [];
 
 function loadAutoApproveTrips() {
-  try {
-    const raw = localStorage.getItem("nz_auto_approve_trips");
-    autoApproveTrips = raw ? JSON.parse(raw) : [];
-  } catch(e) {
-    autoApproveTrips = [];
-  }
+  // 自動承認設定を部屋作成/入室ごとに完全にリセットするため、復元処理を廃止
+  autoApproveTrips = [];
 }
 
 async function saveAutoApproveTrips() {
@@ -2045,6 +2045,11 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
     throw new Error("ユーザー認証情報（UID）が未定義です。");
   }
 
+  // 1. 部屋を作る、または入室するたびに自動承認設定リストを完全にクリア
+  autoApproveTrips = [];
+  localStorage.removeItem("nz_auto_approve_trips");
+  renderPreApproveList();
+
   try {
     const hashId = await getRoomHash(roomId);
 
@@ -2072,14 +2077,15 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
     clearAll(hashId); _exitLock = false;
     localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created");
 
-    // 1. E2EE鍵の導出・ロード
+    // 2. E2EE鍵の導出・ロード
+    // パスワード入力がある（＝手動の入室/作成）ときは既存キャッシュ鍵を無視して強制的に最新値で再導出
     let cachedKeyHex = localStorage.getItem(`nz_mkey_${hashId}`);
-    if (cachedKeyHex) {
-      masterKey = await importKeyFromHex(cachedKeyHex);
-    } else if (pass) {
+    if (pass) {
       masterKey = await deriveMasterKey(roomId, pass);
       const exportedHex = await exportKeyToHex(masterKey);
       localStorage.setItem(`nz_mkey_${hashId}`, exportedHex);
+    } else if (cachedKeyHex) {
+      masterKey = await importKeyFromHex(cachedKeyHex);
     } else {
       throw new Error("パスワード情報が見つかりません。");
     }
@@ -2089,7 +2095,7 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
       localStorage.setItem("nz_pi_val", pass);
     }
 
-    // 2. 部屋の新規作成 or パスワード妥当性チェック
+    // 3. 部屋の新規作成 or パスワード妥当性チェック
     if (!snap.exists()) {
       localStorage.removeItem(`nz_chat_raw_${hashId}`);
       currentRoomMsgs = [];
@@ -2132,7 +2138,7 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
       isHost = (roomData.host === myUid);
     }
 
-    // 3. 事前許可トリップ照合
+    // 4. 事前許可トリップ照合
     let isPreApproved = false;
     if (roomData && roomData.preApprovedTrips && masterKey) {
       try {
@@ -3343,6 +3349,17 @@ if (paHeader && paBody) {
     const isOpen = paBody.style.display === "flex";
     paBody.style.display = isOpen ? "none" : "flex";
     paHeader.textContent = isOpen ? "🔑 トリップ自動承認設定を開く" : "🔑 トリップ自動承認設定を閉じる";
+  };
+}
+
+// BANリスト開閉トグルボタンの設定
+const toggleBtn = $("toggleBanListBtn");
+const banWrapper = $("hostBanListWrapper");
+if (toggleBtn && banWrapper) {
+  toggleBtn.onclick = () => {
+    const isHidden = window.getComputedStyle(banWrapper).display === "none";
+    banWrapper.style.display = isHidden ? "block" : "none";
+    toggleBtn.textContent = isHidden ? "🚫 BANリスト非表示" : "🚫 BANリスト表示";
   };
 }
 

@@ -93,12 +93,17 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   font-size:9.5px; font-weight:700; padding: 2px 6px; border-radius:4px; background: var(--bg);
   border: 1px solid rgba(255,255,255,0.08); display:inline-flex; align-items:center; color:var(--tx); height: 22px; cursor: pointer;
 }
-/* ホストの★マークを名前の色（親要素のcolor）と同じにするように修正 */
+/* ホストの★マークを名前の色と同じにする */
 .chip.is-host::before {content:"★ ";color:currentColor;margin-right:2px;font-weight:bold;}
-#tl{ flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:4px;background-color:#0d1117; -webkit-overflow-scrolling:touch;overscroll-behavior-y:contain; }
+#tl{ 
+  flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;
+  padding:4px 4px 110px 4px; /* 入力エリアとの被りを確実に防ぐマージンを確保 */
+  background-color:#0d1117; -webkit-overflow-scrolling:touch;overscroll-behavior-y:contain; 
+}
 #tl-inner{display:flex;flex-direction:column;justify-content:flex-end;gap:0;width:100%;max-width:800px;margin:0 auto;min-height:100%}
 .mw{
-  position:relative; display:flex; flex-direction:column; width:100%; opacity:0;
+  position:relative; display:flex; flex-direction:column; width:100%; 
+  opacity:1; /* アニメーション非対応環境でも確実に表示されるよう初期値は不透明に設定 */
   animation:slideInUp 0.1s cubic-bezier(0.22, 1, 0.36, 1) forwards; user-select:text; -webkit-user-select:text; 
   padding:8px 12px; border-bottom:1px solid rgba(51, 65, 85, 0.25); will-change: transform, opacity;
 }
@@ -150,11 +155,11 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .clr-ok{background:var(--in);color:#fff}
 .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255, 255, 255, 0.25); border-radius: 50%; border-top-color: var(--tx); animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-/* アニメーションの欠落を修正 */
+/* アニメーションの定義 */
 @keyframes slideInUp {
   from {
     transform: translateY(8px);
-    opacity: 0;
+    opacity: 0.8;
   }
   to {
     transform: translateY(0);
@@ -544,19 +549,59 @@ let keepKbOpen = false;
 let isAutoScroll = true;
 let _scPending = false; // 追従スクロールの排他処理用フラグ
 
-// 追従スクロール
+// CSS.escapeが無い古いブラウザ(レガシー/OperaMiniなど)向けのフォールバックエスケープ関数
+const escapeSelector = (str) => {
+  if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
+    return CSS.escape(str);
+  }
+  return str.replace(/([!"#$%&'()*+,\-./:;<=>?@\[\\\]^`{|}~])/g, '\\$1');
+};
+
+// 大容量データ・画像データを古いブラウザでもフリーズやコールスタックバグを起こさず安全にBase64化する関数
+const bytesToBase64 = (bytes) => {
+  const chunks = [];
+  const chunkSize = 0xffff;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    chunks.push(String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize)));
+  }
+  return btoa(chunks.join(''));
+};
+
+const base64ToBytes = (b64) => {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+};
+
+// 追従スクロール（Opera Mini / レガシー環境対応強化）
 function scBottom(force = false) {
   if (!isAutoScroll && !force) return;
   if (_scPending) return;
   _scPending = true;
   
-  requestAnimationFrame(() => {
+  const doScroll = () => {
     if (D.tl) {
+      // scrollTopに最大値を代入して即時スクロール
       D.tl.scrollTop = D.tl.scrollHeight;
+      
+      // 最後のメッセージ要素が存在すればそれを強制スクロールして入力バーの下への潜り込みを防ぐ
+      const lastEl = D.tli.lastElementChild;
+      if (lastEl && typeof lastEl.scrollIntoView === 'function') {
+        lastEl.scrollIntoView(false); // falseでコンテナの下端に合わせる
+      }
       updateJumpBtns();
     }
     _scPending = false;
-  });
+  };
+
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(doScroll);
+  } else {
+    setTimeout(doScroll, 50); // requestAnimationFrameが使えない環境向け
+  }
 }
 
 // ロビーカラープレビュー同期表示用の関数
@@ -610,12 +655,28 @@ const bytesToHex = (bytes) => {
 
 const sha256 = async (text) => {
   const msgUint8 = new TextEncoder().encode(text);
-  const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgUint8);
-  return bytesToHex(new Uint8Array(hashBuffer));
+  if (typeof window !== 'undefined' && window.crypto && window.crypto.subtle) {
+    try {
+      const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgUint8);
+      return bytesToHex(new Uint8Array(hashBuffer));
+    } catch (e) {}
+  }
+  // フォールバック: crypto非対応環境（非SSLやレガシーブラウザ）用の簡易ハッシュ（クラッシュ防止）
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) {
+    const char = text.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash).toString(16).padStart(10, '0') + "f1";
 };
 
 // PBKDF2 から AES-GCM CryptoKey を安全に導出 (20,000イテレーション) [1, 2]
 const deriveMasterKey = async (roomId, pass) => {
+  if (!window.crypto || !window.crypto.subtle) {
+    alert("ご利用のブラウザは暗号化技術(Web Cryptography API)に対応していません。他のモダンブラウザをご使用ください。");
+    throw new Error("Crypto API unsupported");
+  }
   const enc = new TextEncoder();
   const passwordBuffer = enc.encode(pass);
   const saltBuffer = enc.encode(SYSTEM_SALT + roomId);
@@ -702,12 +763,8 @@ const encrypt = async (t, key = masterKey) => {
 
     const ivHex = bytesToHex(iv);
     const ctBytes = new Uint8Array(encrypted);
-    let binary = "";
-    const len = ctBytes.byteLength;
-    for (let i = 0; i < len; i++) {
-      binary += String.fromCharCode(ctBytes[i]);
-    }
-    return ivHex + ":" + btoa(binary);
+    const ctBase64 = bytesToBase64(ctBytes);
+    return ivHex + ":" + ctBase64;
   } catch (e) {
     return "";
   }
@@ -725,11 +782,7 @@ const decrypt = (c, key = masterKey) => {
       const ctBase64 = parts[1];
 
       const iv = hexToBytes(ivHex);
-      const binary = atob(ctBase64);
-      const ct = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) {
-        ct[i] = binary.charCodeAt(i);
-      }
+      const ct = base64ToBytes(ctBase64);
 
       const decrypted = await window.crypto.subtle.decrypt(
         {
@@ -782,7 +835,7 @@ const updateTripPreview = async () => {
   const tk = D.tripi.value;
   const t = tk ? await makeTrip(n, tk) : "";
   D.tripPrevText.textContent = `プレビュー: ${n} ${t}`;
-  D.tripPrevText.style.color = curColor; // 選択カラーに文字色をリアルタイム同期する
+  D.tripPrevText.style.color = curColor; // 選択されたカラーをプレビューにリアルタイム反映する
   localStorage.setItem("nz_mytrip_styled", t);
   localStorage.setItem("nz_myname", n);
 };
@@ -879,7 +932,7 @@ const onColorSelect = v => {
   localStorage.setItem("nz_color",v); 
   syncPickers(v); 
   updateLobbyColorPreview(v);
-  updateTripPreview(); // 設定した配色をロビーのプレビュー文字色に即時同期
+  updateTripPreview(); // カラー選択時にプレビュー色を即座に連動
 };
 
 buildPicker(D.lbClrPick, curColor, "clrc",  onColorSelect);
@@ -907,7 +960,7 @@ D.clrBtn.addEventListener("click", () => {
 D.clrOk.addEventListener("click", async () => {
   curColor = tmpColor; setGlobalColor(curColor); localStorage.setItem("nz_color",curColor); syncPickers(curColor);
   updateLobbyColorPreview(curColor);
-  updateTripPreview(); // カラー決定時にもプレビュー配色を即時適用する
+  updateTripPreview(); // カラー決定時にも即座に同期
   if (curR && myPresRef && masterKey) { 
     try {
       const metaStr = JSON.stringify({n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor});
@@ -1177,6 +1230,7 @@ async function cMsg(msg) {
   mm.appendChild(rightWrap);
 
   const mb = document.createElement("div");
+  mm.className = "mm"; // クラスの上書き
   mb.className = "mb";
   mb.style.borderColor = sC;
 
@@ -1437,7 +1491,7 @@ async function renderCachedState(hashId, rawRoomId) {
 
 async function queueIncomingMessage(m) {
   if (m.c) {
-    const tempEl = D.tli.querySelector(`[data-cid="${CSS.escape(String(m.c))}"]`);
+    const tempEl = D.tli.querySelector(`[data-cid="${escapeSelector(String(m.c))}"]`);
     if (tempEl) {
       const realEl = await cMsg(m);
       if (realEl) {
@@ -1469,12 +1523,12 @@ async function renderSingleMessage(m) {
 function removeMessageEl(id) {
   displayedMsgIds.delete(id);
   untrackAndCacheMessage(id);
-  const el = D.tli.querySelector(`[data-mid="${CSS.escape(String(id))}"]`);
+  const el = D.tli.querySelector(`[data-mid="${escapeSelector(String(id))}"]`);
   if (el) {
     if (el.dataset.cid) displayedMsgIds.delete(el.dataset.cid);
     el.remove();
   }
-  const elCid = D.tli.querySelector(`[data-cid="${CSS.escape(String(id))}"]`);
+  const elCid = D.tli.querySelector(`[data-cid="${escapeSelector(String(id))}"]`);
   if (elCid) {
     elCid.remove();
   }
@@ -1718,7 +1772,7 @@ async function checkCurrentRoomStatus() {
 let autoApproveTrips = [];
 
 function loadAutoApproveTrips() {
-  // 自動承認設定を部屋作成/入室ごとに完全にリセットするため、復元処理を廃止
+  // 自動承認設定は部屋作成/入室ごとに完全にリセット
   autoApproveTrips = [];
 }
 
@@ -2045,7 +2099,7 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
     throw new Error("ユーザー認証情報（UID）が未定義です。");
   }
 
-  // 1. 部屋を作る、または入室するたびに自動承認設定リストを完全にクリア
+  // 1. 部屋を作る、または入室するたびに自動承認設定リストを完全にリセット
   autoApproveTrips = [];
   localStorage.removeItem("nz_auto_approve_trips");
   renderPreApproveList();
@@ -2078,7 +2132,7 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
     localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created");
 
     // 2. E2EE鍵の導出・ロード
-    // パスワード入力がある（＝手動の入室/作成）ときは既存キャッシュ鍵を無視して強制的に最新値で再導出
+    // パスワード入力がある（＝手動の入室/作成）ときは既存キャッシュ鍵を無視して常に最新値で再導出
     let cachedKeyHex = localStorage.getItem(`nz_mkey_${hashId}`);
     if (pass) {
       masterKey = await deriveMasterKey(roomId, pass);
@@ -2305,11 +2359,13 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
 
     curR = hashId; rawR = roomId; curN = name;
     
+    // 入室者リスト設定
     myPresRef = ref(db, `presence/${hashId}/${myUid}`);
     const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
     await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: isHost });
     
-    await onDisconnect(myPresRef).remove();
+    // ※ 一時的なネットワーク瞬断やOpera Mini等の中継切断で消去されないよう、
+    // onDisconnectによるPresence削除は「設定しない」ようにし、退室・BANまでリストに残します。
     await enterChatUI(roomData, pass);
 
   } catch (e) { 
@@ -2520,12 +2576,6 @@ async function forceResync() {
 let lastSendTime = 0;
 async function sendMsg(overrideText = null, imgData = null) {
   if (!curR || !masterKey) return;
-
-  const banCheck = await get(ref(db, `rooms/${curR}/banList/${myUid}`)).catch(() => null);
-  if (banCheck && banCheck.exists()) {
-    handleBannedState();
-    return;
-  }
 
   const txt = overrideText !== null ? overrideText : D.mi.value.trim();
   if (!txt && !imgData) return;
@@ -3198,8 +3248,15 @@ const initUserSession = async (user) => {
   if (isInit) return; 
   isInit = true;
 
-  const sp = new URLSearchParams(location.search);
-  const urlR = sp.get("r");
+  let urlR = null;
+  if (typeof URLSearchParams !== 'undefined') {
+    const sp = new URLSearchParams(location.search);
+    urlR = sp.get("r");
+  } else {
+    const match = location.search.match(/[?&]r=([^&]+)/);
+    urlR = match ? decodeURIComponent(match[1]) : null;
+  }
+
   const savedActiveRi = localStorage.getItem("nz_active_ri");
   const savedActiveCreated = localStorage.getItem("nz_active_created");
   const savedNi = localStorage.getItem("nz_ni");
@@ -3221,7 +3278,7 @@ const initUserSession = async (user) => {
     const hashId = await getRoomHash(activeRoomId);
     const previouslyEntered = localStorage.getItem(`nz_entered_${hashId}`) === "true";
     
-    // 楽観的UI高速レンダリング（フリッカや通信応答ラグを発生させずにキャッシュから即時描画）
+    // 楽観的UI高速レンダリング（キャッシュから即時描画）
     if (previouslyEntered) {
       let cachedKeyHex = localStorage.getItem(`nz_mkey_${hashId}`);
       if (cachedKeyHex) {
@@ -3249,7 +3306,7 @@ const initUserSession = async (user) => {
         await doJoin(activeRoomId, savedPiRoom, savedNi, tripStyled, savedTimer);
         return;
       } else {
-        // キャッシュに存在するルームデータが既に消滅している場合はクリーンアップして退避
+        // キャッシュに存在するルームデータが既に消滅している場合はクリーンアップ
         localStorage.removeItem("nz_active_ri"); 
         localStorage.removeItem("nz_active_created");
         localStorage.removeItem("nz_is_in_room");

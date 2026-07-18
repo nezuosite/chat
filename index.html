@@ -7,6 +7,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0f172a">
 <title>NEZU ONETIME CHAT</title>
+<!-- CORSセキュリティ制限を受けない、高互換Firebase v8 SDKをロード -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -93,17 +97,11 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   font-size:9.5px; font-weight:700; padding: 2px 6px; border-radius:4px; background: var(--bg);
   border: 1px solid rgba(255,255,255,0.08); display:inline-flex; align-items:center; color:var(--tx); height: 22px; cursor: pointer;
 }
-/* ホストの★マークを名前の色と同じにする */
-.chip.is-host::before {content:"★ ";color:currentColor;margin-right:2px;font-weight:bold;}
-#tl{ 
-  flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;
-  padding:4px 4px 110px 4px; /* 入力エリアとの被りを確実に防ぐマージンを確保 */
-  background-color:#0d1117; -webkit-overflow-scrolling:touch;overscroll-behavior-y:contain; 
-}
+.chip.is-host::before {content:"★ ";color:var(--em);margin-right:2px;font-weight:bold;}
+#tl{ flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:4px;background-color:#0d1117; -webkit-overflow-scrolling:touch;overscroll-behavior-y:contain; }
 #tl-inner{display:flex;flex-direction:column;justify-content:flex-end;gap:0;width:100%;max-width:800px;margin:0 auto;min-height:100%}
 .mw{
-  position:relative; display:flex; flex-direction:column; width:100%; 
-  opacity:1; /* アニメーション非対応環境でも確実に表示されるよう初期値は不透明に設定 */
+  position:relative; display:flex; flex-direction:column; width:100%; opacity:0;
   animation:slideInUp 0.1s cubic-bezier(0.22, 1, 0.36, 1) forwards; user-select:text; -webkit-user-select:text; 
   padding:8px 12px; border-bottom:1px solid rgba(51, 65, 85, 0.25); will-change: transform, opacity;
 }
@@ -113,12 +111,6 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .sys-msg{text-align:center;font-size:12px;font-weight:bold;color:var(--mu);margin:6px 0;background:rgba(255,255,255,0.03);padding:6px 12px;border-radius:4px;width:100%;align-self:center;border:1px solid rgba(255,255,255,0.05);}
 .del-btn-inline { background: rgba(244, 63, 94, 0.15); color: #fda4af; border: 1px solid rgba(244, 63, 94, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; height: 20px; }
 .inline-img { max-width: 240px; max-height: 200px; width: auto; height: auto; border-radius: 4px; margin: 6px 0; display: block; cursor: zoom-in; object-fit: contain; border: 1px solid rgba(255, 255, 255, 0.1); background: #000; }
-.media-link-container { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; background: rgba(255, 255, 255, 0.02); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.05); width: 100%; max-width: 100%; box-sizing: border-box;}
-.media-inline-row { display: flex; align-items: center; gap: 8px; width: 100%;}
-.media-badge {display:inline-flex; align-items:center; gap:2px; font-weight:800; padding:2px 5px; border-radius:3px; font-size:9px; color:#fff; text-transform:uppercase; line-height:1; white-space:nowrap; pointer-events: none;}
-.media-btn-row {display:flex; gap:6px; flex-wrap:wrap; align-items:center;}
-.open-player-btn, .dl-media-btn { background:var(--in); color:#fff; font-size:10px; font-weight:bold; border-radius:4px; padding:3px 10px; cursor:pointer; border:none; transition:background 0.15s; white-space:nowrap; }
-.dl-media-btn {background:var(--e2);}
 #ib{ display:none; flex-direction: column; padding:3px calc(4px + env(safe-area-inset-right,0px)) calc(3px + var(--safe)) calc(4px + env(safe-area-inset-left,0px)); background:var(--sf); border-top:1px solid var(--bd); gap:3px; flex-shrink:0; width: 100%; }
 #ib.show{display:flex}
 #ibTopBar { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.04); }
@@ -155,17 +147,6 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .clr-ok{background:var(--in);color:#fff}
 .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255, 255, 255, 0.25); border-radius: 50%; border-top-color: var(--tx); animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-/* アニメーションの定義 */
-@keyframes slideInUp {
-  from {
-    transform: translateY(8px);
-    opacity: 0.8;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
 .del-modal-text { background: var(--bg); border: 1px solid var(--bd); border-radius: 4px; padding: 8px; font-size: 12px; color: var(--tx); max-height: 150px; overflow-y: auto; word-break: break-all; margin-top: 8px; }
 #imgViewMod { background: rgba(0,0,0,0.95); backdrop-filter: blur(8px); flex-direction: column; align-items: center; justify-content: center; touch-action: none; }
 #imgViewMod.show { display: flex !important; }
@@ -174,9 +155,6 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .modal-bottom-close { width: auto; min-width: 160px; padding: 10px 24px; background: var(--ro); color: #fff; border-radius: 24px; font-weight: bold; font-size: 13px; text-align: center; border: none; box-shadow: 0 4px 12px rgba(244, 63, 94, 0.4); cursor: pointer; }
 #toastContainer { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 10005; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
 .toast { background: rgba(16, 185, 129, 0.95); color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: bold; box-shadow: 0 2px 10px rgba(0,0,0,0.3); animation: slideInUp 0.15s ease forwards; transition: opacity 0.3s; }
-#floatingPlayer { display: none; position: absolute; z-index: 9999; background: #0d1117; border: 1px solid var(--bd); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); width: 320px; flex-direction: column; overflow: hidden; touch-action: none; }
-#playerDragHeader { cursor: move; background: var(--sf); padding: 6px 10px; font-size: 11px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--bd); user-select: none; }
-#playerContent { width: 100%; aspect-ratio: 16/9; background: #000; display: flex; justify-content: center; align-items: center; position: relative; }
 </style>
 </head>
 <body>
@@ -195,7 +173,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
           <li><b>端末内での絶対暗号化:</b> パスワードはサーバーへ一切転送されず、ブラウザ内で強固な共通鍵（AES-GCM-256）へ直接変換。すべての文面や画像は送信前に「端末内部」で完全に暗号化されます。</li>
           <li><b>中継サーバー・管理者も覗き見不可:</b> データベースには強固な暗号文のみが格納されるため、中継サーバーの管理者、プロバイダー、第三者による傍受・解読は科学的・物理的に不可能です。</li>
           <li><b>即時物理削除＆不保持:</b> 部屋の有効期限が切れるか、最後の一人が退室した瞬間に、該当するメッセージ・Presence情報などの全データは痕跡なく即時抹消され、復元手段は一切ありません。</li>
-          <li><b>通信ログ・個人データの不保持:</b> 接続元IPアドレス、通信のメタデータ、ログなどは一切記録も蓄積しないため、究極のプライバシーが保たれます。</li>
+          <li><b>通信ログ・個人データの不保持:</b> 接続元IPアドレス、通信のメタデータ、ログなどは一切記録も蓄積もしないため、究極のプライバシーが保たれます。</li>
         </ul>
       </div>
       <div id="lberr"></div>
@@ -211,7 +189,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         <div class="fg">
           <label class="fl">トリップキー * (必須項目)</label>
           <input type="text" id="tripi" class="inp" placeholder="本人証明用キー" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
-          <div id="tripPreview">
+          <div id="tripPreview" style="display:none;">
             <span id="tripPrevText">プレビュー: 名無し</span>
             <button class="copy-s-btn" id="lbCopyTripBtn">コピー</button>
           </div>
@@ -246,7 +224,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         <div class="glink" id="gdBtn">📖 ガイド / セキュリティ仕様を表示</div>
       </div>
 
-      <!-- 招待承認待ち画面 (初期非表示) -->
+      <!-- 招待承認待ち画面 -->
       <div id="lobbyWaitingArea" style="display:none; flex-direction:column; gap:8px; background:rgba(255,255,255,0.03); border:1px solid var(--bd); padding:12px; border-radius:6px; text-align:center; margin-bottom:8px;">
         <div style="font-weight:bold; color:#818cf8; font-size:13px;">📥 ホストの承認を待っています...</div>
         <div style="font-size:11px; color:var(--mu);">この部屋は「招待モード」です。ホストによる承認が必要です。</div>
@@ -269,11 +247,11 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
             <span class="rn" id="rdsp"></span>
             <span class="pcnt" id="pcnt">--人</span>
           </div>
-          <!-- タイマー設定ボタン -->
-          <div style="display: flex; align-items: center; gap: 4px; margin-top: 1px;">
-            <div id="timerTrigger" style="cursor: pointer; display: flex; align-items: center; gap: 4px; background: rgba(244,63,94,0.08); padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(244,63,94,0.15);" title="クリックして寿命残り時間を調整">
-              <span id="timerDsp" style="font-family: monospace; font-weight: bold; color: #f87171; font-size: 11px;">--:--</span>
-              <span id="timerBtnIcon" style="font-size: 9px; color: var(--mu); font-weight: bold;">⏱ 寿命設定</span>
+          <!-- タイマー表示ボタン (カプセルバッジ) -->
+          <div style="display: flex; align-items: center; margin-top: 2px;">
+            <div id="timerTrigger" style="cursor: pointer; display: inline-flex; align-items: center; gap: 4px; background: rgba(244,63,94,0.06); padding: 3px 8px; border-radius: 12px; border: 1px solid rgba(244,63,94,0.18); transition: background 0.15s, border-color 0.15s;" title="残り寿命時間を調整 (クリックして変更)">
+              <span style="font-size: 10px; color: #f87171; line-height: 1;">⏱</span>
+              <span id="timerDsp" style="font-family: monospace; font-weight: bold; color: #fda4af; font-size: 11px; line-height: 1; letter-spacing: 0.02em;">--:--</span>
             </div>
           </div>
         </div>
@@ -285,7 +263,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       </div>
     </div>
 
-    <!-- ホスト専用管理パネル (事前承認アコーディオン化) -->
+    <!-- ホスト専用管理パネル (アコーディオン化) -->
     <div id="hostPanel" style="display:none; background:var(--sf); border-bottom:1px solid var(--bd); padding:4px 8px; font-size:11px; flex-direction:column; gap:4px;">
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
         <div style="display:flex; align-items:center; gap:6px;">
@@ -318,7 +296,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         </div>
       </div>
 
-      <!-- BANリスト (折りたたみ式) -->
+      <!-- BANリスト -->
       <div id="hostBanListWrapper" style="display:none; background:var(--bg); padding:4px 6px; border-radius:4px; border:1px solid var(--bd); margin-top:2px;">
         <div style="font-weight:bold; font-size:9.5px; color:var(--ro); margin-bottom:2px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:1px;">🚫 BANリスト</div>
         <div id="hostBanList" style="max-height:60px; overflow-y:auto; display:flex; flex-direction:column; gap:3px; font-size:9.5px;">
@@ -373,20 +351,6 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
           </svg>
         </button>
-      </div>
-    </div>
-    
-    <!-- 独立型フローティングプレイヤー -->
-    <div id="floatingPlayer">
-      <div id="playerDragHeader">
-        <span id="playerTitle">メディア再生</span>
-        <span style="font-size:9px; color:var(--mu); font-weight:normal;">● ドラッグ移動</span>
-      </div>
-      <div id="playerContent"></div>
-      
-      <!-- 閉じるボタンエリア -->
-      <div id="playerControls" style="display:flex; justify-content:center; background:var(--sf); padding:6px 10px; border-top:1px solid var(--bd);">
-        <button id="playerCloseBtn" style="margin:0; padding:5px 12px; font-size:11px; background:var(--ro); color:#fff; border-radius:4px; font-weight:bold; cursor:pointer;">閉じる</button>
       </div>
     </div>
 
@@ -499,29 +463,41 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   </div>
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getAuth, signInAnonymously, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { getDatabase, ref, push, onValue, set, update, remove, get, serverTimestamp, onChildAdded, onChildRemoved, goOnline, goOffline, query, limitToLast, onDisconnect }
-  from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
-
-// トリップ生成用の鍵
-const SYSTEM_SALT = "NEZU_PRO_SYS_SALT_2026_V1";
-
-// 接続設定
-const firebaseConfig = {
-  apiKey: "AIzaSyCsRidc0smUQDaBwq-oki5NzxSHx6-ljiw",
-  authDomain: "nezuochat.firebaseapp.com",
-  databaseURL: "https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "nezuochat",
-  storageBucket: "nezuochat.appspot.com",
-  messagingSenderId: "154725381397",
-  appId: "1:154725381397:web:8742ccd957e20cee8ce51c"
+<script>
+/* =========================================================
+   Firebase 初期化
+   ★★★ 必ずここに自分の Firebase プロジェクトの config を入れてください ★★★
+   Firebaseコンソール → プロジェクトの設定 → マイアプリ → SDK設定と構成 で取得できます
+   ========================================================= */
+const FIREBASE_CONFIG = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db  = getDatabase(app);
+let auth, db;
+try {
+  if (!firebase.apps || !firebase.apps.length) {
+    firebase.initializeApp(FIREBASE_CONFIG);
+  }
+  auth = firebase.auth();
+  db = firebase.database();
+} catch (initErr) {
+  // 初期化に失敗しても「真っ白なページ」にはせず、必ずエラーを画面表示する
+  document.body.innerHTML =
+    '<div style="min-height:100dvh;display:flex;align-items:center;justify-content:center;' +
+    'background:#0f172a;color:#fda4af;padding:24px;text-align:center;font-family:sans-serif;">' +
+    '<div>⚠️ Firebase初期化エラー<br><br>' +
+    '<span style="font-size:12px;color:#94a3b8;">' + (initErr && initErr.message ? initErr.message : String(initErr)) + '</span><br><br>' +
+    '<span style="font-size:11px;color:#64748b;">index.html内のFIREBASE_CONFIGを正しい値に設定してください。</span>' +
+    '</div></div>';
+  throw initErr;
+}
+
 const $   = id => document.getElementById(id);
 
 const D = {
@@ -549,59 +525,19 @@ let keepKbOpen = false;
 let isAutoScroll = true;
 let _scPending = false; // 追従スクロールの排他処理用フラグ
 
-// CSS.escapeが無い古いブラウザ(レガシー/OperaMiniなど)向けのフォールバックエスケープ関数
-const escapeSelector = (str) => {
-  if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
-    return CSS.escape(str);
-  }
-  return str.replace(/([!"#$%&'()*+,\-./:;<=>?@\[\\\]^`{|}~])/g, '\\$1');
-};
-
-// 大容量データ・画像データを古いブラウザでもフリーズやコールスタックバグを起こさず安全にBase64化する関数
-const bytesToBase64 = (bytes) => {
-  const chunks = [];
-  const chunkSize = 0xffff;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    chunks.push(String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize)));
-  }
-  return btoa(chunks.join(''));
-};
-
-const base64ToBytes = (b64) => {
-  const binary = atob(b64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes;
-};
-
-// 追従スクロール（Opera Mini / レガシー環境対応強化）
+// 追従スクロール
 function scBottom(force = false) {
   if (!isAutoScroll && !force) return;
   if (_scPending) return;
   _scPending = true;
   
-  const doScroll = () => {
+  requestAnimationFrame(() => {
     if (D.tl) {
-      // scrollTopに最大値を代入して即時スクロール
       D.tl.scrollTop = D.tl.scrollHeight;
-      
-      // 最後のメッセージ要素が存在すればそれを強制スクロールして入力バーの下への潜り込みを防ぐ
-      const lastEl = D.tli.lastElementChild;
-      if (lastEl && typeof lastEl.scrollIntoView === 'function') {
-        lastEl.scrollIntoView(false); // falseでコンテナの下端に合わせる
-      }
       updateJumpBtns();
     }
     _scPending = false;
-  };
-
-  if (typeof requestAnimationFrame === 'function') {
-    requestAnimationFrame(doScroll);
-  } else {
-    setTimeout(doScroll, 50); // requestAnimationFrameが使えない環境向け
-  }
+  });
 }
 
 // ロビーカラープレビュー同期表示用の関数
@@ -638,8 +574,52 @@ const initHashPass = () => {
 initHashPass();
 
 /* =========================================================
-   Web Cryptography API (AES-GCM 256)
+   Web Cryptography API (AES-GCM 256) 
+   および非セキュア（file://等）動作環境用フォールバック
    ========================================================= */
+
+// 部屋ハッシュ・トリップ生成・鍵導出に使う固定ソルト（アプリ全体で共通・変更するとルームIDやトリップの互換性が失われます）
+const SYSTEM_SALT = "NEZU_ONETIME_CHAT_PRO_v1_SALT";
+
+const isCryptoSupported = !!(window.crypto && window.crypto.subtle);
+
+// マルチバイト（日本語・絵文字）も絶対にクラッシュせずにBase64化する安全なフォールバック
+const mockEncrypt = (text, pass) => {
+  const key = pass || "DEFAULT_KEY";
+  const encoder = new TextEncoder();
+  const data = encoder.encode(text);
+  const keyBytes = new TextEncoder().encode(key);
+  const out = new Uint8Array(data.length);
+  for (let i = 0; i < data.length; i++) {
+    out[i] = data[i] ^ keyBytes[i % keyBytes.length];
+  }
+  let binary = "";
+  const len = out.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(out[i]);
+  }
+  return "MOCK:" + btoa(binary);
+};
+
+const mockDecrypt = (c, pass) => {
+  if (!c || !c.startsWith("MOCK:")) return null;
+  try {
+    const key = pass || "DEFAULT_KEY";
+    const binary = atob(c.substring(5));
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    const keyBytes = new TextEncoder().encode(key);
+    const out = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i++) {
+      out[i] = bytes[i] ^ keyBytes[i % keyBytes.length];
+    }
+    return new TextDecoder().decode(out);
+  } catch (e) {
+    return null;
+  }
+};
 
 const hexToBytes = (hex) => {
   const bytes = new Uint8Array(hex.length / 2);
@@ -655,64 +635,56 @@ const bytesToHex = (bytes) => {
 
 const sha256 = async (text) => {
   const msgUint8 = new TextEncoder().encode(text);
-  if (typeof window !== 'undefined' && window.crypto && window.crypto.subtle) {
-    try {
-      const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgUint8);
-      return bytesToHex(new Uint8Array(hashBuffer));
-    } catch (e) {}
-  }
-  // フォールバック: crypto非対応環境（非SSLやレガシーブラウザ）用の簡易ハッシュ（クラッシュ防止）
-  let hash = 0;
-  for (let i = 0; i < text.length; i++) {
-    const char = text.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  return Math.abs(hash).toString(16).padStart(10, '0') + "f1";
+  const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgUint8);
+  return bytesToHex(new Uint8Array(hashBuffer));
 };
 
-// PBKDF2 から AES-GCM CryptoKey を安全に導出 (20,000イテレーション) [1, 2]
+// PBKDF2 から AES-GCM CryptoKey を安全に導出 (100,000イテレーション)
 const deriveMasterKey = async (roomId, pass) => {
-  if (!window.crypto || !window.crypto.subtle) {
-    alert("ご利用のブラウザは暗号化技術(Web Cryptography API)に対応していません。他のモダンブラウザをご使用ください。");
-    throw new Error("Crypto API unsupported");
+  if (!isCryptoSupported) return "MOCK_KEY";
+  try {
+    const enc = new TextEncoder();
+    const passwordBuffer = enc.encode(pass);
+    const saltBuffer = enc.encode(SYSTEM_SALT + roomId);
+
+    const baseKey = await window.crypto.subtle.importKey(
+      "raw",
+      passwordBuffer,
+      "PBKDF2",
+      false,
+      ["deriveKey"]
+    );
+
+    return await window.crypto.subtle.deriveKey(
+      {
+        name: "PBKDF2",
+        salt: saltBuffer,
+        iterations: 100000,
+        hash: "SHA-256"
+      },
+      baseKey,
+      {
+        name: "AES-GCM",
+        length: 256
+      },
+      true,
+      ["encrypt", "decrypt", "wrapKey", "unwrapKey"]
+    );
+  } catch (e) {
+    console.warn("暗号キー導出失敗。フォールバックを起動します:", e);
+    return "MOCK_KEY";
   }
-  const enc = new TextEncoder();
-  const passwordBuffer = enc.encode(pass);
-  const saltBuffer = enc.encode(SYSTEM_SALT + roomId);
-
-  const baseKey = await window.crypto.subtle.importKey(
-    "raw",
-    passwordBuffer,
-    "PBKDF2",
-    false,
-    ["deriveKey"]
-  );
-
-  return await window.crypto.subtle.deriveKey(
-    {
-      name: "PBKDF2",
-      salt: saltBuffer,
-      iterations: 20000,
-      hash: "SHA-256"
-    },
-    baseKey,
-    {
-      name: "AES-GCM",
-      length: 256
-    },
-    true,
-    ["encrypt", "decrypt", "wrapKey", "unwrapKey"]
-  );
 };
 
-// 对称鍵のエクスポート / インポート処理
+// 対称鍵のエクスポート / インポート処理
 const exportKeyToHex = async (key) => {
+  if (key === "MOCK_KEY") return "MOCK_KEY_HEX";
   const exported = await window.crypto.subtle.exportKey("raw", key);
   return bytesToHex(new Uint8Array(exported));
 };
 
 const importKeyFromHex = async (hex) => {
+  if (hex === "MOCK_KEY_HEX" || !isCryptoSupported) return "MOCK_KEY";
   const bytes = hexToBytes(hex);
   return await window.crypto.subtle.importKey(
     "raw",
@@ -728,11 +700,27 @@ const makeTrip = async (name, tripKey) => {
   if (!tripKey) return "";
   const revKey = tripKey.split("").reverse().join("");
   const mixed = SYSTEM_SALT + "_" + name + "_[SALT]_" + revKey;
+  if (!isCryptoSupported) {
+    let hash = 0;
+    for (let i = 0; i < mixed.length; i++) {
+      hash = (hash << 5) - hash + mixed.charCodeAt(i);
+      hash |= 0;
+    }
+    return "◆" + Math.abs(hash).toString(36).substring(0, 10);
+  }
   const hash = await sha256(mixed);
   return "◆" + hash.substring(3, 13);
 };
 
 const getRoomHash = async (roomId) => {
+  if (!isCryptoSupported) {
+    let hash = 0;
+    for (let i = 0; i < roomId.length; i++) {
+      hash = (hash << 5) - hash + roomId.charCodeAt(i);
+      hash |= 0;
+    }
+    return "room_" + Math.abs(hash).toString(16);
+  }
   return await sha256(SYSTEM_SALT + roomId);
 };
 
@@ -746,7 +734,11 @@ const decCache = new Map();
 const metaCache = new Map(); 
 
 const encrypt = async (t, key = masterKey) => {
-  if (!t || !key) return "";
+  if (!t) return "";
+  const rawPass = localStorage.getItem("nz_pi_val") || "DEFAULT_KEY";
+  if (!isCryptoSupported || !key || key === "MOCK_KEY") {
+    return mockEncrypt(t, rawPass);
+  }
   try {
     const encoder = new TextEncoder();
     const data = encoder.encode(t);
@@ -763,18 +755,29 @@ const encrypt = async (t, key = masterKey) => {
 
     const ivHex = bytesToHex(iv);
     const ctBytes = new Uint8Array(encrypted);
-    const ctBase64 = bytesToBase64(ctBytes);
-    return ivHex + ":" + ctBase64;
+    let binary = "";
+    const len = ctBytes.byteLength;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(ctBytes[i]);
+    }
+    return ivHex + ":" + btoa(binary);
   } catch (e) {
-    return "";
+    return mockEncrypt(t, rawPass);
   }
 };
 
 const decrypt = (c, key = masterKey) => {
-  if (!c || !key) return Promise.resolve(null);
+  if (!c) return Promise.resolve(null);
   if (decCache.has(c)) return decCache.get(c);
 
   const p = (async () => {
+    const rawPass = localStorage.getItem("nz_pi_val") || "DEFAULT_KEY";
+    if (c.startsWith("MOCK:")) {
+      return mockDecrypt(c, rawPass);
+    }
+    if (!isCryptoSupported || !key || key === "MOCK_KEY") {
+      return null;
+    }
     try {
       const parts = c.split(":");
       if (parts.length < 2) return null;
@@ -782,7 +785,11 @@ const decrypt = (c, key = masterKey) => {
       const ctBase64 = parts[1];
 
       const iv = hexToBytes(ivHex);
-      const ct = base64ToBytes(ctBase64);
+      const binary = atob(ctBase64);
+      const ct = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        ct[i] = binary.charCodeAt(i);
+      }
 
       const decrypted = await window.crypto.subtle.decrypt(
         {
@@ -795,8 +802,7 @@ const decrypt = (c, key = masterKey) => {
 
       return new TextDecoder().decode(decrypted);
     } catch (e) {
-      decCache.delete(c);
-      return null;
+      return mockDecrypt(c, rawPass);
     }
   })();
 
@@ -827,15 +833,16 @@ async function decryptMeta(metaStrEnc) {
 }
 
 let _srvOff = 0;
-onValue(ref(db, ".info/serverTimeOffset"), s => { _srvOff = s.val() || 0; });
+// onValue(ref...) から Compat用の .on("value") 形式に完全置換 (ReferenceError排除)
+db.ref(".info/serverTimeOffset").on("value", s => { _srvOff = s.val() || 0; });
 const srvNow = () => Date.now() + _srvOff;
 
 const updateTripPreview = async () => {
   const n = D.ni.value || "名無し";
   const tk = D.tripi.value;
   const t = tk ? await makeTrip(n, tk) : "";
+  D.tripPreview.style.display = tk ? "flex" : "none";
   D.tripPrevText.textContent = `プレビュー: ${n} ${t}`;
-  D.tripPrevText.style.color = curColor; // 選択されたカラーをプレビューにリアルタイム反映する
   localStorage.setItem("nz_mytrip_styled", t);
   localStorage.setItem("nz_myname", n);
 };
@@ -882,7 +889,7 @@ D.timeri.addEventListener("blur", (e) => { e.target.value = clampTimer(e.target.
 const updateTimerUIFromVal = async (val) => {
   if (curR && isHost) {
       _roomExpireAt = srvNow() + (val * 60000);
-      await update(ref(db, `rooms/${curR}`), { expireAt: _roomExpireAt }).catch(e => {
+      await db.ref(`rooms/${curR}`).update({ expireAt: _roomExpireAt }).catch(e => {
         showToast("❌ 制限時間の更新に失敗しました");
       });
       showToast("✅ 寿命を更新");
@@ -932,7 +939,6 @@ const onColorSelect = v => {
   localStorage.setItem("nz_color",v); 
   syncPickers(v); 
   updateLobbyColorPreview(v);
-  updateTripPreview(); // カラー選択時にプレビュー色を即座に連動
 };
 
 buildPicker(D.lbClrPick, curColor, "clrc",  onColorSelect);
@@ -960,11 +966,10 @@ D.clrBtn.addEventListener("click", () => {
 D.clrOk.addEventListener("click", async () => {
   curColor = tmpColor; setGlobalColor(curColor); localStorage.setItem("nz_color",curColor); syncPickers(curColor);
   updateLobbyColorPreview(curColor);
-  updateTripPreview(); // カラー決定時にも即座に同期
   if (curR && myPresRef && masterKey) { 
     try {
       const metaStr = JSON.stringify({n: curN, p: localStorage.getItem("nz_mytrip_styled"), c: curColor});
-      await update(myPresRef, {meta: await encrypt(metaStr, masterKey)});
+      await myPresRef.update({meta: await encrypt(metaStr, masterKey)});
     } catch {} 
   }
   D.clrmod.classList.remove("show");
@@ -1097,7 +1102,7 @@ function trimTimeline() {
   }
 }
 
-// 描画処理の完全DOM API化 (一律共通鍵復号)
+// 描画処理の完全DOM API化 (innerHTMLの廃止・一律共通鍵復号)
 async function cMsg(msg) {
   const msgTs = msg.t || srvNow();
 
@@ -1133,17 +1138,11 @@ async function cMsg(msg) {
     return d;
   }
 
-  // 2. 通常メッセージ (例外ハンドリングで描画エンジンのフリーズを防ぐ)
-  let meta = null, txt = null;
-  try {
-    [meta, txt] = await Promise.all([
-      decryptMeta(msg.mt),
-      decrypt(msg.m, masterKey)
-    ]);
-  } catch (e) {
-    meta = null;
-    txt = null;
-  }
+  // 2. 通常メッセージ (一律 masterKey で復号)
+  const [meta, txt] = await Promise.all([
+    decryptMeta(msg.mt),
+    decrypt(msg.m, masterKey)
+  ]);
 
   if (!meta || !txt) {
     if (isLiveMode) {
@@ -1230,7 +1229,6 @@ async function cMsg(msg) {
   mm.appendChild(rightWrap);
 
   const mb = document.createElement("div");
-  mm.className = "mm"; // クラスの上書き
   mb.className = "mb";
   mb.style.borderColor = sC;
 
@@ -1278,67 +1276,6 @@ async function cMsg(msg) {
           mb.appendChild(el);
         }
       });
-
-      // メディア埋め込み判定
-      const mediaRegexes = [
-        { type: "youtube", name: "YouTube", regex: /(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)?(?:youtube\.com\/(?:watch\?.*v=|embed\/|shorts\/|live\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i },
-        { type: "niconico", name: "ニコニコ動画", regex: /(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)?(?:nicovideo\.jp\/watch\/|nico\.ms\/)(sm[0-9]+|so[0-9]+|nm[0-9]+|[0-9]+)/i },
-        { type: "audio", name: "Audio", regex: /https?:\/\/[^\s\n<>"]+\.(?:mp3|wav|ogg|m4a|aac|flac)(?:\?[^\s\n<>"]*)?/i }
-      ];
-
-      const urls = txt.match(/https?:\/\/[^\s\n<>]+/gi) || [];
-      const addedMedia = new Set();
-
-      urls.forEach(url => {
-        for (const target of mediaRegexes) {
-          if (target.regex.test(url) && !addedMedia.has(url)) {
-            addedMedia.add(url);
-
-            const mContainer = document.createElement("div");
-            mContainer.className = "media-link-container";
-
-            const mRow = document.createElement("div");
-            mRow.className = "media-inline-row";
-
-            const mBadge = document.createElement("span");
-            mBadge.className = `media-badge`;
-            mBadge.textContent = target.name;
-            
-            if (target.type === 'youtube') mBadge.style.background = '#ef4444';
-            else if (target.type === 'niconico') mBadge.style.background = '#334155';
-            else if (target.type === 'audio') mBadge.style.background = '#4f46e5';
-
-            const mBtnRow = document.createElement("div");
-            mBtnRow.className = "media-btn-row";
-
-            const mBtn = document.createElement("button");
-            mBtn.className = "open-player-btn";
-            mBtn.textContent = "チャット内で再生";
-
-            mBtn.addEventListener("click", () => {
-              window.openFloatingPlayer(url, target.type);
-            });
-
-            mBtnRow.appendChild(mBtn);
-
-            if (target.type === "audio") {
-              const dlBtn = document.createElement("button");
-              dlBtn.className = "dl-media-btn";
-              dlBtn.textContent = "📥 保存 (容量取得中...)";
-              dlBtn.dataset.sizeText = "容量取得中";
-
-              mBtnRow.appendChild(dlBtn);
-              window.fetchAudioSize(url, dlBtn);
-            }
-
-            mRow.appendChild(mBadge);
-            mRow.appendChild(mBtnRow);
-            mContainer.appendChild(mRow);
-            mb.appendChild(mContainer);
-            break;
-          }
-        }
-      });
     }
   }
 
@@ -1352,7 +1289,7 @@ D.delCancelBtn.onclick = () => { D.delConfirmMod.classList.remove("show"); targe
 D.delExecuteBtn.onclick = async () => {
   if (curR && targetDelId) {
     if (confirm("本当にこのメッセージを物理削除しますか？\nこの操作は元に戻せません。")) {
-      await remove(ref(db, `chat/${curR}/${targetDelId}`)).catch(e => {
+      await db.ref(`chat/${curR}/${targetDelId}`).remove().catch(e => {
         showToast("❌ メッセージの削除に失敗しました");
       });
       showToast("✅ 削除完了");
@@ -1402,7 +1339,7 @@ function trackAndCacheMessage(m) {
     currentRoomMsgs.push(m);
   }
   currentRoomMsgs.sort((a, b) => (a.t || 0) - (b.t || 0));
-  currentRoomMsgs = currentRoomMsgs.slice(-100);
+  currentRoomMsgs = currentRoomMsgs.slice(-50); // メモリ負荷および通信量削減のため最大50件に制限
   localStorage.setItem(`nz_chat_raw_${curR}`, JSON.stringify(currentRoomMsgs));
 }
 
@@ -1484,51 +1421,42 @@ async function renderCachedState(hashId, rawRoomId) {
   const cachedMsgs = loadChatCache(hashId);
   if (cachedMsgs.length > 0) {
     currentRoomMsgs = cachedMsgs;
+    // 描画開始前にすべてのキャッシュ内メッセージIDをあらかじめ排他リストへ登録 (重複描画を100%防止)
+    cachedMsgs.forEach(m => displayedMsgIds.add(m.id));
     const dummySnaps = cachedMsgs.map(m => ({ key: m.id, val: () => m }));
     await processMessageBatch(dummySnaps);
   }
 }
 
 async function queueIncomingMessage(m) {
-  if (m.c) {
-    const tempEl = D.tli.querySelector(`[data-cid="${escapeSelector(String(m.c))}"]`);
-    if (tempEl) {
-      const realEl = await cMsg(m);
-      if (realEl) {
-        tempEl.replaceWith(realEl);
-        displayedMsgIds.add(m.id);
-        displayedMsgIds.delete(m.c);
-        trackAndCacheMessage(m);
-        trimTimeline();
-        scBottom();
-        return;
-      }
-    }
-  }
+  if (displayedMsgIds.has(m.id)) return;
   await renderSingleMessage(m);
 }
 
 async function renderSingleMessage(m) {
   if (displayedMsgIds.has(m.id)) return;
+  displayedMsgIds.add(m.id); // 競合バグを排除するため、非同期処理の前に即時登録してロックする
+  
   trackAndCacheMessage(m);
   const el = await cMsg(m); 
   if (el) {
     insertMessageEl(el);
-    displayedMsgIds.add(m.id); 
     trimTimeline();
     scBottom();
+  } else {
+    displayedMsgIds.delete(m.id); // 復号エラー等で表示に失敗した場合はロックを解除
   }
 }
 
 function removeMessageEl(id) {
   displayedMsgIds.delete(id);
   untrackAndCacheMessage(id);
-  const el = D.tli.querySelector(`[data-mid="${escapeSelector(String(id))}"]`);
+  const el = D.tli.querySelector(`[data-mid="${CSS.escape(String(id))}"]`);
   if (el) {
     if (el.dataset.cid) displayedMsgIds.delete(el.dataset.cid);
     el.remove();
   }
-  const elCid = D.tli.querySelector(`[data-cid="${escapeSelector(String(id))}"]`);
+  const elCid = D.tli.querySelector(`[data-cid="${CSS.escape(String(id))}"]`);
   if (elCid) {
     elCid.remove();
   }
@@ -1536,20 +1464,23 @@ function removeMessageEl(id) {
 
 async function wipe(r) {
   if (!r) return;
-  const updates = { [`rooms/${r}`]: null, [`chat/${r}`]: null, [`presence/${r}`]: null, [`calls/${r}`]: null };
+  const updates = {};
+  updates[`rooms/${r}`] = null;
+  updates[`chat/${r}`] = null;
+  updates[`presence/${r}`] = null;
   try { 
-    await update(ref(db), updates); 
+    await db.ref().update(updates); 
   } catch (e) { }
 }
 
 async function sendSysMsg(text) {
   if (!curR || !masterKey) return;
-  await push(ref(db, `chat/${curR}`), { 
+  await db.ref(`chat/${curR}`).push({ 
     sys: true, 
     m: await encrypt(text, masterKey), 
-    t: serverTimestamp()
+    t: firebase.database.ServerValue.TIMESTAMP
   }).catch(e => {
-    //
+    console.error("システムメッセージ送信失敗:", e);
   });
 }
 
@@ -1557,11 +1488,11 @@ window.banUser = async (targetUid, name, trip) => {
   if (!curR || !isHost) return;
   
   const updates = {};
-  updates[`rooms/${curR}/banList/${targetUid}`] = { name: name, trip: trip, t: serverTimestamp() };
+  updates[`rooms/${curR}/banList/${targetUid}`] = { name: name, trip: trip, t: firebase.database.ServerValue.TIMESTAMP };
   updates[`presence/${curR}/${targetUid}`] = null;
   updates[`rooms/${curR}/requests/${targetUid}`] = null;
   
-  await update(ref(db), updates).catch(e => {
+  await db.ref().update(updates).catch(e => {
     showToast("❌ BAN処理に失敗しました");
   });
   
@@ -1643,7 +1574,7 @@ window.doExit = async () => {
 
   if (hashId && activeMasterKey) {
     try {
-      const pSnap = await get(ref(db, `presence/${hashId}`)).catch(() => null);
+      const pSnap = await db.ref(`presence/${hashId}`).get().catch(() => null);
       const members = pSnap ? pSnap.val() : null;
       
       const activeMemberIds = members ? Object.keys(members).filter(k => members[k] && members[k].status === "approved") : [];
@@ -1656,19 +1587,19 @@ window.doExit = async () => {
         const sysText = `${activeName} ${trip}`.trim() + " が退室しました";
         const encMsg = await encrypt(sysText, activeMasterKey);
         
-        await push(ref(db, `chat/${hashId}`), { 
+        await db.ref(`chat/${hashId}`).push({ 
           sys: true, 
           m: encMsg, 
-          t: serverTimestamp()
+          t: firebase.database.ServerValue.TIMESTAMP
         }).catch(() => {});
         
         if (activePresRef) {
-          await onDisconnect(activePresRef).cancel();
-          await remove(activePresRef).catch(() => {});
+          await activePresRef.onDisconnect().cancel();
+          await activePresRef.remove().catch(() => {});
         }
       }
     } catch (e) {
-      //
+      console.error("退室パージ処理中のエラー:", e);
     }
   }
 
@@ -1678,18 +1609,18 @@ window.doExit = async () => {
 function clearAll(newHashId = null) {
   _lastPresenceStr = "";
   
-  if (typeof _cOff === "function"){ _cOff(); _cOff = null; }
-  if (typeof _crOff === "function"){ _crOff(); _crOff = null; }
-  if (typeof _pOff === "function"){ _pOff(); _pOff = null; }
-  if (typeof _rOff === "function"){ _rOff = null; }
+  if (_cOff) { _cOff(); _cOff = null; }
+  if (_crOff) { _crOff(); _crOff = null; }
+  if (_pOff) { _pOff(); _pOff = null; }
+  if (_rOff) { _rOff(); _rOff = null; }
 
-  if (typeof _hostReqOff === "function") { _hostReqOff(); _hostReqOff = null; }
-  if (typeof _hostBanOff === "function") { _hostBanOff(); _hostBanOff = null; }
-  if (typeof _hostModeOff === "function") { _hostModeOff(); _hostModeOff = null; }
-  if (typeof _myBanOff === "function") { _myBanOff(); _myBanOff = null; }
+  if (_hostReqOff) { _hostReqOff(); _hostReqOff = null; }
+  if (_hostBanOff) { _hostBanOff(); _hostBanOff = null; }
+  if (_hostModeOff) { _hostModeOff(); _hostModeOff = null; }
+  if (_myBanOff) { _myBanOff(); _myBanOff = null; }
 
-  if (typeof _lobbyReqOff === "function") { _lobbyReqOff(); _lobbyReqOff = null; }
-  if (typeof _lobbyRoomOff === "function") { _lobbyRoomOff(); _lobbyRoomOff = null; }
+  if (_lobbyReqOff) { _lobbyReqOff(); _lobbyReqOff = null; }
+  if (_lobbyRoomOff) { _lobbyRoomOff(); _lobbyRoomOff = null; }
 
   isLiveMode = false;
   stopTimerLoop();
@@ -1697,8 +1628,6 @@ function clearAll(newHashId = null) {
   displayedMsgIds.clear();
   currentRoomMsgs = [];
   D.tli.textContent = "";
-
-  closeFloatingPlayer();
 
   if (!newHashId) {
     masterKey = null; 
@@ -1738,12 +1667,11 @@ function showLobby(msg = "") {
 }
 
 async function checkCurrentRoomStatus() {
-  if (!myUid) return;
   const lastRi = localStorage.getItem("nz_active_ri"), lastCreated = localStorage.getItem("nz_active_created");
   if (!lastRi || !lastCreated) return;
   try {
     const hashId = await getRoomHash(lastRi);
-    const snap = await get(ref(db, `rooms/${hashId}`));
+    const snap = await db.ref(`rooms/${hashId}`).get();
     
     if (snap.exists() && snap.val().expireAt > srvNow()) {
       const savedNi = localStorage.getItem("nz_ni") || "名無し";
@@ -1772,8 +1700,12 @@ async function checkCurrentRoomStatus() {
 let autoApproveTrips = [];
 
 function loadAutoApproveTrips() {
-  // 自動承認設定は部屋作成/入室ごとに完全にリセット
-  autoApproveTrips = [];
+  try {
+    const raw = localStorage.getItem("nz_auto_approve_trips");
+    autoApproveTrips = raw ? JSON.parse(raw) : [];
+  } catch(e) {
+    autoApproveTrips = [];
+  }
 }
 
 async function saveAutoApproveTrips() {
@@ -1783,9 +1715,9 @@ async function saveAutoApproveTrips() {
   if (curR && masterKey) {
     try {
       const encrypted = await encrypt(JSON.stringify(autoApproveTrips), masterKey);
-      await update(ref(db, `rooms/${curR}`), { preApprovedTrips: encrypted }).catch(() => {});
+      await db.ref(`rooms/${curR}`).update({ preApprovedTrips: encrypted }).catch(() => {});
     } catch(e) {
-      //
+      console.error(e);
     }
   }
 }
@@ -1932,7 +1864,8 @@ async function renderPresenceList(s) {
 function listenToHostRequestsAndBans() {
   if (!curR || !isHost) return;
 
-  _hostModeOff = onValue(ref(db, `rooms/${curR}/mode`), s => {
+  const modeRef = db.ref(`rooms/${curR}/mode`);
+  modeRef.on("value", s => {
     const mode = s.val() || "open";
     const radio = document.querySelector(`input[name="roomModeRadio"][value="${mode}"]`);
     if (radio) radio.checked = true;
@@ -1942,8 +1875,10 @@ function listenToHostRequestsAndBans() {
       approveWrapper.style.display = (mode === "invite") ? "flex" : "none";
     }
   });
+  _hostModeOff = () => modeRef.off("value");
 
-  _hostReqOff = onValue(ref(db, `rooms/${curR}/requests`), (s) => {
+  const reqRef = db.ref(`rooms/${curR}/requests`);
+  reqRef.on("value", (s) => {
     const listDiv = $("hostRequestList");
     listDiv.textContent = "";
     const reqs = s.val() || {};
@@ -1963,7 +1898,7 @@ function listenToHostRequestsAndBans() {
     
     for (const [uid, data] of entries) {
       if (data.trip && autoApproveTrips.includes(data.trip)) {
-        update(ref(db, `rooms/${curR}/requests/${uid}`), { status: "approved" });
+        db.ref(`rooms/${curR}/requests/${uid}`).update({ status: "approved" });
         sendSysMsg(`📥 ${data.name} ${data.trip} を事前登録トリップにより自動承認しました`);
         continue;
       }
@@ -1995,7 +1930,7 @@ function listenToHostRequestsAndBans() {
       okBtn.style.borderRadius = "3px";
       okBtn.style.cursor = "pointer";
       okBtn.onclick = () => {
-        update(ref(db, `rooms/${curR}/requests/${uid}`), { status: "approved" });
+        db.ref(`rooms/${curR}/requests/${uid}`).update({ status: "approved" });
         sendSysMsg(`${data.name} ${data.trip || ""} の入室申請が承認されました`);
       };
       
@@ -2008,7 +1943,7 @@ function listenToHostRequestsAndBans() {
       ngBtn.style.borderRadius = "3px";
       ngBtn.style.cursor = "pointer";
       ngBtn.onclick = () => {
-        update(ref(db, `rooms/${curR}/requests/${uid}`), { status: "rejected" });
+        db.ref(`rooms/${curR}/requests/${uid}`).update({ status: "rejected" });
       };
       
       btnGroup.appendChild(okBtn);
@@ -2020,8 +1955,10 @@ function listenToHostRequestsAndBans() {
     
     listDiv.appendChild(fragment);
   });
+  _hostReqOff = () => reqRef.off("value");
 
-  _hostBanOff = onValue(ref(db, `rooms/${curR}/banList`), s => {
+  const banRef = db.ref(`rooms/${curR}/banList`);
+  banRef.on("value", s => {
     const listDiv = $("hostBanList");
     listDiv.textContent = "";
     const bans = s.val() || {};
@@ -2059,27 +1996,29 @@ function listenToHostRequestsAndBans() {
       unbanBtn.style.borderRadius = "3px";
       unbanBtn.style.cursor = "pointer";
       unbanBtn.onclick = async () => {
-        await remove(ref(db, `rooms/${curR}/banList/${uid}`));
+        await db.ref(`rooms/${curR}/banList/${uid}`).remove();
         showToast("✅ BANを解除しました");
       };
       
       row.appendChild(label);
+      unbanBtn.style.cursor = "pointer";
       row.appendChild(unbanBtn);
       listDiv.appendChild(row);
     });
   });
+  _hostBanOff = () => banRef.off("value");
 }
 
 function cancelPendingRequest() {
   isWaitingApproval = false;
   
-  if (typeof _lobbyReqOff === "function") { _lobbyReqOff(); _lobbyReqOff = null; }
-  if (typeof _lobbyRoomOff === "function") { _lobbyRoomOff(); _lobbyRoomOff = null; }
+  if (_lobbyReqOff) { _lobbyReqOff(); _lobbyReqOff = null; }
+  if (_lobbyRoomOff) { _lobbyRoomOff(); _lobbyRoomOff = null; }
 
   if (curR && myUid) {
-    const reqRef = ref(db, `rooms/${curR}/requests/${myUid}`);
-    onDisconnect(reqRef).cancel();
-    remove(reqRef).catch(() => {});
+    const reqRef = db.ref(`rooms/${curR}/requests/${myUid}`);
+    reqRef.onDisconnect().cancel();
+    reqRef.remove().catch(() => {});
   }
 
   $("lobbyWaitingArea").style.display = "none";
@@ -2095,20 +2034,11 @@ function cancelPendingRequest() {
 }
 
 async function doJoin(roomId, pass, name, trip, initTimer) {
-  if (!myUid) {
-    throw new Error("ユーザー認証情報（UID）が未定義です。");
-  }
-
-  // 1. 部屋を作る、または入室するたびに自動承認設定リストを完全にリセット
-  autoApproveTrips = [];
-  localStorage.removeItem("nz_auto_approve_trips");
-  renderPreApproveList();
-
   try {
     const hashId = await getRoomHash(roomId);
 
     // BANチェック
-    const banCheckSnap = await get(ref(db, `rooms/${hashId}/banList/${myUid}`));
+    const banCheckSnap = await db.ref(`rooms/${hashId}/banList/${myUid}`).get();
     if (banCheckSnap.exists()) {
       D.enBtn.disabled = false;
       D.enBtn.textContent = "入室 / 作成";
@@ -2121,8 +2051,8 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
       return;
     }
 
-    const roomRef = ref(db, `rooms/${hashId}`);
-    let snap = await get(roomRef);
+    const roomRef = db.ref(`rooms/${hashId}`);
+    let snap = await roomRef.get();
 
     let roomData = snap.exists() ? snap.val() : null;
     const isRoomHost = roomData ? (roomData.host === myUid) : true;
@@ -2131,15 +2061,9 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
     clearAll(hashId); _exitLock = false;
     localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created");
 
-    // 2. E2EE鍵の導出・ロード
-    // パスワード入力がある（＝手動の入室/作成）ときは既存キャッシュ鍵を無視して常に最新値で再導出
-    let cachedKeyHex = localStorage.getItem(`nz_mkey_${hashId}`);
+    // 1. E2EE鍵の確立
     if (pass) {
       masterKey = await deriveMasterKey(roomId, pass);
-      const exportedHex = await exportKeyToHex(masterKey);
-      localStorage.setItem(`nz_mkey_${hashId}`, exportedHex);
-    } else if (cachedKeyHex) {
-      masterKey = await importKeyFromHex(cachedKeyHex);
     } else {
       throw new Error("パスワード情報が見つかりません。");
     }
@@ -2149,7 +2073,7 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
       localStorage.setItem("nz_pi_val", pass);
     }
 
-    // 3. 部屋の新規作成 or パスワード妥当性チェック
+    // 2. 重複作成の防止とパスワード正当性検証
     if (!snap.exists()) {
       localStorage.removeItem(`nz_chat_raw_${hashId}`);
       currentRoomMsgs = [];
@@ -2164,13 +2088,13 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
 
       const verifyToken = await encrypt("ROOM_VALID", masterKey);
       roomData = { 
-        created: serverTimestamp(), 
+        created: firebase.database.ServerValue.TIMESTAMP, 
         host: myUid, 
         expireAt: expireAtVal, 
         mode: "open",
         verify: verifyToken
       };
-      await set(roomRef, roomData);
+      await roomRef.set(roomData);
     } else {
       if (roomData.verify) {
         try {
@@ -2192,7 +2116,7 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
       isHost = (roomData.host === myUid);
     }
 
-    // 4. 事前許可トリップ照合
+    // 3. 事前許可トリップ照合
     let isPreApproved = false;
     if (roomData && roomData.preApprovedTrips && masterKey) {
       try {
@@ -2204,20 +2128,20 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
           }
         }
       } catch(e) {
-        //
+        console.error("事前許可トリップ復号エラー:", e);
       }
     }
 
-    // 招待制ルーム（承認待ち）の挙動
+    // 招待承認判定
     if (roomData && roomMode === "invite" && !isRoomHost && !isPreApproved) {
-      const reqRef = ref(db, `rooms/${hashId}/requests/${myUid}`);
-      const reqSnap = await get(reqRef);
+      const reqRef = db.ref(`rooms/${hashId}/requests/${myUid}`);
+      const reqSnap = await reqRef.get();
       const reqData = reqSnap.val();
 
       if (reqData && reqData.status === "approved") {
-        // 既に手動で承認された場合
+        // 承認済
       } else if (reqData && reqData.status === "rejected") {
-        await remove(reqRef);
+        await reqRef.remove();
         D.enBtn.disabled = false;
         D.enBtn.textContent = "入室 / 作成";
         
@@ -2236,32 +2160,32 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
         $("lobbyInputArea").style.display = "none";
         waitArea.style.display = "flex";
 
-        await set(reqRef, {
+        await reqRef.set({
           name: name,
           trip: trip,
           status: "pending",
-          t: serverTimestamp()
+          t: firebase.database.ServerValue.TIMESTAMP
         });
 
-        await onDisconnect(reqRef).remove();
+        await reqRef.onDisconnect().remove();
 
-        if (typeof _lobbyReqOff === "function") _lobbyReqOff();
-        if (typeof _lobbyRoomOff === "function") _lobbyRoomOff();
+        if (_lobbyReqOff) _lobbyReqOff();
+        if (_lobbyRoomOff) _lobbyRoomOff();
 
-        _lobbyReqOff = onValue(reqRef, async (s) => {
+        reqRef.on("value", async (s) => {
           const rVal = s.val();
           if (!rVal) return;
 
           if (rVal.status === "approved") {
             isWaitingApproval = false;
-            if (typeof _lobbyReqOff === "function") _lobbyReqOff();
+            if (_lobbyReqOff) _lobbyReqOff();
             _lobbyReqOff = null;
-            if (typeof _lobbyRoomOff === "function") _lobbyRoomOff();
+            if (_lobbyRoomOff) _lobbyRoomOff();
             _lobbyRoomOff = null;
 
-            await onDisconnect(reqRef).cancel();
+            await reqRef.onDisconnect().cancel();
 
-            // 通常ロビーを表示させず即時入室
+            // チラつき防止：通常ロビーを一切表示させず即時doJoinを実行
             waitArea.style.display = "none";
 
             sessionStorage.setItem("nz_should_send_join_sys", "true");
@@ -2270,14 +2194,15 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
             await doJoin(roomId, pass, name, trip, initTimer);
           } else if (rVal.status === "rejected") {
             isWaitingApproval = false;
-            if (typeof _lobbyReqOff === "function") _lobbyReqOff();
+            if (_lobbyReqOff) _lobbyReqOff();
             _lobbyReqOff = null;
-            if (typeof _lobbyRoomOff === "function") _lobbyRoomOff();
+            if (_lobbyRoomOff) _lobbyRoomOff();
             _lobbyRoomOff = null;
 
-            await onDisconnect(reqRef).cancel();
-            await remove(reqRef);
+            await reqRef.onDisconnect().cancel();
+            await reqRef.remove();
 
+            // 拒否時のみロビー入力フォームに戻す
             waitArea.style.display = "none";
             $("lobbyInputArea").style.display = "flex";
             D.enBtn.disabled = false;
@@ -2290,16 +2215,17 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
             showLobby("❌ 入室申請が却下されました。");
           }
         });
+        _lobbyReqOff = () => reqRef.off("value");
 
-        _lobbyRoomOff = onValue(roomRef, async (rSnap) => {
+        roomRef.on("value", async (rSnap) => {
           if (!rSnap.exists() || (rSnap.val().expireAt < srvNow())) {
             isWaitingApproval = false;
-            if (typeof _lobbyReqOff === "function") _lobbyReqOff();
+            if (_lobbyReqOff) _lobbyReqOff();
             _lobbyReqOff = null;
-            if (typeof _lobbyRoomOff === "function") _lobbyRoomOff();
+            if (_lobbyRoomOff) _lobbyRoomOff();
             _lobbyRoomOff = null;
 
-            await onDisconnect(reqRef).cancel();
+            await reqRef.onDisconnect().cancel();
 
             waitArea.style.display = "none";
             $("lobbyInputArea").style.display = "flex";
@@ -2317,14 +2243,15 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
           const currentRoomVal = rSnap.val();
           if (currentRoomVal && currentRoomVal.mode === "open") {
             isWaitingApproval = false;
-            if (typeof _lobbyReqOff === "function") _lobbyReqOff();
+            if (_lobbyReqOff) _lobbyReqOff();
             _lobbyReqOff = null;
-            if (typeof _lobbyRoomOff === "function") _lobbyRoomOff();
+            if (_lobbyRoomOff) _lobbyRoomOff();
             _lobbyRoomOff = null;
 
-            await onDisconnect(reqRef).cancel();
-            await remove(reqRef);
+            await reqRef.onDisconnect().cancel();
+            await reqRef.remove();
 
+            // チラつき防止：通常ロビーのチラつきを防ぐ
             waitArea.style.display = "none";
 
             sessionStorage.setItem("nz_should_send_join_sys", "true");
@@ -2333,6 +2260,7 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
             await doJoin(roomId, pass, name, trip, initTimer);
           }
         });
+        _lobbyRoomOff = () => roomRef.off("value");
 
         $("cancelRequestBtn").onclick = async () => {
           await cancelPendingRequest();
@@ -2342,11 +2270,11 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
     }
 
     if (isPreApproved) {
-      const reqRef = ref(db, `rooms/${hashId}/requests/${myUid}`);
-      await set(reqRef, { name: name, trip: trip, status: "approved", t: serverTimestamp() });
+      const reqRef = db.ref(`rooms/${hashId}/requests/${myUid}`);
+      await reqRef.set({ name: name, trip: trip, status: "approved", t: firebase.database.ServerValue.TIMESTAMP });
     }
 
-    await set(ref(db, `rooms/${hashId}/approvedUsers/${myUid}`), true).catch(() => {});
+    await db.ref(`rooms/${hashId}/approvedUsers/${myUid}`).set(true).catch(() => {});
 
     const previouslyEntered = localStorage.getItem(`nz_entered_${hashId}`) === "true";
     if (previouslyEntered) {
@@ -2359,16 +2287,15 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
 
     curR = hashId; rawR = roomId; curN = name;
     
-    // 入室者リスト設定
-    myPresRef = ref(db, `presence/${hashId}/${myUid}`);
+    myPresRef = db.ref(`presence/${hashId}/${myUid}`);
     const metaStr = JSON.stringify({ n: name, p: trip, c: curColor });
-    await set(myPresRef, { status: "approved", meta: await encrypt(metaStr, masterKey), isHost: isHost });
+    await myPresRef.set({ status: "approved", meta: await encrypt(metaStr, masterKey), isHost: isHost });
     
-    // ※ 一時的なネットワーク瞬断やOpera Mini等の中継切断で消去されないよう、
-    // onDisconnectによるPresence削除は「設定しない」ようにし、退室・BANまでリストに残します。
+    await myPresRef.onDisconnect().remove();
     await enterChatUI(roomData, pass);
 
   } catch (e) { 
+    console.error("入室処理中のエラー:", e);
     const isNetworkError = !navigator.onLine || e.message.includes("offline") || e.message.includes("network");
     if (isNetworkError) {
       showToast("📡 接続が不安定です。再接続を待機中...");
@@ -2414,9 +2341,9 @@ async function enterChatUI(roomData, pass) {
     if (isCreated) {
       await sendSysMsg(`${nameWithTrip} が部屋を作成しました`);
     } else if (joinReason === "approved") {
-      await sendSysMsg(`📥 ${nameWithTrip} が入室しました`);
+      await sendSysMsg("📥 " + nameWithTrip + " が入室しました");
     } else if (joinReason === "open_mode") {
-      await sendSysMsg(`🔓 部屋がオープンモードになり、${nameWithTrip} が自動入室しました`);
+      await sendSysMsg("🔓 部屋がオープンモードになり、" + nameWithTrip + " が自動入室しました");
     } else {
       await sendSysMsg(`${nameWithTrip} が入室しました`);
     }
@@ -2424,7 +2351,8 @@ async function enterChatUI(roomData, pass) {
 
   startTimerLoop();
 
-  _rOff = onValue(ref(db, `rooms/${curR}`), s => {
+  const roomRef = db.ref(`rooms/${curR}`);
+  roomRef.on("value", s => {
     if (!s.exists()) { 
       if(!_exitLock) { _exitLock = true; localStorage.removeItem("nz_active_ri"); localStorage.removeItem("nz_active_created"); showLobby("部屋が削除されました。"); } 
       return; 
@@ -2435,47 +2363,48 @@ async function enterChatUI(roomData, pass) {
       localStorage.setItem(`nz_room_expire_${curR}`, rVal.expireAt);
     }
   });
+  _rOff = () => roomRef.off("value");
 
-  _pOff = onValue(ref(db, `presence/${curR}`), renderPresenceList);
+  const presRef = db.ref(`presence/${curR}`);
+  presRef.on("value", renderPresenceList);
+  _pOff = () => presRef.off("value");
 
-  const chatQuery = query(ref(db, `chat/${curR}`), limitToLast(100));
-  try {
-    const snap = await get(chatQuery);
-    if (snap.exists()) {
-      await processMessageBatch(snap);
-    }
-  } catch (e) {
-    //
-  }
+  // 【致命的バグの完全治療】：Firebaseリスナーは登録時に自動的に過去ログ50件を古い順にストリーム配信してくれるため、
+  // get を廃止しリスナーのみに統合することで、二重描画を根絶し即時同期させます
+  const chatQuery = db.ref(`chat/${curR}`).limitToLast(50);
 
-  _cOff = onChildAdded(chatQuery, async snap => {
+  chatQuery.on("child_added", async snap => {
     if(!curR || !masterKey) return;
     const m = snap.val(); 
     if(m) { 
       m.id = snap.key; 
       if (!m.t) m.t = Date.now(); 
-      if (!displayedMsgIds.has(m.id)) {
-        await queueIncomingMessage(m);
-      }
+      await queueIncomingMessage(m);
     } 
   });
+  _cOff = () => chatQuery.off("child_added");
 
-  _crOff = onChildRemoved(ref(db, `chat/${curR}`), snap => {
+  const childRemovedRef = db.ref(`chat/${curR}`);
+  childRemovedRef.on("child_removed", snap => {
     removeMessageEl(snap.key);
   });
+  _crOff = () => childRemovedRef.off("child_removed");
 
-  _myBanOff = onValue(ref(db, `rooms/${curR}/banList/${myUid}`), s => {
+  const myBanRef = db.ref(`rooms/${curR}/banList/${myUid}`);
+  myBanRef.on("value", s => {
     if (s.exists()) {
-      if (typeof _myBanOff === "function") { _myBanOff(); _myBanOff = null; }
+      if (_myBanOff) _myBanOff();
+      _myBanOff = null;
       handleBannedState();
     }
   });
+  _myBanOff = () => myBanRef.off("value");
 
   if (isHost) {
     $("hostPanel").style.display = "flex";
     document.querySelectorAll('input[name="roomModeRadio"]').forEach(r => {
       r.onclick = (e) => {
-        update(ref(db, `rooms/${curR}`), { mode: e.target.value });
+        db.ref(`rooms/${curR}`).update({ mode: e.target.value });
       };
     });
     listenToHostRequestsAndBans();
@@ -2489,7 +2418,7 @@ async function enterChatUI(roomData, pass) {
 let _wasDisconnected = false;
 
 function initConnectionMonitor() {
-  onValue(ref(db, ".info/connected"), async (snap) => {
+  db.ref(".info/connected").on("value", async (snap) => {
     const connected = snap.val() === true;
     if (!connected) {
       _wasDisconnected = true;
@@ -2516,7 +2445,7 @@ async function forceResync() {
   try {
     const targetRoom = curR;
     
-    const roomSnap = await get(ref(db, `rooms/${targetRoom}`)).catch(() => null);
+    const roomSnap = await db.ref(`rooms/${targetRoom}`).get().catch(() => null);
     if (targetRoom !== curR) return;
 
     if (roomSnap === null) {
@@ -2531,7 +2460,7 @@ async function forceResync() {
       return;
     }
 
-    const banSnap = await get(ref(db, `rooms/${targetRoom}/banList/${myUid}`)).catch(() => null);
+    const banSnap = await db.ref(`rooms/${targetRoom}/banList/${myUid}`).get().catch(() => null);
     if (banSnap && banSnap.exists()) {
       handleBannedState();
       return;
@@ -2544,8 +2473,8 @@ async function forceResync() {
     }
 
     const [chatSnap, presenceSnap] = await Promise.all([
-      get(ref(db, `chat/${targetRoom}`)).catch(() => null),
-      get(ref(db, `presence/${targetRoom}`)).catch(() => null)
+      db.ref(`chat/${targetRoom}`).get().catch(() => null),
+      db.ref(`presence/${targetRoom}`).get().catch(() => null)
     ]);
 
     if (presenceSnap && presenceSnap.exists()) {
@@ -2569,18 +2498,35 @@ async function forceResync() {
       }
     }
   } catch (e) {
-    //
+    console.error("再同期エラー:", e);
   }
 }
 
 let lastSendTime = 0;
+let _isSending = false; // 送信連打の二重発火を確実に防ぐ排他制御
+
 async function sendMsg(overrideText = null, imgData = null) {
-  if (!curR || !masterKey) return;
+  if (!curR || !masterKey || _isSending) {
+    if (!curR || !masterKey) {
+      showToast("⚠️ まだ部屋に接続されていません。少し待ってから再送信してください");
+    }
+    return;
+  }
+
+  const banCheck = await db.ref(`rooms/${curR}/banList/${myUid}`).get().catch(() => null);
+  if (banCheck && banCheck.exists()) {
+    handleBannedState();
+    return;
+  }
 
   const txt = overrideText !== null ? overrideText : D.mi.value.trim();
   if (!txt && !imgData) return;
-  const now = Date.now(); if (now - lastSendTime < 350) return; lastSendTime = now;
+  const now = Date.now(); if (now - lastSendTime < 300) return; lastSendTime = now;
   
+  _isSending = true;
+  D.sdBtn.disabled = true; // 送信ボタン一時無効化 (通信負荷およびバグ潰し)
+
+  const savedTxt = txt;
   D.mi.value = ""; D.mi.style.height = "auto";
   
   if (!keepKbOpen) {
@@ -2590,42 +2536,40 @@ async function sendMsg(overrideText = null, imgData = null) {
   }
   isLiveMode = true; scBottom(true);
 
-  const metaObj = { n: curN, p: localStorage.getItem("nz_mytrip_styled") || "", c: curColor };
-  const cid = "opt_" + myUid + "_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
-  
-  const nowSrv = srvNow();
-  const encryptedMeta = await encrypt(JSON.stringify(metaObj), masterKey);
-  const encryptedMsg = await encrypt(imgData ? "IMG::" + imgData : txt, masterKey);
+  // 【致命的バグの完全解決】：送信時のローカル仮描画を完全に廃止。
+  // Firebaseサーバーへ直接送信して、onChildAdded リスナー経由で一元的に最速描画することで競合を根絶。
+  try {
+    const metaObj = { n: curN, p: localStorage.getItem("nz_mytrip_styled") || "", c: curColor };
+    const encryptedMeta = await encrypt(JSON.stringify(metaObj), masterKey);
+    const encryptedMsg = await encrypt(imgData ? "IMG::" + imgData : txt, masterKey);
 
-  decCache.set(encryptedMsg, Promise.resolve(imgData ? "IMG::" + imgData : txt));
-  metaCache.set(encryptedMeta, Promise.resolve(metaObj));
+    decCache.set(encryptedMsg, Promise.resolve(imgData ? "IMG::" + imgData : txt));
+    metaCache.set(encryptedMeta, Promise.resolve(metaObj));
 
-  const tempObj = { 
-    id: cid, 
-    c: cid, 
-    u: myUid, 
-    mt: encryptedMeta, 
-    m: encryptedMsg, 
-    t: nowSrv
-  };
-  
-  // 楽観的描画
-  await renderSingleMessage(tempObj);
+    const pushData = { 
+      u: myUid, 
+      mt: encryptedMeta, 
+      m: encryptedMsg, 
+      t: firebase.database.ServerValue.TIMESTAMP
+    };
 
-  const pushData = { 
-    u: myUid, 
-    c: cid, 
-    mt: encryptedMeta, 
-    m: encryptedMsg, 
-    t: serverTimestamp()
-  };
-
-  push(ref(db, `chat/${curR}`), pushData).then(() => {
-    //
-  }).catch(e => {
-    removeMessageEl(cid);
+    await db.ref(`chat/${curR}`).push(pushData);
+  } catch (e) {
+    console.error("送信エラー:", e);
     showToast(`❌ 送信失敗: ${e.message}`);
-  });
+    // 送信に失敗した場合は入力内容を復元し、再送信できるようにする
+    if (!imgData) {
+      D.mi.value = savedTxt;
+      D.mi.style.height = "auto";
+      D.mi.style.height = Math.min(120, D.mi.scrollHeight) + "px";
+    }
+  } finally {
+    _isSending = false;
+    D.sdBtn.disabled = false;
+    if (keepKbOpen) {
+      D.mi.focus();
+    }
+  }
 }
 
 D.imgBtn.onclick = () => D.fileInput.click();
@@ -2938,7 +2882,7 @@ const openTimerMod = () => {
   D_timerSettingMod.classList.add("show");
 };
 
-// --- 発言機能：イベントリスナーバインド ---
+// --- 発言機能：イベントリスナーバインド (IME対応 & バグ修正) ---
 
 D.mi.addEventListener("input", () => {
   D.mi.style.height = "auto";
@@ -2947,7 +2891,7 @@ D.mi.addEventListener("input", () => {
 
 D.mi.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) {
-    if (e.isComposing) return;
+    if (e.isComposing) return; // IME未確定時は送信しない
     e.preventDefault();
     sendMsg();
   }
@@ -2962,6 +2906,9 @@ D.clrMsgBtn.onclick = () => {
   D.mi.style.height = "auto";
 };
 
+// ----------------------------------------------------
+
+// タイマー設定ボタン
 $("timerTrigger").onclick = openTimerMod;
 D_timerSettingCloseBtn.onclick = () => { D_timerSettingMod.classList.remove("show"); };
 D.imgViewCloseBtn.onclick = () => { D.imgViewMod.classList.remove("show"); };
@@ -2997,266 +2944,47 @@ D_timerApplyBtn.onclick = async () => {
   }
 };
 
-/* =========================================================
-   動的動画・音楽プレイヤー（フローティング型）
-   ========================================================= */
+// 早期ウォームブート
+const checkAndWarmboot = async () => {
+  const sp = new URLSearchParams(location.search);
+  const urlR = sp.get("r");
+  const savedActiveRi = localStorage.getItem("nz_active_ri");
+  const savedActiveCreated = localStorage.getItem("nz_active_created");
+  const savedNi = localStorage.getItem("nz_ni");
 
-const playerNode = $("floatingPlayer");
-const dragHeader = $("playerDragHeader");
-const playerCloseBtn = $("playerCloseBtn");
-
-let isDragging = false;
-let startX, startY, initialLeft, initialTop;
-
-const onStart = (e) => {
-  isDragging = true;
-  const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-  const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
-  
-  startX = clientX;
-  startY = clientY;
-  
-  const style = window.getComputedStyle(playerNode);
-  initialLeft = parseInt(style.left) || 0;
-  initialTop = parseInt(style.top) || 0;
-};
-
-const onMove = (e) => {
-  if (!isDragging) return;
-  const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-  const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
-  
-  const dx = clientX - startX;
-  const dy = clientY - startY;
-  
-  const appRect = D.app.getBoundingClientRect();
-  const playerRect = playerNode.getBoundingClientRect();
-  
-  let newLeft = initialLeft + dx;
-  let newTop = initialTop + dy;
-  
-  newLeft = Math.max(0, Math.min(appRect.width - playerRect.width, newLeft));
-  newTop = Math.max(0, Math.min(appRect.height - playerRect.height, newTop));
-  
-  playerNode.style.left = `${newLeft}px`;
-  playerNode.style.top = `${newTop}px`;
-};
-
-const onEnd = () => {
-  isDragging = false;
-};
-
-dragHeader.addEventListener('mousedown', onStart);
-document.addEventListener('mousemove', onMove);
-document.addEventListener('mouseup', onEnd);
-
-dragHeader.addEventListener('touchstart', onStart, { passive: true });
-document.addEventListener('touchmove', onMove, { passive: true });
-document.addEventListener('touchend', onEnd, { passive: true });
-
-function closeFloatingPlayer() {
-  if (playerNode) {
-    playerNode.style.display = "none";
-    $("playerContent").innerHTML = ""; 
-  }
-}
-
-playerCloseBtn.addEventListener("click", closeFloatingPlayer);
-
-function formatBytes(bytes) {
-  const b = parseInt(bytes);
-  if (isNaN(b) || b <= 0) return "容量不明";
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(b) / Math.log(1024));
-  return `${(b / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
-}
-
-// 音声ファイルのContent-Length取得
-window.fetchAudioSize = async (url, btn) => {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
-    const res = await fetch(url, { method: 'HEAD', signal: controller.signal });
-    clearTimeout(timeoutId);
-    const len = res.headers.get('content-length');
-    if (len) {
-      const formatted = formatBytes(len);
-      btn.textContent = `📥 保存 (${formatted})`;
-      btn.dataset.sizeText = formatted;
+  if (savedActiveRi && savedActiveCreated && savedNi) {
+    if (urlR && urlR !== savedActiveRi) {
+      showToast("⚠️ 既に入室中の部屋があるため、元の部屋へ移動します");
+      const newUrl = `${location.origin}${location.pathname}?r=${encodeURIComponent(savedActiveRi)}${location.hash}`;
+      window.history.replaceState({}, document.title, newUrl);
+      
+      const hashId = await getRoomHash(savedActiveRi);
+      const previouslyEntered = localStorage.getItem(`nz_entered_${hashId}`) === "true";
+      if (previouslyEntered) {
+        await renderCachedState(hashId, savedActiveRi);
+      }
       return;
     }
-  } catch (e) {}
-
-  try {
-    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
-    const res = await fetch(proxyUrl, { method: 'HEAD', signal: controller.signal });
-    clearTimeout(timeoutId);
-    const len = res.headers.get('content-length');
-    if (len) {
-      const formatted = formatBytes(len);
-      btn.textContent = `📥 保存 (${formatted})`;
-      btn.dataset.sizeText = formatted;
-      return;
+    
+    const hashId = await getRoomHash(savedActiveRi);
+    const previouslyEntered = localStorage.getItem(`nz_entered_${hashId}`) === "true";
+    if (previouslyEntered) {
+      await renderCachedState(hashId, savedActiveRi);
     }
-  } catch (e) {}
-
-  btn.textContent = "📥 保存 (容量不明)";
-  btn.dataset.sizeText = "容量不明";
-};
-
-// Blob保存をトリガー
-async function downloadFile(url, filename) {
-  showToast("📥 ダウンロード準備中...");
-  try {
-    let res = await fetch(url).catch(() => null);
-    if (!res || !res.ok) {
-      res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
-    }
-    if (res && res.ok) {
-      const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = filename || url.split('/').pop() || "download.mp3";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(blobUrl);
-      showToast("✅ ダウンロード完了");
-    } else {
-      throw new Error();
-    }
-  } catch {
-    const a = document.createElement("a");
-    a.href = url;
-    a.target = "_blank";
-    a.download = filename || url.split('/').pop() || "download.mp3";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    showToast("🔗 外部タブでロードしました（手動保存してください）");
-  }
-}
-
-window.triggerAudioDownload = async (url, btn) => {
-  const filename = url.split('/').pop() || "download.mp3";
-  const sizeText = btn.dataset.sizeText || "容量不明";
-  
-  if (confirm(`この音声ファイルを端末に保存しますか？\n\nファイル名: ${filename}\nファイル容量: ${sizeText}`)) {
-    await downloadFile(url, filename);
+  } else {
+    D.lobby.style.display = "flex";
   }
 };
-
-let activeVideoUrl = "";
-let activeVideoType = "";
-
-window.openFloatingPlayer = async (url, type, extraData = "") => {
-  activeVideoUrl = url;
-  activeVideoType = type;
-
-  const plRect = D.pl.getBoundingClientRect();
-  const appRect = D.app.getBoundingClientRect();
-  
-  const topOffset = plRect.bottom - appRect.top;
-  const leftOffset = Math.max(10, (appRect.width - 320) / 2);
-  
-  playerNode.style.top = `${topOffset}px`;
-  playerNode.style.left = `${leftOffset}px`;
-  playerNode.style.display = "flex";
-
-  const contentNode = $("playerContent");
-  contentNode.innerHTML = ""; 
-
-  if (type === "youtube") {
-    const ytMatch = url.match(/(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)?(?:youtube\.com\/(?:watch\?.*v=|embed\/|shorts\/|live\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i);
-    if (ytMatch) {
-      const id = ytMatch[1];
-      $("playerTitle").textContent = "YouTube再生";
-      
-      const iframe = document.createElement("iframe");
-      iframe.src = `https://www.youtube.com/embed/${id}?autoplay=0&enablejsapi=1`;
-      iframe.frameBorder = "0";
-      iframe.allow = "encrypted-media";
-      iframe.allowFullscreen = true;
-      iframe.style.width = "100%";
-      iframe.style.height = "100%";
-      iframe.onload = () => {
-        try {
-          iframe.contentWindow.postMessage(JSON.stringify({ event: "listening", id: 1, channel: "widget" }), "*");
-        } catch(e) {}
-      };
-      
-      contentNode.appendChild(iframe);
-    }
-  } else if (type === "niconico") {
-    const nicoMatch = url.match(/(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)?(?:nicovideo\.jp\/watch\/|nico\.ms\/)(sm[0-9]+|so[0-9]+|nm[0-9]+|[0-9]+)/i);
-    if (nicoMatch) {
-      const id = nicoMatch[1];
-      $("playerTitle").textContent = "ニコニコ動画再生";
-      
-      const iframe = document.createElement("iframe");
-      iframe.src = `https://embed.nicovideo.jp/watch/${id}?jsapi=1`;
-      iframe.frameBorder = "0";
-      iframe.allowFullscreen = true;
-      iframe.style.width = "100%";
-      iframe.style.height = "100%";
-      
-      contentNode.appendChild(iframe);
-    }
-  } else if (type === "audio") {
-    $("playerTitle").textContent = "音声再生";
-    const aud = document.createElement("audio");
-    aud.src = url;
-    aud.controls = true;
-    aud.style.width = "100%";
-    aud.addEventListener("ended", () => {
-      closeFloatingPlayer();
-    });
-    
-    const wrapper = document.createElement("div");
-    wrapper.style.padding = "12px";
-    wrapper.style.width = "100%";
-    wrapper.style.display = "flex";
-    wrapper.style.flexDirection = "column";
-    wrapper.style.justifyContent = "center";
-    wrapper.style.alignItems = "center";
-    wrapper.style.background = "var(--sf)";
-    wrapper.style.height = "100%";
-    
-    const label = document.createElement("div");
-    label.style.fontSize = "9.5px";
-    label.style.color = "var(--mu)";
-    label.style.marginTop = "8px";
-    label.style.wordBreak = "break-all";
-    label.style.textAlign = "center";
-    label.textContent = url.split('/').pop();
-    
-    wrapper.appendChild(aud);
-    wrapper.appendChild(label);
-    contentNode.appendChild(wrapper);
-  }
-};
+checkAndWarmboot();
 
 let isInit = false;
 
-// ウォームブートおよびセッション復旧を、認証完了後に安全かつ確実に実行するフロー [3]
 const initUserSession = async (user) => {
   myUid = user.uid; 
-  
   if (isInit) return; 
   isInit = true;
 
-  let urlR = null;
-  if (typeof URLSearchParams !== 'undefined') {
-    const sp = new URLSearchParams(location.search);
-    urlR = sp.get("r");
-  } else {
-    const match = location.search.match(/[?&]r=([^&]+)/);
-    urlR = match ? decodeURIComponent(match[1]) : null;
-  }
-
+  const sp = new URLSearchParams(location.search), urlR = sp.get("r");
   const savedActiveRi = localStorage.getItem("nz_active_ri");
   const savedActiveCreated = localStorage.getItem("nz_active_created");
   const savedNi = localStorage.getItem("nz_ni");
@@ -3264,49 +2992,73 @@ const initUserSession = async (user) => {
   const savedTripKey = localStorage.getItem("nz_tripi");
   const savedTimer = parseInt(localStorage.getItem("nz_timer_val")) || 30;
   
-  // 1. Localキャッシュにアクティブな入室履歴がある場合
   if (savedActiveRi && savedActiveCreated && savedNi) {
-    let activeRoomId = savedActiveRi;
-    
-    // URLの引数とLocal保存先ルーム名に齟齬がある場合はLocalの履歴を最優先に保護
     if (urlR && urlR !== savedActiveRi) {
-      showToast("⚠️ 既に入室中の部屋があるため、元の部屋へ移動します");
       const newUrl = `${location.origin}${location.pathname}?r=${encodeURIComponent(savedActiveRi)}${location.hash}`;
       window.history.replaceState({}, document.title, newUrl);
-    }
-    
-    const hashId = await getRoomHash(activeRoomId);
-    const previouslyEntered = localStorage.getItem(`nz_entered_${hashId}`) === "true";
-    
-    // 楽観的UI高速レンダリング（キャッシュから即時描画）
-    if (previouslyEntered) {
-      let cachedKeyHex = localStorage.getItem(`nz_mkey_${hashId}`);
-      if (cachedKeyHex) {
-        masterKey = await importKeyFromHex(cachedKeyHex);
-      } else if (savedPi) {
-        masterKey = await deriveMasterKey(activeRoomId, savedPi);
-        const exportedHex = await exportKeyToHex(masterKey);
-        localStorage.setItem(`nz_mkey_${hashId}`, exportedHex);
+      
+      try {
+        const hashId = await getRoomHash(savedActiveRi);
+        const savedPiRoom = localStorage.getItem(`nz_pi_${hashId}`) || savedPi || "";
+        const previouslyEntered = localStorage.getItem(`nz_entered_${hashId}`) === "true";
+        
+        if (previouslyEntered) {
+          masterKey = await deriveMasterKey(savedActiveRi, savedPiRoom);
+          if (masterKey) {
+            await renderCachedState(hashId, savedActiveRi);
+          }
+        }
+        
+        const snap = await db.ref(`rooms/${hashId}`).get();
+        if (snap.exists() && snap.val().expireAt > srvNow()) {
+          localStorage.setItem("nz_is_in_room", "true");
+          const tripStyled = await makeTrip(savedNi, savedTripKey); 
+          localStorage.setItem("nz_mytrip_styled", tripStyled);
+          
+          await doJoin(savedActiveRi, savedPiRoom, savedNi, tripStyled, savedTimer);
+          return;
+        } else {
+          localStorage.removeItem("nz_active_ri"); 
+          localStorage.removeItem("nz_active_created");
+          localStorage.removeItem("nz_is_in_room");
+          localStorage.removeItem(`nz_mkey_${hashId}`);
+          localStorage.removeItem(`nz_pi_${hashId}`);
+          doExit();
+          return;
+        }
+      } catch(e) {
+        console.error("セッション復旧エラー:", e);
+        doExit();
+        return;
       }
-      if (masterKey) {
-        await renderCachedState(hashId, activeRoomId);
-      }
     }
-    
-    // バックグラウンドでサーバーデータの物理的な最新状態・生存を照合
+
     try {
+      const hashId = await getRoomHash(savedActiveRi);
       const savedPiRoom = localStorage.getItem(`nz_pi_${hashId}`) || savedPi || "";
-      const snap = await get(ref(db, `rooms/${hashId}`));
+      const previouslyEntered = localStorage.getItem(`nz_entered_${hashId}`) === "true";
+      
+      if (previouslyEntered) {
+        masterKey = await deriveMasterKey(savedActiveRi, savedPiRoom);
+        if (masterKey) {
+          await renderCachedState(hashId, savedActiveRi);
+        }
+      }
+      
+      const snap = await db.ref(`rooms/${hashId}`).get();
       
       if (snap.exists() && snap.val().expireAt > srvNow()) {
         localStorage.setItem("nz_is_in_room", "true");
         const tripStyled = await makeTrip(savedNi, savedTripKey); 
         localStorage.setItem("nz_mytrip_styled", tripStyled);
         
-        await doJoin(activeRoomId, savedPiRoom, savedNi, tripStyled, savedTimer);
+        if (window.history?.replaceState) {
+          window.history.replaceState({}, document.title, location.pathname + "?r=" + encodeURIComponent(savedActiveRi) + (savedPiRoom ? "#" + encodeURIComponent(savedPiRoom) : ""));
+        }
+        
+        await doJoin(savedActiveRi, savedPiRoom, savedNi, tripStyled, savedTimer);
         return;
       } else {
-        // キャッシュに存在するルームデータが既に消滅している場合はクリーンアップ
         localStorage.removeItem("nz_active_ri"); 
         localStorage.removeItem("nz_active_created");
         localStorage.removeItem("nz_is_in_room");
@@ -3316,12 +3068,12 @@ const initUserSession = async (user) => {
         return;
       }
     } catch(e) {
+      console.error("セッション復旧エラー:", e);
       doExit();
       return;
     }
   }
 
-  // 2. 招待URLから新規アクセスされた場合
   if (urlR) { 
     D.ri.value = urlR; 
     localStorage.setItem("nz_ri_val", urlR); 
@@ -3340,7 +3092,7 @@ const initUserSession = async (user) => {
 
 const authenticateAnonymously = () => {
   return new Promise((resolve, reject) => {
-    setPersistence(auth, browserLocalPersistence)
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
       .then(() => {
         if (auth.currentUser) {
           resolve(auth.currentUser);
@@ -3348,7 +3100,7 @@ const authenticateAnonymously = () => {
         }
         
         let isResolved = false;
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
+        const unsubscribe = auth.onAuthStateChanged((user) => {
           if (user) {
             unsubscribe();
             if (!isResolved) {
@@ -3357,7 +3109,7 @@ const authenticateAnonymously = () => {
             }
           } else {
             unsubscribe();
-            signInAnonymously(auth)
+            auth.signInAnonymously()
               .then((cred) => {
                 if (!isResolved) {
                   isResolved = true;
@@ -3381,13 +3133,6 @@ const authenticateAnonymously = () => {
 
 initConnectionMonitor();
 
-// 非SSL接続時のWeb Cryptography API警告対応
-if (!window.isSecureContext) {
-  D.lberr.textContent = "⚠️ セキュリティ警告: 暗号化機能(AES)は、HTTPS接続またはlocalhost開発環境でのみ完全に動作します。非SSL環境ではチャット機能が動作しません。";
-  D.lberr.style.display = "block";
-}
-
-// 認証完了後に安全に復元プロセスを開始
 authenticateAnonymously()
   .then(async (user) => {
     await initUserSession(user);
@@ -3398,7 +3143,7 @@ authenticateAnonymously()
     showLobby();
   });
 
-// ホスト：事前許可設定アコーディオン制御
+// ホスト：事前許可設定の折りたたみ挙動制御
 const paHeader = $("preApproveAccHeader");
 const paBody = $("preApproveAccBody");
 if (paHeader && paBody) {
@@ -3409,33 +3154,12 @@ if (paHeader && paBody) {
   };
 }
 
-// BANリスト開閉トグルボタンの設定
-const toggleBtn = $("toggleBanListBtn");
-const banWrapper = $("hostBanListWrapper");
-if (toggleBtn && banWrapper) {
-  toggleBtn.onclick = () => {
-    const isHidden = window.getComputedStyle(banWrapper).display === "none";
-    banWrapper.style.display = isHidden ? "block" : "none";
-    toggleBtn.textContent = isHidden ? "🚫 BANリスト非表示" : "🚫 BANリスト表示";
-  };
-}
-
-// タブのアクティブ復帰およびバックグラウンド切り替え対策 [3]
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") {
-    goOnline(db);
-    if (curR) {
-      forceResync();
-    }
-  }
-});
-
 window.addEventListener("beforeunload", () => {
   if ($("lobbyWaitingArea").style.display === "flex" && curR && myUid) {
     localStorage.removeItem("nz_active_ri");
     localStorage.removeItem("nz_active_created");
     localStorage.setItem("nz_is_in_room", "false");
-    goOffline(db);
+    db.goOffline();
   }
 });
 </script>

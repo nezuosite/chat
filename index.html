@@ -307,7 +307,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { getDatabase, ref, push, onValue, set, remove, serverTimestamp, onChildAdded, onChildRemoved, query, limitToLast, onDisconnect }
+import { getDatabase, ref, push, onValue, set, remove, serverTimestamp, onChildAdded, onChildRemoved, query, limitToLast, runTransaction }
   from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
 const SYSTEM_SALT = "NEZU_PRO_SYS_SALT_2026_V1";
@@ -428,9 +428,14 @@ const escapeSelector = (val) => {
 function resetAutoExitTimer() {
   if (autoExitTimer) clearTimeout(autoExitTimer);
   if (!isJoined) return;
+  
+  const lastActive = parseInt(safeLS.get("nz_last_active_time") || Date.now().toString());
+  const elapsed = Date.now() - lastActive;
+  const remain = Math.max(0, 30 * 60 * 1000 - elapsed);
+  
   autoExitTimer = setTimeout(() => {
     doExit(true); // 自動退室の実行
-  }, 30 * 60 * 1000); // 30分
+  }, remain);
 }
 
 function stopAutoExitTimer() {
@@ -443,7 +448,7 @@ function stopAutoExitTimer() {
 /* =========================================================
    閲覧 / 参加 状態遷移
    ========================================================= */
-async function joinRoom() {
+async function joinRoom(isReconnect = false) {
   const n = D.ni.value.trim();
   const tk = D.tripi.value.trim();
   if (!n || !tk) { alert("名前とトリップキーを入力してください。"); return; }
@@ -456,7 +461,11 @@ async function joinRoom() {
   safeLS.set("nz_tripi", tk);
   safeLS.set("nz_is_joined", "true");
 
-  // 参加者プレゼンスに平文登録
+  if (!isReconnect) {
+    safeLS.set("nz_last_active_time", Date.now().toString());
+  }
+
+  // 参加者プレゼンスに平文登録 (onDisconnectは登録せず生存させる)
   const myPresRef = ref(db, `presence/official/${myUid}`);
   await set(myPresRef, {
     n: myName,
@@ -465,24 +474,25 @@ async function joinRoom() {
     t: serverTimestamp()
   });
 
-  // タブを閉じたときのクリーンアップ設定
-  await onDisconnect(myPresRef).remove();
-
   // 参加UI表示切り替え
   D.joinForm.style.display = "none";
   D.ib.classList.add("show");
-  D.exBtn.style.display = "block";
+  D.exBtn.style.display = "block"; // 退室ボタンを表示
 
   resetAutoExitTimer();
 
-  // 入室システムメッセージ送信
-  await push(ref(db, "chat/official"), {
-    sys: true,
-    m: `${myName} ${myTrip}`.trim() + " が入室しました",
-    t: serverTimestamp()
-  });
-
-  showToast("🚪 チャットに参加しました（30分発言なしで自動退室します）");
+  // 再接続ではない(初めて入る)場合のみ入室のお知らせを送信
+  if (!isReconnect) {
+    await push(ref(db, "chat/official"), {
+      sys: true,
+      m: `${myName} ${myTrip}`.trim() + " が入室しました",
+      t: serverTimestamp()
+    });
+    showToast("🚪 チャットに参加しました（30分発言なしで自動退室します）");
+  } else {
+    showToast("🔄 接続を維持しました");
+  }
+  
   scBottom(true);
 }
 
@@ -492,20 +502,26 @@ async function doExit(isAuto = false) {
   stopAutoExitTimer();
 
   safeLS.remove("nz_is_joined");
+  safeLS.remove("nz_last_active_time");
 
   const myPresRef = ref(db, `presence/official/${myUid}`);
-  await onDisconnect(myPresRef).cancel();
   await remove(myPresRef);
 
-  // UI表示切り替え（ゲスト覗き見モード）
+  // UI表示切り替え（ゲスト閲覧モード）
   D.joinForm.style.display = "flex";
   D.ib.classList.remove("show");
-  D.exBtn.style.display = "none";
+  D.exBtn.style.display = "none"; // 退室ボタンを非表示
 
   if (isAuto) {
+    const exitTime = parseInt(safeLS.get("nz_last_active_time") || "0") + 30 * 60 * 1000;
+    await push(ref(db, "chat/official"), {
+      sys: true,
+      m: `${myName} ${myTrip}`.trim() + " が退室しました (自動退室)",
+      t: exitTime || Date.now() // 退室予定時刻でログを流す
+    });
     showToast("⏱ 30分間発言がなかったため、自動退室しました");
   } else {
-    // 退室システムメッセージ送信
+    // 手動退室システムメッセージ送信
     await push(ref(db, "chat/official"), {
       sys: true,
       m: `${myName} ${myTrip}`.trim() + " が退室しました",
@@ -538,8 +554,12 @@ async function sendMsg(overrideText = null, imgData = null) {
   }
   scBottom(true);
 
-  // 発言があったためタイマーを30分にリセット
+  // 最終発言時刻とタイマーをリセット
+  safeLS.set("nz_last_active_time", Date.now().toString());
   resetAutoExitTimer();
+
+  // 他クライアントへの生存確認用タイムスタンプ更新
+  set(ref(db, `presence/official/${myUid}/t`), serverTimestamp());
 
   const pushData = { 
     u: myUid, 
@@ -820,7 +840,7 @@ $("playerCloseBtn").onclick = () => {
 /* =========================================================
    UIインタラクション・イベントバインド
    ========================================================= */
-D.joinBtn.onclick = joinRoom;
+D.joinBtn.onclick = () => joinRoom(false);
 D.exBtn.onclick = () => {
   if (confirm("チャットから退室しますか？")) {
     doExit();
@@ -1062,6 +1082,8 @@ D.tripi.value = safeLS.get("nz_tripi") || "";
 setGlobalColor(curColor);
 updateTripPreview();
 
+const cleaningUids = new Set(); // 削除トランザクションの重複防止用
+
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
     await signInAnonymously(auth).catch(e => showToast("接続エラー: " + e.message));
@@ -1069,7 +1091,7 @@ onAuthStateChanged(auth, async (user) => {
   }
   myUid = user.uid;
 
-  // 1. 常設タイムラインの監視 (ロビー画面を挟まず即時開始)
+  // 1. 常設タイムラインの監視 (平文)
   const chatQuery = query(ref(db, "chat/official"), limitToLast(80));
   onChildAdded(chatQuery, snap => {
     const m = snap.val(); 
@@ -1091,12 +1113,47 @@ onAuthStateChanged(auth, async (user) => {
     if (el) el.remove();
   });
 
-  // 2. 常設オンラインメンバーの監視 (平文)
+  // 2. 常設オンラインメンバーの監視 & トランザクションを利用した退室予定メッセージの確実な代理送信
   onValue(ref(db, "presence/official"), s => {
     const list = s.val() || {};
     const members = [];
+    const now = Date.now();
+
     for (const [id, u] of Object.entries(list)) {
-      if (u && u.n) members.push({ id, ...u });
+      if (u && u.n) {
+        // サーバー時間の未同期ガード
+        if (!u.t || typeof u.t !== "number") continue;
+
+        // 他者による30分経過の放置メンバーの自動クリーンアップ
+        if (now - u.t > 30 * 60 * 1000) {
+          if (cleaningUids.has(id)) continue;
+          cleaningUids.add(id);
+
+          const targetId = id;
+          const targetUser = u;
+          const pRef = ref(db, `presence/official/${targetId}`);
+
+          // 他クライアントとの重複プッシュを防ぐため、アトミックにDBから削除できた代表者1人だけがメッセージを代理pushする
+          runTransaction(pRef, (currentData) => {
+            if (currentData === null) return currentData; // すでに誰かに消されている
+            return null; // 削除を実行
+          }).then((result) => {
+            if (result.committed) {
+              const exitTime = targetUser.t + 30 * 60 * 1000;
+              push(ref(db, "chat/official"), {
+                sys: true,
+                m: `${targetUser.n} ${targetUser.p}`.trim() + " が退室しました (自動退室)",
+                t: exitTime
+              });
+            }
+            cleaningUids.delete(targetId);
+          }).catch(() => {
+            cleaningUids.delete(targetId);
+          });
+          continue;
+        }
+        members.push({ id, ...u });
+      }
     }
 
     D.pl.innerHTML = "";
@@ -1116,9 +1173,9 @@ onAuthStateChanged(auth, async (user) => {
     D.pcnt.textContent = `${members.length}人`;
   });
 
-  // 3. 前回ログインしていた場合の自動再入室
+  // 3. 前回ログインしていた場合の自動再入室 (再接続としてフラグ付きで実行)
   if (safeLS.get("nz_is_joined") === "true" && myName && safeLS.get("nz_tripi")) {
-    joinRoom();
+    joinRoom(true);
   }
 });
 

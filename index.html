@@ -307,7 +307,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { getDatabase, ref, push, onValue, set, remove, serverTimestamp, onChildAdded, onChildRemoved, query, limitToLast, runTransaction }
+import { getDatabase, ref, push, onValue, set, remove, serverTimestamp, onChildAdded, onChildRemoved, query, limitToLast, runTransaction, goOnline, goOffline, get }
   from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
 const SYSTEM_SALT = "NEZU_PRO_SYS_SALT_2026_V1";
@@ -346,6 +346,15 @@ const safeLS = {
   remove: k => { try { localStorage.removeItem(k); } catch(e) {} }
 };
 
+/* =========================================================
+   同期・最速初期データのマウント (チラつき防止)
+   ========================================================= */
+let curColor = safeLS.get("nz_color") || "#94a3b8";
+let tmpColor = curColor;
+let myName = safeLS.get("nz_ni") || "";
+D.ni.value = myName;
+D.tripi.value = safeLS.get("nz_tripi") || "";
+
 let keepKbOpen = false;
 let isAutoScroll = true;
 let _scPending = false; 
@@ -353,9 +362,6 @@ let myUid = null;
 let isJoined = false;
 let autoExitTimer = null; // 30分発言なし検出用
 const displayedMsgIds = new Set();
-let curColor = safeLS.get("nz_color") || "#94a3b8";
-let tmpColor = curColor;
-let myName = safeLS.get("nz_ni") || "";
 let myTrip = "";
 let lastSendTime = 0;
 let targetDelId = null;
@@ -1075,14 +1081,63 @@ $("playerDragHeader").onmousedown = (e) => {
 };
 
 /* =========================================================
-   バックグラウンド起動とFirebaseリアルタイム同期
+   シームレス接続・最速ローカル同期・Visibility復旧設計
    ========================================================= */
-D.ni.value = myName;
-D.tripi.value = safeLS.get("nz_tripi") || "";
+const cleaningUids = new Set(); // 削除トランザクションの重複防止用
+
+// 画面表示、バックグラウンド/スリープから復帰、フォーカス時に最新の発言を明示的に強制プルする超同期関数
+async function syncLatestMessagesForce() {
+  if (!myUid) return;
+  try {
+    const chatQuery = query(ref(db, "chat/official"), limitToLast(80));
+    const snap = await get(chatQuery);
+    if (snap.exists()) {
+      const msgs = [];
+      snap.forEach(child => {
+        const val = child.val();
+        val.id = child.key;
+        msgs.push(val);
+      });
+      
+      const fragment = document.createDocumentFragment();
+      let hasNew = false;
+      msgs.forEach(m => {
+        if (!displayedMsgIds.has(m.id)) {
+          displayedMsgIds.add(m.id);
+          const el = cMsg(m);
+          fragment.appendChild(el);
+          hasNew = true;
+        }
+      });
+      
+      if (hasNew) {
+        D.tli.appendChild(fragment);
+        trimTimeline();
+        scBottom(true);
+      }
+    }
+  } catch (e) {
+    //
+  }
+}
+
+//Visibility変更、スリープ復旧、別タブ切り替えの監視
+document.addEventListener("visibilitychange", async () => {
+  if (document.visibilityState === "visible") {
+    // スリープで切断されたWebSocket接続を瞬時に再スタート
+    goOffline(db);
+    goOnline(db);
+    await syncLatestMessagesForce();
+  }
+});
+
+// ウィンドウにフォーカスが戻った際も最速同期を実行 (回線復帰時などのカバー)
+window.addEventListener("focus", async () => {
+  await syncLatestMessagesForce();
+});
+
 setGlobalColor(curColor);
 updateTripPreview();
-
-const cleaningUids = new Set(); // 削除トランザクションの重複防止用
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
@@ -1091,21 +1146,49 @@ onAuthStateChanged(auth, async (user) => {
   }
   myUid = user.uid;
 
-  // 1. 常設タイムラインの監視 (平文)
-  const chatQuery = query(ref(db, "chat/official"), limitToLast(80));
-  onChildAdded(chatQuery, snap => {
-    const m = snap.val(); 
-    if(m) { 
-      m.id = snap.key; 
-      if (!displayedMsgIds.has(m.id)) {
-        displayedMsgIds.add(m.id);
-        const el = cMsg(m);
-        insertMessageEl(el);
-        trimTimeline();
-        scBottom();
-      }
-    } 
-  });
+  // 1. 直近80件を一気に get で一括取得し、DocumentFragmentを用いて瞬時にチラつきなく超高速でレンダリング
+  try {
+    const chatQuery = query(ref(db, "chat/official"), limitToLast(80));
+    const snap = await get(chatQuery);
+    if (snap.exists()) {
+      const msgs = [];
+      snap.forEach(child => {
+        const val = child.val();
+        val.id = child.key;
+        msgs.push(val);
+      });
+      
+      const fragment = document.createDocumentFragment();
+      msgs.forEach(m => {
+        if (!displayedMsgIds.has(m.id)) {
+          displayedMsgIds.add(m.id);
+          const el = cMsg(m);
+          fragment.appendChild(el);
+        }
+      });
+      D.tli.appendChild(fragment);
+      trimTimeline();
+      scBottom(true);
+    }
+
+    // 2. 一括描画完了後、リアルタイムで追加されるメッセージの差分監視をスムーズにマウント [1]
+    onChildAdded(chatQuery, snap => {
+      const m = snap.val(); 
+      if(m) { 
+        m.id = snap.key; 
+        if (!displayedMsgIds.has(m.id)) {
+          displayedMsgIds.add(m.id);
+          const el = cMsg(m);
+          insertMessageEl(el);
+          trimTimeline();
+          scBottom();
+        }
+      } 
+    });
+
+  } catch (e) {
+    showToast("タイムライン初期ロードエラー");
+  }
 
   onChildRemoved(ref(db, "chat/official"), snap => {
     displayedMsgIds.delete(snap.key);
@@ -1113,7 +1196,7 @@ onAuthStateChanged(auth, async (user) => {
     if (el) el.remove();
   });
 
-  // 2. 常設オンラインメンバーの監視 & トランザクションを利用した退室予定メッセージの確実な代理送信
+  // 3. 常設オンラインメンバーの監視 & トランザクションを利用した退室予定メッセージの確実な代理送信
   onValue(ref(db, "presence/official"), s => {
     const list = s.val() || {};
     const members = [];
@@ -1121,7 +1204,6 @@ onAuthStateChanged(auth, async (user) => {
 
     for (const [id, u] of Object.entries(list)) {
       if (u && u.n) {
-        // サーバー時間の未同期ガード
         if (!u.t || typeof u.t !== "number") continue;
 
         // 他者による30分経過の放置メンバーの自動クリーンアップ
@@ -1133,10 +1215,9 @@ onAuthStateChanged(auth, async (user) => {
           const targetUser = u;
           const pRef = ref(db, `presence/official/${targetId}`);
 
-          // 他クライアントとの重複プッシュを防ぐため、アトミックにDBから削除できた代表者1人だけがメッセージを代理pushする
           runTransaction(pRef, (currentData) => {
-            if (currentData === null) return currentData; // すでに誰かに消されている
-            return null; // 削除を実行
+            if (currentData === null) return currentData;
+            return null;
           }).then((result) => {
             if (result.committed) {
               const exitTime = targetUser.t + 30 * 60 * 1000;
@@ -1173,7 +1254,7 @@ onAuthStateChanged(auth, async (user) => {
     D.pcnt.textContent = `${members.length}人`;
   });
 
-  // 3. 前回ログインしていた場合の自動再入室 (再接続としてフラグ付きで実行)
+  // 4. 前回ログインしていた場合の自動再入室 (再接続としてフラグ付きで実行)
   if (safeLS.get("nz_is_joined") === "true" && myName && safeLS.get("nz_tripi")) {
     joinRoom(true);
   }

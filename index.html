@@ -55,17 +55,23 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   font-size:10px; font-weight:700; padding: 3px 8px; border-radius:4px; background: var(--bg);
   border: 1px solid rgba(255,255,255,0.08); display:inline-flex; align-items:center; color:var(--tx); height: 24px; cursor: pointer;
 }
+
 #tl{ 
   flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;
   padding:6px 6px 120px 6px; 
   background-color:#0d1117; -webkit-overflow-scrolling:touch;overscroll-behavior-y:contain; 
+  contain: layout;
 }
 #tl-inner{display:flex;flex-direction:column;justify-content:flex-end;gap:0;width:100%;max-width:800px;margin:0 auto;min-height:100%}
+
 .mw{
   position:relative; display:flex; flex-direction:column; width:100%; 
   opacity:1; 
   animation:slideInUp 0.1s cubic-bezier(0.22, 1, 0.36, 1) forwards; user-select:text; -webkit-user-select:text; 
   padding:10px 14px; border-bottom:1px solid rgba(51, 65, 85, 0.25); will-change: transform, opacity;
+  contain: content;
+  content-visibility: auto;
+  contain-intrinsic-size: 0 65px;
 }
 .mm{display:flex;align-items:center;gap:8px;font-size:12.5px;margin-bottom:4px;padding-right:70px;}
 .ts{color:var(--m2);font-size:11px;margin-left:auto;font-family:monospace;}
@@ -102,9 +108,8 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .media-btn-row {display:flex; gap:6px; flex-wrap:wrap; align-items:center;}
 .open-player-btn { background:var(--in); color:#fff; font-size:10px; font-weight:bold; border-radius:4px; padding:3px 10px; cursor:pointer; border:none; transition:background 0.15s; white-space:nowrap; }
 
-/* 参加フォーム（ゲスト閲覧用）および発言用入力バーの最下部吸着を徹底 */
 #joinForm {
-  display: none; /* 初期は非表示にし、最速スイッチJSで正しい状態に瞬時に切り替える */
+  display: none;
   flex-direction: column;
   padding: 10px 12px calc(10px + var(--safe));
   background: var(--sf);
@@ -175,8 +180,6 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 #imgViewSrc { max-width: 90%; max-height: calc(100dvh - 140px); object-fit: contain; margin-bottom: 20px; }
 .modal-bottom-close-container { width: 100%; display: flex; justify-content: center; position: absolute; bottom: 0; left: 0; padding: 16px 0 calc(16px + var(--safe)); background: linear-gradient(to top, rgba(0,0,0,0.8) 40%, rgba(0,0,0,0)); backdrop-filter: blur(2px); z-index: 10001; }
 .modal-bottom-close { width: auto; min-width: 160px; padding: 12px 24px; background: var(--ro); color: #fff; border-radius: 24px; font-weight: bold; font-size: 13.5px; text-align: center; border: none; box-shadow: 0 4px 12px rgba(244, 63, 94, 0.4); cursor: pointer; }
-#toastContainer { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 10005; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
-.toast { background: rgba(16, 185, 129, 0.95); color: #fff; padding: 8px 14px; border-radius: 6px; font-size: 11.5px; font-weight: bold; box-shadow: 0 2px 10px rgba(0,0,0,0.3); animation: slideInUp 0.15s ease forwards; transition: opacity 0.3s; }
 #floatingPlayer { display: none; position: absolute; z-index: 9999; background: #0d1117; border: 1px solid var(--bd); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); width: 320px; flex-direction: column; overflow: hidden; touch-action: none; }
 #playerDragHeader { cursor: move; background: var(--sf); padding: 8px 10px; font-size: 11.5px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--bd); user-select: none; }
 #playerContent { width: 100%; aspect-ratio: 16/9; background: #000; display: flex; justify-content: center; align-items: center; position: relative; }
@@ -275,7 +278,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   </div>
 </div>
 
-<div id="toastContainer"></div>
+<div id="toastContainer" style="display:none;"></div> <!-- トール構造の完全撤去 -->
 
 <!-- 発言削除確認モーダル -->
 <div id="delConfirmMod" class="mod-overlay">
@@ -346,7 +349,7 @@ const D = {
   jumpUpBtn:$("jumpUpBtn"), jumpDownBtn:$("jumpDownBtn"), imgBtn:$("imgBtn"), fileInput:$("fileInput"),
   imgViewMod:$("imgViewMod"), imgViewSrc:$("imgViewSrc"), imgViewCloseBtn:$("imgViewCloseBtn"),
   delConfirmMod:$("delConfirmMod"), delConfirmPreview:$("delConfirmPreview"), delCancelBtn:$("delCancelBtn"), delExecuteBtn:$("delExecuteBtn"),
-  toastContainer:$("toastContainer"), pl:$("pl")
+  pl:$("pl")
 };
 
 const safeLS = {
@@ -363,12 +366,10 @@ const _initNi = safeLS.get("nz_ni") || "";
 const _initTrip = safeLS.get("nz_tripi") || "";
 
 if (_initJoined && _initNi && _initTrip) {
-  // すでに参加状態の場合は、メッセージ入力欄を初期状態で表示し、入室画面をスキップ
   D.joinForm.style.display = "none";
   D.ib.classList.add("show");
   D.exBtn.style.display = "block";
 } else {
-  // 未参加の場合は、参加フォームを表示してメッセージ入力欄を非表示
   D.joinForm.style.display = "flex";
   D.ib.classList.remove("show");
   D.exBtn.style.display = "none";
@@ -416,7 +417,8 @@ const setGlobalColor = c => {
 const quickHash = (str) => {
   let h1 = 0x811c9dc5;
   let h2 = 0xcbf29ce4;
-  for (let i = 0; i < str.length; i++) {
+  const len = str.length;
+  for (let i = 0; i < len; i++) {
     const c = str.charCodeAt(i);
     h1 = Math.imul(h1 ^ c, 0x01000193);
     h2 = Math.imul(h2 ^ c, 0x01000193);
@@ -502,7 +504,7 @@ async function joinRoom(isReconnect = false) {
     t: serverTimestamp()
   });
 
-  // 参加UI表示切り替え (下に固定された要素を表示)
+  // 参加UI表示切り替え (最下部に完璧に吸着表示)
   D.joinForm.style.display = "none";
   D.ib.classList.add("show");
   D.exBtn.style.display = "block"; // 退室ボタンを表示
@@ -516,7 +518,6 @@ async function joinRoom(isReconnect = false) {
       m: `${myName} ${myTrip}`.trim() + " が入室しました",
       t: serverTimestamp()
     });
-    showToast("🚪 チャットに参加しました（30分発言なしで自動退室します）");
   }
   
   scBottom(true);
@@ -545,7 +546,6 @@ async function doExit(isAuto = false) {
       m: `${myName} ${myTrip}`.trim() + " が退室しました (自動退室)",
       t: exitTime || Date.now() // 退室予定時刻でログを流す
     });
-    showToast("⏱ 30分間発言がなかったため、自動退室しました");
   } else {
     // 手動退室システムメッセージ送信
     await push(ref(db, "chat/official"), {
@@ -553,13 +553,14 @@ async function doExit(isAuto = false) {
       m: `${myName} ${myTrip}`.trim() + " が退室しました",
       t: serverTimestamp()
     });
-    showToast("🚪 退室しました（閲覧モード）");
   }
 }
 
 /* =========================================================
-   メッセージ送信 (平文・爆速)
+   メッセージ送信 (平文・最速ローカルエコー & アトミック同期)
    ========================================================= */
+const pendingMsgs = new Map(); // 送信中メッセージの仮格納用
+
 async function sendMsg(overrideText = null, imgData = null) {
   if (!isJoined) return;
 
@@ -578,6 +579,21 @@ async function sendMsg(overrideText = null, imgData = null) {
   } else {
     D.mi.focus();
   }
+
+  // 1. 即時ローカルエコー（サーバー通信を待たずに1ミリ秒でタイムラインに表示）
+  const tempId = "pnd_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
+  const tempObj = {
+    id: tempId,
+    u: myUid,
+    n: myName,
+    p: myTrip,
+    c: curColor,
+    m: imgData ? "IMG::" + imgData : txt,
+    t: Date.now()
+  };
+  const tempEl = cMsg(tempObj);
+  D.tli.appendChild(tempEl);
+  pendingMsgs.set(tempId, tempEl);
   scBottom(true);
 
   // 最終発言時刻とタイマーをリセット
@@ -589,6 +605,7 @@ async function sendMsg(overrideText = null, imgData = null) {
 
   const pushData = { 
     u: myUid, 
+    pnd: tempId, // アトミック同期用の仮IDを載せる
     n: myName,
     p: myTrip,
     c: curColor,
@@ -596,13 +613,14 @@ async function sendMsg(overrideText = null, imgData = null) {
     t: serverTimestamp()
   };
 
-  await push(ref(db, "chat/official"), pushData).catch(e => {
-    showToast(`❌ 送信失敗: ${e.message}`);
+  await push(ref(db, "chat/official"), pushData).catch(() => {
+    tempEl.remove();
+    pendingMsgs.delete(tempId);
   });
 }
 
 /* =========================================================
-   メッセージDOM生成 (平文)
+   メッセージDOM生成 (平文・テキスト解析超高速ガード)
    ========================================================= */
 function cMsg(m) {
   const el = document.createElement("div");
@@ -661,15 +679,23 @@ function cMsg(m) {
     };
     mb.appendChild(img);
   } else {
+    // 高速テキスト展開
     const parsedNodes = parseTxtSplit(m.m);
-    parsedNodes.forEach(node => mb.appendChild(node));
+    const pLen = parsedNodes.length;
+    for (let i = 0; i < pLen; i++) {
+      mb.appendChild(parsedNodes[i]);
+    }
 
-    const urls = m.m.match(UR);
-    if (urls) {
-      urls.forEach(url => {
-        const mediaContainer = createMediaContainer(url);
-        if (mediaContainer) mb.appendChild(mediaContainer);
-      });
+    // 必要最小限のタイミングでのみ重いURL/ビデオ処理を行う
+    if (m.m.includes("http")) {
+      const urls = m.m.match(UR);
+      if (urls) {
+        const uLen = urls.length;
+        for (let i = 0; i < uLen; i++) {
+          const mediaContainer = createMediaContainer(urls[i]);
+          if (mediaContainer) mb.appendChild(mediaContainer);
+        }
+      }
     }
   }
 
@@ -703,13 +729,16 @@ function insertMessageEl(el) {
 }
 
 function trimTimeline() {
-  const maxMessages = 150;
+  const maxMessages = 100; // メッセージ数を100件に制限しブラウザ描画をブースト
   const children = Array.from(D.tli.children);
   if (children.length > maxMessages) {
-    children.slice(0, children.length - maxMessages).forEach(el => {
+    const toRemove = children.slice(0, children.length - maxMessages);
+    const trLen = toRemove.length;
+    for (let i = 0; i < trLen; i++) {
+      const el = toRemove[i];
       if (el.dataset.mid) displayedMsgIds.delete(el.dataset.mid);
       el.remove();
-    });
+    }
   }
 }
 
@@ -718,13 +747,9 @@ function scBottom(force = false) {
   if (_scPending) return;
   _scPending = true;
   requestAnimationFrame(() => {
-    if (D.tl) {
-      D.tl.scrollTop = D.tl.scrollHeight;
-      const lastEl = D.tli.lastElementChild;
-      if (lastEl && typeof lastEl.scrollIntoView === 'function') {
-        lastEl.scrollIntoView(false); 
-      }
-      updateJumpBtns();
+    const tl = D.tl;
+    if (tl) {
+      tl.scrollTop = tl.scrollHeight; // 最も軽量なscrollTop直接指定でレイアウト再計算コストを劇的にカット
     }
     _scPending = false;
   });
@@ -737,14 +762,15 @@ function updateJumpBtns() {
   D.jumpDownBtn.disabled = !isScrollable;
 }
 
-function showToast(msg) {
-  D.toastContainer.textContent = "";
-  const t = document.createElement("div"); t.className = "toast"; t.textContent = msg;
-  D.toastContainer.appendChild(t);
-  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 2000);
-}
-
+/* =========================================================
+   爆速テキスト解析ガード（チャットのやり取りの表示速度を極限まで加速）
+   ========================================================= */
 function parseTxtSplit(txt) {
+  // テキスト中に "http" が含まれていない場合、正規表現スキャンを完全にスキップして1ミリ秒で描画
+  if (!txt.includes("http")) {
+    return [document.createTextNode(txt)];
+  }
+  
   const norm = txt.replace(/[\u3000]/g, " ");
   const elements = [];
   let last = 0, m;
@@ -921,7 +947,6 @@ D.delCancelBtn.onclick = () => { D.delConfirmMod.classList.remove("show"); targe
 D.delExecuteBtn.onclick = async () => {
   if (!targetDelId) return;
   await remove(ref(db, `chat/official/${targetDelId}`));
-  showToast("✅ 発言を完全に削除しました");
   D.delConfirmMod.classList.remove("show");
   targetDelId = null;
 };
@@ -980,7 +1005,6 @@ D.clrOk.onclick = async () => {
   safeLS.set("nz_color", curColor);
   D.clrmod.classList.remove("show");
   updateTripPreview();
-  showToast("🎨 カラー設定を更新しました");
   
   if (isJoined) {
     await set(ref(db, `presence/official/${myUid}`), {
@@ -1109,20 +1133,44 @@ setGlobalColor(curColor);
 updateTripPreview();
 
 const cleaningUids = new Set(); // 削除トランザクションの重複防止用
+let lastPresenceHash = "";      // オンラインリスト差分検知キャッシュ（CPU/描画負荷削減用）
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
-    await signInAnonymously(auth).catch(e => showToast("接続エラー: " + e.message));
+    await signInAnonymously(auth).catch(() => {});
     return;
   }
   myUid = user.uid;
 
-  // 1. 常設タイムラインの監視 (平文)
-  const chatQuery = query(ref(db, "chat/official"), limitToLast(80));
+  // 1. 常設タイムラインの監視 (平文・パケット量極小化30件)
+  const chatQuery = query(ref(db, "chat/official"), limitToLast(30)); 
   onChildAdded(chatQuery, snap => {
     const m = snap.val(); 
     if(m) { 
       m.id = snap.key; 
+      
+      // アトミック同期：自分の仮DOMメッセージがサーバーから確定されて返ってきた時
+      if (m.pnd && pendingMsgs.has(m.pnd)) {
+        const localEl = pendingMsgs.get(m.pnd);
+        localEl.dataset.mid = m.id; // 正式IDに置き換え
+        
+        const tsSpan = localEl.querySelector(".ts");
+        if (tsSpan) tsSpan.textContent = fDT(m.t); // 確定したサーバー時間に差し替え
+        
+        const delBtn = localEl.querySelector(".del-btn-inline");
+        if (delBtn) {
+          delBtn.onclick = () => {
+            targetDelId = m.id;
+            D.delConfirmPreview.textContent = m.m.startsWith("IMG::") ? "[画像データ]" : m.m;
+            D.delConfirmMod.classList.add("show");
+          };
+        }
+        
+        displayedMsgIds.add(m.id);
+        pendingMsgs.delete(m.pnd);
+        return;
+      }
+
       if (!displayedMsgIds.has(m.id)) {
         displayedMsgIds.add(m.id);
         const el = cMsg(m);
@@ -1145,9 +1193,19 @@ onAuthStateChanged(auth, async (user) => {
     const members = [];
     const now = Date.now();
 
+    // 差分検知用の結合文字列を構築し、前回と全く同じならDOM処理（全クリア・再作成）を100%スキップして高速化
+    const currentPresenceHash = Object.keys(list).sort().map(id => {
+      const u = list[id];
+      return `${id}:${u.n || ""}:${u.c || ""}:${u.t || 0}`;
+    }).join("|");
+
+    if (currentPresenceHash === lastPresenceHash) {
+      return; // 描画負荷ゼロ（差分なしのため完全にスルー）
+    }
+    lastPresenceHash = currentPresenceHash;
+
     for (const [id, u] of Object.entries(list)) {
       if (u && u.n) {
-        // サーバー時間の未同期ガード
         if (!u.t || typeof u.t !== "number") continue;
 
         // 他者による30分経過の放置メンバーの自動クリーンアップ
@@ -1159,10 +1217,9 @@ onAuthStateChanged(auth, async (user) => {
           const targetUser = u;
           const pRef = ref(db, `presence/official/${targetId}`);
 
-          // 他クライアントとの重複プッシュを防ぐため、アトミックにDBから削除できた代表者1人だけがメッセージを代理pushする
           runTransaction(pRef, (currentData) => {
-            if (currentData === null) return currentData; // すでに誰かに消されている
-            return null; // 削除を実行
+            if (currentData === null) return currentData;
+            return null;
           }).then((result) => {
             if (result.committed) {
               const exitTime = targetUser.t + 30 * 60 * 1000;
@@ -1182,8 +1239,11 @@ onAuthStateChanged(auth, async (user) => {
       }
     }
 
-    D.pl.innerHTML = "";
-    members.forEach(m => {
+    // フラグメントによる一括DOM描画
+    const fragment = document.createDocumentFragment();
+    const mLen = members.length;
+    for (let i = 0; i < mLen; i++) {
+      const m = members[i];
       const sp = document.createElement("span"); 
       sp.className = "chip";
       sp.style.color = m.c; sp.style.borderColor = m.c + "44";
@@ -1194,9 +1254,12 @@ onAuthStateChanged(auth, async (user) => {
           D.mi.focus();
         }
       };
-      D.pl.appendChild(sp);
-    });
-    D.pcnt.textContent = `${members.length}人`;
+      fragment.appendChild(sp);
+    }
+    
+    D.pl.innerHTML = "";
+    D.pl.appendChild(fragment);
+    D.pcnt.textContent = `${mLen}人`;
   });
 
   // 3. 前回ログインしていた場合の自動再入室 (再接続としてフラグ付きで実行)

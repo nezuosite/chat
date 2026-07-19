@@ -73,9 +73,9 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   max-width:900px; width:100%; margin:0 auto; border-left:1px solid var(--bd); border-right:1px solid var(--bd);
 }
 #app.visible{display:flex}
-#hdr{background:var(--sf);border-bottom:1px solid var(--bd);padding:8px 12px;flex-shrink:0}
+#hdr{background:var(--sf);border-bottom:1px solid var(--bd);padding:6px 12px;flex-shrink:0}
 .hr{display:flex;align-items:center;justify-content:space-between;gap:8px;height:auto;padding:4px 0}
-.rn{font-weight:800;font-size:15px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px;}
+.rn{font-weight:800;font-size:14px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px;}
 .pcnt{font-size:11px;font-weight:900;color:var(--tx);background:rgba(255,255,255,0.08);padding:3px 6px;border-radius:4px;white-space:nowrap;margin-left:6px;line-height:1;}
 .hbs{display:flex;gap:8px;align-items:center;flex-shrink:0;}
 .hbs button{
@@ -163,7 +163,6 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   }
   to {
     transform: translateY(0);
-    opacity: 1;
   }
 }
 .del-modal-text { background: var(--bg); border: 1px solid var(--bd); border-radius: 4px; padding: 10px; font-size: 12.5px; color: var(--tx); max-height: 150px; overflow-y: auto; word-break: break-all; margin-top: 8px; line-height: 1.5; }
@@ -181,7 +180,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 </head>
 <body>
 
-<!-- ロビー画面。初期状態で表示させ、JS未読み込み時の真っ暗な画面を完全に防ぎます -->
+<!-- ロビー画面 -->
 <div id="lobby">
   <div class="lbo">
     <h2 class="lbt">⚡ NEZU ONETIME CHAT</h2>
@@ -291,10 +290,22 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         </div>
       </div>
       
-      <div style="display:flex; align-items:center; gap:6px; background:rgba(0,0,0,0.15); padding:4px 8px; border-radius:4px; border:1px solid var(--bd);">
-        <span style="font-weight:bold; color:var(--mu);">🔑 合言葉の変更:</span>
-        <input type="text" id="hostPasscodeInp" class="inp" placeholder="新しい合言葉（空欄で合言葉を解除）" style="font-size:11px; padding:3px 6px; height:24px; flex:1; max-width:200px;">
-        <button id="updatePasscodeBtn" style="background:var(--in); color:#fff; font-size:10px; padding:0 8px; border-radius:3px; font-weight:bold; cursor:pointer; height:24px;">適用</button>
+      <!-- 合言葉管理セクション（省スペース折りたたみ式） -->
+      <div style="display:flex; flex-direction:column; gap:4px; background:rgba(0,0,0,0.15); padding:6px 8px; border-radius:4px; border:1px solid var(--bd);">
+        <div id="toggleHostPasscodeBtn" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none;">
+          <span style="font-weight:bold; color:var(--mu);" id="hostPasscodeDsp">現在の合言葉: 未設定</span>
+          <span style="font-size:9.5px; color:#818cf8; font-weight:bold; letter-spacing: 0.05em;" id="toggleHostPasscodeIcon">🔑 設定を開く ▾</span>
+        </div>
+        
+        <!-- 折りたたまれるセクション（現在の合言葉の下で改行） -->
+        <div id="hostPasscodeCollapseArea" style="display:none; flex-direction:column; gap:4px; margin-top:4px; border-top:1px dashed rgba(255,255,255,0.05); padding-top:4px;">
+          <div style="font-weight:bold; color:var(--mu); margin-bottom:2px; font-size:10px;">🔑 新しい合言葉の入力と変更:</div>
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; width:100%;">
+            <input type="text" id="hostPasscodeInp" class="inp" placeholder="合言葉を入力" style="font-size:11px; padding:3px 6px; height:24px; flex:1; min-width:120px; max-width:160px;">
+            <button id="updatePasscodeBtn" style="background:var(--in); color:#fff; font-size:10px; padding:0 8px; border-radius:3px; font-weight:bold; cursor:pointer; height:24px;">適用</button>
+            <button id="removePasscodeBtn" style="background:var(--ro); color:#fff; font-size:10px; padding:0 8px; border-radius:3px; font-weight:bold; cursor:pointer; height:24px;">解除</button>
+          </div>
+        </div>
       </div>
 
       <!-- BANリスト -->
@@ -334,8 +345,8 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         <input type="file" id="fileInput" accept="image/jpeg, image/png, image/gif, image/webp" style="display:none;">
         <div class="mi-container">
           <button class="battach" id="imgBtn" aria-label="画像添付" title="画像添付">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            <svg fill="currentColor" viewBox="0 0 24 24">
+              <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
             </svg>
           </button>
           <textarea id="mi" rows="1" placeholder="メッセージを入力..." maxlength="4000"></textarea>
@@ -444,12 +455,12 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 
       <div class="gs" style="border-left-color: #60a5fa;">
         <h4 style="color: #60a5fa; font-size: 13px; margin-bottom: 4px;">🔒 ゼロ知識・クライアントサイド暗号化 (E2EE)</h4>
-        本システムは、入力された部屋パスワードを外部 of サーバーへ一切送信しません。Web Cryptography APIを用い、端末内部の保護領域でのみ共通鍵（<b>AES-GCM-256</b>）を生成・処理する「完全なゼロ知識」アプローチを採用しています。<br>
+        本システムは、入力された部屋パスワードを外部 of サーバーへ一切送信しません。Web Cryptography APIを用い、端末内部の保護領域でのみ共通鍵（<b>AES-GCM-256</b>）を生成・処理する「完全なゼロ知識証明」アプローチを採用しています。<br>
         テキスト、画像などのあらゆるデータは、インターネットに送り出される前に「ブラウザ内部」で強固に暗号化されます。サーバーのデータベースには完全な暗号文のみが配置されるため、第三者が内容を復号・解読することは不可能です。
       </div>
 
       <div class="gs" style="border-left-color: var(--ro);">
-        <h4 style="color: var(--ro); font-size: 13px; margin-bottom: 4px;">🧼 サーバーデータ即時物理消去の仕様</h4>
+        <h4 style="color: var(--ro); font-size: 13px; margin-bottom: 4px;">🧼 サーバーデータ即時物理消去 of サーバー側の完全データ即時消滅仕様</h4>
         設定された部屋の残り時間がゼロになるか、あるいは<b>最後の一人が退室ボタンを押すかブラウザ（タブ）を閉じて離脱した瞬間</b>、データベース上のルーム情報、タイムライン、 Presence状態等を含む<b>すべての関連する暗号化物理データはサーバーから即時に痕跡なく完全消去</b>されます。<br>
         バックアップや接続ログ等は設計上一切保持しないため、一度削除されたデータはいかなる手段によっても復旧できません。
       </div>
@@ -495,7 +506,7 @@ const D = {
   ni:$("ni"), tripi:$("tripi"), ri:$("ri"), pi:$("pi"), timeri:$("timeri"), ai:$("ai"),
   tripPreview:$("tripPreview"), tripPrevText:$("tripPrevText"), lbCopyTripBtn:$("lbCopyTripBtn"),
   enBtn:$("enBtn"), gnBtn:$("gnBtn"), gdBtn:$("gdBtn"), gmod:$("gmod"), gcBtn:$("gcBtn"),
-  clrmod:$("clrmod"), clrPick2:$("clrPick2"), clrPrev:$("clrPrev"), clrOk:$("clrOk"), clrCancel:$("clrCancel"), clrBtn:$("clrBtn"), clrDot:$("clrDot"),
+  clrmod:$("clrmod"), clrPick2:$("clrPick2"), clrPrev:$("clrPrev"), clrOk:$("clrOk"), clrCancel:$("clrCancel"), clrBtn:$("clrBtn"), curDot:$("clrDot"),
   hdr:$("hdr"), rdsp:$("rdsp"), pcnt:$("pcnt"), timerDsp:$("timerDsp"), copyUrlBtn:$("copyUrlBtn"), pl:$("pl"), exBtn:$("exBtn"),
   tl:$("tl"), tli:$("tl-inner"), ib:$("ib"), mi:$("mi"), sdBtn:$("sdBtn"), clrMsgBtn:$("clrMsgBtn"),
   kbToggleBtn:$("kbToggleBtn"), kbStatusText:$("kbStatusText"),
@@ -513,7 +524,6 @@ const D = {
 
 /* =========================================================
    安全なlocalStorage / sessionStorageエラーハンドララッパー
-   プライベートブラウズ、シークレットモードでのSecurityError例外停止を防ぎます
    ========================================================= */
 const safeLS = {
   get: (key) => {
@@ -597,8 +607,379 @@ const setGlobalColor = c => {
 };
 
 /* =========================================================
+   必須ヘルパー & 非同期ユーザー初期化Promise (認証・バイナリ・ハッシュ高速処理)
+   ========================================================= */
+const userPromise = new Promise((resolve, reject) => {
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      resolve(user);
+    } else {
+      try {
+        const res = await signInAnonymously(auth);
+        resolve(res.user);
+      } catch (e) {
+        reject(e);
+      }
+    }
+  });
+});
+
+const bytesToBase64 = (bytes) => {
+  const binString = Array.from(bytes, (byte) => String.fromCharCode(byte)).join("");
+  return btoa(binString);
+};
+
+const base64ToBytes = (base64) => {
+  const binString = atob(base64);
+  return Uint8Array.from(binString, (m) => m.charCodeAt(0));
+};
+
+const escapeSelector = (val) => {
+  if (typeof CSS !== "undefined" && CSS.escape) {
+    return CSS.escape(val);
+  }
+  return val.replace(/([!"#$%&'()*+,.\/:;<=>?@\[\\\]^`{|}~])/g, "\\$1");
+};
+
+function trackAndCacheMessage(m) {
+  if (!currentRoomMsgs.some(x => x.id === m.id)) {
+    currentRoomMsgs.push(m);
+    currentRoomMsgs.sort((a, b) => (a.t || 0) - (b.t || 0));
+    if (curR) {
+      safeLS.set(`nz_chat_raw_${curR}`, JSON.stringify(currentRoomMsgs));
+    }
+  }
+}
+
+function untrackAndCacheMessage(id) {
+  currentRoomMsgs = currentRoomMsgs.filter(x => x.id !== id);
+  if (curR) {
+    safeLS.set(`nz_chat_raw_${curR}`, JSON.stringify(currentRoomMsgs));
+  }
+}
+
+function loadChatCache(hashId) {
+  try {
+    const data = safeLS.get(`nz_chat_raw_${hashId}`);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+}
+
+function insertMessageEl(el) {
+  const t = parseInt(el.dataset.ts) || 0;
+  const children = Array.from(D.tli.children);
+  const insertBeforeEl = children.find(child => {
+    const ct = parseInt(child.dataset.ts) || 0;
+    return ct > t;
+  });
+  if (insertBeforeEl) {
+    D.tli.insertBefore(el, insertBeforeEl);
+  } else {
+    D.tli.appendChild(el);
+  }
+}
+
+function trimTimeline() {
+  const maxMessages = 150;
+  const children = Array.from(D.tli.children);
+  if (children.length > maxMessages) {
+    const toRemove = children.slice(0, children.length - maxMessages);
+    toRemove.forEach(el => {
+      const mid = el.dataset.mid;
+      const cid = el.dataset.cid;
+      if (mid) displayedMsgIds.delete(mid);
+      if (cid) displayedMsgIds.delete(cid);
+      el.remove();
+    });
+  }
+}
+
+function updateJumpBtns() {
+  if (!D.tl) return;
+  const isScrollable = D.tl.scrollHeight > D.tl.clientHeight;
+  D.jumpUpBtn.disabled = !isScrollable;
+  D.jumpDownBtn.disabled = !isScrollable;
+}
+
+/* =========================================================
+   フローティングプレイヤーのドラッグ移動制御
+   ========================================================= */
+let isDragging = false;
+let dragStartX = 0, dragStartY = 0;
+let playerStartX = 0, playerStartY = 0;
+
+dragHeader.onmousedown = (e) => {
+  isDragging = true;
+  dragStartX = e.clientX;
+  dragStartY = e.clientY;
+  const rect = playerNode.getBoundingClientRect();
+  playerStartX = rect.left;
+  playerStartY = rect.top;
+  document.onmousemove = onDrag;
+  document.onmouseup = stopDrag;
+};
+
+dragHeader.ontouchstart = (e) => {
+  if (e.touches.length === 1) {
+    isDragging = true;
+    dragStartX = e.touches[0].clientX;
+    dragStartY = e.touches[0].clientY;
+    const rect = playerNode.getBoundingClientRect();
+    playerStartX = rect.left;
+    playerStartY = rect.top;
+    document.ontouchmove = onTouchDrag;
+    document.ontouchend = stopDrag;
+  }
+};
+
+const onDrag = (e) => {
+  if (!isDragging) return;
+  const dx = e.clientX - dragStartX;
+  const dy = e.clientY - dragStartY;
+  playerNode.style.left = `${playerStartX + dx}px`;
+  playerNode.style.top = `${playerStartY + dy}px`;
+  playerNode.style.right = "auto";
+  playerNode.style.bottom = "auto";
+};
+
+const onTouchDrag = (e) => {
+  if (!isDragging) return;
+  const dx = e.touches[0].clientX - dragStartX;
+  const dy = e.touches[0].clientY - dragStartY;
+  playerNode.style.left = `${playerStartX + dx}px`;
+  playerNode.style.top = `${playerStartY + dy}px`;
+  playerNode.style.right = "auto";
+  playerNode.style.bottom = "auto";
+};
+
+const stopDrag = () => {
+  isDragging = false;
+  document.onmousemove = null;
+  document.onmouseup = null;
+  document.ontouchmove = null;
+  document.ontouchend = null;
+};
+
+playerCloseBtn.onclick = () => {
+  closeFloatingPlayer();
+};
+
+/* =========================================================
+   BAN / キック 実行ロジック
+   ========================================================= */
+window.banUser = async (uid, name, trip) => {
+  if (!curR || !isHost) return;
+  try {
+    const banRef = ref(db, `rooms/${curR}/banList/${uid}`);
+    await set(banRef, {
+      name: name || "不明",
+      trip: trip || "",
+      timestamp: serverTimestamp()
+    });
+    
+    const presRef = ref(db, `presence/${curR}/${uid}`);
+    await remove(presRef);
+    
+    showToast(`🚫 ${name} をBANしました`);
+    await sendSysMsg(`🚫 ${name} がホストによって追放されました。`);
+  } catch (e) {
+    showToast(`❌ BANに失敗しました: ${e.message}`);
+  }
+};
+
+/* =========================================================
+   インラインメディア解析コンテナ生成処理
+   ========================================================= */
+function createMediaContainer(url) {
+  const ytMatch = url.match(/(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)?(?:youtube\.com\/(?:watch\?.*v=|embed\/|shorts\/|live\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i);
+  const nicoMatch = url.match(/(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)?(?:nicovideo\.jp\/watch\/|nico\.ms\/)(sm[0-9]+|so[0-9]+|nm[0-9]+|[0-9]+)/i);
+  const audioMatch = url.match(/\.(mp3|wav|ogg|m4a|flac)(?:\?|$)/i);
+
+  if (!ytMatch && !nicoMatch && !audioMatch) return null;
+
+  const container = document.createElement("div");
+  container.className = "media-link-container";
+
+  const row = document.createElement("div");
+  row.className = "media-inline-row";
+
+  const badge = document.createElement("span");
+  badge.className = "media-badge";
+
+  let type = "";
+  if (ytMatch) {
+    type = "youtube";
+    badge.textContent = "YouTube";
+    badge.style.background = "#ef4444";
+  } else if (nicoMatch) {
+    type = "niconico";
+    badge.textContent = "ニコニコ";
+    badge.style.background = "#2563eb";
+  } else if (audioMatch) {
+    type = "audio";
+    badge.textContent = "音声";
+    badge.style.background = "#10b981";
+  }
+
+  row.appendChild(badge);
+
+  const titleSpan = document.createElement("span");
+  titleSpan.style.fontSize = "11px";
+  titleSpan.style.color = "var(--mu)";
+  titleSpan.style.overflow = "hidden";
+  titleSpan.style.textOverflow = "ellipsis";
+  titleSpan.style.whiteSpace = "nowrap";
+  titleSpan.style.flex = "1";
+  titleSpan.textContent = url.split('/').pop() || url;
+  row.appendChild(titleSpan);
+
+  container.appendChild(row);
+
+  const btnRow = document.createElement("div");
+  btnRow.className = "media-btn-row";
+  btnRow.style.marginTop = "6px";
+
+  if (type === "youtube" || type === "niconico") {
+    const playBtn = document.createElement("button");
+    playBtn.className = "open-player-btn";
+    playBtn.textContent = "▶ プレイヤーで再生";
+    playBtn.onclick = (e) => {
+      e.preventDefault();
+      window.openFloatingPlayer(url, type);
+    };
+    btnRow.appendChild(playBtn);
+  } else if (type === "audio") {
+    const playBtn = document.createElement("button");
+    playBtn.className = "open-player-btn";
+    playBtn.textContent = "▶ 再生";
+    playBtn.onclick = (e) => {
+      e.preventDefault();
+      window.openFloatingPlayer(url, type);
+    };
+    btnRow.appendChild(playBtn);
+
+    const dlBtn = document.createElement("button");
+    dlBtn.className = "dl-media-btn";
+    dlBtn.textContent = "📥 保存 (読込中...)";
+    dlBtn.dataset.url = url;
+    window.fetchAudioSize(url, dlBtn);
+    dlBtn.onclick = (e) => {
+      e.preventDefault();
+      window.triggerAudioDownload(url, dlBtn);
+    };
+    btnRow.appendChild(dlBtn);
+  }
+
+  container.appendChild(btnRow);
+  return container;
+}
+
+/* =========================================================
+   チャットメッセージDOM構築処理（E2EE復号エンジン）
+   ========================================================= */
+async function cMsg(m) {
+  const el = document.createElement("div");
+  el.className = "mw";
+  el.dataset.mid = m.id;
+  if (m.c) el.dataset.cid = m.c;
+  el.dataset.ts = m.t || 0;
+
+  const decryptedMsg = await decrypt(m.m, masterKey);
+  if (decryptedMsg === null) {
+    el.innerHTML = `<div class="sys-msg">🔒 解読不能な暗号メッセージ</div>`;
+    return el;
+  }
+
+  if (m.sys) {
+    el.innerHTML = `<div class="sys-msg">${decryptedMsg}</div>`;
+    return el;
+  }
+
+  const meta = m.mt ? await decryptMeta(m.mt) : null;
+  const name = meta ? meta.n : "名無し";
+  const trip = meta ? meta.p : "";
+  const color = meta ? meta.c : "#94a3b8";
+
+  const mm = document.createElement("div");
+  mm.className = "mm";
+  mm.style.color = color;
+
+  const nameSpan = document.createElement("span");
+  nameSpan.style.fontWeight = "bold";
+  nameSpan.textContent = name;
+  mm.appendChild(nameSpan);
+
+  if (trip) {
+    const tripSpan = document.createElement("span");
+    tripSpan.style.fontSize = "11px";
+    tripSpan.style.marginLeft = "4px";
+    tripSpan.textContent = trip;
+    mm.appendChild(tripSpan);
+  }
+
+  const timeSpan = document.createElement("span");
+  timeSpan.className = "ts";
+  timeSpan.textContent = fDT(m.t);
+  mm.appendChild(timeSpan);
+
+  el.appendChild(mm);
+
+  const mb = document.createElement("div");
+  mb.className = "mb";
+  mb.style.borderLeft = `2px solid ${color}`;
+  mb.style.paddingLeft = "8px";
+
+  if (decryptedMsg.startsWith("IMG::")) {
+    const base64Img = decryptedMsg.substring(5);
+    const img = document.createElement("img");
+    img.className = "inline-img";
+    img.src = base64Img;
+    img.alt = "添付画像";
+    img.onclick = () => {
+      D.imgViewSrc.src = base64Img;
+      resetZoom();
+      D.imgViewMod.classList.add("show");
+    };
+    mb.appendChild(img);
+  } else {
+    const parsedNodes = parseTxtSplit(decryptedMsg);
+    parsedNodes.forEach(node => mb.appendChild(node));
+
+    const urls = decryptedMsg.match(UR);
+    if (urls) {
+      urls.forEach(url => {
+        const mediaContainer = createMediaContainer(url);
+        if (mediaContainer) {
+          mb.appendChild(mediaContainer);
+        }
+      });
+    }
+  }
+
+  el.appendChild(mb);
+
+  const canDelete = (m.u === myUid) || isHost;
+  if (canDelete) {
+    const delBtn = document.createElement("button");
+    delBtn.className = "del-btn-inline";
+    delBtn.style.marginTop = "6px";
+    delBtn.style.alignSelf = "flex-start";
+    delBtn.textContent = "🗑 削除";
+    delBtn.onclick = () => {
+      targetDelId = m.id;
+      D.delConfirmPreview.textContent = decryptedMsg.startsWith("IMG::") ? "[画像データ]" : decryptedMsg;
+      D.delConfirmMod.classList.add("show");
+    };
+    el.appendChild(delBtn);
+  }
+
+  return el;
+}
+
+/* =========================================================
    同期化＆爆速複合ハッシュアルゴリズム (FNV-1a 複合)
-   非同期 crypto.subtle.digest(SHA-256) を排してオーバーヘッドを完全消去 [4]
    ========================================================= */
 const quickHash = (str) => {
   let h1 = 0x811c9dc5;
@@ -616,24 +997,22 @@ const quickHash = (str) => {
 };
 
 /* =========================================================
-   セキュアコンテキスト (HTTPS / localhost / 127.0.0.1) 以外の、
-   ローカル起動環境 (file:// や http://192.168.x.x) でもE2EEチャットを確実に稼働させるための
-   JavaScript同期的暗号化フォールバック (FNV-1a 鍵ストリーム + FNVベースXORプロキシ)
+   JavaScript同期的暗号化フォールバック (マルチバイト完全耐性版・バグ修正済)
    ========================================================= */
-const fallbackCipher = (text, keyString) => {
-  let result = "";
-  for (let i = 0; i < text.length; i++) {
-    const charCode = text.charCodeAt(i);
-    const keyChar = keyString.charCodeAt(i % keyString.length);
-    result += String.fromCharCode(charCode ^ keyChar);
+const fallbackCipher = (bytes, keyString) => {
+  const result = new Uint8Array(bytes.length);
+  const keyLen = keyString.length;
+  for (let i = 0; i < bytes.length; i++) {
+    result[i] = bytes[i] ^ keyString.charCodeAt(i % keyLen);
   }
   return result;
 };
 
 const fallbackEncrypt = (text, keyString) => {
-  const xored = fallbackCipher(text, keyString);
   try {
-    return "FALLBACK:" + btoa(unescape(encodeURIComponent(xored)));
+    const bytes = new TextEncoder().encode(text);
+    const xored = fallbackCipher(bytes, keyString);
+    return "FALLBACK:" + bytesToBase64(xored);
   } catch (e) {
     return "";
   }
@@ -643,8 +1022,9 @@ const fallbackDecrypt = (cipherText, keyString) => {
   if (!cipherText.startsWith("FALLBACK:")) return null;
   const base64 = cipherText.substring(9);
   try {
-    const xored = decodeURIComponent(escape(atob(base64)));
-    return fallbackCipher(xored, keyString);
+    const bytes = base64ToBytes(base64);
+    const dexored = fallbackCipher(bytes, keyString);
+    return new TextDecoder().decode(dexored);
   } catch (e) {
     return null;
   }
@@ -654,7 +1034,6 @@ const deriveMasterKey = async (roomId, pass) => {
   const mixed = SYSTEM_SALT + "_" + roomId + "_" + pass;
   const hashStr = quickHash(mixed) + quickHash(mixed + "_salt");
   
-  // 非SSLやfile://などでWeb Cryptography APIがブロックされている場合
   if (!window.crypto || !window.crypto.subtle) {
     return { fallback: true, hexKey: hashStr };
   }
@@ -667,7 +1046,7 @@ const deriveMasterKey = async (roomId, pass) => {
     "raw",
     rawKeyBytes,
     "AES-GCM",
-    true, // セッション復旧用に確実に true にします
+    true, 
     ["encrypt", "decrypt"]
   );
 };
@@ -687,7 +1066,7 @@ const importKeyFromHex = async (hex) => {
     "raw",
     bytes,
     "AES-GCM",
-    true, // セッション復旧用に確実に true で取り込みます
+    true, 
     ["encrypt", "decrypt"]
   );
 };
@@ -764,7 +1143,7 @@ function stopTimerLoop() {
 }
 
 /* =========================================================
-   AES-GCM 暗号化/復号ヘルパー (非セキュア環境時の自動フォールバック搭載)
+   AES-GCM 暗号化/復号ヘルパー
    ========================================================= */
 const encrypt = async (t, key = masterKey) => {
   if (!t || !key) return "";
@@ -880,7 +1259,6 @@ function scBottom(force = false) {
   }
 }
 
-// 部屋内表示と同様に[名前][トリップ][現在時刻]、および吹き出しボーダー色を再現する同期型カラープレビュー [5]
 function updateLobbyColorPreview(color) {
   const con = $("lbClrPrev");
   if (!con) return;
@@ -983,6 +1361,9 @@ function formatBytes(bytes) {
   const i = Math.floor(Math.log(b) / Math.log(1024));
   return `${(b / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
 }
+
+const overlayEl = D.imgViewMod;
+const imgEl = D.imgViewSrc;
 
 function resetZoom() {
   scale = 1; panX = 0; panY = 0;
@@ -1163,6 +1544,7 @@ window.doExit = async () => {
   }
 
   _isExiting = false;
+  _exitLock = false; 
 };
 
 async function handleBannedState() {
@@ -1197,6 +1579,7 @@ async function handleBannedState() {
   }
 
   showLobby("❌ この部屋から追放（BAN）されました。");
+  _exitLock = false; 
 }
 
 /* =========================================================
@@ -1517,7 +1900,12 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
     }
 
     if (!snap.exists()) {
+      safeLS.remove(`nz_entered_${hashId}`);
       safeLS.remove(`nz_chat_raw_${hashId}`);
+      safeLS.remove(`nz_room_members_${hashId}`);
+      safeLS.remove(`nz_room_expire_${hashId}`);
+      safeLS.remove(`nz_mkey_${hashId}`);
+      
       currentRoomMsgs = [];
       displayedMsgIds.clear();
       D.tli.textContent = "";
@@ -1526,10 +1914,11 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
       _roomExpireAt = expireAtVal;
       isHost = true;
 
-      sessionStorage.setItem("nz_room_created_flag", "true");
+      safeSS.set("nz_room_created_flag", "true");
 
       const passcodeRaw = D.ai.value.trim();
       const passcodeHash = passcodeRaw ? makePasscodeHash(passcodeRaw) : null;
+      const passcodeEnc = passcodeRaw ? await encrypt(passcodeRaw, masterKey) : null;
 
       const verifyToken = await encrypt("ROOM_VALID", masterKey);
       roomData = { 
@@ -1541,6 +1930,7 @@ async function doJoin(roomId, pass, name, trip, initTimer) {
       };
       if (passcodeHash) {
         roomData.passcode = passcodeHash;
+        roomData.passcodeEnc = passcodeEnc;
       }
       await set(roomRef, roomData);
     } else {
@@ -1611,8 +2001,8 @@ async function enterChatUI(roomData, pass) {
   const shouldSendJoin = safeSS.get("nz_should_send_join_sys") === "true";
   if (shouldSendJoin) {
     safeSS.remove("nz_should_send_join_sys");
-    const isCreated = sessionStorage.getItem("nz_room_created_flag") === "true";
-    sessionStorage.removeItem("nz_room_created_flag");
+    const isCreated = safeSS.get("nz_room_created_flag") === "true";
+    safeSS.remove("nz_room_created_flag");
     
     const trip = safeLS.get("nz_mytrip_styled") || "";
     const nameWithTrip = `${curN} ${trip}`.trim();
@@ -1625,7 +2015,7 @@ async function enterChatUI(roomData, pass) {
 
   startTimerLoop();
 
-  _rOff = onValue(ref(db, `rooms/${curR}`), s => {
+  _rOff = onValue(ref(db, `rooms/${curR}`), async s => {
     if (!s.exists()) { 
       if(!_exitLock) { 
         _exitLock = true; 
@@ -1651,6 +2041,14 @@ async function enterChatUI(roomData, pass) {
       }
       if (isHost && D.hostLockToggle) {
         D.hostLockToggle.checked = rVal.locked === true;
+      }
+      if (isHost && $("hostPasscodeDsp")) {
+        if (rVal.passcodeEnc) {
+          const decPasscode = await decrypt(rVal.passcodeEnc, masterKey);
+          $("hostPasscodeDsp").textContent = "現在の合言葉: " + (decPasscode || "エラー");
+        } else {
+          $("hostPasscodeDsp").textContent = "現在の合言葉: 未設定";
+        }
       }
     }
   });
@@ -1699,33 +2097,43 @@ async function enterChatUI(roomData, pass) {
     D.hostLockToggle.onchange = async (e) => {
       const isLocked = e.target.checked;
       await update(ref(db, `rooms/${curR}`), { locked: isLocked });
-      if (isLocked) {
-        await sendSysMsg("🔒 部屋が「完全ロックモード」に設定されました。これ以降の新規入室は制限されます。");
-      } else {
-        await sendSysMsg("🔓 「完全ロックモード」が解除されました。新規入室が許可されます。");
-      }
     };
 
     D.updatePasscodeBtn.onclick = async () => {
       const newPasscode = D.hostPasscodeInp.value.trim();
-      const newHash = newPasscode ? makePasscodeHash(newPasscode) : null;
+      if (!newPasscode) {
+        showToast("⚠️ 合言葉を入力してください。解除したい場合は「解除」を押してください。");
+        return;
+      }
+      const newHash = makePasscodeHash(newPasscode);
+      const newEnc = await encrypt(newPasscode, masterKey);
       
       D.updatePasscodeBtn.disabled = true;
       D.updatePasscodeBtn.textContent = "適用中";
       
-      await update(ref(db, `rooms/${curR}`), { passcode: newHash });
+      await update(ref(db, `rooms/${curR}`), { passcode: newHash, passcodeEnc: newEnc });
       
       D.updatePasscodeBtn.disabled = false;
       D.updatePasscodeBtn.textContent = "適用";
       D.hostPasscodeInp.value = "";
       
-      if (newHash) {
-        showToast("🔑 合言葉を変更しました");
-        await sendSysMsg("🔑 ホストにより入室の合言葉が新しく設定されました。");
-      } else {
-        showToast("🔑 合言葉を解除しました");
-        await sendSysMsg("🔑 ホストにより入室の合言葉が解除されました。");
-      }
+      showToast("🔑 合言葉を変更しました");
+    };
+
+    $("removePasscodeBtn").onclick = async () => {
+      if (!confirm("入室制限用の合言葉を解除しますか？")) return;
+      
+      const targetBtn = $("removePasscodeBtn");
+      targetBtn.disabled = true;
+      targetBtn.textContent = "解除中";
+      
+      await update(ref(db, `rooms/${curR}`), { passcode: null, passcodeEnc: null });
+      
+      targetBtn.disabled = false;
+      targetBtn.textContent = "解除";
+      D.hostPasscodeInp.value = "";
+      
+      showToast("🔑 合言葉を解除しました");
     };
 
     listenToHostRequestsAndBans();
@@ -2119,46 +2527,13 @@ async function sendSysMsg(text) {
 }
 
 /* =========================================================
-   極限・匿名認証およびセッション初期化
-   ========================================================= */
-const authenticateAnonymously = () => {
-  return new Promise((resolve, reject) => {
-    if (auth.currentUser) {
-      resolve(auth.currentUser);
-      return;
-    }
-    setPersistence(auth, browserLocalPersistence)
-      .then(() => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-          unsubscribe();
-          if (user) {
-            resolve(user);
-          } else {
-            signInAnonymously(auth)
-              .then(cred => resolve(cred.user))
-              .catch(err => reject(err));
-          }
-        });
-      })
-      .catch(() => {
-        signInAnonymously(auth)
-          .then(cred => resolve(cred.user))
-          .catch(err => reject(err));
-      });
-  });
-};
-
-const userPromise = authenticateAnonymously();
-
-/* =========================================================
-   UIの各種イベントハンドラ＆初期化トリガー (TDZエラー完全回避)
+   UIの各種イベントハンドラ＆初期化トリガー
    ========================================================= */
 const initLobbyInputs = () => {
   D.ni.value = safeLS.get("nz_ni") || "";
   D.tripi.value = safeLS.get("nz_tripi") || "";
   D.ri.value = safeLS.get("nz_ri_val") || "";
   D.pi.value = safeLS.get("nz_pi_val") || "";
-  // 「合言葉は記憶しない」ため、localStorageからの読み込み・復元は完全削除 [6]
   D.ai.value = ""; 
   D.timeri.value = safeLS.get("nz_timer_val") || "30";
 };
@@ -2248,63 +2623,6 @@ const openTimerMod = () => {
   D_timerSettingMod.classList.add("show");
 };
 
-// 1. 同期的にUIを即時初期化（ロードされた瞬間、記憶した値を表示） [5, 6]
-initLobbyInputs();
-initHashPass();
-buildPicker(D.lbClrPick, curColor, "clrc", onColorSelect);
-setGlobalColor(curColor);
-updateTripPreview();
-
-// 2. 非同期で認証とセッション復元を開始
-(async () => {
-  try {
-    const user = await userPromise;
-    myUid = user.uid; 
-
-    // 有効な既存アクティブセッションがある場合、ロビーを経由せず爆速で直接部屋をマウント
-    const savedActiveRi = safeLS.get("nz_active_ri");
-    const savedActiveCreated = safeLS.get("nz_active_created");
-    const savedNi = safeLS.get("nz_ni");
-    if (savedActiveRi && savedActiveCreated && savedNi) {
-      const hashId = getRoomHash(savedActiveRi);
-      const previouslyEntered = safeLS.get(`nz_entered_${hashId}`) === "true";
-      
-      if (previouslyEntered) {
-        let cachedKeyHex = safeLS.get(`nz_mkey_${hashId}`);
-        if (cachedKeyHex) masterKey = await importKeyFromHex(cachedKeyHex);
-        if (masterKey) await renderCachedState(hashId, savedActiveRi);
-      }
-      
-      try {
-        const snap = await get(ref(db, `rooms/${hashId}`));
-        if (snap.exists() && snap.val().expireAt > srvNow()) {
-          const savedPiRoom = safeLS.get(`nz_pi_${hashId}`) || safeLS.get("nz_pi_val") || "";
-          const savedTimer = parseInt(safeLS.get("nz_timer_val")) || 30;
-          const tripStyled = makeTrip(savedNi, safeLS.get("nz_tripi") || "");
-          safeLS.set("nz_mytrip_styled", tripStyled);
-          safeLS.set("nz_is_in_room", "true");
-          
-          await doJoin(savedActiveRi, savedPiRoom, savedNi, tripStyled, savedTimer);
-          initConnectionMonitor();
-          return;
-        }
-      } catch (e) {}
-      
-      // 接続できない無効なセッションはクリア
-      safeLS.remove("nz_active_ri"); 
-      safeLS.remove("nz_active_created");
-      safeLS.remove("nz_is_in_room");
-    }
-    
-    showLobby();
-    initConnectionMonitor();
-  } catch (e) {
-    D.lberr.textContent = "初期接続エラー: " + e.message; 
-    D.lberr.style.display = "block"; 
-    showLobby();
-  }
-})();
-
 /* =========================================================
    各種イベントリスナー定義
    ========================================================= */
@@ -2329,7 +2647,6 @@ D.enBtn.onclick = async () => {
   safeLS.set("nz_is_in_room", "true");
   safeLS.set("nz_ni", n);
   safeLS.set("nz_tripi", tk);
-  // 「合言葉は記憶しない」ため、localStorageへの保存処理は削除 [6]
   safeLS.set(`nz_pi_${hashId}`, p);
   safeLS.set("nz_pi_val", p);
 
@@ -2461,11 +2778,157 @@ D.fileInput.onchange = (e) => {
 };
 
 /* =========================================================
+   各種UIインタラクションバインド
+   ========================================================= */
+
+// ロビー詳細設定アコーディオン開閉
+D.accHeader.onclick = () => {
+  const isHidden = D.accBody.style.display !== "flex";
+  D.accBody.style.display = isHidden ? "flex" : "none";
+  D.accHeader.textContent = isHidden ? "⚙️ 詳細設定を閉じる" : "⚙️ 詳細設定を開く (カラー・時間など)";
+};
+
+// 名前のトリッププレビューコピー
+D.lbCopyTripBtn.onclick = () => {
+  const n = D.ni.value || "名無し";
+  const tk = D.tripi.value;
+  const t = tk ? makeTrip(n, tk) : "";
+  const textToCopy = `${n}${t}`;
+  navigator.clipboard.writeText(textToCopy).then(() => {
+    showToast("📋 コピーしました");
+  }).catch(() => {
+    showToast("❌ コピーに失敗しました");
+  });
+};
+
+// 招待URL（共通鍵情報ハッシュ付き）の生成・コピー
+D.copyUrlBtn.onclick = () => {
+  if (!rawR) return;
+  const pass = safeLS.get(`nz_pi_${curR}`) || safeLS.get("nz_pi_val") || "";
+  const inviteUrl = `${location.origin}${location.pathname}#${encodeURIComponent(pass)}`;
+  navigator.clipboard.writeText(inviteUrl).then(() => {
+    showToast("📋 招待URLをコピーしました！");
+  }).catch(() => {
+    showToast("❌ URLのコピーに失敗しました");
+  });
+};
+
+// 退出処理トリガー
+D.exBtn.onclick = () => {
+  if (confirm("この部屋から退室しますか？\n（あなたが最後の一人の場合、この部屋のログは完全に消去されます）")) {
+    window.doExit();
+  }
+};
+
+// 発言削除確認モーダル制御
+D.delCancelBtn.onclick = () => {
+  D.delConfirmMod.classList.remove("show");
+  targetDelId = null;
+};
+
+D.delExecuteBtn.onclick = async () => {
+  if (!curR || !targetDelId) return;
+  try {
+    D.delExecuteBtn.disabled = true;
+    D.delExecuteBtn.textContent = "削除中...";
+    await remove(ref(db, `chat/${curR}/${targetDelId}`));
+    showToast("✅ 発言を完全に削除しました");
+  } catch (e) {
+    showToast(`❌ 削除失敗: ${e.message}`);
+  } finally {
+    D.delExecuteBtn.disabled = false;
+    D.delExecuteBtn.textContent = "完全に削除";
+    D.delConfirmMod.classList.remove("show");
+    targetDelId = null;
+  }
+};
+
+// カラー設定モーダル
+D.clrBtn.onclick = () => {
+  tmpColor = curColor;
+  updateModalColorPreview(tmpColor);
+  buildPicker(D.clrPick2, tmpColor, "clrc2", (v) => {
+    tmpColor = v;
+    updateModalColorPreview(v);
+    D.clrPick2.querySelectorAll("button").forEach(b => b.classList.toggle("sel", b.dataset.color === v));
+  });
+  D.clrmod.classList.add("show");
+};
+
+// iOS等の仮想キーボード展開バグ対策 (VisualViewport連動)
+if (window.visualViewport) {
+  const updateViewportHeight = () => {
+    const vv = window.visualViewport;
+    document.documentElement.style.setProperty("--app-viewport-height", `${vv.height}px`);
+    scBottom();
+  };
+  window.visualViewport.addEventListener("resize", updateViewportHeight);
+  window.visualViewport.addEventListener("scroll", updateViewportHeight);
+  updateViewportHeight();
+}
+
+D.clrCancel.onclick = () => {
+  D.clrmod.classList.remove("show");
+};
+
+D.clrOk.onclick = async () => {
+  curColor = tmpColor;
+  setGlobalColor(curColor);
+  safeLS.set("nz_color", curColor);
+  syncPickers(curColor);
+  D.clrmod.classList.remove("show");
+  showToast("🎨 カラー設定を更新しました");
+  
+  if (curR && myPresRef && masterKey) {
+    const metaStr = JSON.stringify({ n: curN, p: safeLS.get("nz_mytrip_styled") || "", c: curColor });
+    await update(myPresRef, { meta: await encrypt(metaStr, masterKey) });
+  }
+};
+
+function updateModalColorPreview(color) {
+  const con = D.clrPrev;
+  if (!con) return;
+  con.textContent = "吹き出しプレビュー";
+  con.style.color = "var(--tx)";
+  con.style.borderLeft = `3px solid ${color}`;
+  con.style.paddingLeft = "8px";
+  con.style.textAlign = "left";
+}
+
+// ホスト向け：BANリスト開閉制御
+const toggleBanListBtn = $("toggleBanListBtn");
+const hostBanListWrapper = $("hostBanListWrapper");
+if (toggleBanListBtn && hostBanListWrapper) {
+  toggleBanListBtn.onclick = () => {
+    const isHidden = hostBanListWrapper.style.display === "none";
+    hostBanListWrapper.style.display = isHidden ? "block" : "none";
+    toggleBanListBtn.textContent = isHidden ? "🚫 BANリスト非表示" : "🚫 BANリスト表示";
+  };
+}
+
+// ホスト向け：合言葉折りたたみパネルの制御
+const toggleHostPasscodeBtn = $("toggleHostPasscodeBtn");
+const hostPasscodeCollapseArea = $("hostPasscodeCollapseArea");
+const toggleHostPasscodeIcon = $("toggleHostPasscodeIcon");
+
+if (toggleHostPasscodeBtn && hostPasscodeCollapseArea) {
+  toggleHostPasscodeBtn.onclick = () => {
+    const isHidden = hostPasscodeCollapseArea.style.display === "none";
+    hostPasscodeCollapseArea.style.display = isHidden ? "flex" : "none";
+    toggleHostPasscodeIcon.textContent = isHidden ? "🔑 設定を閉じる ▴" : "🔑 設定を開く ▾";
+  };
+}
+
+// タイムラインのスクロール位置を監視してジャンプボタンを活性化
+if (D.tl) {
+  D.tl.onscroll = () => {
+    updateJumpBtns();
+  };
+}
+
+/* =========================================================
    各種拡大、モーダル、スライダ制御定義
    ========================================================= */
-const overlayEl = D.imgViewMod;
-const imgEl = D.imgViewSrc;
-
 overlayEl.addEventListener('touchstart', (e) => {
   if (e.target === D.imgViewCloseBtn) return;
   if (e.touches.length === 2) {
@@ -2557,6 +3020,62 @@ D_timerApplyBtn.onclick = async () => {
     D_timerSettingMod.classList.remove("show");
   }
 };
+
+// =========================================================
+// 起動開始と同時にすべてのDOM依存処理とセッションマウントを順序よく実行
+// =========================================================
+initLobbyInputs();
+initHashPass();
+buildPicker(D.lbClrPick, curColor, "clrc", onColorSelect);
+setGlobalColor(curColor);
+updateTripPreview();
+
+(async () => {
+  try {
+    const user = await userPromise;
+    myUid = user.uid; 
+
+    const savedActiveRi = safeLS.get("nz_active_ri");
+    const savedActiveCreated = safeLS.get("nz_active_created");
+    const savedNi = safeLS.get("nz_ni");
+    if (savedActiveRi && savedActiveCreated && savedNi) {
+      const hashId = getRoomHash(savedActiveRi);
+      const previouslyEntered = safeLS.get(`nz_entered_${hashId}`) === "true";
+      
+      if (previouslyEntered) {
+        let cachedKeyHex = safeLS.get(`nz_mkey_${hashId}`);
+        if (cachedKeyHex) masterKey = await importKeyFromHex(cachedKeyHex);
+        if (masterKey) await renderCachedState(hashId, savedActiveRi);
+      }
+      
+      try {
+        const snap = await get(ref(db, `rooms/${hashId}`));
+        if (snap.exists() && snap.val().expireAt > srvNow()) {
+          const savedPiRoom = safeLS.get(`nz_pi_${hashId}`) || safeLS.get("nz_pi_val") || "";
+          const savedTimer = parseInt(safeLS.get("nz_timer_val")) || 30;
+          const tripStyled = makeTrip(savedNi, safeLS.get("nz_tripi") || "");
+          safeLS.set("nz_mytrip_styled", tripStyled);
+          safeLS.set("nz_is_in_room", "true");
+          
+          await doJoin(savedActiveRi, savedPiRoom, savedNi, tripStyled, savedTimer);
+          initConnectionMonitor();
+          return;
+        }
+      } catch (e) {}
+      
+      safeLS.remove("nz_active_ri"); 
+      safeLS.remove("nz_active_created");
+      safeLS.remove("nz_is_in_room");
+    }
+    
+    showLobby();
+    initConnectionMonitor();
+  } catch (e) {
+    D.lberr.textContent = "初期接続エラー: " + e.message; 
+    D.lberr.style.display = "block"; 
+    showLobby();
+  }
+})();
 </script>
 </body>
 </html>

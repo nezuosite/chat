@@ -23,7 +23,6 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .hbs{display:flex;gap:8px;align-items:center;flex-shrink:0}
 .hbs button{padding:6px 14px;height:38px;border-radius:6px;font-size:12px;font-weight:700;background:var(--bg);border:1px solid var(--bd);color:var(--tx);display:flex;align-items:center;gap:6px}
 
-/* 色設定ボタンとドットをCSSカスタムプロパティ（--usr-color）と直接連動 */
 .bclr {
   border-color: var(--usr-color) !important;
 }
@@ -266,7 +265,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { getDatabase, ref, push, onValue, set, remove, serverTimestamp, onChildAdded, onChildRemoved, query, limitToLast, runTransaction, goOnline, goOffline }
+import { getDatabase, ref, push, onValue, set, remove, serverTimestamp, query, limitToLast, runTransaction, goOnline, goOffline }
   from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
 const SYSTEM_SALT = "NEZU_PRO_SYS_SALT_2026_V1";
@@ -370,9 +369,10 @@ const getTrueTime = () => Date.now() + serverTimeOffset;
 
 /* =========================================================
    管理者判定ロジック (J64MocsPo0QD7hSwZpQgEeDdO6X2)
+   入室前（未入室状態）であっても、UIDが一致していれば管理者として扱います
    ========================================================= */
 const isAdmin = () => {
-  return isJoined && myUid === "J64MocsPo0QD7hSwZpQgEeDdO6X2";
+  return myUid === "J64MocsPo0QD7hSwZpQgEeDdO6X2";
 };
 
 const updateAdminUI = () => {
@@ -697,7 +697,7 @@ function cMsg(m) {
     sysDiv.className = "sys-msg";
     sysDiv.textContent = m.m;
     
-    // 管理者のみシステムメッセージの消去を許可
+    // 管理者のみシステムメッセージの消去を許可（未入室状態でも可）
     if (isAdmin()) {
       sysDiv.style.position = "relative";
       const delBtn = document.createElement("button");
@@ -789,6 +789,7 @@ function cMsg(m) {
 
   el.appendChild(mb);
 
+  // 送信した本人、または管理者（未入室でも可）ならいつでも削除可能
   if (m.u === myUid || isAdmin()) {
     const delBtn = document.createElement("button");
     delBtn.className = "del-btn-inline";
@@ -802,41 +803,6 @@ function cMsg(m) {
   }
 
   return el;
-}
-
-// 物理極限まで高速化したタイムライン要素挿入処理 (O(1)ショートカット)
-function insertMessageEl(el) {
-  const t = parseInt(el.dataset.ts) || 0;
-  const lastChild = D.tli.lastElementChild;
-  
-  if (!lastChild || (parseInt(lastChild.dataset.ts) || 0) <= t) {
-    D.tli.appendChild(el);
-    return;
-  }
-  
-  let sibling = lastChild;
-  while (sibling) {
-    if ((parseInt(sibling.dataset.ts) || 0) <= t) {
-      D.tli.insertBefore(el, sibling.nextSibling);
-      return;
-    }
-    sibling = sibling.previousElementSibling;
-  }
-  D.tli.insertBefore(el, D.tli.firstChild);
-}
-
-function trimTimeline() {
-  const maxMessages = 100; 
-  const children = Array.from(D.tli.children);
-  if (children.length > maxMessages) {
-    const toRemove = children.slice(0, children.length - maxMessages);
-    const trLen = toRemove.length;
-    for (let i = 0; i < trLen; i++) {
-      const el = toRemove[i];
-      if (el.dataset.mid) displayedMsgIds.delete(el.dataset.mid);
-      el.remove();
-    }
-  }
 }
 
 function scBottom(force = false) {
@@ -971,7 +937,7 @@ $("playerCloseBtn").onclick = () => {
 };
 
 /* =========================================================
-   体感0ms高速プレビュー & キャッシュストレージ管理
+   キャッシュストレージ & ローカル初期ロード
    ========================================================= */
 let chatCache = [];
 try {
@@ -988,18 +954,6 @@ const loadCacheToTimeline = () => {
   });
   D.tli.appendChild(fragment);
   scBottom(true);
-};
-
-const updateCache = (m, isRemoval = false) => {
-  if (isRemoval) {
-    chatCache = chatCache.filter(item => item.id !== m.id);
-  } else {
-    if (!chatCache.some(item => item.id === m.id)) {
-      chatCache.push(m);
-      if (chatCache.length > 30) chatCache.shift();
-    }
-  }
-  safeLS.set("nz_chat_cache", JSON.stringify(chatCache));
 };
 
 /* =========================================================
@@ -1108,7 +1062,7 @@ D.delCancelBtn.onclick = () => { D.delConfirmMod.classList.remove("show"); targe
 D.delExecuteBtn.onclick = async () => {
   if (!targetDelId) return;
   await remove(ref(db, `chat/official/${targetDelId}`)).catch(err => {
-    alert("メッセージの削除に失敗しました:\n" + err.message + "\n\n※セキュリティルールの設定、または権限がない可能性があります。");
+    alert("メッセージの削除に失敗しました:\n" + err.message + "\n\n※セキュリティルールが設定されていない可能性があります。");
   });
   D.delConfirmMod.classList.remove("show");
   targetDelId = null;
@@ -1349,54 +1303,53 @@ function setupFirebaseListeners() {
   if (listenersInitialized) return;
   listenersInitialized = true;
 
+  // =========================================================
+  // アクティブ発言の「onValue（一斉・最新30件完全同期）」リスナー
+  // 他ブラウザでの「全消去」や「部分削除」を各端末のローカルキャッシュ（localStorage）へ確実に即時逆同期します
+  // =========================================================
   const chatQuery = query(ref(db, "chat/official"), limitToLast(30)); 
-  onChildAdded(chatQuery, snap => {
-    const m = snap.val(); 
-    if(m) { 
-      m.id = snap.key; 
-      
+  onValue(chatQuery, snap => {
+    const serverMsgs = [];
+    snap.forEach(child => {
+      const m = child.val();
+      if (m) {
+        m.id = child.key;
+        serverMsgs.push(m);
+      }
+    });
+
+    // 1. サーバー上のデータと未解決のローカル送信待ち（pending）をマッチング解決
+    serverMsgs.forEach(m => {
       if (m.pnd && pendingMsgs.has(m.pnd)) {
-        const localEl = pendingMsgs.get(m.pnd);
-        localEl.dataset.mid = m.id; 
-        
-        const tsSpan = localEl.querySelector(".ts");
-        if (tsSpan) tsSpan.textContent = fDT(m.t); 
-        
-        const delBtn = localEl.querySelector(".del-btn-inline");
-        if (delBtn) {
-          delBtn.onclick = () => {
-            targetDelId = m.id;
-            D.delConfirmPreview.textContent = m.m.startsWith("IMG::") ? "[画像データ]" : m.m;
-            D.delConfirmMod.classList.add("show");
-          };
-        }
-        
-        displayedMsgIds.add(m.id);
         pendingMsgs.delete(m.pnd);
-        updateCache(m);
-        return;
       }
+    });
 
-      if (!displayedMsgIds.has(m.id)) {
-        displayedMsgIds.add(m.id);
-        const el = cMsg(m);
-        insertMessageEl(el);
-        trimTimeline();
-        scBottom();
-        updateCache(m);
-      }
-    } 
+    // 2. タイムラインDOMを一斉クリア＆完全再ビルド（全消去時はここが空になり瞬時にタイムラインから消滅します）
+    D.tli.innerHTML = "";
+    displayedMsgIds.clear();
+
+    const fragment = document.createDocumentFragment();
+    serverMsgs.forEach(m => {
+      displayedMsgIds.add(m.id);
+      fragment.appendChild(cMsg(m));
+    });
+
+    // まだサーバーから返ってきていない保留中のローカル発言（pending）があれば末尾に添える
+    pendingMsgs.forEach(el => {
+      fragment.appendChild(el);
+    });
+
+    D.tli.appendChild(fragment);
+
+    // 3. ローカルの過去ログキャッシュをサーバーの最新状態へ100%同期
+    chatCache = serverMsgs;
+    safeLS.set("nz_chat_cache", JSON.stringify(chatCache));
+
+    scBottom();
   });
 
-  onChildRemoved(ref(db, "chat/official"), snap => {
-    displayedMsgIds.delete(snap.key);
-    const el = D.tli.querySelector(`[data-mid="${escapeSelector(snap.key)}"]`);
-    if (el) {
-      el.remove();
-      updateCache({id: snap.key}, true);
-    }
-  });
-
+  // オンラインリスト（プレゼンス）監視
   onValue(ref(db, "presence/official"), s => {
     const list = s.val() || {};
     const members = [];
@@ -1490,6 +1443,9 @@ if (isLocalFileEnv) {
   D.joinBtn.disabled = false;
   D.joinBtn.textContent = "参加する";
 
+  // 管理者UIを即時確認
+  updateAdminUI();
+
   setupFirebaseListeners(); // データベース監視を最速起動
 
   if (safeLS.get("nz_is_joined") === "true" && _initNi && _initTrip) {
@@ -1507,6 +1463,9 @@ if (isLocalFileEnv) {
       D.joinBtn.disabled = false;
       D.joinBtn.textContent = "参加する (臨時接続)";
       
+      // タイムアウト救済時も最速で管理者状態を確認
+      updateAdminUI();
+
       setupFirebaseListeners(); // 救済起動
 
       if (safeLS.get("nz_is_joined") === "true" && _initNi && _initTrip) {
@@ -1527,6 +1486,9 @@ if (isLocalFileEnv) {
     myUid = user.uid;
     D.joinBtn.disabled = false;
     D.joinBtn.textContent = "参加する";
+
+    // 認証が解決した瞬間に管理者UI（全消去ボタン）を最速でアンロック
+    updateAdminUI();
 
     onValue(ref(db, ".info/serverTimeOffset"), (snap) => {
       serverTimeOffset = snap.val() || 0;

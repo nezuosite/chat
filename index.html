@@ -37,7 +37,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .mb{align-self:start;background:transparent;border:none;padding:0;font-size:15px;line-height:1.6;max-width:100%;word-break:break-all;white-space:pre-wrap;color:var(--tx);padding-right:70px}
 .sys-msg{text-align:center;font-size:12px;font-weight:bold;color:var(--mu);margin:8px 0;background:rgba(255,255,255,0.03);padding:8px 14px;border-radius:6px;width:100%;align-self:center;border:1px solid rgba(255,255,255,0.05);white-space:pre-wrap;word-break:break-all;line-height:1.5}
 .sys-ts{display:block;font-size:10px;color:var(--m2);font-family:monospace;font-weight:normal;margin-top:4px}
-.del-btn-inline{position:absolute;top:10px;right:14px;background:rgba(244,63,94,0.12);color:#fda4af;border:1px solid rgba(244,63,94,0.3);padding:2px 8px;border-radius:4px;font-size:10px;font-weight:bold;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;height:20px;opacity:0.5;transition:opacity 0.15s,background 0.15s}
+.del-btn-inline{position:absolute;top:10px;right:14px;background:rgba(244, 63, 94, 0.12);color:#fda4af;border:1px solid rgba(244, 63, 94, 0.3);padding:2px 8px;border-radius:4px;font-size:10px;font-weight:bold;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;height:20px;opacity:0.5;transition:opacity 0.15s,background 0.15s}
 .mw:hover .del-btn-inline{opacity:1;background:rgba(244,63,94,0.25)}
 .inline-img{max-width:280px;max-height:240px;width:auto;height:auto;border-radius:6px;margin:6px 0;display:block;cursor:zoom-in;object-fit:contain;border:1px solid rgba(255,255,255,0.1);background:#000}
 .media-link-container{display:flex;flex-direction:column;gap:4px;margin-top:6px;background:rgba(255,255,255,0.02);padding:8px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.05);width:100%;max-width:100%;box-sizing:border-box}
@@ -137,7 +137,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       <div class="jrow">
         <input type="text" id="ni" class="inp" placeholder="名前 (10文字まで)" maxlength="10" autocomplete="off">
         <input type="text" id="tripi" class="inp" placeholder="トリップキー (必須)" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
-        <button class="btn bp" id="joinBtn" style="height: 38px; padding: 0 16px;">参加する</button>
+        <button class="btn bp" id="joinBtn" style="height: 38px; padding: 0 16px;" disabled>接続中...</button>
       </div>
       <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px; width: 100%; gap: 8px;">
         <span id="tripPrevText" style="font-size: 11px; font-weight: bold; color: var(--usr-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">プレビュー: 名無し</span>
@@ -430,11 +430,16 @@ function stopAutoExitTimer() {
    閲覧 / 参加 状態遷移
    ========================================================= */
 async function joinRoom(isReconnect = false) {
+  // フライング参加防止ガード（接続完了前は参加ボタンを押せないよう防衛）
+  if (!myUid) {
+    alert("現在サーバーへの接続を確立しています。1〜2秒ほど待ってから再度お試しください。");
+    return;
+  }
+
   let n = "";
   let tk = "";
   
   if (isReconnect) {
-    // 再接続・自動復帰時はフォームではなくLocalStorage上の認証データを直接読んでシームレスに入室（アラートダイアログの誤作動を完全に防止）
     n = safeLS.get("nz_ni") || "";
     tk = safeLS.get("nz_tripi") || "";
   } else {
@@ -462,11 +467,16 @@ async function joinRoom(isReconnect = false) {
   }
 
   const myPresRef = ref(db, `presence/official/${myUid}`);
+  
+  // データベースへの接続エラーをキャッチして分かりやすく警告表示
   await set(myPresRef, {
     n: myName,
     p: myTrip,
     c: curColor,
     t: serverTimestamp()
+  }).catch(err => {
+    alert("入室エラー（接続拒否されました）:\n" + err.message + "\n\n※Firebaseコンソールのセキュリティルール設定が正しく公開されているかご確認ください。");
+    throw err;
   });
 
   D.joinForm.style.setProperty("display", "none", "important");
@@ -481,6 +491,8 @@ async function joinRoom(isReconnect = false) {
       sys: true,
       m: `${myName} ${myTrip}`.trim() + " が入室しました",
       t: serverTimestamp()
+    }).catch(err => {
+      console.warn("入室アナウンスの送信に失敗しました（権限制限など）:", err.message);
     });
   }
   
@@ -496,7 +508,7 @@ async function doExit(isAuto = false) {
   safeLS.remove("nz_last_active_time");
 
   const myPresRef = ref(db, `presence/official/${myUid}`);
-  await remove(myPresRef);
+  await remove(myPresRef).catch(() => {});
 
   D.joinForm.style.setProperty("display", "flex", "important");
   D.ib.classList.remove("show");
@@ -511,13 +523,13 @@ async function doExit(isAuto = false) {
       sys: true,
       m: `${myName} ${myTrip}`.trim() + " が退室しました (自動退室)",
       t: exitTime
-    });
+    }).catch(() => {});
   } else {
     await push(ref(db, "chat/official"), {
       sys: true,
       m: `${myName} ${myTrip}`.trim() + " が退室しました",
       t: serverTimestamp()
-    });
+    }).catch(() => {});
   }
 }
 
@@ -562,7 +574,7 @@ async function sendMsg(overrideText = null, imgData = null) {
 
   safeLS.set("nz_last_active_time", getTrueTime().toString());
 
-  set(ref(db, `presence/official/${myUid}/t`), serverTimestamp());
+  set(ref(db, `presence/official/${myUid}/t`), serverTimestamp()).catch(() => {});
 
   const pushData = { 
     u: myUid, 
@@ -574,9 +586,10 @@ async function sendMsg(overrideText = null, imgData = null) {
     t: serverTimestamp()
   };
 
-  await push(ref(db, "chat/official"), pushData).catch(() => {
+  await push(ref(db, "chat/official"), pushData).catch((err) => {
     tempEl.remove();
     pendingMsgs.delete(tempId);
+    alert("メッセージの送信に失敗しました:\n" + err.message + "\n\n※セキュリティルールによる書き込み制限、または接続エラーの可能性があります。");
   });
 }
 
@@ -952,7 +965,9 @@ D.adminClearBtn.onclick = async () => {
   if (!isAdmin()) return;
   if (confirm("⚠️ 警告: チャット履歴を完全に全消去しますか？\nこの操作は元に戻せません。")) {
     if (confirm("本当に実行しますか？ システムアナウンス、お知らせログ、過去ログを含め、すべての発言データがサーバー上から完全に空になります。")) {
-      await set(ref(db, "chat/official"), null);
+      await set(ref(db, "chat/official"), null).catch(err => {
+        alert("履歴の全消去に失敗しました:\n" + err.message + "\n\n※セキュリティルールが正しく設定されていない可能性があります。");
+      });
       safeLS.remove("nz_chat_cache");
       displayedMsgIds.clear();
       D.tli.innerHTML = "";
@@ -999,7 +1014,9 @@ D.clrMsgBtn.onclick = () => { D.mi.value = ""; D.mi.style.height = "auto"; };
 D.delCancelBtn.onclick = () => { D.delConfirmMod.classList.remove("show"); targetDelId = null; };
 D.delExecuteBtn.onclick = async () => {
   if (!targetDelId) return;
-  await remove(ref(db, `chat/official/${targetDelId}`));
+  await remove(ref(db, `chat/official/${targetDelId}`)).catch(err => {
+    alert("メッセージの削除に失敗しました:\n" + err.message + "\n\n※セキュリティルールの設定、または権限がない可能性があります。");
+  });
   D.delConfirmMod.classList.remove("show");
   targetDelId = null;
 };
@@ -1203,12 +1220,6 @@ const makeElementDraggable = (headerEl, dragEl) => {
 makeElementDraggable($("playerDragHeader"), $("floatingPlayer"));
 
 /* =========================================================
-   体感0msローカル復帰（起動時キャッシュロード）
-   ========================================================= */
-loadCacheToTimeline();
-updateAdminUI(); 
-
-/* =========================================================
    Firebaseリアルタイム同期 & 高速再接続マネジメント
    ========================================================= */
 const cleaningUids = new Set(); 
@@ -1233,10 +1244,17 @@ window.addEventListener("pageshow", boostSync);
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
-    await signInAnonymously(auth).catch(() => {});
+    D.joinBtn.disabled = true;
+    D.joinBtn.textContent = "接続中...";
+    await signInAnonymously(auth).catch((err) => {
+      console.error("匿名認証エラー:", err);
+      alert("Firebase認証（ログイン接続）に失敗しました。\n\n※Firebaseコンソールの Authentication -> Sign-in method で『匿名 (Anonymous)』のサインインプロバイダが【有効】になっているかご確認ください。");
+    });
     return;
   }
   myUid = user.uid;
+  D.joinBtn.disabled = false;
+  D.joinBtn.textContent = "参加する";
 
   onValue(ref(db, ".info/serverTimeOffset"), (snap) => {
     serverTimeOffset = snap.val() || 0;
@@ -1244,7 +1262,7 @@ onAuthStateChanged(auth, async (user) => {
 
   onValue(ref(db, ".info/connected"), (snap) => {
     if (snap.val() === true && isJoined && myUid) {
-      set(ref(db, `presence/official/${myUid}/t`), serverTimestamp());
+      set(ref(db, `presence/official/${myUid}/t`), serverTimestamp()).catch(() => {});
     }
   });
 
@@ -1338,7 +1356,7 @@ onAuthStateChanged(auth, async (user) => {
                 sys: true,
                 m: `${targetUser.n} ${targetUser.p}`.trim() + " が退室しました (自動退室)",
                 t: exitTime
-              });
+              }).catch(() => {});
             }
             cleaningUids.delete(targetId);
           }).catch(() => {

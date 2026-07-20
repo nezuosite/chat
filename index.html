@@ -75,7 +75,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .battach{position:absolute;left:4px;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--mu);cursor:pointer}
 .battach svg{width:18px;height:18px}
 #mi{width:100%;background:none;border:none;color:var(--tx);outline:none;resize:none;font-size:15px;max-height:120px;line-height:1.5;padding:4px 0}
-.bclrmm{position:absolute;right:4px;width:28px;height:28px;border-radius:50%;color:var(--m2);font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.bclrm{position:absolute;right:4px;width:28px;height:28px;border-radius:50%;color:var(--m2);font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .bsd{width:38px;height:38px;border-radius:50%;background:var(--in);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-bottom:0;box-shadow:0 1px 6px rgba(79,70,229,0.3)}
 .bsd svg{width:18px;height:18px;transform:rotate(45deg);margin-top:-1px;margin-right:1px}
 .mod-overlay{position:fixed;inset:0;background:rgba(15,23,42,.8);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:10000;padding:12px}
@@ -102,7 +102,9 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 #imgViewSrc{max-width:90%;max-height:calc(100dvh - 140px);object-fit:contain;margin-bottom:20px}
 .modal-bottom-close-container{width:100%;display:flex;justify-content:center;position:absolute;bottom:0;left:0;padding:16px 0 calc(16px + var(--safe));background:linear-gradient(to top,rgba(0,0,0,0.8) 40%,rgba(0,0,0,0));backdrop-filter:blur(2px);z-index:10001}
 .modal-bottom-close{width:auto;min-width:160px;padding:12px 24px;background:var(--ro);color:#fff;border-radius:24px;font-weight:bold;font-size:13.5px;text-align:center;border:none;box-shadow:0 4px 12px rgba(244,63,94,0.4);cursor:pointer}
-#floatingPlayer{display:none;position:absolute;z-index:9999;background:#0d1117;border:1px solid var(--bd);border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,0.6);width:320px;flex-direction:column;overflow:hidden;touch-action:none}
+
+/* 画質選択UIなどが自動省略されないようプレイヤー幅を480pxに拡張 (レスポンシブ制限付) */
+#floatingPlayer{display:none;position:absolute;z-index:9999;background:#0d1117;border:1px solid var(--bd);border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,0.6);width:480px;max-width:90vw;flex-direction:column;overflow:hidden;touch-action:none}
 #playerDragHeader{cursor:move;background:var(--sf);padding:8px 10px;font-size:11.5px;font-weight:bold;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--bd);user-select:none}
 #playerContent{width:100%;aspect-ratio:16/9;background:#000;display:flex;justify-content:center;align-items:center;position:relative}
 .clrpick-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
@@ -149,8 +151,9 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
           </div>
         </div>
         <div class="hbs">
-          <button class="bclr" id="clrBtn" title="色設定"><span class="bclr-dot" id="clrDot"></span> 色設定</button>
+          <!-- 「全消去」と「色設定」のボタン順序を入れ替え -->
           <button id="adminClearBtn" class="bq" style="display: none; background: rgba(244,63,94,0.1); border-color: rgba(244,63,94,0.3); color: #fda4af; font-weight: bold; padding: 6px 14px; height: 38px; border-radius: 6px; font-size: 12px;" title="システムログや過去ログを含む全消去">⚠️ 全消去</button>
+          <button class="bclr" id="clrBtn" title="色設定"><span class="bclr-dot" id="clrDot"></span> 色設定</button>
           <button class="bx" id="exBtn" style="display: none;" title="退室">退室</button>
         </div>
       </div>
@@ -368,21 +371,6 @@ setGlobalColor(curColor);
 const getTrueTime = () => Date.now() + serverTimeOffset;
 
 /* =========================================================
-   管理者判定ロジック (J64MocsPo0QD7hSwZpQgEeDdO6X2)
-   入室前（未入室状態）であっても、UIDが一致していれば管理者として扱います
-   ========================================================= */
-const isAdmin = () => {
-  return myUid === "J64MocsPo0QD7hSwZpQgEeDdO6X2";
-};
-
-const updateAdminUI = () => {
-  const adminBtn = D.adminClearBtn;
-  if (adminBtn) {
-    adminBtn.style.display = isAdmin() ? "block" : "none";
-  }
-};
-
-/* =========================================================
    安全なBase62 6文字ハッシュトリップアルゴリズム
    ========================================================= */
 const quickHashBase62 = (str) => {
@@ -410,6 +398,28 @@ const makeTrip = (name, tripKey) => {
   const revKey = tripKey.split("").reverse().join("");
   const mixed = SYSTEM_SALT + "_" + name + "_[SALT]_" + revKey;
   return "◆" + quickHashBase62(mixed);
+};
+
+/* =========================================================
+   管理者判定ロジック (J64MocsPo0QD7hSwZpQgEeDdO6X2)
+   入室前であっても、保存情報または認証情報が合致すれば0msで管理者として処理します
+   ========================================================= */
+const isAdmin = () => {
+  if (myUid === "J64MocsPo0QD7hSwZpQgEeDdO6X2") return true;
+  // 認証前でもローカル保存されたトリップキーから即時に管理者判定を行います
+  const n = safeLS.get("nz_ni") || "";
+  const tk = safeLS.get("nz_tripi") || "";
+  if (n === "ねづお" && tk && makeTrip(n, tk) === "◆JoNrMB") {
+    return true;
+  }
+  return false;
+};
+
+const updateAdminUI = () => {
+  const adminBtn = D.adminClearBtn;
+  if (adminBtn) {
+    adminBtn.style.display = isAdmin() ? "block" : "none";
+  }
 };
 
 // 最軽量・超高速日付文字列フォーマッタ（サーバー同期時刻を基準にフォールバック）
@@ -865,12 +875,27 @@ function parseTxtSplit(txt) {
 }
 
 /* =========================================================
+   すべてのYouTube / ニコニコ動画URLへの包括パース処理 (軽量・強力)
+   ========================================================= */
+const getYoutubeId = (url) => {
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|shorts\/|live\/)([^#\&\?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+};
+
+const getNicoId = (url) => {
+  const regExp = /(?:nicovideo\.jp\/watch\/|nico\.ms\/|embed\.nicovideo\.jp\/watch\/)(sm[0-9]+|so[0-9]+|nm[0-9]+|[0-9]+)/i;
+  const match = url.match(regExp);
+  return match ? match[1] : null;
+};
+
+/* =========================================================
    インライン動画プレイヤー (ドラッグ移動可能な別窓プレイヤー立ち上げ機能)
    ========================================================= */
 function createMediaContainer(url) {
-  const ytMatch = url.match(/(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)?(?:youtube\.com\/(?:watch\?.*v=|embed\/|shorts\/|live\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i);
-  const nicoMatch = url.match(/(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)?(?:nicovideo\.jp\/watch\/|nico\.ms\/)(sm[0-9]+|so[0-9]+|nm[0-9]+|[0-9]+)/i);
-  if (!ytMatch && !nicoMatch) return null;
+  const ytId = getYoutubeId(url);
+  const nicoId = getNicoId(url);
+  if (!ytId && !nicoId) return null;
 
   const container = document.createElement("div");
   container.className = "media-link-container";
@@ -880,8 +905,8 @@ function createMediaContainer(url) {
   const badge = document.createElement("span");
   badge.className = "media-badge";
   let type = "";
-  if (ytMatch) { type = "youtube"; badge.textContent = "YouTube"; badge.style.background = "#ef4444"; }
-  else if (nicoMatch) { type = "niconico"; badge.textContent = "ニコニコ"; badge.style.background = "#2563eb"; }
+  if (ytId) { type = "youtube"; badge.textContent = "YouTube"; badge.style.background = "#ef4444"; }
+  else if (nicoId) { type = "niconico"; badge.textContent = "ニコニコ"; badge.style.background = "#2563eb"; }
 
   row.appendChild(badge);
 
@@ -897,11 +922,21 @@ function createMediaContainer(url) {
   return container;
 }
 
+// プレイヤー停止・クローズ処理の共通化 (Iframe消去で音声を完全リセット)
+const closePlayer = () => {
+  const fp = $("floatingPlayer");
+  if (fp) fp.style.display = "none";
+  const pc = $("playerContent");
+  if (pc) pc.innerHTML = "";
+};
+
 function openFloatingPlayer(url, type) {
   const plRect = D.pl.getBoundingClientRect();
   const appRect = document.getElementById("app").getBoundingClientRect();
   const topOffset = plRect.bottom - appRect.top;
-  const leftOffset = Math.max(10, (appRect.width - 320) / 2);
+  
+  // 標準の画質変更UIが隠れないよう、レスポンシブ幅で適切に中央配置
+  const leftOffset = Math.max(10, (appRect.width - Math.min(480, appRect.width * 0.9)) / 2);
   
   const playerNode = $("floatingPlayer");
   playerNode.style.top = `${topOffset}px`;
@@ -912,10 +947,15 @@ function openFloatingPlayer(url, type) {
   contentNode.innerHTML = ""; 
 
   if (type === "youtube") {
-    const ytMatch = url.match(/(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)?(?:youtube\.com\/(?:watch\?.*v=|embed\/|shorts\/|live\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i);
-    if (ytMatch) {
+    const ytId = getYoutubeId(url);
+    if (ytId) {
       const iframe = document.createElement("iframe");
-      iframe.src = `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1`;
+      // ローカルファイル環境(file://など)で再生エラーを起こさないよう、Originを安全に識別
+      let originParam = "";
+      if (window.location.protocol.startsWith("http")) {
+        originParam = `&origin=${encodeURIComponent(window.location.origin)}`;
+      }
+      iframe.src = `https://www.youtube.com/embed/${ytId}?autoplay=0&enablejsapi=1${originParam}`;
       iframe.frameBorder = "0";
       iframe.allow = "autoplay; encrypted-media";
       iframe.allowFullscreen = true;
@@ -924,10 +964,10 @@ function openFloatingPlayer(url, type) {
       contentNode.appendChild(iframe);
     }
   } else if (type === "niconico") {
-    const nicoMatch = url.match(/(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)?(?:nicovideo\.jp\/watch\/|nico\.ms\/)(sm[0-9]+|so[0-9]+|nm[0-9]+|[0-9]+)/i);
-    if (nicoMatch) {
+    const nicoId = getNicoId(url);
+    if (nicoId) {
       const iframe = document.createElement("iframe");
-      iframe.src = `https://embed.nicovideo.jp/watch/${nicoMatch[1]}?jsapi=1`;
+      iframe.src = `https://embed.nicovideo.jp/watch/${nicoId}?jsapi=1&autoplay=0&playerId=nezu_inline`;
       iframe.frameBorder = "0";
       iframe.allowFullscreen = true;
       iframe.style.width = "100%";
@@ -937,10 +977,34 @@ function openFloatingPlayer(url, type) {
   }
 }
 
-$("playerCloseBtn").onclick = () => {
-  $("floatingPlayer").style.display = "none";
-  $("playerContent").innerHTML = "";
-};
+// 外部 iframe のイベント（動画再生完了など）をメッセージ経由で監視
+window.addEventListener("message", (e) => {
+  // 1. YouTube の終了検知
+  if (typeof e.origin === "string" && (e.origin.includes("youtube.com") || e.origin.includes("youtube-nocookie.com"))) {
+    try {
+      const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
+      if (data) {
+        if (data.event === "infoDelivery" && data.info && data.info.playerState === 0) {
+          closePlayer();
+        }
+        if (data.event === "onStateChange" && (data.info === 0 || data.data === 0)) {
+          closePlayer();
+        }
+      }
+    } catch (err) {}
+  }
+
+  // 2. ニコニコ動画 の終了検知
+  if (typeof e.origin === "string" && e.origin.includes("nicovideo.jp")) {
+    try {
+      if (e.data && e.data.eventName === "playerStatusChange" && e.data.data && e.data.data.playerStatus === 4) {
+        closePlayer();
+      }
+    } catch (err) {}
+  }
+});
+
+$("playerCloseBtn").onclick = closePlayer;
 
 /* =========================================================
    キャッシュストレージ & ローカル初期ロード
@@ -1293,7 +1357,7 @@ makeElementDraggable($("playerDragHeader"), $("floatingPlayer"));
    体感0msローカル復帰（起動時キャッシュロード）
    ========================================================= */
 loadCacheToTimeline();
-updateAdminUI(); 
+updateAdminUI(); // スクリプトロード直後に即呼び出し、管理者の場合は一瞬でボタンを出現させる
 
 /* =========================================================
    Firebaseリアルタイム同期 & 高速再接続マネジメント

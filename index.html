@@ -66,7 +66,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 
 .mw{
   position:relative; display:flex; flex-direction:column; width:100%; 
-  opacity:1; 
+  opacity:1; transform: translate3d(0,0,0);
   animation:slideInUp 0.1s cubic-bezier(0.22, 1, 0.36, 1) forwards; user-select:text; -webkit-user-select:text; 
   padding:10px 14px; border-bottom:1px solid rgba(51, 65, 85, 0.25); will-change: transform, opacity;
   contain: content;
@@ -362,18 +362,18 @@ const safeLS = {
 };
 
 /* =========================================================
-   最速UIスイッチング・セッション確認
+   最速UIスイッチング・セッション確認 & チラつき防止ロック
    ========================================================= */
 const _initJoined = safeLS.get("nz_is_joined") === "true";
 const _initNi = safeLS.get("nz_ni") || "";
 const _initTrip = safeLS.get("nz_tripi") || "";
 
 if (_initJoined && _initNi && _initTrip) {
-  D.joinForm.style.display = "none";
+  D.joinForm.style.setProperty("display", "none", "important");
   D.ib.classList.add("show");
   D.exBtn.style.display = "block";
 } else {
-  D.joinForm.style.display = "flex";
+  D.joinForm.style.setProperty("display", "flex", "important");
   D.ib.classList.remove("show");
   D.exBtn.style.display = "none";
 }
@@ -399,21 +399,21 @@ let initialDistance = 0;
 
 const UR = /(https?:\/\/[^\s\n<>"]+)/gi;
 
+// 色相環に基づき美しく配置されたカラーパレット (グレーを最左上に設定)
 const COLORS = [
-  {v:"#f87171",n:"レッド1"},{v:"#fca5a5",n:"パステルレッド"},{v:"#ef4444",n:"レッド2"},{v:"#fb923c",n:"オレンジ1"},
-  {v:"#fdba74",n:"パステルオレンジ"},{v:"#f97316",n:"オレンジ2"},{v:"#fbbf24",n:"アンバー"},{v:"#fde68a",n:"パステルイエロー"},
-  {v:"#f59e0b",n:"イエロー"},{v:"#a3e635",n:"ライム1"},{v:"#bef264",n:"パステルライム"},{v:"#84cc16",n:"ライム2"},
-  {v:"#10b981",n:"エメラルド"},{v:"#a7f3d0",n:"パステルミント"},{v:"#34d399",n:"ミント"},{v:"#2dd4bf",n:"ティール"},
-  {v:"#99f6e4",n:"パステルティール"},{v:"#14b8a6",n:"アクア"},{v:"#06b6d4",n:"シアン"},{v:"#7dd3fc",n:"パステルスカイ"},
-  {v:"#38bdf8",n:"スカイ"},{v:"#6366f1",n:"インディゴ"},{v:"#818cf8",n:"パステルインディゴ"},{v:"#c4b5fd",n:"パステルパープル"},
-  {v:"#a855f7",n:"パープル"},{v:"#c084fc",n:"ライトパープル"},{v:"#f472b6",n:"ピンク"},{v:"#fda4af",n:"パステルローズ"},
-  {v:"#f9a8d4",n:"ライトピンク"},{v:"#db2777",n:"ローズ"},{v:"#e2e8f0",n:"スレート"},{v:"#94a3b8",n:"グレー"}
+  {v:"#94a3b8",n:"グレー (標準)"},{v:"#e2e8f0",n:"スレート"},{v:"#06b6d4",n:"シアン"},{v:"#7dd3fc",n:"パステルスカイ"},{v:"#38bdf8",n:"スカイ"},{v:"#6366f1",n:"インディゴ"},{v:"#818cf8",n:"パステルインディゴ"},{v:"#bef264",n:"パステルライム"},
+  {v:"#a3e635",n:"ライム1"},{v:"#84cc16",n:"ライム2"},{v:"#10b981",n:"エメラルド"},{v:"#34d399",n:"ミント"},{v:"#a7f3d0",n:"パステルミント"},{v:"#2dd4bf",n:"ティール"},{v:"#99f6e4",n:"パステルティール"},{v:"#14b8a6",n:"アクア"},
+  {v:"#fde68a",n:"パステルイエロー"},{v:"#fbbf24",n:"アンバー"},{v:"#f59e0b",n:"イエロー"},{v:"#fdba74",n:"パステルオレンジ"},{v:"#fb923c",n:"オレンジ1"},{v:"#f97316",n:"オレンジ2"},{v:"#fca5a5",n:"パステルレッド"},{v:"#f87171",n:"レッド2"},
+  {v:"#ef4444",n:"レッド1"},{v:"#db2777",n:"ローズ"},{v:"#f472b6",n:"ピンク"},{v:"#f9a8d4",n:"ライトピンク"},{v:"#fda4af",n:"パステルローズ"},{v:"#a855f7",n:"パープル"},{v:"#c084fc",n:"ライトパープル"},{v:"#c4b5fd",n:"パステルパープル"}
 ];
 
 const setGlobalColor = c => { 
   document.documentElement.style.setProperty("--usr-color", c); 
   if(D.curDot) D.curDot.style.background = c; 
 };
+
+// 1ミリ秒の遅延もなく現在の保存色を初期適用
+setGlobalColor(curColor);
 
 const getTrueTime = () => Date.now() + serverTimeOffset;
 
@@ -447,15 +447,16 @@ const makeTrip = (name, tripKey) => {
   return "◆" + quickHashBase62(mixed);
 };
 
+// 最軽量・超高速日付文字列フォーマッタ
 const fDT = ts => {
-  if(!ts) return ""; const d = new Date(ts);
-  const y = d.getFullYear();
-  const mo = String(d.getMonth() + 1).padStart(2, "0");
-  const dy = String(d.getDate()).padStart(2, "0");
-  const h = String(d.getHours()).padStart(2, "0");
-  const mi = String(d.getMinutes()).padStart(2, "0");
-  const s = String(d.getSeconds()).padStart(2, "0");
-  return `${y}/${mo}/${dy} ${h}:${mi}:${s}`;
+  if(!ts) return ""; 
+  const d = new Date(ts);
+  const mo = ("0" + (d.getMonth() + 1)).slice(-2);
+  const dy = ("0" + d.getDate()).slice(-2);
+  const h = ("0" + d.getHours()).slice(-2);
+  const mi = ("0" + d.getMinutes()).slice(-2);
+  const s = ("0" + d.getSeconds()).slice(-2);
+  return `${d.getFullYear()}/${mo}/${dy} ${h}:${mi}:${s}`;
 };
 
 const escapeSelector = (val) => {
@@ -464,16 +465,26 @@ const escapeSelector = (val) => {
 };
 
 /* =========================================================
-   30分自律自動退室タイマー制御 (スリープ・通信復帰時最適化)
+   30分自律自動退室タイマー制御 (時計のゆらぎ・スリープ復帰補正)
    ========================================================= */
 function checkActivityTimeout() {
-  if (!isJoined) return;
-  const lastActive = parseInt(safeLS.get("nz_last_active_time") || Date.now().toString());
-  const elapsed = getTrueTime() - lastActive;
+  if (!isJoined) return false;
+  const lastActive = parseInt(safeLS.get("nz_last_active_time") || "0");
+  if (!lastActive) return false;
+
+  const trueTime = getTrueTime();
+  if (Math.abs(trueTime - Date.now()) > 24 * 60 * 60 * 1000) return false;
+
+  const elapsed = trueTime - lastActive;
   
+  if (elapsed < 0) {
+    safeLS.set("nz_last_active_time", trueTime.toString());
+    return false;
+  }
+
   if (elapsed >= 30 * 60 * 1000) {
     stopAutoExitTimer();
-    doExit(true); // スリープ中に時間切れになっていた場合は、最速で退室移行
+    doExit(true); 
     return true;
   }
   return false;
@@ -483,7 +494,6 @@ function startAutoExitChecker() {
   if (autoExitTimer) clearInterval(autoExitTimer);
   if (!isJoined) return;
 
-  // 起動・再開時に即座に差分タイムアウトをチェックしてバグをガード
   if (checkActivityTimeout()) return;
 
   autoExitTimer = setInterval(() => {
@@ -526,7 +536,7 @@ async function joinRoom(isReconnect = false) {
     t: serverTimestamp()
   });
 
-  D.joinForm.style.display = "none";
+  D.joinForm.style.setProperty("display", "none", "important");
   D.ib.classList.add("show");
   D.exBtn.style.display = "block";
 
@@ -554,7 +564,7 @@ async function doExit(isAuto = false) {
   const myPresRef = ref(db, `presence/official/${myUid}`);
   await remove(myPresRef);
 
-  D.joinForm.style.display = "flex";
+  D.joinForm.style.setProperty("display", "flex", "important");
   D.ib.classList.remove("show");
   D.exBtn.style.display = "none";
 
@@ -738,15 +748,27 @@ function cMsg(m) {
   return el;
 }
 
+// 物理極限まで高速化したタイムライン要素挿入処理 (O(1)ショートカット)
 function insertMessageEl(el) {
   const t = parseInt(el.dataset.ts) || 0;
-  const children = Array.from(D.tli.children);
-  const insertBeforeEl = children.find(child => (parseInt(child.dataset.ts) || 0) > t);
-  if (insertBeforeEl) {
-    D.tli.insertBefore(el, insertBeforeEl);
-  } else {
+  const lastChild = D.tli.lastElementChild;
+  
+  // 通常の新着メッセージ(時系列順)であれば、探索を行わず一瞬で末尾に追加
+  if (!lastChild || (parseInt(lastChild.dataset.ts) || 0) <= t) {
     D.tli.appendChild(el);
+    return;
   }
+  
+  // 割り込みメッセージの場合のみ、後方から探索して適切な位置に挿入
+  let sibling = lastChild;
+  while (sibling) {
+    if ((parseInt(sibling.dataset.ts) || 0) <= t) {
+      D.tli.insertBefore(el, sibling.nextSibling);
+      return;
+    }
+    sibling = sibling.previousElementSibling;
+  }
+  D.tli.insertBefore(el, D.tli.firstChild);
 }
 
 function trimTimeline() {
@@ -1016,7 +1038,6 @@ const updateTripPreview = () => {
   }
 };
 
-// トリップワンタップコピールーチン
 $("copyTripBtn").onclick = (e) => {
   e.preventDefault();
   const n = D.ni.value.trim() || "名無し";
@@ -1269,7 +1290,6 @@ loadCacheToTimeline();
 const cleaningUids = new Set(); 
 let lastPresenceHash = "";      
 
-// 復帰時に明示的に goOnline を呼び出して即時同期させるブースター
 const boostSync = () => {
   if (db) {
     goOnline(db);
@@ -1298,7 +1318,6 @@ onAuthStateChanged(auth, async (user) => {
     serverTimeOffset = snap.val() || 0;
   });
 
-  // オンライン状態への復帰が確認された直後に自身のプレゼンス生存時間(t)を最速更新するガード
   onValue(ref(db, ".info/connected"), (snap) => {
     if (snap.val() === true && isJoined && myUid) {
       set(ref(db, `presence/official/${myUid}/t`), serverTimestamp());

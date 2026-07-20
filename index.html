@@ -419,31 +419,17 @@ setGlobalColor(curColor);
 const getTrueTime = () => Date.now() + serverTimeOffset;
 
 /* =========================================================
-   管理者判定ロジック (ねづお ◆JoNrMB) & 早期判定
+   管理者判定ロジック (J64MocsPo0QD7hSwZpQgEeDdO6X2)
    ========================================================= */
 const isAdmin = () => {
-  const localNi = safeLS.get("nz_ni") || myName;
-  const localTripKey = safeLS.get("nz_tripi");
-  const localTrip = localTripKey ? makeTrip(localNi, localTripKey) : myTrip;
-  return localNi === "ねづお" && localTrip === "◆JoNrMB";
+  // 偽造が一切不可能な Firebase UID を絶対基準として完全安全化
+  return isJoined && myUid === "J64MocsPo0QD7hSwZpQgEeDdO6X2";
 };
 
 const updateAdminUI = () => {
   const adminBtn = D.adminClearBtn;
   if (adminBtn) {
     adminBtn.style.display = isAdmin() ? "block" : "none";
-  }
-};
-
-// 【管理者アシスト機能】ねづおさんのUIDをダイアログ表示して一瞬でコピーさせる機能
-const showAdminUidNotification = () => {
-  if (isAdmin() && myUid) {
-    const isReported = safeLS.get("nz_admin_uid_reported");
-    if (isReported !== myUid) {
-      const msg = `【ねづお様へ：管理者鍵（UID）の確認】\n\nセキュリティルールを設定するために、あなたのFirebase UID（暗号鍵）をコピーしてください：\n\n${myUid}\n\n※このUIDをコピーし、Firebaseのルール画面の '★ここにあなたの管理者UIDを貼り付けます★' の部分に貼り付けて「公開」をクリックしてください。\n（次回ログイン以降、この案内は表示されなくなります）`;
-      window.prompt(msg, myUid);
-      safeLS.set("nz_admin_uid_reported", myUid);
-    }
   }
 };
 
@@ -579,7 +565,6 @@ async function joinRoom(isReconnect = false) {
       m: `${myName} ${myTrip}`.trim() + " が入室しました",
       t: serverTimestamp()
     });
-    showAdminUidNotification(); // 手動ログイン時アシスト
   }
   
   scBottom(true);
@@ -1515,9 +1500,7 @@ onAuthStateChanged(auth, async (user) => {
   });
 
   if (safeLS.get("nz_is_joined") === "true" && myName && safeLS.get("nz_tripi")) {
-    joinRoom(true).then(() => {
-      showAdminUidNotification(); // 自動再入室時アシスト
-    });
+    joinRoom(true);
   }
 });
 

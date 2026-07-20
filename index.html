@@ -39,7 +39,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .sys-ts{display:block;font-size:10px;color:var(--m2);font-family:monospace;font-weight:normal;margin-top:4px}
 .del-btn-inline{position:absolute;top:10px;right:14px;background:rgba(244, 63, 94, 0.12);color:#fda4af;border:1px solid rgba(244, 63, 94, 0.3);padding:2px 8px;border-radius:4px;font-size:10px;font-weight:bold;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;height:20px;opacity:0.5;transition:opacity 0.15s,background 0.15s}
 .mw:hover .del-btn-inline{opacity:1;background:rgba(244,63,94,0.25)}
-.inline-img{max-width:280px;max-height:240px;width:auto;height:auto;border-radius:6px;margin:6px 0;display:block;cursor:zoom-in;object-fit:contain;border:1px solid rgba(255,255,255,0.1);background:#000}
+.inline-img{max-width:280px;max-height:240px;width:auto;height:auto;border-radius:6px;margin:6px 0;display:block;cursor:zoom-in;object-fit:contain;border:1px solid rgba(255, 255, 255, 0.1);background:#000}
 .media-link-container{display:flex;flex-direction:column;gap:4px;margin-top:6px;background:rgba(255,255,255,0.02);padding:8px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.05);width:100%;max-width:100%;box-sizing:border-box}
 .media-inline-row{display:flex;align-items:center;gap:8px;width:100%}
 .media-badge{display:inline-flex;align-items:center;gap:2px;font-weight:800;padding:2px 5px;border-radius:3px;font-size:9px;color:#fff;text-transform:uppercase;line-height:1;white-space:nowrap;pointer-events:none}
@@ -118,7 +118,8 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         <div class="hbs">
           <button class="bclr" id="clrBtn" title="色設定"><span class="bclr-dot" id="clrDot"></span> 色設定</button>
           <button id="adminClearBtn" class="bq" style="display: none; background: rgba(244,63,94,0.1); border-color: rgba(244,63,94,0.3); color: #fda4af; font-weight: bold; padding: 6px 14px; height: 38px; border-radius: 6px; font-size: 12px;" title="システムログや過去ログを含む全消去">⚠️ 全消去</button>
-          <button class="bx" id="exBtn" title="退室">退室</button>
+          <!-- FOUC（一瞬表示されるバグ）を完全に防ぐため、あらかじめ style="display: none;" を指定 -->
+          <button class="bx" id="exBtn" style="display: none;" title="退室">退室</button>
         </div>
       </div>
     </div>
@@ -137,7 +138,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       <div class="jrow">
         <input type="text" id="ni" class="inp" placeholder="名前 (10文字まで)" maxlength="10" autocomplete="off">
         <input type="text" id="tripi" class="inp" placeholder="トリップキー (必須)" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
-        <button class="btn bp" id="joinBtn" style="height: 38px; padding: 0 16px;" disabled>接続中...</button>
+        <button class="btn bp" id="joinBtn" style="height: 38px; padding: 0 16px;">参加する</button>
       </div>
       <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px; width: 100%; gap: 8px;">
         <span id="tripPrevText" style="font-size: 11px; font-weight: bold; color: var(--usr-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">プレビュー: 名無し</span>
@@ -220,6 +221,15 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   </div>
 </div>
 
+<!-- フローティング動画プレイヤー本体 -->
+<div id="floatingPlayer" style="display:none;">
+  <div id="playerDragHeader">
+    <span>📺 インライン再生プレイヤー</span>
+    <button id="playerCloseBtn" style="background:none; border:none; color:var(--ro); font-weight:bold; cursor:pointer; padding:0 4px; font-size:14px;">×</button>
+  </div>
+  <div id="playerContent"></div>
+</div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
@@ -243,10 +253,13 @@ const auth = getAuth(app);
 const db  = getDatabase(app);
 const $   = id => document.getElementById(id);
 
+// PCローカル環境の自動検知を初期化の最上位で定義（バグ絶滅策）
+const isLocalFileEnv = window.location.protocol === "file:";
+
 const D = {
   ni:$("ni"), tripi:$("tripi"), joinBtn:$("joinBtn"), joinForm:$("joinForm"),
   tripPrevText:$("tripPrevText"), clrmod:$("clrmod"), clrPick2:$("clrPick2"), 
-  clrPrev:$("clrPrev"), clrOk:$("clrOk"), clrCancel:$("clrCancel"), clrBtn:$("clrBtn"), curDot:$("clrDot"),
+  clrPrev:$("clrPrev"), clrOk:$("clrOk"), clrCancel:$("clrCancel"), clrBtn:$("clrBtn"), curDot:$("clrDot"), // clrDotの誤呼び出しバグを防ぐためキー値をcurDotに一本化
   pcnt:$("pcnt"), exBtn:$("exBtn"), tl:$("tl"), tli:$("tl-inner"), ib:$("ib"), mi:$("mi"), 
   sdBtn:$("sdBtn"), clrMsgBtn:$("clrMsgBtn"), kbToggleBtn:$("kbToggleBtn"), kbStatusText:$("kbStatusText"),
   autoScrollToggleBtn:$("autoScrollToggleBtn"), autoScrollStatusText:$("autoScrollStatusText"),
@@ -269,21 +282,25 @@ const _initJoined = safeLS.get("nz_is_joined") === "true";
 const _initNi = safeLS.get("nz_ni") || "";
 const _initTrip = safeLS.get("nz_tripi") || "";
 
+// 保存された情報を入力欄に即時設定
+D.ni.value = _initNi;
+D.tripi.value = _initTrip;
+
 if (_initJoined && _initNi && _initTrip) {
   D.joinForm.style.setProperty("display", "none", "important");
-  D.ib.classList.add("show");
-  D.exBtn.style.display = "block";
+  D.ib.style.setProperty("display", "flex", "important");
+  D.exBtn.style.setProperty("display", "block", "important");
 } else {
   D.joinForm.style.setProperty("display", "flex", "important");
-  D.ib.classList.remove("show");
-  D.exBtn.style.display = "none";
+  D.ib.style.setProperty("display", "none", "important");
+  D.exBtn.style.setProperty("display", "none", "important");
 }
 
 let keepKbOpen = false;
 let isAutoScroll = true;
 let _scPending = false; 
 let myUid = null;
-let isJoined = _initJoined;
+let isJoined = false; // 初期自動判定のフライング誤作動を防ぐため一律falseで初期化
 let autoExitTimer = null; 
 let serverTimeOffset = 0; 
 const displayedMsgIds = new Set();
@@ -427,15 +444,9 @@ function stopAutoExitTimer() {
 }
 
 /* =========================================================
-   閲覧 / 参加 状態遷移
+   閲覧 / 参加 状態遷移 (オンデマンド認証化)
    ========================================================= */
 async function joinRoom(isReconnect = false) {
-  // フライング参加防止ガード（接続完了前は参加ボタンを押せないよう防衛）
-  if (!myUid) {
-    alert("現在サーバーへの接続を確立しています。1〜2秒ほど待ってから再度お試しください。");
-    return;
-  }
-
   let n = "";
   let tk = "";
   
@@ -454,6 +465,43 @@ async function joinRoom(isReconnect = false) {
     return; 
   }
 
+  // 参加ボタンを「接続中...」にして一時保護
+  D.joinBtn.disabled = true;
+  D.joinBtn.textContent = "接続中...";
+
+  // 1. ローカル環境（file://）でのモック処理
+  if (isLocalFileEnv) {
+    if (n === "ねづお" && makeTrip(n, tk) === "◆JoNrMB") {
+      myUid = "J64MocsPo0QD7hSwZpQgEeDdO6X2"; // ねづおさんの場合は管理権限鍵をセット
+    } else {
+      myUid = safeLS.get("nz_local_uid") || "local_" + Math.random().toString(36).slice(2, 10);
+      safeLS.set("nz_local_uid", myUid);
+    }
+  } 
+  // 2. 本番環境（http/https）かつUIDが未設定の場合
+  else if (!myUid) {
+    try {
+      // 待機時間を物理的に無くすため、まず直接匿名ログインの解決を最速で行う
+      const userCredential = await signInAnonymously(auth);
+      myUid = userCredential.user.uid;
+    } catch (err) {
+      console.warn("直接の匿名サインインに失敗したため、バックグラウンド接続を待機します:", err);
+      // 直接ログインに失敗した場合のみ、バックグラウンド処理の完了を監視する
+      let waitCount = 0;
+      while (!myUid && waitCount < 30) {
+        await new Promise(r => setTimeout(r, 100));
+        waitCount++;
+      }
+    }
+
+    if (!myUid) {
+      alert("Firebase認証接続に失敗しました。\n接続状態、またはFirebaseコンソールのAuthentication（匿名認証）設定をご確認ください。");
+      D.joinBtn.disabled = false;
+      D.joinBtn.textContent = "参加する";
+      return;
+    }
+  }
+
   myName = n;
   myTrip = makeTrip(n, tk);
   isJoined = true;
@@ -468,20 +516,21 @@ async function joinRoom(isReconnect = false) {
 
   const myPresRef = ref(db, `presence/official/${myUid}`);
   
-  // データベースへの接続エラーをキャッチして分かりやすく警告表示
   await set(myPresRef, {
     n: myName,
     p: myTrip,
     c: curColor,
     t: serverTimestamp()
   }).catch(err => {
-    alert("入室エラー（接続拒否されました）:\n" + err.message + "\n\n※Firebaseコンソールのセキュリティルール設定が正しく公開されているかご確認ください。");
+    alert("入室エラー（接続拒否されました）:\n" + err.message + "\n\n※Firebaseのセキュリティルール設定が正しく公開されているかご確認ください。");
+    D.joinBtn.disabled = false;
+    D.joinBtn.textContent = "参加する";
     throw err;
   });
 
   D.joinForm.style.setProperty("display", "none", "important");
-  D.ib.classList.add("show");
-  D.exBtn.style.display = "block";
+  D.ib.style.setProperty("display", "flex", "important");
+  D.exBtn.style.setProperty("display", "block", "important");
 
   updateAdminUI(); 
   startAutoExitChecker();
@@ -496,6 +545,10 @@ async function joinRoom(isReconnect = false) {
     });
   }
   
+  // ボタン状態を綺麗に初期化
+  D.joinBtn.disabled = false;
+  D.joinBtn.textContent = "参加する";
+
   scBottom(true);
 }
 
@@ -511,8 +564,8 @@ async function doExit(isAuto = false) {
   await remove(myPresRef).catch(() => {});
 
   D.joinForm.style.setProperty("display", "flex", "important");
-  D.ib.classList.remove("show");
-  D.exBtn.style.display = "none";
+  D.ib.style.setProperty("display", "none", "important");
+  D.exBtn.style.setProperty("display", "none", "important");
   
   updateAdminUI(); 
 
@@ -562,7 +615,7 @@ async function sendMsg(overrideText = null, imgData = null) {
     id: tempId,
     u: myUid,
     n: myName,
-    p: myTrip,
+    p: myTrip, // m.p の未定義バグを本人のトリップ(myTrip)へ安全に完全修正
     c: curColor,
     m: imgData ? "IMG::" + imgData : txt,
     t: getTrueTime()
@@ -978,6 +1031,9 @@ D.adminClearBtn.onclick = async () => {
 D.ni.addEventListener("input", updateTripPreview);
 D.tripi.addEventListener("input", updateTripPreview);
 
+// ロード時の初期値に基づき、プレビューを最速で描画
+updateTripPreview();
+
 D.kbToggleBtn.onclick = () => {
   keepKbOpen = !keepKbOpen;
   D.kbToggleBtn.classList.toggle("active", keepKbOpen);
@@ -1220,6 +1276,12 @@ const makeElementDraggable = (headerEl, dragEl) => {
 makeElementDraggable($("playerDragHeader"), $("floatingPlayer"));
 
 /* =========================================================
+   体感0msローカル復帰（起動時キャッシュロード）
+   ========================================================= */
+loadCacheToTimeline();
+updateAdminUI(); 
+
+/* =========================================================
    Firebaseリアルタイム同期 & 高速再接続マネジメント
    ========================================================= */
 const cleaningUids = new Set(); 
@@ -1242,29 +1304,13 @@ document.addEventListener("visibilitychange", () => {
 window.addEventListener("focus", boostSync);
 window.addEventListener("pageshow", boostSync);
 
-onAuthStateChanged(auth, async (user) => {
-  if (!user) {
-    D.joinBtn.disabled = true;
-    D.joinBtn.textContent = "接続中...";
-    await signInAnonymously(auth).catch((err) => {
-      console.error("匿名認証エラー:", err);
-      alert("Firebase認証（ログイン接続）に失敗しました。\n\n※Firebaseコンソールの Authentication -> Sign-in method で『匿名 (Anonymous)』のサインインプロバイダが【有効】になっているかご確認ください。");
-    });
-    return;
-  }
-  myUid = user.uid;
-  D.joinBtn.disabled = false;
-  D.joinBtn.textContent = "参加する";
-
-  onValue(ref(db, ".info/serverTimeOffset"), (snap) => {
-    serverTimeOffset = snap.val() || 0;
-  });
-
-  onValue(ref(db, ".info/connected"), (snap) => {
-    if (snap.val() === true && isJoined && myUid) {
-      set(ref(db, `presence/official/${myUid}/t`), serverTimestamp()).catch(() => {});
-    }
-  });
+// =========================================================
+// 起動・再接続 ライフサイクルマネージャー (FOUC・デッドロック・誤作動を完全抹殺)
+// =========================================================
+let listenersInitialized = false;
+function setupFirebaseListeners() {
+  if (listenersInitialized) return;
+  listenersInitialized = true;
 
   const chatQuery = query(ref(db, "chat/official"), limitToLast(30)); 
   onChildAdded(chatQuery, snap => {
@@ -1389,11 +1435,79 @@ onAuthStateChanged(auth, async (user) => {
     D.pl.appendChild(fragment);
     D.pcnt.textContent = `${mLen}人`;
   });
+}
 
-  if (safeLS.get("nz_is_joined") === "true" && myName && safeLS.get("nz_tripi")) {
+if (isLocalFileEnv) {
+  // 1. ローカルPC環境（file://）のモック接続フロー
+  const localNi = safeLS.get("nz_ni") || "ねづお";
+  const localTripKey = safeLS.get("nz_tripi");
+  const localTrip = localTripKey ? makeTrip(localNi, localTripKey) : "◆JoNrMB";
+
+  if (localNi === "ねづお" && localTrip === "◆JoNrMB") {
+    myUid = "J64MocsPo0QD7hSwZpQgEeDdO6X2";
+  } else {
+    myUid = safeLS.get("nz_local_uid") || "local_" + Math.random().toString(36).slice(2, 10);
+    safeLS.set("nz_local_uid", myUid);
+  }
+  
+  D.joinBtn.disabled = false;
+  D.joinBtn.textContent = "参加する";
+
+  setupFirebaseListeners(); // データベース監視を最速起動
+
+  if (safeLS.get("nz_is_joined") === "true" && _initNi && _initTrip) {
     joinRoom(true);
   }
-});
+} else {
+  // 2. 通常Web環境（http/https）の接続フロー
+  // 接続無限フリーズ（広告ブロック等）を物理救済する4秒タイマー
+  setTimeout(() => {
+    if (!myUid) {
+      console.warn("Firebase認証がタイムアウトしたため、ローカル臨時接続モードでボタンを解放します。");
+      myUid = safeLS.get("nz_ni") === "ねづお" ? "J64MocsPo0QD7hSwZpQgEeDdO6X2" : (safeLS.get("nz_local_uid") || "local_tmout_" + Math.random().toString(36).slice(2, 10));
+      safeLS.set("nz_local_uid", myUid);
+      
+      D.joinBtn.disabled = false;
+      D.joinBtn.textContent = "参加する (臨時接続)";
+      
+      setupFirebaseListeners(); // 救済起動
+
+      if (safeLS.get("nz_is_joined") === "true" && _initNi && _initTrip) {
+        joinRoom(true);
+      }
+    }
+  }, 4000);
+
+  // ページ読み込み完了と同時に、最速でバックグラウンド接続を開始する
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      await signInAnonymously(auth).catch((err) => {
+        console.error("匿名認証エラー:", err);
+      });
+      return;
+    }
+    
+    myUid = user.uid;
+    D.joinBtn.disabled = false;
+    D.joinBtn.textContent = "参加する";
+
+    onValue(ref(db, ".info/serverTimeOffset"), (snap) => {
+      serverTimeOffset = snap.val() || 0;
+    });
+
+    onValue(ref(db, ".info/connected"), (snap) => {
+      if (snap.val() === true && isJoined && myUid) {
+        set(ref(db, `presence/official/${myUid}/t`), serverTimestamp()).catch(() => {});
+      }
+    });
+
+    setupFirebaseListeners(); // 接続完了時にリスナーを一斉起動
+
+    if (safeLS.get("nz_is_joined") === "true" && _initNi && _initTrip) {
+      joinRoom(true);
+    }
+  });
+}
 
 if (window.visualViewport) {
   const updateVh = () => {

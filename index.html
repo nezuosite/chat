@@ -205,6 +205,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         </div>
         <div class="hbs">
           <button class="bclr" id="clrBtn" title="色設定"><span class="bclr-dot" id="clrDot"></span> 色設定</button>
+          <button id="adminClearBtn" class="bq" style="display: none; background: rgba(244,63,94,0.1); border-color: rgba(244,63,94,0.3); color: #fda4af; font-weight: bold; padding: 6px 14px; height: 38px; border-radius: 6px; font-size: 12px;" title="システムログや過去ログを含む全消去">⚠️ 全消去</button>
           <button class="bx" id="exBtn" title="退室">退室</button>
         </div>
       </div>
@@ -352,7 +353,7 @@ const D = {
   jumpUpBtn:$("jumpUpBtn"), jumpDownBtn:$("jumpDownBtn"), imgBtn:$("imgBtn"), fileInput:$("fileInput"),
   imgViewMod:$("imgViewMod"), imgViewSrc:$("imgViewSrc"), imgViewCloseBtn:$("imgViewCloseBtn"),
   delConfirmMod:$("delConfirmMod"), delConfirmPreview:$("delConfirmPreview"), delCancelBtn:$("delCancelBtn"), delExecuteBtn:$("delExecuteBtn"),
-  pl:$("pl")
+  adminClearBtn:$("adminClearBtn"), pl:$("pl")
 };
 
 const safeLS = {
@@ -416,6 +417,35 @@ const setGlobalColor = c => {
 setGlobalColor(curColor);
 
 const getTrueTime = () => Date.now() + serverTimeOffset;
+
+/* =========================================================
+   管理者判定ロジック (ねづお ◆JoNrMB) & 早期判定
+   ========================================================= */
+const isAdmin = () => {
+  const localNi = safeLS.get("nz_ni") || myName;
+  const localTripKey = safeLS.get("nz_tripi");
+  const localTrip = localTripKey ? makeTrip(localNi, localTripKey) : myTrip;
+  return localNi === "ねづお" && localTrip === "◆JoNrMB";
+};
+
+const updateAdminUI = () => {
+  const adminBtn = D.adminClearBtn;
+  if (adminBtn) {
+    adminBtn.style.display = isAdmin() ? "block" : "none";
+  }
+};
+
+// 【管理者アシスト機能】ねづおさんのUIDをダイアログ表示して一瞬でコピーさせる機能
+const showAdminUidNotification = () => {
+  if (isAdmin() && myUid) {
+    const isReported = safeLS.get("nz_admin_uid_reported");
+    if (isReported !== myUid) {
+      const msg = `【ねづお様へ：管理者鍵（UID）の確認】\n\nセキュリティルールを設定するために、あなたのFirebase UID（暗号鍵）をコピーしてください：\n\n${myUid}\n\n※このUIDをコピーし、Firebaseのルール画面の '★ここにあなたの管理者UIDを貼り付けます★' の部分に貼り付けて「公開」をクリックしてください。\n（次回ログイン以降、この案内は表示されなくなります）`;
+      window.prompt(msg, myUid);
+      safeLS.set("nz_admin_uid_reported", myUid);
+    }
+  }
+};
 
 /* =========================================================
    安全なBase62 6文字ハッシュトリップアルゴリズム
@@ -540,6 +570,7 @@ async function joinRoom(isReconnect = false) {
   D.ib.classList.add("show");
   D.exBtn.style.display = "block";
 
+  updateAdminUI(); 
   startAutoExitChecker();
 
   if (!isReconnect) {
@@ -548,6 +579,7 @@ async function joinRoom(isReconnect = false) {
       m: `${myName} ${myTrip}`.trim() + " が入室しました",
       t: serverTimestamp()
     });
+    showAdminUidNotification(); // 手動ログイン時アシスト
   }
   
   scBottom(true);
@@ -567,6 +599,8 @@ async function doExit(isAuto = false) {
   D.joinForm.style.setProperty("display", "flex", "important");
   D.ib.classList.remove("show");
   D.exBtn.style.display = "none";
+  
+  updateAdminUI(); 
 
   if (isAuto) {
     const lastActive = parseInt(safeLS.get("nz_last_active_time") || getTrueTime().toString());
@@ -658,6 +692,23 @@ function cMsg(m) {
     sysDiv.className = "sys-msg";
     sysDiv.textContent = m.m;
     
+    // 管理者のみシステムメッセージの消去を許可
+    if (isAdmin()) {
+      sysDiv.style.position = "relative";
+      const delBtn = document.createElement("button");
+      delBtn.className = "del-btn-inline";
+      delBtn.style.top = "50%";
+      delBtn.style.transform = "translateY(-50%)";
+      delBtn.textContent = "🗑 消去";
+      delBtn.onclick = (e) => {
+        e.stopPropagation();
+        targetDelId = m.id;
+        D.delConfirmPreview.textContent = m.m;
+        D.delConfirmMod.classList.add("show");
+      };
+      sysDiv.appendChild(delBtn);
+    }
+    
     const sysTs = document.createElement("span");
     sysTs.className = "sys-ts";
     sysTs.textContent = `[${fDT(m.t)}]`;
@@ -733,7 +784,7 @@ function cMsg(m) {
 
   el.appendChild(mb);
 
-  if (m.u === myUid) {
+  if (m.u === myUid || isAdmin()) {
     const delBtn = document.createElement("button");
     delBtn.className = "del-btn-inline";
     delBtn.textContent = "🗑 削除";
@@ -753,13 +804,11 @@ function insertMessageEl(el) {
   const t = parseInt(el.dataset.ts) || 0;
   const lastChild = D.tli.lastElementChild;
   
-  // 通常の新着メッセージ(時系列順)であれば、探索を行わず一瞬で末尾に追加
   if (!lastChild || (parseInt(lastChild.dataset.ts) || 0) <= t) {
     D.tli.appendChild(el);
     return;
   }
   
-  // 割り込みメッセージの場合のみ、後方から探索して適切な位置に挿入
   let sibling = lastChild;
   while (sibling) {
     if ((parseInt(sibling.dataset.ts) || 0) <= t) {
@@ -1062,6 +1111,22 @@ $("copyTripBtn").onclick = (e) => {
   }
 };
 
+// 管理者専用: 過去ログ・お知らせログを含む、完全なるデータベースの全消去
+D.adminClearBtn.onclick = async () => {
+  if (!isAdmin()) return;
+  if (confirm("⚠️ 警告: チャット履歴を完全に全消去しますか？\nこの操作は元に戻せません。")) {
+    if (confirm("本当に実行しますか？ システムアナウンス、お知らせログ、過去ログを含め、すべての発言データがサーバー上から完全に空になります。")) {
+      // データベース上の chat/official を完全に null (削除) にして全消去を実行
+      await set(ref(db, "chat/official"), null);
+      
+      // クライアント側のキャッシュ、および表示DOMも即時かつ完全に初期化
+      safeLS.remove("nz_chat_cache");
+      displayedMsgIds.clear();
+      D.tli.innerHTML = "";
+    }
+  }
+};
+
 D.ni.addEventListener("input", updateTripPreview);
 D.tripi.addEventListener("input", updateTripPreview);
 
@@ -1283,6 +1348,7 @@ $("playerDragHeader").onmousedown = (e) => {
    体感0msローカル復帰（起動時キャッシュロード）
    ========================================================= */
 loadCacheToTimeline();
+updateAdminUI(); // 早期管理者判定・UI展開
 
 /* =========================================================
    Firebaseリアルタイム同期 & 高速再接続マネジメント
@@ -1449,7 +1515,9 @@ onAuthStateChanged(auth, async (user) => {
   });
 
   if (safeLS.get("nz_is_joined") === "true" && myName && safeLS.get("nz_tripi")) {
-    joinRoom(true);
+    joinRoom(true).then(() => {
+      showAdminUidNotification(); // 自動再入室時アシスト
+    });
   }
 });
 

@@ -42,7 +42,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   padding:6px 14px; height:38px; border-radius:6px; font-size:12px; font-weight:700;
   background:var(--bg); border:1px solid var(--bd); color:var(--tx); display:flex; align-items:center; gap:6px;
 }
-.bclr-dot{width:6px;height:6px;border-radius:50%;display:inline-block}
+.bclr-dot{width:10px;height:10px;border-radius:50%;display:inline-block;transition:background 0.15s;}
 .bx{ background:rgba(244,63,94,.16)!important; border-color:rgba(244,63,94,.4)!important; color:#fda4af!important; font-weight:900!important; padding:6px 16px!important; display:none; }
 #pl{
   display:flex;gap:6px;padding:6px 10px;background:var(--s2); border-bottom:1px solid rgba(255,255,255,0.04);flex-shrink:0;align-items:center;
@@ -76,7 +76,8 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .mm{display:flex;align-items:center;gap:8px;font-size:12.5px;margin-bottom:4px;padding-right:70px;}
 .ts{color:var(--m2);font-size:11px;margin-left:auto;font-family:monospace;}
 .mb{align-self:start;background:transparent;border:none;padding:0;font-size:15px;line-height:1.6;max-width:100%;word-break:break-all;white-space:pre-wrap;color:var(--tx);padding-right:70px;}
-.sys-msg{text-align:center;font-size:12px;font-weight:bold;color:var(--mu);margin:8px 0;background:rgba(255,255,255,0.03);padding:8px 14px;border-radius:6px;width:100%;align-self:center;border:1px solid rgba(255,255,255,0.05);}
+.sys-msg{text-align:center;font-size:12px;font-weight:bold;color:var(--mu);margin:8px 0;background:rgba(255,255,255,0.03);padding:8px 14px;border-radius:6px;width:100%;align-self:center;border:1px solid rgba(255,255,255,0.05);white-space:pre-wrap;word-break:break-all;line-height:1.5;}
+.sys-ts{display:block;font-size:10px;color:var(--m2);font-family:monospace;font-weight:normal;margin-top:4px;}
 
 .del-btn-inline { 
   position: absolute;
@@ -120,7 +121,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 }
 .jrow { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: center; }
 
-#ib{ 
+#ib { 
   display:none; 
   flex-direction: column; 
   padding:4px calc(6px + env(safe-area-inset-right,0px)) calc(4px + var(--safe)) calc(6px + env(safe-area-inset-left,0px)); 
@@ -180,12 +181,13 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 #imgViewSrc { max-width: 90%; max-height: calc(100dvh - 140px); object-fit: contain; margin-bottom: 20px; }
 .modal-bottom-close-container { width: 100%; display: flex; justify-content: center; position: absolute; bottom: 0; left: 0; padding: 16px 0 calc(16px + var(--safe)); background: linear-gradient(to top, rgba(0,0,0,0.8) 40%, rgba(0,0,0,0)); backdrop-filter: blur(2px); z-index: 10001; }
 .modal-bottom-close { width: auto; min-width: 160px; padding: 12px 24px; background: var(--ro); color: #fff; border-radius: 24px; font-weight: bold; font-size: 13.5px; text-align: center; border: none; box-shadow: 0 4px 12px rgba(244, 63, 94, 0.4); cursor: pointer; }
+
 #floatingPlayer { display: none; position: absolute; z-index: 9999; background: #0d1117; border: 1px solid var(--bd); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); width: 320px; flex-direction: column; overflow: hidden; touch-action: none; }
 #playerDragHeader { cursor: move; background: var(--sf); padding: 8px 10px; font-size: 11.5px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--bd); user-select: none; }
 #playerContent { width: 100%; aspect-ratio: 16/9; background: #000; display: flex; justify-content: center; align-items: center; position: relative; }
 .clrpick-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
-.clrc2{aspect-ratio:1;width:100%;max-width:20px;border-radius:50%;margin:0 auto;border:1px solid transparent;cursor:pointer}
-.clrc2.sel{border-color:var(--tx);transform:scale(1.15)}
+.clrc2{aspect-ratio:1;width:100%;max-width:24px;border-radius:50%;margin:0 auto;border:2px solid transparent;cursor:pointer;transition:transform 0.15s, border-color 0.15s;}
+.clrc2.sel{border-color:var(--tx)!important;transform:scale(1.3);box-shadow: 0 0 8px rgba(255,255,255,0.45);border-width:2px!important;}
 </style>
 </head>
 <body>
@@ -202,7 +204,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
           </div>
         </div>
         <div class="hbs">
-          <button class="bclr" id="clrBtn" title="カラー設定"><span class="bclr-dot" id="clrDot"></span> 設定</button>
+          <button class="bclr" id="clrBtn" title="色設定"><span class="bclr-dot" id="clrDot"></span> 色設定</button>
           <button class="bx" id="exBtn" title="退室">退室</button>
         </div>
       </div>
@@ -224,8 +226,9 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         <input type="text" id="tripi" class="inp" placeholder="トリップキー (必須)" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
         <button class="btn bp" id="joinBtn" style="height: 38px; padding: 0 16px;">参加する</button>
       </div>
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px;">
-        <span id="tripPrevText" style="font-size: 11px; font-weight: bold; color: var(--usr-color);">プレビュー: 名無し</span>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px; width: 100%; gap: 8px;">
+        <span id="tripPrevText" style="font-size: 11px; font-weight: bold; color: var(--usr-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">プレビュー: 名無し</span>
+        <button id="copyTripBtn" class="btn bq" style="height: 24px; padding: 0 8px; font-size: 10px; border-radius: 4px; display: none; align-items: center; justify-content: center; font-weight: bold; border-color: rgba(255,255,255,0.1); flex-shrink: 0;" title="トリップをクリップボードにコピー">トリップをコピー</button>
       </div>
     </div>
 
@@ -278,7 +281,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   </div>
 </div>
 
-<div id="toastContainer" style="display:none;"></div> <!-- トール構造の完全撤去 -->
+<div id="toastContainer" style="display:none;"></div>
 
 <!-- 発言削除確認モーダル -->
 <div id="delConfirmMod" class="mod-overlay">
@@ -293,10 +296,10 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   </div>
 </div>
 
-<!-- カラー設定モーダル -->
+<!-- 色設定モーダル -->
 <div id="clrmod" class="mod-overlay">
   <div class="clrmc gc" style="max-width:320px;">
-    <h3 style="font-size:13px; color:var(--tx); border-bottom:1px solid var(--bd); padding-bottom:6px; font-weight:bold;">🎨 カラー設定</h3>
+    <h3 style="font-size:13px; color:var(--tx); border-bottom:1px solid var(--bd); padding-bottom:6px; font-weight:bold;">🎨 色設定</h3>
     <div id="clrPrev" class="clr-prev" style="margin:8px 0; min-height:48px;"></div>
     <div class="clrbox" style="margin-bottom:10px;">
       <div class="clrpick-grid" id="clrPick2"></div>
@@ -319,7 +322,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { getDatabase, ref, push, onValue, set, remove, serverTimestamp, onChildAdded, onChildRemoved, query, limitToLast, runTransaction }
+import { getDatabase, ref, push, onValue, set, remove, serverTimestamp, onChildAdded, onChildRemoved, query, limitToLast, runTransaction, goOnline, goOffline }
   from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
 const SYSTEM_SALT = "NEZU_PRO_SYS_SALT_2026_V1";
@@ -359,7 +362,7 @@ const safeLS = {
 };
 
 /* =========================================================
-   最速UIスイッチング・セッション確認 (チラつき・一瞬の表示バグを防止)
+   最速UIスイッチング・セッション確認
    ========================================================= */
 const _initJoined = safeLS.get("nz_is_joined") === "true";
 const _initNi = safeLS.get("nz_ni") || "";
@@ -380,7 +383,8 @@ let isAutoScroll = true;
 let _scPending = false; 
 let myUid = null;
 let isJoined = _initJoined;
-let autoExitTimer = null; // 30分発言なし検出用
+let autoExitTimer = null; 
+let serverTimeOffset = 0; 
 const displayedMsgIds = new Set();
 let curColor = safeLS.get("nz_color") || "#94a3b8";
 let tmpColor = curColor;
@@ -411,10 +415,12 @@ const setGlobalColor = c => {
   if(D.curDot) D.curDot.style.background = c; 
 };
 
+const getTrueTime = () => Date.now() + serverTimeOffset;
+
 /* =========================================================
-   爆速FNV-1a ハッシュアルゴリズム（本人証明トリップキー用）
+   安全なBase62 6文字ハッシュトリップアルゴリズム
    ========================================================= */
-const quickHash = (str) => {
+const quickHashBase62 = (str) => {
   let h1 = 0x811c9dc5;
   let h2 = 0xcbf29ce4;
   const len = str.length;
@@ -423,17 +429,22 @@ const quickHash = (str) => {
     h1 = Math.imul(h1 ^ c, 0x01000193);
     h2 = Math.imul(h2 ^ c, 0x01000193);
   }
-  const part1 = (h1 >>> 0).toString(16).padStart(8, '0');
-  const part2 = (h2 >>> 0).toString(16).padStart(8, '0');
-  return part1 + part2;
+  
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let val = ((h1 >>> 0) ^ (h2 >>> 0)) >>> 0;
+  let res = "";
+  for (let i = 0; i < 6; i++) {
+    res += chars[val % 62];
+    val = Math.floor(val / 62);
+  }
+  return res;
 };
 
 const makeTrip = (name, tripKey) => {
   if (!tripKey) return "";
   const revKey = tripKey.split("").reverse().join("");
   const mixed = SYSTEM_SALT + "_" + name + "_[SALT]_" + revKey;
-  const hash = quickHash(mixed);
-  return "◆" + hash.substring(0, 10);
+  return "◆" + quickHashBase62(mixed);
 };
 
 const fDT = ts => {
@@ -453,24 +464,36 @@ const escapeSelector = (val) => {
 };
 
 /* =========================================================
-   30分発言なしによる自動退室タイマー制御
+   30分自律自動退室タイマー制御 (スリープ・通信復帰時最適化)
    ========================================================= */
-function resetAutoExitTimer() {
-  if (autoExitTimer) clearTimeout(autoExitTimer);
+function checkActivityTimeout() {
   if (!isJoined) return;
-  
   const lastActive = parseInt(safeLS.get("nz_last_active_time") || Date.now().toString());
-  const elapsed = Date.now() - lastActive;
-  const remain = Math.max(0, 30 * 60 * 1000 - elapsed);
+  const elapsed = getTrueTime() - lastActive;
   
-  autoExitTimer = setTimeout(() => {
-    doExit(true); // 自動退室の実行
-  }, remain);
+  if (elapsed >= 30 * 60 * 1000) {
+    stopAutoExitTimer();
+    doExit(true); // スリープ中に時間切れになっていた場合は、最速で退室移行
+    return true;
+  }
+  return false;
+}
+
+function startAutoExitChecker() {
+  if (autoExitTimer) clearInterval(autoExitTimer);
+  if (!isJoined) return;
+
+  // 起動・再開時に即座に差分タイムアウトをチェックしてバグをガード
+  if (checkActivityTimeout()) return;
+
+  autoExitTimer = setInterval(() => {
+    checkActivityTimeout();
+  }, 10000);
 }
 
 function stopAutoExitTimer() {
   if (autoExitTimer) {
-    clearTimeout(autoExitTimer);
+    clearInterval(autoExitTimer);
     autoExitTimer = null;
   }
 }
@@ -492,10 +515,9 @@ async function joinRoom(isReconnect = false) {
   safeLS.set("nz_is_joined", "true");
 
   if (!isReconnect) {
-    safeLS.set("nz_last_active_time", Date.now().toString());
+    safeLS.set("nz_last_active_time", getTrueTime().toString());
   }
 
-  // 参加者プレゼンスに平文登録 (onDisconnectは登録せず生存させる)
   const myPresRef = ref(db, `presence/official/${myUid}`);
   await set(myPresRef, {
     n: myName,
@@ -504,14 +526,12 @@ async function joinRoom(isReconnect = false) {
     t: serverTimestamp()
   });
 
-  // 参加UI表示切り替え (最下部に完璧に吸着表示)
   D.joinForm.style.display = "none";
   D.ib.classList.add("show");
-  D.exBtn.style.display = "block"; // 退室ボタンを表示
+  D.exBtn.style.display = "block";
 
-  resetAutoExitTimer();
+  startAutoExitChecker();
 
-  // 再接続ではない(初めて入る)場合のみ入室のお知らせを送信
   if (!isReconnect) {
     await push(ref(db, "chat/official"), {
       sys: true,
@@ -534,20 +554,19 @@ async function doExit(isAuto = false) {
   const myPresRef = ref(db, `presence/official/${myUid}`);
   await remove(myPresRef);
 
-  // UI表示切り替え（ゲスト閲覧モード）
   D.joinForm.style.display = "flex";
   D.ib.classList.remove("show");
-  D.exBtn.style.display = "none"; // 退室ボタンを非表示
+  D.exBtn.style.display = "none";
 
   if (isAuto) {
-    const exitTime = parseInt(safeLS.get("nz_last_active_time") || "0") + 30 * 60 * 1000;
+    const lastActive = parseInt(safeLS.get("nz_last_active_time") || getTrueTime().toString());
+    const exitTime = lastActive + 30 * 60 * 1000;
     await push(ref(db, "chat/official"), {
       sys: true,
       m: `${myName} ${myTrip}`.trim() + " が退室しました (自動退室)",
-      t: exitTime || Date.now() // 退室予定時刻でログを流す
+      t: exitTime
     });
   } else {
-    // 手動退室システムメッセージ送信
     await push(ref(db, "chat/official"), {
       sys: true,
       m: `${myName} ${myTrip}`.trim() + " が退室しました",
@@ -557,9 +576,9 @@ async function doExit(isAuto = false) {
 }
 
 /* =========================================================
-   メッセージ送信 (平文・最速ローカルエコー & アトミック同期)
+   メッセージ送信
    ========================================================= */
-const pendingMsgs = new Map(); // 送信中メッセージの仮格納用
+const pendingMsgs = new Map();
 
 async function sendMsg(overrideText = null, imgData = null) {
   if (!isJoined) return;
@@ -580,7 +599,6 @@ async function sendMsg(overrideText = null, imgData = null) {
     D.mi.focus();
   }
 
-  // 1. 即時ローカルエコー（サーバー通信を待たずに1ミリ秒でタイムラインに表示）
   const tempId = "pnd_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
   const tempObj = {
     id: tempId,
@@ -589,23 +607,20 @@ async function sendMsg(overrideText = null, imgData = null) {
     p: myTrip,
     c: curColor,
     m: imgData ? "IMG::" + imgData : txt,
-    t: Date.now()
+    t: getTrueTime()
   };
   const tempEl = cMsg(tempObj);
   D.tli.appendChild(tempEl);
   pendingMsgs.set(tempId, tempEl);
   scBottom(true);
 
-  // 最終発言時刻とタイマーをリセット
-  safeLS.set("nz_last_active_time", Date.now().toString());
-  resetAutoExitTimer();
+  safeLS.set("nz_last_active_time", getTrueTime().toString());
 
-  // 他クライアントへの生存確認用タイムスタンプ更新
   set(ref(db, `presence/official/${myUid}/t`), serverTimestamp());
 
   const pushData = { 
     u: myUid, 
-    pnd: tempId, // アトミック同期用の仮IDを載せる
+    pnd: tempId, 
     n: myName,
     p: myTrip,
     c: curColor,
@@ -620,7 +635,7 @@ async function sendMsg(overrideText = null, imgData = null) {
 }
 
 /* =========================================================
-   メッセージDOM生成 (平文・テキスト解析超高速ガード)
+   メッセージDOM生成 (innerHTMLを使わない最速レンダリング)
    ========================================================= */
 function cMsg(m) {
   const el = document.createElement("div");
@@ -629,7 +644,16 @@ function cMsg(m) {
   el.dataset.ts = m.t || 0;
 
   if (m.sys) {
-    el.innerHTML = `<div class="sys-msg">${m.m}</div>`;
+    const sysDiv = document.createElement("div");
+    sysDiv.className = "sys-msg";
+    sysDiv.textContent = m.m;
+    
+    const sysTs = document.createElement("span");
+    sysTs.className = "sys-ts";
+    sysTs.textContent = `[${fDT(m.t)}]`;
+    
+    sysDiv.appendChild(sysTs);
+    el.appendChild(sysDiv);
     return el;
   }
 
@@ -679,14 +703,12 @@ function cMsg(m) {
     };
     mb.appendChild(img);
   } else {
-    // 高速テキスト展開
     const parsedNodes = parseTxtSplit(m.m);
     const pLen = parsedNodes.length;
     for (let i = 0; i < pLen; i++) {
       mb.appendChild(parsedNodes[i]);
     }
 
-    // 必要最小限のタイミングでのみ重いURL/ビデオ処理を行う
     if (m.m.includes("http")) {
       const urls = m.m.match(UR);
       if (urls) {
@@ -701,7 +723,6 @@ function cMsg(m) {
 
   el.appendChild(mb);
 
-  // 自分の発言のみ削除ボタンを表示
   if (m.u === myUid) {
     const delBtn = document.createElement("button");
     delBtn.className = "del-btn-inline";
@@ -729,7 +750,7 @@ function insertMessageEl(el) {
 }
 
 function trimTimeline() {
-  const maxMessages = 100; // メッセージ数を100件に制限しブラウザ描画をブースト
+  const maxMessages = 100; 
   const children = Array.from(D.tli.children);
   if (children.length > maxMessages) {
     const toRemove = children.slice(0, children.length - maxMessages);
@@ -749,7 +770,7 @@ function scBottom(force = false) {
   requestAnimationFrame(() => {
     const tl = D.tl;
     if (tl) {
-      tl.scrollTop = tl.scrollHeight; // 最も軽量なscrollTop直接指定でレイアウト再計算コストを劇的にカット
+      tl.scrollTop = tl.scrollHeight; 
     }
     _scPending = false;
   });
@@ -763,10 +784,9 @@ function updateJumpBtns() {
 }
 
 /* =========================================================
-   爆速テキスト解析ガード（チャットのやり取りの表示速度を極限まで加速）
+   超高速テキスト解析ガード
    ========================================================= */
 function parseTxtSplit(txt) {
-  // テキスト中に "http" が含まれていない場合、正規表現スキャンを完全にスキップして1ミリ秒で描画
   if (!txt.includes("http")) {
     return [document.createTextNode(txt)];
   }
@@ -890,6 +910,89 @@ $("playerCloseBtn").onclick = () => {
 };
 
 /* =========================================================
+   体感0ms高速プレビュー & キャッシュストレージ管理
+   ========================================================= */
+const loadCacheToTimeline = () => {
+  try {
+    const raw = safeLS.get("nz_chat_cache");
+    if (!raw) return;
+    const list = JSON.parse(raw);
+    if (!Array.isArray(list)) return;
+    
+    const fragment = document.createDocumentFragment();
+    const len = list.length;
+    for (let i = 0; i < len; i++) {
+      const m = list[i];
+      if (m && m.id && !displayedMsgIds.has(m.id)) {
+        displayedMsgIds.add(m.id);
+        const el = cMsg(m);
+        fragment.appendChild(el);
+      }
+    }
+    D.tli.appendChild(fragment);
+    scBottom(true);
+  } catch (e) {
+    safeLS.remove("nz_chat_cache");
+  }
+};
+
+let cacheTimer = null;
+const saveCacheFromTimeline = () => {
+  if (cacheTimer) clearTimeout(cacheTimer);
+  cacheTimer = setTimeout(() => {
+    try {
+      const els = Array.from(D.tli.children).slice(-30); 
+      const data = els.map(el => {
+        const mid = el.dataset.mid;
+        if (!mid || mid.startsWith("pnd_")) return null; 
+        const ts = parseInt(el.dataset.ts) || 0;
+        
+        const sysMsgEl = el.querySelector(".sys-msg");
+        if (sysMsgEl) {
+          const tsText = el.querySelector(".sys-ts")?.textContent || "";
+          let fullText = sysMsgEl.textContent || "";
+          if (tsText) {
+            fullText = fullText.replace(tsText, "").trim();
+          }
+          return { id: mid, t: ts, sys: true, m: fullText };
+        }
+        
+        const mm = el.querySelector(".mm");
+        if (!mm) return null;
+        
+        const name = mm.children[0] ? mm.children[0].textContent : "";
+        let trip = "";
+        if (mm.children.length > 2) {
+          const tripSpan = mm.children[1];
+          if (tripSpan && !tripSpan.classList.contains("ts")) {
+            trip = tripSpan.textContent;
+          }
+        }
+        
+        const color = mm.style.color || "#94a3b8";
+        const mb = el.querySelector(".mb");
+        let msgText = "";
+        if (mb) {
+          const inlineImg = mb.querySelector(".inline-img");
+          if (inlineImg) {
+            msgText = "IMG::" + inlineImg.src;
+          } else {
+            msgText = mb.textContent || "";
+          }
+        }
+        
+        const isMine = !!el.querySelector(".del-btn-inline");
+        const u = isMine ? myUid : ""; 
+        
+        return { id: mid, u, n: name, p: trip, c: color, m: msgText, t: ts };
+      }).filter(Boolean);
+      
+      safeLS.set("nz_chat_cache", JSON.stringify(data));
+    } catch (e) {}
+  }, 1000);
+};
+
+/* =========================================================
    UIインタラクション・イベントバインド
    ========================================================= */
 D.joinBtn.onclick = () => joinRoom(false);
@@ -905,6 +1008,37 @@ const updateTripPreview = () => {
   const t = tk ? makeTrip(n, tk) : "";
   D.tripPrevText.textContent = `プレビュー: ${n} ${t}`;
   D.tripPrevText.style.color = curColor; 
+  
+  if (tk) {
+    $("copyTripBtn").style.display = "inline-flex";
+  } else {
+    $("copyTripBtn").style.display = "none";
+  }
+};
+
+// トリップワンタップコピールーチン
+$("copyTripBtn").onclick = (e) => {
+  e.preventDefault();
+  const n = D.ni.value.trim() || "名無し";
+  const tk = D.tripi.value.trim();
+  if (!tk) return;
+  const t = makeTrip(n, tk);
+  if (t) {
+    navigator.clipboard.writeText(t).then(() => {
+      const copyBtn = $("copyTripBtn");
+      const origText = copyBtn.textContent;
+      copyBtn.textContent = "コピー完了！";
+      copyBtn.style.borderColor = "var(--em)";
+      copyBtn.style.color = "var(--em)";
+      setTimeout(() => {
+        copyBtn.textContent = origText;
+        copyBtn.style.borderColor = "";
+        copyBtn.style.color = "";
+      }, 1500);
+    }).catch(() => {
+      alert("コピーに失敗しました。手動で選択してコピーしてください。");
+    });
+  }
 };
 
 D.ni.addEventListener("input", updateTripPreview);
@@ -986,7 +1120,7 @@ D.fileInput.onchange = (e) => {
   reader.readAsDataURL(file);
 };
 
-// カラー設定モーダル
+// 色設定モーダル
 D.clrBtn.onclick = () => {
   tmpColor = curColor;
   updateModalColorPreview(tmpColor);
@@ -1044,7 +1178,7 @@ function updateModalColorPreview(color) {
   const bodyMock = document.createElement("div");
   bodyMock.style.fontSize = "13px"; bodyMock.style.color = "var(--tx)"; bodyMock.style.marginTop = "4px";
   bodyMock.style.borderLeft = `2px solid ${color}`; bodyMock.style.paddingLeft = "8px";
-  bodyMock.textContent = "このカラーで発言が表示されます。";
+  bodyMock.textContent = "この色で発言が表示されます。";
   con.appendChild(bodyMock);
 }
 
@@ -1125,15 +1259,33 @@ $("playerDragHeader").onmousedown = (e) => {
 };
 
 /* =========================================================
-   バックグラウンド起動とFirebaseリアルタイム同期
+   体感0msローカル復帰（起動時キャッシュロード）
    ========================================================= */
-D.ni.value = myName;
-D.tripi.value = safeLS.get("nz_tripi") || "";
-setGlobalColor(curColor);
-updateTripPreview();
+loadCacheToTimeline();
 
-const cleaningUids = new Set(); // 削除トランザクションの重複防止用
-let lastPresenceHash = "";      // オンラインリスト差分検知キャッシュ（CPU/描画負荷削減用）
+/* =========================================================
+   Firebaseリアルタイム同期 & 高速再接続マネジメント
+   ========================================================= */
+const cleaningUids = new Set(); 
+let lastPresenceHash = "";      
+
+// 復帰時に明示的に goOnline を呼び出して即時同期させるブースター
+const boostSync = () => {
+  if (db) {
+    goOnline(db);
+    startAutoExitChecker();
+  }
+};
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    boostSync();
+  } else {
+    if (db) goOffline(db);
+  }
+});
+window.addEventListener("focus", boostSync);
+window.addEventListener("pageshow", boostSync);
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
@@ -1142,20 +1294,29 @@ onAuthStateChanged(auth, async (user) => {
   }
   myUid = user.uid;
 
-  // 1. 常設タイムラインの監視 (平文・パケット量極小化30件)
+  onValue(ref(db, ".info/serverTimeOffset"), (snap) => {
+    serverTimeOffset = snap.val() || 0;
+  });
+
+  // オンライン状態への復帰が確認された直後に自身のプレゼンス生存時間(t)を最速更新するガード
+  onValue(ref(db, ".info/connected"), (snap) => {
+    if (snap.val() === true && isJoined && myUid) {
+      set(ref(db, `presence/official/${myUid}/t`), serverTimestamp());
+    }
+  });
+
   const chatQuery = query(ref(db, "chat/official"), limitToLast(30)); 
   onChildAdded(chatQuery, snap => {
     const m = snap.val(); 
     if(m) { 
       m.id = snap.key; 
       
-      // アトミック同期：自分の仮DOMメッセージがサーバーから確定されて返ってきた時
       if (m.pnd && pendingMsgs.has(m.pnd)) {
         const localEl = pendingMsgs.get(m.pnd);
-        localEl.dataset.mid = m.id; // 正式IDに置き換え
+        localEl.dataset.mid = m.id; 
         
         const tsSpan = localEl.querySelector(".ts");
-        if (tsSpan) tsSpan.textContent = fDT(m.t); // 確定したサーバー時間に差し替え
+        if (tsSpan) tsSpan.textContent = fDT(m.t); 
         
         const delBtn = localEl.querySelector(".del-btn-inline");
         if (delBtn) {
@@ -1168,6 +1329,7 @@ onAuthStateChanged(auth, async (user) => {
         
         displayedMsgIds.add(m.id);
         pendingMsgs.delete(m.pnd);
+        saveCacheFromTimeline();
         return;
       }
 
@@ -1177,6 +1339,7 @@ onAuthStateChanged(auth, async (user) => {
         insertMessageEl(el);
         trimTimeline();
         scBottom();
+        saveCacheFromTimeline();
       }
     } 
   });
@@ -1184,32 +1347,37 @@ onAuthStateChanged(auth, async (user) => {
   onChildRemoved(ref(db, "chat/official"), snap => {
     displayedMsgIds.delete(snap.key);
     const el = D.tli.querySelector(`[data-mid="${escapeSelector(snap.key)}"]`);
-    if (el) el.remove();
+    if (el) {
+      el.remove();
+      saveCacheFromTimeline();
+    }
   });
 
-  // 2. 常設オンラインメンバーの監視 & トランザクションを利用した退室予定メッセージの確実な代理送信
   onValue(ref(db, "presence/official"), s => {
     const list = s.val() || {};
     const members = [];
-    const now = Date.now();
+    const nowTrue = getTrueTime();
 
-    // 差分検知用の結合文字列を構築し、前回と全く同じならDOM処理（全クリア・再作成）を100%スキップして高速化
     const currentPresenceHash = Object.keys(list).sort().map(id => {
       const u = list[id];
       return `${id}:${u.n || ""}:${u.c || ""}:${u.t || 0}`;
     }).join("|");
 
     if (currentPresenceHash === lastPresenceHash) {
-      return; // 描画負荷ゼロ（差分なしのため完全にスルー）
+      return; 
     }
     lastPresenceHash = currentPresenceHash;
 
     for (const [id, u] of Object.entries(list)) {
       if (u && u.n) {
-        if (!u.t || typeof u.t !== "number") continue;
+        let ut = u.t;
+        if (ut && typeof ut === "object") {
+          ut = nowTrue;
+        }
+        if (!ut || typeof ut !== "number") continue;
 
-        // 他者による30分経過の放置メンバーの自動クリーンアップ
-        if (now - u.t > 30 * 60 * 1000) {
+        if (nowTrue - ut > 30 * 60 * 1000) {
+          if (id === myUid) continue; 
           if (cleaningUids.has(id)) continue;
           cleaningUids.add(id);
 
@@ -1222,7 +1390,7 @@ onAuthStateChanged(auth, async (user) => {
             return null;
           }).then((result) => {
             if (result.committed) {
-              const exitTime = targetUser.t + 30 * 60 * 1000;
+              const exitTime = ut + 30 * 60 * 1000;
               push(ref(db, "chat/official"), {
                 sys: true,
                 m: `${targetUser.n} ${targetUser.p}`.trim() + " が退室しました (自動退室)",
@@ -1235,11 +1403,10 @@ onAuthStateChanged(auth, async (user) => {
           });
           continue;
         }
-        members.push({ id, ...u });
+        members.push({ id, ...u, t: ut });
       }
     }
 
-    // フラグメントによる一括DOM描画
     const fragment = document.createDocumentFragment();
     const mLen = members.length;
     for (let i = 0; i < mLen; i++) {
@@ -1262,13 +1429,11 @@ onAuthStateChanged(auth, async (user) => {
     D.pcnt.textContent = `${mLen}人`;
   });
 
-  // 3. 前回ログインしていた場合の自動再入室 (再接続としてフラグ付きで実行)
   if (safeLS.get("nz_is_joined") === "true" && myName && safeLS.get("nz_tripi")) {
     joinRoom(true);
   }
 });
 
-// viewportリサイズ対応 (iOS等キーボード対策)
 if (window.visualViewport) {
   const updateVh = () => {
     document.documentElement.style.setProperty("--app-viewport-height", `${window.visualViewport.height}px`);

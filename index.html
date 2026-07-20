@@ -75,7 +75,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .battach{position:absolute;left:4px;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--mu);cursor:pointer}
 .battach svg{width:18px;height:18px}
 #mi{width:100%;background:none;border:none;color:var(--tx);outline:none;resize:none;font-size:15px;max-height:120px;line-height:1.5;padding:4px 0}
-.bclrm{position:absolute;right:4px;width:28px;height:28px;border-radius:50%;color:var(--m2);font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.bclrmm{position:absolute;right:4px;width:28px;height:28px;border-radius:50%;color:var(--m2);font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .bsd{width:38px;height:38px;border-radius:50%;background:var(--in);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-bottom:0;box-shadow:0 1px 6px rgba(79,70,229,0.3)}
 .bsd svg{width:18px;height:18px;transform:rotate(45deg);margin-top:-1px;margin-right:1px}
 .mod-overlay{position:fixed;inset:0;background:rgba(15,23,42,.8);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:10000;padding:12px}
@@ -412,10 +412,10 @@ const makeTrip = (name, tripKey) => {
   return "◆" + quickHashBase62(mixed);
 };
 
-// 最軽量・超高速日付文字列フォーマッタ
+// 最軽量・超高速日付文字列フォーマッタ（サーバー同期時刻を基準にフォールバック）
 const fDT = ts => {
-  if(!ts) return ""; 
-  const d = new Date(ts);
+  const actualTs = (typeof ts === "number" && ts > 0) ? ts : getTrueTime();
+  const d = new Date(actualTs);
   const mo = ("0" + (d.getMonth() + 1)).slice(-2);
   const dy = ("0" + d.getDate()).slice(-2);
   const h = ("0" + d.getHours()).slice(-2);
@@ -624,9 +624,9 @@ async function doExit(isAuto = false) {
 }
 
 /* =========================================================
-   メッセージ送信
+   メッセージ送信 (即反映対応)
    ========================================================= */
-const pendingMsgs = new Map();
+const pendingMsgs = new Map(); // id -> msgObj
 
 async function sendMsg(overrideText = null, imgData = null) {
   if (!isJoined) return;
@@ -657,9 +657,13 @@ async function sendMsg(overrideText = null, imgData = null) {
     m: imgData ? "IMG::" + imgData : txt,
     t: getTrueTime()
   };
+
+  // 保留リストにオブジェクトとして登録
+  pendingMsgs.set(tempId, tempObj);
+
+  // 送信した瞬間にローカルへ仮のDOMを即時反映（超高速体感）
   const tempEl = cMsg(tempObj);
   D.tli.appendChild(tempEl);
-  pendingMsgs.set(tempId, tempEl);
   scBottom(true);
 
   safeLS.set("nz_last_active_time", getTrueTime().toString());
@@ -677,7 +681,9 @@ async function sendMsg(overrideText = null, imgData = null) {
   };
 
   await push(ref(db, "chat/official"), pushData).catch((err) => {
-    tempEl.remove();
+    // 失敗した場合は即時追加された仮DOMを削除してpendingから除外
+    const localEl = D.tli.querySelector(`.mw[data-mid="${escapeSelector(tempId)}"]`);
+    if (localEl) localEl.remove();
     pendingMsgs.delete(tempId);
     alert("メッセージの送信に失敗しました:\n" + err.message + "\n\n※セキュリティルールによる書き込み制限、または接続エラーの可能性があります。");
   });
@@ -1059,13 +1065,30 @@ D.sdBtn.onclick = () => sendMsg();
 D.clrMsgBtn.onclick = () => { D.mi.value = ""; D.mi.style.height = "auto"; };
 
 D.delCancelBtn.onclick = () => { D.delConfirmMod.classList.remove("show"); targetDelId = null; };
+
+// ログ削除確認＆即時UI反映処理
 D.delExecuteBtn.onclick = async () => {
   if (!targetDelId) return;
-  await remove(ref(db, `chat/official/${targetDelId}`)).catch(err => {
-    alert("メッセージの削除に失敗しました:\n" + err.message + "\n\n※セキュリティルールが設定されていない可能性があります。");
-  });
+  const idToDelete = targetDelId;
+  
+  // 1. ローカルDOMから即座に削除（即反映）
+  const localEl = D.tli.querySelector(`.mw[data-mid="${escapeSelector(idToDelete)}"]`);
+  if (localEl) {
+    localEl.remove();
+  }
+  
+  // 2. ローカルキャッシュからも即時に除外して、再読み込み時の不意の復活を防ぐ
+  chatCache = chatCache.filter(m => m.id !== idToDelete);
+  safeLS.set("nz_chat_cache", JSON.stringify(chatCache));
+  displayedMsgIds.delete(idToDelete);
+  
   D.delConfirmMod.classList.remove("show");
   targetDelId = null;
+
+  // 3. 非同期でFirebaseデータベースから削除
+  await remove(ref(db, `chat/official/${idToDelete}`)).catch(err => {
+    alert("メッセージの削除に失敗しました:\n" + err.message + "\n\n※セキュリティルールが設定されていない可能性があります。");
+  });
 };
 
 // 画像添付
@@ -1335,9 +1358,9 @@ function setupFirebaseListeners() {
       fragment.appendChild(cMsg(m));
     });
 
-    // まだサーバーから返ってきていない保留中のローカル発言（pending）があれば末尾に添える
-    pendingMsgs.forEach(el => {
-      fragment.appendChild(el);
+    // まだサーバーから返ってきていない保留中のローカル発言（pending）があればオブジェクトから末尾に安全に動的生成して追加
+    pendingMsgs.forEach(pMsgObj => {
+      fragment.appendChild(cMsg(pMsgObj));
     });
 
     D.tli.appendChild(fragment);

@@ -1023,16 +1023,23 @@ D.sdBtn.onclick = () => sendMsg();
 D.clrMsgBtn.onclick = () => { D.mi.value = ""; D.mi.style.height = "auto"; };
 
 D.delCancelBtn.onclick = () => { D.delConfirmMod.classList.remove("show"); targetDelId = null; };
+
+// 削除実行ボタン押下：ローカルキャッシュ（localStorage）からも即座に対象発言を完全排除（チラつき、復活を物理遮断）
 D.delExecuteBtn.onclick = async () => {
   if (!targetDelId) return;
   const idToDelete = targetDelId;
   const localEl = D.tli.querySelector(`.mw[data-mid="${escapeSelector(idToDelete)}"]`);
   if (localEl) localEl.remove();
+
+  // ローカルキャッシュの記憶から対象のログを即時完全抹殺
   chatCache = chatCache.filter(m => m.id !== idToDelete);
   safeLS.set("nz_chat_cache", JSON.stringify(chatCache));
   displayedMsgIds.delete(idToDelete);
+
   D.delConfirmMod.classList.remove("show");
   targetDelId = null;
+
+  // Firebaseから削除
   await remove(ref(db, `chat/official/${idToDelete}`)).catch(() => {});
 };
 
@@ -1161,30 +1168,48 @@ function setupFirebaseListeners() {
   listenersInitialized = true;
 
   // =========================================================
-  // アクティブ発言同期（DOM差分キー付きレンダリングによりチラつきを完全抹殺）
+  // アクティブ発言同期（差分キー更新 ＆ ローカル記憶・キャッシュ連動）
   // =========================================================
   const chatQuery = query(ref(db, "chat/official"), limitToLast(30)); 
   onValue(chatQuery, snap => {
     const serverMsgs = [];
+    let minTs = Infinity;
+
     snap.forEach(child => {
-      const m = child.val(); if (m) { m.id = child.key; serverMsgs.push(m); }
+      const m = child.val(); 
+      if (m) { 
+        m.id = child.key; 
+        serverMsgs.push(m); 
+        if (m.t && typeof m.t === "number" && m.t < minTs) {
+          minTs = m.t;
+        }
+      }
     });
 
     serverMsgs.forEach(m => { if (m.pnd && pendingMsgs.has(m.pnd)) pendingMsgs.delete(m.pnd); });
 
     const serverMsgIds = new Set(serverMsgs.map(m => m.id));
+    let cacheChanged = false;
 
-    // 1. サーバーから消えた（削除された）メッセージのみをピンポイントで消去
+    // 1. 他人が発言を物理削除した場合：DOMから即時排除し、ローカルの記憶（localStorage）からも完全消去
     const localMwEls = D.tli.querySelectorAll(".mw");
     localMwEls.forEach(el => {
       const mid = el.dataset.mid;
-      if (mid && !mid.startsWith("pnd_") && !serverMsgIds.has(mid)) {
-        el.remove();
-        displayedMsgIds.delete(mid);
+      const ts = parseInt(el.dataset.ts || "0");
+      if (mid && !mid.startsWith("pnd_")) {
+        // 同期対象（最新30件の範囲内）であるはずの時刻なのに、サーバーメッセージから消えている＝物理削除
+        if (!serverMsgIds.has(mid) && ts >= minTs) {
+          el.remove();
+          displayedMsgIds.delete(mid);
+          
+          // ローカルの記憶（キャッシュメモリ）からも削除されたログを除去
+          chatCache = chatCache.filter(m => m.id !== mid);
+          cacheChanged = true;
+        }
       }
     });
 
-    // 2. 存在しない新規メッセージのみを時系列の正しい位置へ差し込む（チラつき一切なし）
+    // 2. 新着発言のみを適切な時系列位置に、チラつくことなく差し込む
     serverMsgs.forEach(m => {
       if (!displayedMsgIds.has(m.id)) {
         displayedMsgIds.add(m.id);
@@ -1195,6 +1220,12 @@ function setupFirebaseListeners() {
         });
         if (sibling) D.tli.insertBefore(newEl, sibling);
         else D.tli.appendChild(newEl);
+
+        // 新規データをローカル記憶に追加
+        if (!chatCache.some(c => c.id === m.id)) {
+          chatCache.push(m);
+          cacheChanged = true;
+        }
       }
     });
 
@@ -1206,7 +1237,13 @@ function setupFirebaseListeners() {
       }
     });
 
-    chatCache = serverMsgs; safeLS.set("nz_chat_cache", JSON.stringify(chatCache));
+    // キャッシュ整理とソート（容量制限上限100件まで自動カット）
+    if (cacheChanged) {
+      chatCache.sort((a, b) => (a.t || 0) - (b.t || 0));
+      if (chatCache.length > 100) chatCache = chatCache.slice(-100);
+      safeLS.set("nz_chat_cache", JSON.stringify(chatCache));
+    }
+
     scBottom();
   });
 

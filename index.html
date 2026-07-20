@@ -22,7 +22,16 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .pcnt{font-size:11px;font-weight:900;color:var(--tx);background:rgba(255,255,255,0.08);padding:3px 6px;border-radius:4px;white-space:nowrap;margin-left:6px;line-height:1}
 .hbs{display:flex;gap:8px;align-items:center;flex-shrink:0}
 .hbs button{padding:6px 14px;height:38px;border-radius:6px;font-size:12px;font-weight:700;background:var(--bg);border:1px solid var(--bd);color:var(--tx);display:flex;align-items:center;gap:6px}
-.bclr-dot{width:10px;height:10px;border-radius:50%;display:inline-block;transition:background 0.15s}
+
+/* 色設定ボタンとドットをCSSカスタムプロパティ（--usr-color）と直接連動 */
+.bclr {
+  border-color: var(--usr-color) !important;
+}
+.bclr-dot{
+  width:10px;height:10px;border-radius:50%;display:inline-block;transition:background 0.15s;
+  background: var(--usr-color) !important;
+}
+
 .bx{background:rgba(244,63,94,.16)!important;border-color:rgba(244,63,94,.4)!important;color:#fda4af!important;font-weight:900!important;padding:6px 16px!important;display:none}
 #pl{display:flex;gap:6px;padding:6px 10px;background:var(--s2);border-bottom:1px solid rgba(255,255,255,0.04);flex-shrink:0;align-items:center;flex-wrap:wrap;min-height:36px;max-height:58px;overflow-y:auto;overflow-x:hidden}
 #pl::-webkit-scrollbar{width:4px}
@@ -101,6 +110,31 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .clrc2{aspect-ratio:1;width:100%;max-width:24px;border-radius:50%;margin:0 auto;border:2px solid transparent;cursor:pointer;transition:transform 0.15s,border-color 0.15s}
 .clrc2.sel{border-color:var(--tx)!important;transform:scale(1.3);box-shadow:0 0 8px rgba(255,255,255,0.45);border-width:2px!important}
 </style>
+
+<!-- =========================================================
+   【超高速プレ・ロック処理】
+   ブラウザがbodyをレンダリングし始める前に「再入室対象」かを100%同期検証。
+   document.writeを使用して即座にスタイルを流し込み、一切の画面のチラつきを防ぎます。
+   ========================================================= -->
+<script>
+(function() {
+  try {
+    const isJoined = localStorage.getItem("nz_is_joined") === "true";
+    const ni = localStorage.getItem("nz_ni");
+    const tripi = localStorage.getItem("nz_tripi");
+    const color = localStorage.getItem("nz_color") || "#94a3b8";
+    
+    // カラー設定を入室前の初期描画から即時適用
+    document.documentElement.style.setProperty("--usr-color", color);
+    
+    if (isJoined && ni && tripi) {
+      document.write('<style>#joinForm { display: none !important; } #ib { display: flex !important; } #exBtn { display: block !important; }</style>');
+    } else {
+      document.write('<style>#joinForm { display: flex !important; } #ib { display: none !important; } #exBtn { display: none !important; }</style>');
+    }
+  } catch(e) {}
+})();
+</script>
 </head>
 <body>
 
@@ -118,7 +152,6 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         <div class="hbs">
           <button class="bclr" id="clrBtn" title="色設定"><span class="bclr-dot" id="clrDot"></span> 色設定</button>
           <button id="adminClearBtn" class="bq" style="display: none; background: rgba(244,63,94,0.1); border-color: rgba(244,63,94,0.3); color: #fda4af; font-weight: bold; padding: 6px 14px; height: 38px; border-radius: 6px; font-size: 12px;" title="システムログや過去ログを含む全消去">⚠️ 全消去</button>
-          <!-- FOUC（一瞬表示されるバグ）を完全に防ぐため、あらかじめ style="display: none;" を指定 -->
           <button class="bx" id="exBtn" style="display: none;" title="退室">退室</button>
         </div>
       </div>
@@ -259,7 +292,7 @@ const isLocalFileEnv = window.location.protocol === "file:";
 const D = {
   ni:$("ni"), tripi:$("tripi"), joinBtn:$("joinBtn"), joinForm:$("joinForm"),
   tripPrevText:$("tripPrevText"), clrmod:$("clrmod"), clrPick2:$("clrPick2"), 
-  clrPrev:$("clrPrev"), clrOk:$("clrOk"), clrCancel:$("clrCancel"), clrBtn:$("clrBtn"), curDot:$("clrDot"), // clrDotの誤呼び出しバグを防ぐためキー値をcurDotに一本化
+  clrPrev:$("clrPrev"), clrOk:$("clrOk"), clrCancel:$("clrCancel"), clrBtn:$("clrBtn"), curDot:$("clrDot"),
   pcnt:$("pcnt"), exBtn:$("exBtn"), tl:$("tl"), tli:$("tl-inner"), ib:$("ib"), mi:$("mi"), 
   sdBtn:$("sdBtn"), clrMsgBtn:$("clrMsgBtn"), kbToggleBtn:$("kbToggleBtn"), kbStatusText:$("kbStatusText"),
   autoScrollToggleBtn:$("autoScrollToggleBtn"), autoScrollStatusText:$("autoScrollStatusText"),
@@ -286,6 +319,7 @@ const _initTrip = safeLS.get("nz_tripi") || "";
 D.ni.value = _initNi;
 D.tripi.value = _initTrip;
 
+// 同期CSS注入（headのプレ・ロック処理）を補完し、DOM上でも完全に同期
 if (_initJoined && _initNi && _initTrip) {
   D.joinForm.style.setProperty("display", "none", "important");
   D.ib.style.setProperty("display", "flex", "important");
@@ -327,7 +361,6 @@ const COLORS = [
 
 const setGlobalColor = c => { 
   document.documentElement.style.setProperty("--usr-color", c); 
-  if(D.curDot) D.curDot.style.background = c; 
 };
 
 // 1ミリ秒の遅延もなく現在の保存色を初期適用
@@ -465,9 +498,11 @@ async function joinRoom(isReconnect = false) {
     return; 
   }
 
-  // 参加ボタンを「接続中...」にして一時保護
-  D.joinBtn.disabled = true;
-  D.joinBtn.textContent = "接続中...";
+  // 参加ボタンのローディングテキスト（再接続時はチラつきと無駄なDOM更新を防ぐためスキップ）
+  if (!isReconnect) {
+    D.joinBtn.disabled = true;
+    D.joinBtn.textContent = "接続中...";
+  }
 
   // 1. ローカル環境（file://）でのモック処理
   if (isLocalFileEnv) {
@@ -481,12 +516,12 @@ async function joinRoom(isReconnect = false) {
   // 2. 本番環境（http/https）かつUIDが未設定の場合
   else if (!myUid) {
     try {
-      // 待機時間を物理的に無くすため、まず直接匿名ログインの解決を最速で行う
+      // 直接ログインを最速で試みる（待機時間をゼロにするため）
       const userCredential = await signInAnonymously(auth);
       myUid = userCredential.user.uid;
     } catch (err) {
-      console.warn("直接の匿名サインインに失敗したため、バックグラウンド接続を待機します:", err);
-      // 直接ログインに失敗した場合のみ、バックグラウンド処理の完了を監視する
+      console.warn("直接の匿名サインインに失敗したため、接続待機ループを開始します:", err);
+      // 直接ログインに失敗した場合のみ、バックグラウンド接続を監視する
       let waitCount = 0;
       while (!myUid && waitCount < 30) {
         await new Promise(r => setTimeout(r, 100));
@@ -495,7 +530,7 @@ async function joinRoom(isReconnect = false) {
     }
 
     if (!myUid) {
-      alert("Firebase認証接続に失敗しました。\n接続状態、またはFirebaseコンソールのAuthentication（匿名認証）設定をご確認ください。");
+      alert("Firebase認証接続に失敗しました。\n接続状態、またはFirebaseコンソールのAuthentication設定（匿名認証）をご確認ください。");
       D.joinBtn.disabled = false;
       D.joinBtn.textContent = "参加する";
       return;
@@ -546,8 +581,10 @@ async function joinRoom(isReconnect = false) {
   }
   
   // ボタン状態を綺麗に初期化
-  D.joinBtn.disabled = false;
-  D.joinBtn.textContent = "参加する";
+  if (!isReconnect) {
+    D.joinBtn.disabled = false;
+    D.joinBtn.textContent = "参加する";
+  }
 
   scBottom(true);
 }
@@ -980,7 +1017,7 @@ const updateTripPreview = () => {
   const tk = D.tripi.value.trim();
   const t = tk ? makeTrip(n, tk) : "";
   D.tripPrevText.textContent = `プレビュー: ${n} ${t}`;
-  D.tripPrevText.style.color = curColor; 
+  D.tripPrevText.style.color = "var(--usr-color)"; 
   
   if (tk) {
     $("copyTripBtn").style.display = "inline-flex";

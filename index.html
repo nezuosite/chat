@@ -11,6 +11,8 @@
 <!-- 動画プレイヤー等の初期読み込み高速化のための事前接続設定 -->
 <link rel="preconnect" href="https://www.youtube-nocookie.com" crossorigin>
 <link rel="preconnect" href="https://embed.nicovideo.jp" crossorigin>
+<link rel="preconnect" href="https://i.ytimg.com" crossorigin>
+<link rel="preconnect" href="https://img.cdn.nimg.jp" crossorigin>
 
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -113,8 +115,25 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 #imgViewMod{background:rgba(0,0,0,0.96);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);flex-direction:column;align-items:center;justify-content:center;touch-action:none}
 #imgViewMod.show{display:flex!important}
 
-/* 拡大モーダル：下部閉じるボタンとの被りを防止する最大高さ制限とマージン調整 */
-#imgViewSrc{max-width:92%;max-height:calc(100dvh - 160px);object-fit:contain;margin-bottom:80px;border-radius:4px;box-shadow:0 10px 40px rgba(0,0,0,0.5)}
+/* 拡大モーダル：操作領域と下部閉じるボタン領域を完全に分離 */
+#zoomViewport {
+  width: 100%;
+  height: calc(100dvh - 100px);
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+#imgViewSrc{
+  max-width: 95%;
+  max-height: 95%;
+  object-fit: contain;
+  border-radius: 4px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+}
 .modal-bottom-close-container{width:100%;display:flex;justify-content:center;position:absolute;bottom:0;left:0;padding:16px 0 calc(16px + var(--safe));background:linear-gradient(to top,rgba(0,0,0,0.85) 40%,rgba(0,0,0,0));backdrop-filter:blur(2px);z-index:10001}
 .modal-bottom-close{width:auto;min-width:160px;padding:12px 24px;background:var(--ro);color:#fff;border-radius:24px;font-weight:bold;font-size:14px;text-align:center;border:none;box-shadow:0 4px 16px rgba(244,63,94,0.4);cursor:pointer}
 .clrpick-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
@@ -374,7 +393,9 @@ const makeTrip = (name, tripKey) => {
 
 <!-- 画像ズームモーダル -->
 <div id="imgViewMod" class="mod-overlay">
-  <img id="imgViewSrc" alt="拡大画像">
+  <div id="zoomViewport">
+    <img id="imgViewSrc" alt="拡大画像">
+  </div>
   <div class="modal-bottom-close-container">
     <button class="modal-bottom-close" id="imgViewCloseBtn">閉じる</button>
   </div>
@@ -741,8 +762,9 @@ async function sendMsg(overrideText = null, imgData = null) {
   D.mi.value = ""; 
   D.mi.style.height = "auto";
   
-  if (!keepKbOpen) D.mi.blur();
-  else D.mi.focus();
+  // 送信後は常にフォーカスを維持（LINEやDiscordのようにスムーズに連続入力可能に）
+  D.mi.focus();
+  updateKbUI(true);
 
   const tempId = "pnd_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
   const tempObj = {
@@ -953,7 +975,7 @@ function updateJumpBtns() {
   }
 }
 
-// タイムラインのスクロールを検知してボタン更新 ＆ 下から40px以上の上方向スクロールで自動追従を解除
+// タイムライン of scroll hook
 D.tl.addEventListener("scroll", () => {
   const scrollTop = D.tl.scrollTop;
   const clientHeight = D.tl.clientHeight;
@@ -1121,7 +1143,6 @@ const loadPresenceCache = () => {
    ========================================================= */
 function renderPresence(serverListMap) {
   // サーバー上の最新状態に、入退室した自分のタイムラグデータを楽観的に自動マージして描画を維持します。
-  // これにより、通信遅延による自分自身の「一瞬のチラつき消滅」が100%消失します。
   if (isJoined && myUid && !serverListMap[myUid]) {
     serverListMap[myUid] = {
       id: myUid,
@@ -1136,7 +1157,7 @@ function renderPresence(serverListMap) {
   drawPresenceList(members);
 
   // プレゼンスキャッシュを保存
-  presenceCache = members.map(m => ({ id: m.id, n: m.n, c: m.c }));
+  presenceCache = members.map(m => ({ id: m.id, n: m.n, p: m.p, c: m.c }));
   safeLS.set("nz_presence_cache", JSON.stringify(presenceCache));
 }
 
@@ -1149,7 +1170,8 @@ function drawPresenceList(membersList) {
     sp.className = "chip";
     sp.style.color = m.c;
     sp.style.borderColor = m.c + "44";
-    sp.textContent = m.n;
+    // 参加者リストの名前の横に、安全に生成された10桁トリップを併記
+    sp.textContent = m.p ? `${m.n} ${m.p}` : m.n;
     sp.onclick = () => {
       if (m.id !== myUid && isJoined) {
         D.mi.value += `@${m.n} `;
@@ -1220,12 +1242,24 @@ D.adminClearBtn.onclick = async () => {
 D.ni.addEventListener("input", updateTripPreview);
 D.tripi.addEventListener("input", updateTripPreview);
 
-D.kbToggleBtn.onclick = () => {
-  keepKbOpen = !keepKbOpen;
-  D.kbToggleBtn.classList.toggle("active", keepKbOpen);
-  D.kbStatusText.textContent = keepKbOpen ? "キーボード:開" : "キーボード:閉";
-  D.kbStatusText.style.color = keepKbOpen ? "#fff" : "var(--tx)";
-  if (keepKbOpen) D.mi.focus(); else D.mi.blur();
+// キーボード開閉状態の同期UI更新
+const updateKbUI = (isOpen) => {
+  keepKbOpen = isOpen;
+  D.kbToggleBtn.classList.toggle("active", isOpen);
+  D.kbStatusText.textContent = isOpen ? "キーボード:開" : "キーボード:閉";
+  D.kbStatusText.style.color = isOpen ? "#fff" : "var(--tx)";
+};
+
+// ボタンクリックによる開閉制御
+D.kbToggleBtn.onclick = (e) => {
+  e.preventDefault();
+  if (keepKbOpen) {
+    D.mi.blur();
+    updateKbUI(false);
+  } else {
+    D.mi.focus();
+    updateKbUI(true);
+  }
 };
 
 D.jumpUpBtn.onclick = () => {
@@ -1244,11 +1278,20 @@ D.jumpDownBtn.onclick = () => {
    追従オフであっても、フォーカス時・入力時は強制追従スクロール
    ========================================================= */
 D.mi.addEventListener("focus", () => { 
-  // フォーカス時は強制的に最下部まで追従
   isAutoScroll = true;
   unreadMsgIds.clear();
   updateUnreadBadge();
   scBottom(true); 
+  updateKbUI(true); // 入力フォーカス検知時にボタン状態を「開」に同期
+});
+
+D.mi.addEventListener("blur", () => {
+  // ボタンタップ等による一時的なフォーカス移動を考慮して僅かに遅延
+  setTimeout(() => {
+    if (document.activeElement !== D.mi) {
+      updateKbUI(false); // 完全にフォーカスが外れたら「閉」に同期
+    }
+  }, 100);
 });
 
 D.mi.addEventListener("input", () => {
@@ -1268,13 +1311,12 @@ D.clrMsgBtn.onclick = () => { D.mi.value = ""; D.mi.style.height = "auto"; };
 
 D.delCancelBtn.onclick = () => { D.delConfirmMod.classList.remove("show"); targetDelId = null; };
 
-// 削除実行ボタン押下：物理削除 ＆ セキュリティルールエラー対策としての論理削除フラグ更新の二重書き込み（0ms削除反映）
+// 削除実行ボタン押下：物理削除 ＆ セキュリティルールエラー対策としての論理削除フラグ更新の二重書き込み
 D.delExecuteBtn.onclick = async () => {
   if (!targetDelId) return;
   const idToDelete = targetDelId;
   
   // 【楽観的即時削除アップデート（遅延なし）】
-  // サーバーからの同期通知の戻りを1ミリ秒も待たず、DOMから対象発言を即座に消去します
   const localEl = D.tli.querySelector(`.mw[data-mid="${escapeSelector(idToDelete)}"]`);
   if (localEl) localEl.remove();
 
@@ -1363,7 +1405,8 @@ function updateModalColorPreview(color) {
   con.appendChild(bodyMock);
 }
 
-const overlayEl = D.imgViewMod; const imgEl = D.imgViewSrc;
+// 拡大画像操作用のターゲットを新設コンテナに変更
+const overlayEl = $("zoomViewport"); const imgEl = D.imgViewSrc;
 function resetZoom() { scale = 1; panX = 0; panY = 0; imgEl.style.transformOrigin = "center center"; updateTransform(); }
 function updateTransform() { imgEl.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`; }
 function clampPan() {
@@ -1400,9 +1443,9 @@ overlayEl.addEventListener('wheel', (e) => {
   e.preventDefault(); scale = Math.max(1, Math.min(5, scale * (e.deltaY > 0 ? 0.9 : 1.1))); clampPan(); updateTransform();
 }, { passive: false });
 
-// 拡大モーダル：背景エリアをタップした際にも閉じるようイベントを追加
-D.imgViewMod.addEventListener("click", (e) => {
-  if (e.target === D.imgViewMod) {
+// 拡大モーダル：背景エリア（viewport）をタップした際にも閉じるようイベントを追加
+overlayEl.addEventListener("click", (e) => {
+  if (e.target === overlayEl) {
     D.imgViewMod.classList.remove("show");
   }
 });
@@ -1460,8 +1503,6 @@ function setupFirebaseListeners() {
     });
 
     // 楽観的二重描画・チラつきを完全にシャットアウト
-    // サーバーから同期メッセージが届いた際、自分の送信処理中ID（pnd_...）がデータに含まれていれば、
-    // 即座にその一時描画DOMを消去し、一気に本番DOMとして描画させます
     serverMsgs.forEach(m => {
       if (m.pnd) {
         if (pendingMsgs.has(m.pnd)) pendingMsgs.delete(m.pnd);
@@ -1491,10 +1532,6 @@ function setupFirebaseListeners() {
 
     // -------------------------------------------------------------
     // 【消去・境界フィルター】
-    // 画面に描画されている要素のうち、以下のいずれかに該当する発言を完全に非表示・消去します
-    // ① サーバーから論理削除（deleted: true）されたメッセージ
-    // ② 最新の全消去日時（latestClearTs）より過去に投稿されたすべてのメッセージ
-    // ③ サーバー上に存在しない物理削除メッセージ（最近のクエリ内のみを安全に追従）
     // -------------------------------------------------------------
     const localMwEls = D.tli.querySelectorAll(".mw");
     localMwEls.forEach(el => {
@@ -1531,7 +1568,6 @@ function setupFirebaseListeners() {
     let newlyAdded = false;
 
     // 新着発言を適切な時系列位置に、チラつくことなく差し込む
-    // （削除済みメッセージ、および全消去より古い発言は差し込みません）
     serverMsgs.forEach(m => {
       if (m.deleted) return;
       if (latestClearTs > 0 && (m.t || 0) < latestClearTs) return; // 全消去より古いものは無視
@@ -1549,7 +1585,6 @@ function setupFirebaseListeners() {
         else D.tli.appendChild(newEl);
 
         // 新着発言を受信したとき：
-        // もし自分以外の発言で、かつ追従中（最下部付近にいる）でない場合は、未読SetにIDを追加
         if (m.u !== myUid && !isAutoScroll) {
           unreadMsgIds.add(m.id);
           unreadChanged = true;

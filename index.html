@@ -76,10 +76,6 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .switch-kb::after{content:"";position:absolute;top:2px;left:2px;width:26px;height:26px;background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);border-radius:50%;transition:transform 0.25s ease;z-index:1}
 .switch-kb.active{background:var(--in)!important;border-color:var(--i2)!important}
 .switch-kb.active::after{transform:translateX(53px)!important}
-.switch-scroll{width:88px!important;height:34px!important;position:relative;border-radius:18px!important;background:var(--s2)!important;border:1px solid var(--bd);padding:0 2px!important;overflow:hidden;transition:all 0.25s ease;cursor:pointer;display:flex;align-items:center}
-.switch-scroll::after{content:"";position:absolute;top:2px;left:2px;width:26px;height:26px;background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);border-radius:50%;transition:transform 0.25s ease;z-index:1}
-.switch-scroll.active{background:var(--in)!important;border-color:var(--i2)!important}
-.switch-scroll.active::after{transform:translateX(53px)!important}
 .switch-text{font-size:11px;font-weight:bold;pointer-events:none;color:var(--tx);position:relative;z-index:2;width:100%;text-align:center}
 .mi-container{position:relative;flex:1;display:flex;align-items:center;background:var(--bg);border:1px solid var(--bd);border-radius:20px;min-height:40px;padding:4px 34px 4px 40px}
 .battach{position:absolute;left:6px;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--mu);cursor:pointer}
@@ -206,12 +202,12 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         <button id="kbToggleBtn" class="switch-kb ib-icon-btn" title="送信後のキーボード設定">
           <span id="kbStatusText" class="switch-text">キーボード:閉</span>
         </button>
-        <button id="autoScrollToggleBtn" class="switch-scroll ib-icon-btn active" title="新着メッセージへの自動追従">
-          <span id="autoScrollStatusText" class="switch-text">追従:ON</span>
-        </button>
         <div class="jump-btns">
           <button class="jump-btn" id="jumpUpBtn" title="タイムラインの最上部へ" disabled>▲</button>
-          <button class="jump-btn" id="jumpDownBtn" title="タイムラインの最下部へ" disabled>▼</button>
+          <div style="position: relative; display: inline-block;">
+            <button class="jump-btn" id="jumpDownBtn" title="タイムラインの最下部へ" disabled>▼</button>
+            <span id="unreadBadge" style="display: none; position: absolute; top: -6px; right: -6px; background: var(--ro); color: #fff; font-size: 9px; font-weight: bold; border-radius: 10px; min-width: 18px; height: 18px; padding: 0 4px; align-items: center; justify-content: center; line-height: 1; border: 1.5px solid var(--sf); box-shadow: 0 2px 5px rgba(0,0,0,0.3); pointer-events: none; z-index: 5;">0</span>
+          </div>
         </div>
       </div>
 
@@ -306,12 +302,12 @@ const D = {
   clrPrev:$("clrPrev"), clrOk:$("clrOk"), clrCancel:$("clrCancel"), clrBtn:$("clrBtn"), curDot:$("clrDot"),
   pcnt:$("pcnt"), exBtn:$("exBtn"), tl:$("tl"), tli:$("tl-inner"), ib:$("ib"), mi:$("mi"), 
   sdBtn:$("sdBtn"), clrMsgBtn:$("clrMsgBtn"), kbToggleBtn:$("kbToggleBtn"), kbStatusText:$("kbStatusText"),
-  autoScrollToggleBtn:$("autoScrollToggleBtn"), autoScrollStatusText:$("autoScrollStatusText"),
   jumpUpBtn:$("jumpUpBtn"), jumpDownBtn:$("jumpDownBtn"), imgBtn:$("imgBtn"), fileInput:$("fileInput"),
   adminClearBtn:$("adminClearBtn"), pl:$("pl"), delConfirmMod:$("delConfirmMod"),
   delConfirmPreview:$("delConfirmPreview"), delCancelBtn:$("delCancelBtn"), delExecuteBtn:$("delExecuteBtn"),
   imgViewMod:$("imgViewMod"), imgViewSrc:$("imgViewSrc"), imgViewCloseBtn:$("imgViewCloseBtn"),
-  fixedPlayer:$("fixedPlayer"), playerContent:$("playerContent"), playerCloseBtn:$("playerCloseBtn")
+  fixedPlayer:$("fixedPlayer"), playerContent:$("playerContent"), playerCloseBtn:$("playerCloseBtn"),
+  unreadBadge:$("unreadBadge")
 };
 
 const safeLS = {
@@ -328,7 +324,8 @@ D.ni.value = _initNi;
 D.tripi.value = _initTrip;
 
 let keepKbOpen = false;
-let isAutoScroll = true;
+let isAutoScroll = true; // スクロール追従の状態管理
+let unreadCount = 0; // 未読件数
 let _scPending = false; 
 let myUid = null;
 let isJoined = _initJoined; 
@@ -599,7 +596,7 @@ async function doExit(isAuto = false) {
   // ロビー表示に強制変更
   D.joinForm.style.setProperty("display", "flex", "important");
   D.ib.style.setProperty("display", "none", "important");
-  D.exBtn.style.setProperty("display", "none", "important"); // 退室ボタン非表示の記述ミスバグを修正
+  D.exBtn.style.setProperty("display", "none", "important");
   
   updateAdminUI(); 
 
@@ -654,6 +651,11 @@ async function sendMsg(overrideText = null, imgData = null) {
 
   const tempEl = cMsg(tempObj);
   D.tli.appendChild(tempEl);
+  
+  // 自分の送信時は、強制的に追従を有効化し、未読をクリア
+  isAutoScroll = true;
+  unreadCount = 0;
+  updateUnreadBadge();
   scBottom(true);
 
   safeLS.set("nz_last_active_time", getTrueTime().toString());
@@ -804,6 +806,20 @@ function scBottom(force = false) {
 }
 
 /* =========================================================
+   未読件数バッジの表示制御
+   ========================================================= */
+function updateUnreadBadge() {
+  const badge = D.unreadBadge;
+  if (!badge) return;
+  if (unreadCount > 0) {
+    badge.textContent = unreadCount > 99 ? "99+" : unreadCount;
+    badge.style.display = "inline-flex";
+  } else {
+    badge.style.display = "none";
+  }
+}
+
+/* =========================================================
    タイムライン上下移動ボタンの活性・非活性制御
    ========================================================= */
 function updateJumpBtns() {
@@ -823,22 +839,27 @@ function updateJumpBtns() {
   }
 }
 
-// タイムラインのスクロールを検知してボタン更新 ＆ 上方向の手動スクロールで自動追従をスマートに解除
+// タイムラインのスクロールを検知してボタン更新 ＆ 下から40px以上の上方向スクロールで自動追従を解除
 D.tl.addEventListener("scroll", () => {
-  updateJumpBtns();
-  
-  if (!_scPending && isAutoScroll) {
-    const scrollTop = D.tl.scrollTop;
-    const clientHeight = D.tl.clientHeight;
-    const scrollHeight = D.tl.scrollHeight;
-    // 一番下から10px以上上にスクロールされたら自動追従を解除
-    if (scrollTop + clientHeight < scrollHeight - 10) {
+  const scrollTop = D.tl.scrollTop;
+  const clientHeight = D.tl.clientHeight;
+  const scrollHeight = D.tl.scrollHeight;
+  const isScrollable = scrollHeight > clientHeight;
+
+  // 下から40px以内にいるかどうかで、追従をオート判定
+  const isNearBottom = scrollTop + clientHeight >= scrollHeight - 40;
+
+  if (!_scPending) {
+    if (isNearBottom) {
+      isAutoScroll = true;
+      unreadCount = 0; // 最下部に到達した瞬間に未読数をクリア
+      updateUnreadBadge();
+    } else {
       isAutoScroll = false;
-      D.autoScrollToggleBtn.classList.remove("active");
-      D.autoScrollStatusText.textContent = "追従:OFF";
-      D.autoScrollStatusText.style.color = "var(--tx)";
     }
   }
+
+  updateJumpBtns();
 });
 
 function parseTxtSplit(txt) {
@@ -1059,38 +1080,35 @@ D.kbToggleBtn.onclick = () => {
   if (keepKbOpen) D.mi.focus(); else D.mi.blur();
 };
 
-D.autoScrollToggleBtn.onclick = () => {
-  isAutoScroll = !isAutoScroll;
-  D.autoScrollToggleBtn.classList.toggle("active", isAutoScroll);
-  D.autoScrollStatusText.textContent = isAutoScroll ? "追従:ON" : "追従:OFF";
-  D.autoScrollStatusText.style.color = isAutoScroll ? "#fff" : "var(--tx)";
-  if (isAutoScroll) {
-    scBottom(true);
-  }
-};
-
 D.jumpUpBtn.onclick = () => {
   D.tl.scrollTo({ top: 0, behavior: "smooth" });
 };
 
 D.jumpDownBtn.onclick = () => {
-  // 下ボタン押下時は、自動追従もONにする
+  // 下ボタン押下時は強制的に追従状態に戻し、未読件数をクリア
   isAutoScroll = true;
-  D.autoScrollToggleBtn.classList.add("active");
-  D.autoScrollStatusText.textContent = "追従:ON";
-  D.autoScrollStatusText.style.color = "#fff";
+  unreadCount = 0;
+  updateUnreadBadge();
   D.tl.scrollTo({ top: D.tl.scrollHeight, behavior: "smooth" });
 };
 
 /* =========================================================
    追従オフであっても、フォーカス時・入力時は強制追従スクロール
    ========================================================= */
-D.mi.addEventListener("focus", () => { scBottom(true); });
+D.mi.addEventListener("focus", () => { 
+  // フォーカス時は強制的に最下部まで追従
+  isAutoScroll = true;
+  unreadCount = 0;
+  updateUnreadBadge();
+  scBottom(true); 
+});
+
 D.mi.addEventListener("input", () => {
   D.mi.style.height = "auto";
   D.mi.style.height = Math.min(120, D.mi.scrollHeight) + "px";
   scBottom(true); 
 });
+
 D.mi.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) {
     if (e.isComposing) return;
@@ -1333,6 +1351,8 @@ function setupFirebaseListeners() {
       }
     });
 
+    let newlyAdded = false;
+
     // 4. 新着発言を適切な時系列位置に、チラつくことなく差し込む
     // （削除済みメッセージ、および全消去より古い発言は差し込みません）
     serverMsgs.forEach(m => {
@@ -1341,6 +1361,8 @@ function setupFirebaseListeners() {
 
       if (!displayedMsgIds.has(m.id)) {
         displayedMsgIds.add(m.id);
+        newlyAdded = true;
+        
         const newEl = cMsg(m);
         const sibling = Array.from(D.tli.children).find(el => {
           const ts = parseInt(el.dataset.ts || "0");
@@ -1348,8 +1370,18 @@ function setupFirebaseListeners() {
         });
         if (sibling) D.tli.insertBefore(newEl, sibling);
         else D.tli.appendChild(newEl);
+
+        // 新着発言を受信したとき：
+        // もし自分以外の発言で、かつ追従中（最下部付近にいる）でない場合は、未読数をカウントアップ
+        if (m.u !== myUid && !isAutoScroll) {
+          unreadCount++;
+        }
       }
     });
+
+    if (newlyAdded) {
+      updateUnreadBadge();
+    }
 
     // まだサーバーから確定受信していない送信中の仮発言があれば下部に描画
     pendingMsgs.forEach((pMsgObj, tempId) => {

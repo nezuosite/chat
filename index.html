@@ -113,6 +113,34 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 </style>
 
 <script>
+// ハッシュ関数及びトリップ生成ロジックを非モジュール（グローバル）空間へ移行し、ドキュメントの最初期段階で即時計算を可能にします
+const SYSTEM_SALT = "NEZU_PRO_SYS_SALT_2026_V1";
+const quickHashBase62 = (str) => {
+  let h1 = 0x811c9dc5;
+  let h2 = 0xcbf29ce4;
+  const len = str.length;
+  for (let i = 0; i < len; i++) {
+    const c = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 0x01000193);
+    h2 = Math.imul(h2 ^ c, 0x01000193);
+  }
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let val = ((h1 >>> 0) ^ (h2 >>> 0)) >>> 0;
+  let res = "";
+  for (let i = 0; i < 6; i++) {
+    res += chars[val % 62];
+    val = Math.floor(val / 62);
+  }
+  return res;
+};
+
+const makeTrip = (name, tripKey) => {
+  if (!tripKey) return "";
+  const revKey = tripKey.split("").reverse().join("");
+  const mixed = SYSTEM_SALT + "_" + name + "_[SALT]_" + revKey;
+  return "◆" + quickHashBase62(mixed);
+};
+
 (function() {
   try {
     const isJoined = localStorage.getItem("nz_is_joined") === "true";
@@ -121,14 +149,13 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
     const color = localStorage.getItem("nz_color") || "#94a3b8";
     document.documentElement.style.setProperty("--usr-color", color);
     
-    // 起動時に最速で30分放置判定を行い、必要ならタイムアウト処理を適用
+    // 起動時に最速で30分放置判定を行い、タイムアウト判定時に即時にUIをロビー表示にさせます
     const lastActiveStr = localStorage.getItem("nz_last_active_time");
     let isTimedOut = false;
     if (isJoined && lastActiveStr) {
       const lastActive = parseInt(lastActiveStr, 10);
       if (lastActive > 0 && (Date.now() - lastActive >= 30 * 60 * 1000)) {
         isTimedOut = true;
-        // Firebaseとの同期を取るため、ここでは直接localStorageを削除せず、メインモジュール側の初期化でdoExit(true)を確実に走らせます
       }
     }
 
@@ -188,7 +215,15 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
         <button class="btn bp" id="joinBtn" style="height: 42px; padding: 0 16px;">参加する</button>
       </div>
       <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px; width: 100%; gap: 8px;">
-        <span id="tripPrevText" style="font-size: 11.5px; font-weight: bold; color: var(--usr-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">プレビュー: 名無し</span>
+        <span id="tripPrevText" style="font-size: 11.5px; font-weight: bold; color: var(--usr-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;"><script>
+          (function() {
+            // ドキュメントロード完了を待たず、HTMLパース時に最速で保存データを読み込んでプレビューテキストを即表示します
+            const n = localStorage.getItem("nz_ni") || "名無し";
+            const tk = localStorage.getItem("nz_tripi") || "";
+            const t = tk ? makeTrip(n, tk) : "";
+            document.write("プレビュー: " + n + " " + t);
+          })();
+        </script></span>
         <button id="copyTripBtn" class="btn bq" style="height: 26px; padding: 0 10px; font-size: 11px; border-radius: 6px; display: none; align-items: center; justify-content: center; font-weight: bold; border-color: rgba(255,255,255,0.1); flex-shrink: 0;" title="トリップをクリップボードにコピー">トリップをコピー</button>
       </div>
     </div>
@@ -274,8 +309,6 @@ import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gsta
 import { getDatabase, ref, push, onValue, set, remove, serverTimestamp, query, limitToLast, runTransaction, goOnline, goOffline }
   from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
-const SYSTEM_SALT = "NEZU_PRO_SYS_SALT_2026_V1";
-
 const firebaseConfig = {
   apiKey: "AIzaSyCsRidc0smUQDaBwq-oki5NzxSHx6-ljiw",
   authDomain: "nezuochat.firebaseapp.com",
@@ -290,8 +323,6 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db  = getDatabase(app);
 const $   = id => document.getElementById(id);
-
-const isLocalFileEnv = window.location.protocol === "file:";
 
 const D = {
   ni:$("ni"), tripi:$("tripi"), joinBtn:$("joinBtn"), joinForm:$("joinForm"),
@@ -357,48 +388,6 @@ setGlobalColor(curColor);
 
 const getTrueTime = () => Date.now() + serverTimeOffset;
 
-/* =========================================================
-   安全なBase62 6文字ハッシュトリップアルゴリズム
-   ========================================================= */
-const quickHashBase62 = (str) => {
-  let h1 = 0x811c9dc5;
-  let h2 = 0xcbf29ce4;
-  const len = str.length;
-  for (let i = 0; i < len; i++) {
-    const c = str.charCodeAt(i);
-    h1 = Math.imul(h1 ^ c, 0x01000193);
-    h2 = Math.imul(h2 ^ c, 0x01000193);
-  }
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  let val = ((h1 >>> 0) ^ (h2 >>> 0)) >>> 0;
-  let res = "";
-  for (let i = 0; i < 6; i++) {
-    res += chars[val % 62];
-    val = Math.floor(val / 62);
-  }
-  return res;
-};
-
-const makeTrip = (name, tripKey) => {
-  if (!tripKey) return "";
-  const revKey = tripKey.split("").reverse().join("");
-  const mixed = SYSTEM_SALT + "_" + name + "_[SALT]_" + revKey;
-  return "◆" + quickHashBase62(mixed);
-};
-
-/* =========================================================
-   管理者判定ロジック
-   ========================================================= */
-const isAdmin = () => {
-  if (myUid === "J64MocsPo0QD7hSwZpQgEeDdO6X2") return true;
-  const n = safeLS.get("nz_ni") || "";
-  const tk = safeLS.get("nz_tripi") || "";
-  if (n === "ねづお" && tk && makeTrip(n, tk) === "◆JoNrMB") {
-    return true;
-  }
-  return false;
-};
-
 const updateAdminUI = () => {
   const adminBtn = D.adminClearBtn;
   if (adminBtn) {
@@ -406,24 +395,8 @@ const updateAdminUI = () => {
   }
 };
 
-const fDT = ts => {
-  const actualTs = (typeof ts === "number" && ts > 0) ? ts : getTrueTime();
-  const d = new Date(actualTs);
-  const mo = ("0" + (d.getMonth() + 1)).slice(-2);
-  const dy = ("0" + d.getDate()).slice(-2);
-  const h = ("0" + d.getHours()).slice(-2);
-  const mi = ("0" + d.getMinutes()).slice(-2);
-  const s = ("0" + d.getSeconds()).slice(-2);
-  return `${d.getFullYear()}/${mo}/${dy} ${h}:${mi}:${s}`;
-};
-
-const escapeSelector = (val) => {
-  if (typeof CSS !== "undefined" && CSS.escape) return CSS.escape(val);
-  return val.replace(/([!"#$%&'()*+,.\/:;<=>?@\[\\\]^`{|}~])/g, "\\$1");
-};
-
 /* =========================================================
-   30分無発言自動退室タイマー制御
+   30分無発言自動退室タイマー制御 (生存条件は変えずに)
    ========================================================= */
 function checkActivityTimeout() {
   if (!isJoined) return false;
@@ -462,7 +435,7 @@ function stopAutoExitTimer() {
 }
 
 /* =========================================================
-   閲覧 / 参加 状態遷移
+   閲覧 / 参加 状態遷移 (遅延なし & 常に最新描写に連動)
    ========================================================= */
 async function joinRoom(isReconnect = false) {
   let n = ""; let tk = "";
@@ -544,8 +517,10 @@ async function joinRoom(isReconnect = false) {
 
   myName = n;
   myTrip = makeTrip(n, tk);
-  isJoined = true;
 
+  // 【0ms入室描画（楽観的即時アップデート）】
+  // サーバーの応答を待たずに、リストの描画と画面の表示切り替えを即座に完了させます
+  isJoined = true;
   safeLS.set("nz_ni", n);
   safeLS.set("nz_tripi", tk);
   safeLS.set("nz_is_joined", "true");
@@ -553,6 +528,22 @@ async function joinRoom(isReconnect = false) {
   if (!isReconnect) {
     safeLS.set("nz_last_active_time", getTrueTime().toString());
   }
+
+  D.joinForm.style.setProperty("display", "none", "important");
+  D.ib.style.setProperty("display", "flex", "important");
+  D.exBtn.style.setProperty("display", "block", "important");
+
+  // 楽観的メンバーリスト仮追加
+  const optimisticMembers = {};
+  presenceCache.forEach(m => { optimisticMembers[m.id] = m; });
+  optimisticMembers[myUid || "temp_uid"] = {
+    id: myUid || "temp_uid",
+    n: myName,
+    p: myTrip,
+    c: curColor,
+    t: getTrueTime()
+  };
+  renderPresence(optimisticMembers);
 
   const myPresRef = ref(db, `presence/official/${myUid}`);
   await set(myPresRef, {
@@ -568,10 +559,6 @@ async function joinRoom(isReconnect = false) {
     }
     throw err;
   });
-
-  D.joinForm.style.setProperty("display", "none", "important");
-  D.ib.style.setProperty("display", "flex", "important");
-  D.exBtn.style.setProperty("display", "block", "important");
 
   updateAdminUI(); 
   startAutoExitChecker();
@@ -604,6 +591,10 @@ async function doExit(isAuto = false) {
   // 退室時、安全のため確実にFirebase接続をオンラインにして処理を即時コミット
   if (db) goOnline(db);
 
+  // 【0ms退室描画（楽観的即時アップデート）】
+  // サーバーからの同期を待たず、一瞬で自分自身をリストから除外して描画します
+  renderPresence({});
+
   if (myUid) {
     const myPresRef = ref(db, `presence/official/${myUid}`);
     await remove(myPresRef).catch(() => {});
@@ -633,7 +624,7 @@ async function doExit(isAuto = false) {
 }
 
 /* =========================================================
-   メッセージ送信
+   メッセージ送信（遅延なし・楽観的アップデート）
    ========================================================= */
 const pendingMsgs = new Map();
 
@@ -663,9 +654,12 @@ async function sendMsg(overrideText = null, imgData = null) {
     t: getTrueTime()
   };
 
+  // 楽観的アップデート：サーバーの応答を待たずにDOMへ即時描画（遅延0ms）
   pendingMsgs.set(tempId, tempObj);
+  displayedMsgIds.add(tempId);
 
   const tempEl = cMsg(tempObj);
+  tempEl.style.opacity = "0.7"; // 送信中であることを示す楽観的半透明デザイン
   D.tli.appendChild(tempEl);
   
   // 自分の送信時は、強制的に追従を有効化し、未読をクリア
@@ -689,9 +683,11 @@ async function sendMsg(overrideText = null, imgData = null) {
   };
 
   await push(ref(db, "chat/official"), pushData).catch(() => {
+    // 送信エラー時は即座に一時DOMを削除
     const localEl = D.tli.querySelector(`.mw[data-mid="${escapeSelector(tempId)}"]`);
     if (localEl) localEl.remove();
     pendingMsgs.delete(tempId);
+    displayedMsgIds.delete(tempId);
     alert("送信に失敗しました。");
   });
 }
@@ -1015,11 +1011,42 @@ try { presenceCache = JSON.parse(safeLS.get("nz_presence_cache") || "[]"); } cat
 
 // リロード・起動時にオンラインリストを一瞬で即時描画（チラつき防止）
 const loadPresenceCache = () => {
+  drawPresenceList(presenceCache);
+};
+
+/* =========================================================
+   入室者リスト（プレゼンス）の楽観的即時描画システム (0ms反映 & チラつき防止)
+   ========================================================= */
+function renderPresence(serverListMap) {
+  // サーバー上の最新状態に、入退室した自分のタイムラグデータを楽観的に自動マージして描画を維持します。
+  // これにより、通信遅延による自分自身の「一瞬のチラつき消滅」が100%消失します。
+  if (isJoined && myUid && !serverListMap[myUid]) {
+    serverListMap[myUid] = {
+      id: myUid,
+      n: myName,
+      p: myTrip,
+      c: curColor,
+      t: getTrueTime()
+    };
+  }
+
+  const members = Object.values(serverListMap).filter(m => m && m.n);
+  drawPresenceList(members);
+
+  // プレゼンスキャッシュを保存
+  presenceCache = members.map(m => ({ id: m.id, n: m.n, c: m.c }));
+  safeLS.set("nz_presence_cache", JSON.stringify(presenceCache));
+}
+
+function drawPresenceList(membersList) {
   const fragment = document.createDocumentFragment();
-  presenceCache.forEach(m => {
-    const sp = document.createElement("span"); 
+  const mLen = membersList.length;
+  for (let i = 0; i < mLen; i++) {
+    const m = membersList[i];
+    const sp = document.createElement("span");
     sp.className = "chip";
-    sp.style.color = m.c; sp.style.borderColor = m.c + "44";
+    sp.style.color = m.c;
+    sp.style.borderColor = m.c + "44";
     sp.textContent = m.n;
     sp.onclick = () => {
       if (m.id !== myUid && isJoined) {
@@ -1028,11 +1055,12 @@ const loadPresenceCache = () => {
       }
     };
     fragment.appendChild(sp);
-  });
+  }
   D.pl.innerHTML = "";
   D.pl.appendChild(fragment);
-  D.pcnt.textContent = `${presenceCache.length}人`;
-};
+  D.pcnt.textContent = `${mLen}人`;
+  updateJumpBtns(); // プレゼンス変更に伴う高さを再評価
+}
 
 /* =========================================================
    UIインタラクション・イベントバインド
@@ -1089,7 +1117,6 @@ D.adminClearBtn.onclick = async () => {
 
 D.ni.addEventListener("input", updateTripPreview);
 D.tripi.addEventListener("input", updateTripPreview);
-updateTripPreview();
 
 D.kbToggleBtn.onclick = () => {
   keepKbOpen = !keepKbOpen;
@@ -1139,14 +1166,24 @@ D.clrMsgBtn.onclick = () => { D.mi.value = ""; D.mi.style.height = "auto"; };
 
 D.delCancelBtn.onclick = () => { D.delConfirmMod.classList.remove("show"); targetDelId = null; };
 
-// 削除実行ボタン押下：物理削除 ＆ セキュリティルールエラー対策としての論理削除フラグ更新の二重書き込み
+// 削除実行ボタン押下：物理削除 ＆ セキュリティルールエラー対策としての論理削除フラグ更新の二重書き込み（0ms削除反映）
 D.delExecuteBtn.onclick = async () => {
   if (!targetDelId) return;
   const idToDelete = targetDelId;
+  
+  // 【楽観的即時削除アップデート（遅延なし）】
+  // サーバーからの同期通知の戻りを1ミリ秒も待たず、DOMから対象発言を即座に消去します
   const localEl = D.tli.querySelector(`.mw[data-mid="${escapeSelector(idToDelete)}"]`);
   if (localEl) localEl.remove();
 
   displayedMsgIds.delete(idToDelete);
+  
+  // 削除されたメッセージが未読リストにあれば即時除外して減算
+  if (unreadMsgIds.has(idToDelete)) {
+    unreadMsgIds.delete(idToDelete);
+    updateUnreadBadge();
+  }
+
   D.delConfirmMod.classList.remove("show");
   targetDelId = null;
 
@@ -1268,6 +1305,7 @@ D.imgViewCloseBtn.onclick = () => D.imgViewMod.classList.remove("show");
    ========================================================= */
 loadPresenceCache(); 
 updateAdminUI(); 
+updateTripPreview(); // 起動時に即座にハッシュ及びプレビュー反映
 
 /* =========================================================
    Firebaseリアルタイム同期 & 高速再接続マネジメント
@@ -1312,12 +1350,15 @@ function setupFirebaseListeners() {
       }
     });
 
-    // ローカルで仮表示されていた一時送信メッセージ（pnd）があれば、サーバー本番受信に合わせて削除・消去
+    // 楽観的二重描画・チラつきを完全にシャットアウト
+    // サーバーから同期メッセージが届いた際、自分の送信処理中ID（pnd_...）がデータに含まれていれば、
+    // 即座にその一時描画DOMを消去し、一気に本番DOMとして描画させます
     serverMsgs.forEach(m => {
       if (m.pnd) {
         if (pendingMsgs.has(m.pnd)) pendingMsgs.delete(m.pnd);
+        displayedMsgIds.delete(m.pnd); // 一時IDを描画登録から抹殺
         const tempEl = D.tli.querySelector(`.mw[data-mid="${escapeSelector(m.pnd)}"]`);
-        if (tempEl) tempEl.remove();
+        if (tempEl) tempEl.remove(); // 一時表示DOMを即削除
       }
     });
 
@@ -1427,12 +1468,9 @@ function setupFirebaseListeners() {
 
   // オンラインリスト（プレゼンス）監視＆キャッシュ保存
   onValue(ref(db, "presence/official"), s => {
-    const list = s.val() || {}; const members = []; const nowTrue = getTrueTime();
-    const currentPresenceHash = Object.keys(list).sort().map(id => {
-      const u = list[id]; return `${id}:${u.n || ""}:${u.c || ""}:${u.t || 0}`;
-    }).join("|");
-    if (currentPresenceHash === lastPresenceHash) return; 
-    lastPresenceHash = currentPresenceHash;
+    const list = s.val() || {}; 
+    const membersMap = {};
+    const nowTrue = getTrueTime();
 
     for (const [id, u] of Object.entries(list)) {
       if (u && u.n) {
@@ -1455,23 +1493,12 @@ function setupFirebaseListeners() {
           }).catch(() => { cleaningUids.delete(targetId); });
           continue;
         }
-        members.push({ id, ...u, t: ut });
+        membersMap[id] = { id, ...u, t: ut };
       }
     }
 
-    const fragment = document.createDocumentFragment(); const mLen = members.length;
-    for (let i = 0; i < mLen; i++) {
-      const m = members[i]; const sp = document.createElement("span"); sp.className = "chip";
-      sp.style.color = m.c; sp.style.borderColor = m.c + "44"; sp.textContent = m.n;
-      sp.onclick = () => { if (m.id !== myUid && isJoined) { D.mi.value += `@${m.n} `; D.mi.focus(); } };
-      fragment.appendChild(sp);
-    }
-    D.pl.innerHTML = ""; D.pl.appendChild(fragment); D.pcnt.textContent = `${mLen}人`;
-
-    // プレゼンスキャッシュを保存
-    presenceCache = members.map(m => ({ id: m.id, n: m.n, c: m.c }));
-    safeLS.set("nz_presence_cache", JSON.stringify(presenceCache));
-    updateJumpBtns(); // プレゼンス変更に伴う高さを再評価
+    // 楽観的マウントと安全な0ms差分描画の実行
+    renderPresence(membersMap);
   });
 }
 

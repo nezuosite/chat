@@ -311,7 +311,7 @@ if (_initJoined && _initNi && _initTrip) {
 } else {
   D.joinForm.style.setProperty("display", "flex", "important");
   D.ib.style.setProperty("display", "none", "important");
-  D.exBtn.style.setProperty("display", "none", "important");
+  D.exBtn.style.setProperty("none", "important");
 }
 
 let keepKbOpen = false;
@@ -903,22 +903,8 @@ D.playerCloseBtn.onclick = closePlayer;
 /* =========================================================
    キャッシュストレージ & ローカル初期ロード
    ========================================================= */
-let chatCache = [];
 let presenceCache = [];
-try { chatCache = JSON.parse(safeLS.get("nz_chat_cache") || "[]"); } catch(e) {}
 try { presenceCache = JSON.parse(safeLS.get("nz_presence_cache") || "[]"); } catch(e) {}
-
-const loadCacheToTimeline = () => {
-  const fragment = document.createDocumentFragment();
-  chatCache.forEach(m => {
-    if (m && m.id && !displayedMsgIds.has(m.id)) {
-      displayedMsgIds.add(m.id);
-      fragment.appendChild(cMsg(m));
-    }
-  });
-  D.tli.appendChild(fragment);
-  scBottom(true);
-};
 
 // リロード・起動時にオンラインリストを一瞬で即時描画（チラつき防止）
 const loadPresenceCache = () => {
@@ -974,8 +960,20 @@ D.adminClearBtn.onclick = async () => {
   if (!isAdmin()) return;
   if (confirm("⚠️ チャット履歴を完全に全消去しますか？")) {
     if (confirm("本当に実行しますか？")) {
+      // 1. Firebase上のログノードを一掃（物理削除が可能な場合は完全に空になります）
       await set(ref(db, "chat/official"), null).catch(() => {});
-      safeLS.remove("nz_chat_cache");
+      
+      // 2. セキュリティルール制限下であっても強制的に全消去を確実に同期させる「全消去イベントシグナル」メッセージを書き込む
+      const clearRef = push(ref(db, "chat/official"));
+      await set(clearRef, {
+        sys: true,
+        action: "clear",
+        m: "管理者によってチャット履歴が全消去されました",
+        t: serverTimestamp()
+      }).catch((err) => {
+        alert("全消去の書き込みに失敗しました: " + err.message);
+      });
+
       displayedMsgIds.clear();
       D.tli.innerHTML = "";
     }
@@ -1024,23 +1022,25 @@ D.clrMsgBtn.onclick = () => { D.mi.value = ""; D.mi.style.height = "auto"; };
 
 D.delCancelBtn.onclick = () => { D.delConfirmMod.classList.remove("show"); targetDelId = null; };
 
-// 削除実行ボタン押下：ローカルキャッシュ（localStorage）からも即座に対象発言を完全排除（チラつき、復活を物理遮断）
+// 削除実行ボタン押下：物理削除 ＆ セキュリティルールエラー対策としての論理削除フラグ更新の二重書き込み
 D.delExecuteBtn.onclick = async () => {
   if (!targetDelId) return;
   const idToDelete = targetDelId;
   const localEl = D.tli.querySelector(`.mw[data-mid="${escapeSelector(idToDelete)}"]`);
   if (localEl) localEl.remove();
 
-  // ローカルキャッシュの記憶から対象のログを即時完全抹殺
-  chatCache = chatCache.filter(m => m.id !== idToDelete);
-  safeLS.set("nz_chat_cache", JSON.stringify(chatCache));
   displayedMsgIds.delete(idToDelete);
-
   D.delConfirmMod.classList.remove("show");
   targetDelId = null;
 
-  // Firebaseから削除
+  // 1. Firebase上から物理削除を送信（ルールで許可されていれば即時削除）
   await remove(ref(db, `chat/official/${idToDelete}`)).catch(() => {});
+
+  // 2. 他人の発言の物理削除が権限で拒否された場合に備え、論理削除（deleted: true）でデータ上書きマークを送信
+  await set(ref(db, `chat/official/${idToDelete}`), {
+    deleted: true,
+    t: serverTimestamp()
+  }).catch(() => {});
 };
 
 D.imgBtn.onclick = () => D.fileInput.click();
@@ -1147,10 +1147,9 @@ overlayEl.addEventListener('wheel', (e) => {
 D.imgViewCloseBtn.onclick = () => D.imgViewMod.classList.remove("show");
 
 /* =========================================================
-   体感0msローカル復帰（起動時キャッシュロード）
+   オンラインリスト起動時描画
    ========================================================= */
-loadCacheToTimeline();
-loadPresenceCache(); // 起動時に一瞬でオンラインリストと人数を描画
+loadPresenceCache(); 
 updateAdminUI(); 
 
 /* =========================================================
@@ -1168,49 +1167,92 @@ function setupFirebaseListeners() {
   listenersInitialized = true;
 
   // =========================================================
-  // アクティブ発言同期（差分キー更新 ＆ ローカル記憶・キャッシュ連動）
+  // アクティブ発言同期（常にサーバーの最新100件データと完璧に同期）
   // =========================================================
-  const chatQuery = query(ref(db, "chat/official"), limitToLast(30)); 
+  const chatQuery = query(ref(db, "chat/official"), limitToLast(100)); 
   onValue(chatQuery, snap => {
     const serverMsgs = [];
-    let minTs = Infinity;
+    let latestClearTs = 0; // 最新の全消去が実行された基準時刻
 
     snap.forEach(child => {
       const m = child.val(); 
       if (m) { 
         m.id = child.key; 
+        
+        // 管理者による全消去（action: "clear"）システムシグナルの検出
+        if (m.sys && m.action === "clear" && typeof m.t === "number") {
+          if (m.t > latestClearTs) {
+            latestClearTs = m.t;
+          }
+        }
         serverMsgs.push(m); 
-        if (m.t && typeof m.t === "number" && m.t < minTs) {
-          minTs = m.t;
+      }
+    });
+
+    // ローカルで仮表示されていた一時送信メッセージ（pnd）があれば、サーバー本番受信に合わせて削除・消去
+    serverMsgs.forEach(m => {
+      if (m.pnd) {
+        if (pendingMsgs.has(m.pnd)) pendingMsgs.delete(m.pnd);
+        const tempEl = D.tli.querySelector(`.mw[data-mid="${escapeSelector(m.pnd)}"]`);
+        if (tempEl) tempEl.remove();
+      }
+    });
+
+    const serverMsgIds = new Set(serverMsgs.map(m => m.id));
+
+    // すでに表示済みメッセージの中で、仮タイムスタンプからサーバー確定タイムスタンプに変更されていたら最新化する
+    serverMsgs.forEach(m => {
+      if (m.deleted) return;
+      const existingEl = D.tli.querySelector(`.mw[data-mid="${escapeSelector(m.id)}"]`);
+      if (existingEl) {
+        const oldTs = parseInt(existingEl.dataset.ts || "0");
+        if (m.t && typeof m.t === "number" && m.t !== oldTs) {
+          existingEl.dataset.ts = m.t;
+          const tsSpan = existingEl.querySelector(".ts");
+          if (tsSpan) tsSpan.textContent = fDT(m.t);
         }
       }
     });
 
-    serverMsgs.forEach(m => { if (m.pnd && pendingMsgs.has(m.pnd)) pendingMsgs.delete(m.pnd); });
-
-    const serverMsgIds = new Set(serverMsgs.map(m => m.id));
-    let cacheChanged = false;
-
-    // 1. 他人が発言を物理削除した場合：DOMから即時排除し、ローカルの記憶（localStorage）からも完全消去
+    // -------------------------------------------------------------
+    // 【究極の消去・境界フィルター】
+    // 画面に描画されている要素のうち、以下のいずれかに該当する発言を完全に非表示・消去します
+    // ① サーバーから論理削除（deleted: true）されたメッセージ
+    // ② 最新の全消去日時（latestClearTs）より過去に投稿されたすべてのメッセージ
+    // ③ サーバー上に存在しない物理削除メッセージ（最近のクエリ内のみを安全に追従）
+    // -------------------------------------------------------------
     const localMwEls = D.tli.querySelectorAll(".mw");
     localMwEls.forEach(el => {
       const mid = el.dataset.mid;
       const ts = parseInt(el.dataset.ts || "0");
       if (mid && !mid.startsWith("pnd_")) {
-        // 同期対象（最新30件の範囲内）であるはずの時刻なのに、サーバーメッセージから消えている＝物理削除
-        if (!serverMsgIds.has(mid) && ts >= minTs) {
-          el.remove();
-          displayedMsgIds.delete(mid);
-          
-          // ローカルの記憶（キャッシュメモリ）からも削除されたログを除去
-          chatCache = chatCache.filter(m => m.id !== mid);
-          cacheChanged = true;
+        const sMsg = serverMsgs.find(m => m.id === mid);
+        
+        const isDeletedOnServer = sMsg && sMsg.deleted === true;
+        const isNotExistent = !serverMsgIds.has(mid);
+        const isOlderThanClear = latestClearTs > 0 && ts < latestClearTs;
+
+        if (isDeletedOnServer || isOlderThanClear || isNotExistent) {
+          let minTs = Infinity;
+          serverMsgs.forEach(sm => {
+            if (sm.t && typeof sm.t === "number" && sm.t < minTs) minTs = sm.t;
+          });
+
+          // 物理削除追従は直近の発言のみを対象（サーバーメッセージが空の場合は無条件クリア）
+          if (serverMsgs.length === 0 || isDeletedOnServer || isOlderThanClear || (isNotExistent && ts >= (minTs - 60000))) {
+            el.remove();
+            displayedMsgIds.delete(mid);
+          }
         }
       }
     });
 
-    // 2. 新着発言のみを適切な時系列位置に、チラつくことなく差し込む
+    // 4. 新着発言を適切な時系列位置に、チラつくことなく差し込む
+    // （削除済みメッセージ、および全消去より古い発言は差し込みません）
     serverMsgs.forEach(m => {
+      if (m.deleted) return;
+      if (latestClearTs > 0 && (m.t || 0) < latestClearTs) return; // 全消去より古いものは無視
+
       if (!displayedMsgIds.has(m.id)) {
         displayedMsgIds.add(m.id);
         const newEl = cMsg(m);
@@ -1220,15 +1262,10 @@ function setupFirebaseListeners() {
         });
         if (sibling) D.tli.insertBefore(newEl, sibling);
         else D.tli.appendChild(newEl);
-
-        // 新規データをローカル記憶に追加
-        if (!chatCache.some(c => c.id === m.id)) {
-          chatCache.push(m);
-          cacheChanged = true;
-        }
       }
     });
 
+    // まだサーバーから確定受信していない送信中の仮発言があれば下部に描画
     pendingMsgs.forEach((pMsgObj, tempId) => {
       let tempEl = D.tli.querySelector(`.mw[data-mid="${escapeSelector(tempId)}"]`);
       if (!tempEl) {
@@ -1236,13 +1273,6 @@ function setupFirebaseListeners() {
         D.tli.appendChild(tempEl);
       }
     });
-
-    // キャッシュ整理とソート（容量制限上限100件まで自動カット）
-    if (cacheChanged) {
-      chatCache.sort((a, b) => (a.t || 0) - (b.t || 0));
-      if (chatCache.length > 100) chatCache = chatCache.slice(-100);
-      safeLS.set("nz_chat_cache", JSON.stringify(chatCache));
-    }
 
     scBottom();
   });

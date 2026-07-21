@@ -301,7 +301,7 @@ const D = {
   tripPrevText:$("tripPrevText"), clrmod:$("clrmod"), clrPick2:$("clrPick2"), 
   clrPrev:$("clrPrev"), clrOk:$("clrOk"), clrCancel:$("clrCancel"), clrBtn:$("clrBtn"), curDot:$("clrDot"),
   pcnt:$("pcnt"), exBtn:$("exBtn"), tl:$("tl"), tli:$("tl-inner"), ib:$("ib"), mi:$("mi"), 
-  sdBtn:$("sdBtn"), clrMsgBtn:$("clrMsgBtn"), kbToggleBtn:$("kbToggleBtn"), kbStatusText:$("kbStatusText"),
+  sdBtn:$("sdBtn"), clrMsgBtn:$("clrMsgBtn"), kbToggleBtn:$("kbToggleBtn"),
   jumpUpBtn:$("jumpUpBtn"), jumpDownBtn:$("jumpDownBtn"), imgBtn:$("imgBtn"), fileInput:$("fileInput"),
   adminClearBtn:$("adminClearBtn"), pl:$("pl"), delConfirmMod:$("delConfirmMod"),
   delConfirmPreview:$("delConfirmPreview"), delCancelBtn:$("delCancelBtn"), delExecuteBtn:$("delExecuteBtn"),
@@ -325,7 +325,7 @@ D.tripi.value = _initTrip;
 
 let keepKbOpen = false;
 let isAutoScroll = true; // スクロール追従の状態管理
-let unreadCount = 0; // 未読件数
+const unreadMsgIds = new Set(); // 未読発言IDを保持するSetオブジェクト
 let _scPending = false; 
 let myUid = null;
 let isJoined = _initJoined; 
@@ -654,7 +654,7 @@ async function sendMsg(overrideText = null, imgData = null) {
   
   // 自分の送信時は、強制的に追従を有効化し、未読をクリア
   isAutoScroll = true;
-  unreadCount = 0;
+  unreadMsgIds.clear();
   updateUnreadBadge();
   scBottom(true);
 
@@ -811,8 +811,9 @@ function scBottom(force = false) {
 function updateUnreadBadge() {
   const badge = D.unreadBadge;
   if (!badge) return;
-  if (unreadCount > 0) {
-    badge.textContent = unreadCount > 99 ? "99+" : unreadCount;
+  const count = unreadMsgIds.size;
+  if (count > 0) {
+    badge.textContent = count > 99 ? "99+" : count;
     badge.style.display = "inline-flex";
   } else {
     badge.style.display = "none";
@@ -852,8 +853,10 @@ D.tl.addEventListener("scroll", () => {
   if (!_scPending) {
     if (isNearBottom) {
       isAutoScroll = true;
-      unreadCount = 0; // 最下部に到達した瞬間に未読数をクリア
-      updateUnreadBadge();
+      if (unreadMsgIds.size > 0) {
+        unreadMsgIds.clear(); // 最下部に到達した瞬間に未読数をクリア
+        updateUnreadBadge();
+      }
     } else {
       isAutoScroll = false;
     }
@@ -1087,7 +1090,7 @@ D.jumpUpBtn.onclick = () => {
 D.jumpDownBtn.onclick = () => {
   // 下ボタン押下時は強制的に追従状態に戻し、未読件数をクリア
   isAutoScroll = true;
-  unreadCount = 0;
+  unreadMsgIds.clear();
   updateUnreadBadge();
   D.tl.scrollTo({ top: D.tl.scrollHeight, behavior: "smooth" });
 };
@@ -1098,7 +1101,7 @@ D.jumpDownBtn.onclick = () => {
 D.mi.addEventListener("focus", () => { 
   // フォーカス時は強制的に最下部まで追従
   isAutoScroll = true;
-  unreadCount = 0;
+  unreadMsgIds.clear();
   updateUnreadBadge();
   scBottom(true); 
 });
@@ -1318,6 +1321,8 @@ function setupFirebaseListeners() {
       }
     });
 
+    let unreadChanged = false;
+
     // -------------------------------------------------------------
     // 【究極の消去・境界フィルター】
     // 画面に描画されている要素のうち、以下のいずれかに該当する発言を完全に非表示・消去します
@@ -1346,6 +1351,12 @@ function setupFirebaseListeners() {
           if (serverMsgs.length === 0 || isDeletedOnServer || isOlderThanClear || (isNotExistent && ts >= (minTs - 60000))) {
             el.remove();
             displayedMsgIds.delete(mid);
+
+            // 削除されたメッセージIDが未読Setに含まれていれば即時除外して減算
+            if (unreadMsgIds.has(mid)) {
+              unreadMsgIds.delete(mid);
+              unreadChanged = true;
+            }
           }
         }
       }
@@ -1372,14 +1383,16 @@ function setupFirebaseListeners() {
         else D.tli.appendChild(newEl);
 
         // 新着発言を受信したとき：
-        // もし自分以外の発言で、かつ追従中（最下部付近にいる）でない場合は、未読数をカウントアップ
+        // もし自分以外の発言で、かつ追従中（最下部付近にいる）でない場合は、未読SetにIDを追加
         if (m.u !== myUid && !isAutoScroll) {
-          unreadCount++;
+          unreadMsgIds.add(m.id);
+          unreadChanged = true;
         }
       }
     });
 
-    if (newlyAdded) {
+    // 追加または削除等により未読件数に変動があればバッジを即座に更新
+    if (unreadChanged || newlyAdded) {
       updateUnreadBadge();
     }
 

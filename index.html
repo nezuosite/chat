@@ -11,7 +11,8 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--bg:#090d16;--sf:#151c2c;--s2:#0b101c;--bd:#27314f;--tx:#f1f5f9;--mu:#94a3b8;--m2:#4e5e78;--in:#4f46e5;--i2:#3b32c0;--em:#10b981;--e2:#059669;--ro:#f43f5e;--rg:rgba(244,63,94,.12);--safe:env(safe-area-inset-bottom,0px);--usr-color:#94a3b8;--app-viewport-height:100dvh}
 html,body{height:100%;height:100dvh;width:100%;overflow:hidden;background:#05070a;color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Noto Sans JP",sans-serif;touch-action:pan-y;overscroll-behavior:none;-webkit-text-size-adjust:100%;font-size:15px}
-input,textarea,select{font-family:inherit;-webkit-user-select:text;user-select:text;font-size:15px!important}
+/* スマートフォンのフォーカス時強制ズームを防止するため、input/textareaは16pxで統一 */
+input,textarea,select{font-family:inherit;-webkit-user-select:text;user-select:text;font-size:16px!important}
 button{cursor:pointer;font-family:inherit;border:none;background:none;transition:all 0.15s ease}
 button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 #app{height:100vh;height:var(--app-viewport-height,100dvh);display:flex;position:fixed;inset:0;flex-direction:column;overflow:hidden;z-index:50;background:#05070a}
@@ -72,11 +73,11 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .jump-btn:active{background:var(--in);color:#fff}
 .jump-btn:disabled{opacity:0.3;cursor:not-allowed}
 .switch-kb{width:112px!important;height:34px!important;position:relative;border-radius:18px!important;background:var(--s2)!important;border:1px solid var(--bd);padding:0 2px!important;overflow:hidden;transition:all 0.25s ease;cursor:pointer;display:flex;align-items:center}
-.switch-kb::after{content:"";position:absolute;top:2px;left:2px;width:28px;height:28px;background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);border-radius:50%;transition:transform 0.25s ease;z-index:1}
+.switch-kb::after{content:"";position:absolute;top:2px;left:2px;width:26px;height:26px;background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);border-radius:50%;transition:transform 0.25s ease;z-index:1}
 .switch-kb.active{background:var(--in)!important;border-color:var(--i2)!important}
 .switch-kb.active::after{transform:translateX(53px)!important}
 .switch-scroll{width:88px!important;height:34px!important;position:relative;border-radius:18px!important;background:var(--s2)!important;border:1px solid var(--bd);padding:0 2px!important;overflow:hidden;transition:all 0.25s ease;cursor:pointer;display:flex;align-items:center}
-.switch-scroll::after{content:"";position:absolute;top:2px;left:2px;width:28px;height:28px;background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);border-radius:50%;transition:transform 0.25s ease;z-index:1}
+.switch-scroll::after{content:"";position:absolute;top:2px;left:2px;width:26px;height:26px;background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);border-radius:50%;transition:transform 0.25s ease;z-index:1}
 .switch-scroll.active{background:var(--in)!important;border-color:var(--i2)!important}
 .switch-scroll.active::after{transform:translateX(53px)!important}
 .switch-text{font-size:11px;font-weight:bold;pointer-events:none;color:var(--tx);position:relative;z-index:2;width:100%;text-align:center}
@@ -113,7 +114,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .modal-bottom-close-container{width:100%;display:flex;justify-content:center;position:absolute;bottom:0;left:0;padding:16px 0 calc(16px + var(--safe));background:linear-gradient(to top,rgba(0,0,0,0.85) 40%,rgba(0,0,0,0));backdrop-filter:blur(2px);z-index:10001}
 .modal-bottom-close{width:auto;min-width:160px;padding:12px 24px;background:var(--ro);color:#fff;border-radius:24px;font-weight:bold;font-size:14px;text-align:center;border:none;box-shadow:0 4px 16px rgba(244,63,94,0.4);cursor:pointer}
 .clrpick-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
-.clrc2{aspect-ratio:1;width:100%;max-width:26px;border-radius:50%;margin:0 auto;border:2px solid transparent;cursor:pointer;transition:transform 0.15s,border-color 0.15s}
+.clrc2{aspect-ratio:1;width:100%;max-width:24px;border-radius:50%;margin:0 auto;border:2px solid transparent;cursor:pointer;transition:transform 0.15s,border-color 0.15s}
 .clrc2.sel{border-color:var(--tx)!important;transform:scale(1.25);box-shadow:0 0 10px rgba(255,255,255,0.5);border-width:2px!important}
 </style>
 
@@ -598,7 +599,7 @@ async function doExit(isAuto = false) {
   // ロビー表示に強制変更
   D.joinForm.style.setProperty("display", "flex", "important");
   D.ib.style.setProperty("display", "none", "important");
-  D.exBtn.style.setProperty("display", "none", "important");
+  D.exBtn.style.setProperty("display", "none", "important"); // 退室ボタン非表示の記述ミスバグを修正
   
   updateAdminUI(); 
 
@@ -802,12 +803,43 @@ function scBottom(force = false) {
   });
 }
 
+/* =========================================================
+   タイムライン上下移動ボタンの活性・非活性制御
+   ========================================================= */
 function updateJumpBtns() {
   if (!D.tl) return;
-  const isScrollable = D.tl.scrollHeight > D.tl.clientHeight;
-  D.jumpUpBtn.disabled = !isScrollable;
-  D.jumpDownBtn.disabled = !isScrollable;
+  const scrollTop = D.tl.scrollTop;
+  const clientHeight = D.tl.clientHeight;
+  const scrollHeight = D.tl.scrollHeight;
+  const isScrollable = scrollHeight > clientHeight;
+
+  if (!isScrollable) {
+    D.jumpUpBtn.disabled = true;
+    D.jumpDownBtn.disabled = true;
+  } else {
+    // 境界付近（2pxバッファ）でボタンを無効化
+    D.jumpUpBtn.disabled = (scrollTop <= 2);
+    D.jumpDownBtn.disabled = (scrollTop + clientHeight >= scrollHeight - 2);
+  }
 }
+
+// タイムラインのスクロールを検知してボタン更新 ＆ 上方向の手動スクロールで自動追従をスマートに解除
+D.tl.addEventListener("scroll", () => {
+  updateJumpBtns();
+  
+  if (!_scPending && isAutoScroll) {
+    const scrollTop = D.tl.scrollTop;
+    const clientHeight = D.tl.clientHeight;
+    const scrollHeight = D.tl.scrollHeight;
+    // 一番下から10px以上上にスクロールされたら自動追従を解除
+    if (scrollTop + clientHeight < scrollHeight - 10) {
+      isAutoScroll = false;
+      D.autoScrollToggleBtn.classList.remove("active");
+      D.autoScrollStatusText.textContent = "追従:OFF";
+      D.autoScrollStatusText.style.color = "var(--tx)";
+    }
+  }
+});
 
 function parseTxtSplit(txt) {
   if (!txt.includes("http")) return [document.createTextNode(txt)];
@@ -877,6 +909,7 @@ function createMediaContainer(url) {
 const closePlayer = () => {
   D.fixedPlayer.style.display = "none";
   D.playerContent.innerHTML = "";
+  updateJumpBtns();
 };
 
 function openFloatingPlayer(url, type) {
@@ -910,6 +943,7 @@ function openFloatingPlayer(url, type) {
     }
   }
   scBottom();
+  updateJumpBtns();
 }
 
 window.addEventListener("message", (e) => {
@@ -1030,10 +1064,23 @@ D.autoScrollToggleBtn.onclick = () => {
   D.autoScrollToggleBtn.classList.toggle("active", isAutoScroll);
   D.autoScrollStatusText.textContent = isAutoScroll ? "追従:ON" : "追従:OFF";
   D.autoScrollStatusText.style.color = isAutoScroll ? "#fff" : "var(--tx)";
+  if (isAutoScroll) {
+    scBottom(true);
+  }
 };
 
-D.jumpUpBtn.onclick = () => D.tl.scrollTo({ top: 0, behavior: "smooth" });
-D.jumpDownBtn.onclick = () => D.tl.scrollTo({ top: D.tl.scrollHeight, behavior: "smooth" });
+D.jumpUpBtn.onclick = () => {
+  D.tl.scrollTo({ top: 0, behavior: "smooth" });
+};
+
+D.jumpDownBtn.onclick = () => {
+  // 下ボタン押下時は、自動追従もONにする
+  isAutoScroll = true;
+  D.autoScrollToggleBtn.classList.add("active");
+  D.autoScrollStatusText.textContent = "追従:ON";
+  D.autoScrollStatusText.style.color = "#fff";
+  D.tl.scrollTo({ top: D.tl.scrollHeight, behavior: "smooth" });
+};
 
 /* =========================================================
    追従オフであっても、フォーカス時・入力時は強制追従スクロール
@@ -1314,6 +1361,7 @@ function setupFirebaseListeners() {
     });
 
     scBottom();
+    updateJumpBtns(); // メッセージ増減時に上下移動ボタン状態を再評価
   });
 
   // オンラインリスト（プレゼンス）監視＆キャッシュ保存
@@ -1362,6 +1410,7 @@ function setupFirebaseListeners() {
     // プレゼンスキャッシュを保存
     presenceCache = members.map(m => ({ id: m.id, n: m.n, c: m.c }));
     safeLS.set("nz_presence_cache", JSON.stringify(presenceCache));
+    updateJumpBtns(); // プレゼンス変更に伴う高さを再評価
   });
 }
 
@@ -1401,6 +1450,7 @@ if (window.visualViewport) {
   const updateVh = () => {
     document.documentElement.style.setProperty("--app-viewport-height", `${window.visualViewport.height}px`);
     scBottom(D.mi === document.activeElement); 
+    updateJumpBtns();
   };
   window.visualViewport.addEventListener("resize", updateVh); updateVh();
 }

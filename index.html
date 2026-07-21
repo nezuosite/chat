@@ -74,8 +74,6 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .jump-btn:disabled{opacity:0.3;cursor:not-allowed}
 .switch-kb{width:112px!important;height:34px!important;position:relative;border-radius:18px!important;background:var(--s2)!important;border:1px solid var(--bd);padding:0 2px!important;overflow:hidden;transition:all 0.25s ease;cursor:pointer;display:flex;align-items:center}
 .switch-kb::after{content:"";position:absolute;top:2px;left:2px;width:26px;height:26px;background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);border-radius:50%;transition:transform 0.25s ease;z-index:1}
-.switch-kb.active{background:var(--in)!important;border-color:var(--i2)!important}
-.switch-kb.active::after{transform:translateX(53px)!important}
 .switch-text{font-size:11px;font-weight:bold;pointer-events:none;color:var(--tx);position:relative;z-index:2;width:100%;text-align:center}
 .mi-container{position:relative;flex:1;display:flex;align-items:center;background:var(--bg);border:1px solid var(--bd);border-radius:20px;min-height:40px;padding:4px 34px 4px 40px}
 .battach{position:absolute;left:6px;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--mu);cursor:pointer}
@@ -130,8 +128,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
       const lastActive = parseInt(lastActiveStr, 10);
       if (lastActive > 0 && (Date.now() - lastActive >= 30 * 60 * 1000)) {
         isTimedOut = true;
-        localStorage.removeItem("nz_is_joined");
-        localStorage.removeItem("nz_last_active_time");
+        // Firebaseとの同期を取るため、ここでは直接localStorageを削除せず、メインモジュール側の初期化でdoExit(true)を確実に走らせます
       }
     }
 
@@ -481,16 +478,30 @@ async function joinRoom(isReconnect = false) {
     return; 
   }
 
-  // 再入室（リコンボ）時に30分以上経過している場合は即座にロビーに戻す（安全策）
+  // 再入室（リコンボ）時に30分以上経過している場合は即座に自動退室処理を実行
   if (isReconnect) {
     const lastActive = parseInt(safeLS.get("nz_last_active_time") || "0");
-    if (lastActive > 0 && (getTrueTime() - lastActive >= 30 * 60 * 1000)) {
-      safeLS.remove("nz_is_joined");
-      safeLS.remove("nz_last_active_time");
-      isJoined = false;
-      D.joinForm.style.setProperty("display", "flex", "important");
-      D.ib.style.setProperty("display", "none", "important");
-      D.exBtn.style.setProperty("display", "none", "important");
+    const trueTime = getTrueTime();
+    if (lastActive > 0 && (trueTime - lastActive >= 30 * 60 * 1000)) {
+      if (!myUid) {
+        if (isLocalFileEnv) {
+          myUid = safeLS.get("nz_local_uid") || "local_" + Math.random().toString(36).slice(2, 10);
+          safeLS.set("nz_local_uid", myUid);
+        } else {
+          if (auth.currentUser) {
+            myUid = auth.currentUser.uid;
+          } else {
+            try {
+              const userCredential = await signInAnonymously(auth);
+              myUid = userCredential.user.uid;
+            } catch(e) {}
+          }
+        }
+      }
+      myName = n;
+      myTrip = makeTrip(n, tk);
+      isJoined = true; // doExit のガード判定を通過させるために一時的に true
+      await doExit(true); // サーバーに退室ログを送り、プレゼンスを消去して確実にロビーへリセット
       return;
     }
   }
@@ -590,8 +601,13 @@ async function doExit(isAuto = false) {
   safeLS.remove("nz_is_joined");
   safeLS.remove("nz_last_active_time");
 
-  const myPresRef = ref(db, `presence/official/${myUid}`);
-  await remove(myPresRef).catch(() => {});
+  // 退室時、安全のため確実にFirebase接続をオンラインにして処理を即時コミット
+  if (db) goOnline(db);
+
+  if (myUid) {
+    const myPresRef = ref(db, `presence/official/${myUid}`);
+    await remove(myPresRef).catch(() => {});
+  }
 
   // ロビー表示に強制変更
   D.joinForm.style.setProperty("display", "flex", "important");
@@ -1258,9 +1274,9 @@ updateAdminUI();
    ========================================================= */
 const cleaningUids = new Set(); let lastPresenceHash = "";      
 const boostSync = () => { 
-  if (checkActivityTimeout()) return; // 復帰時、放置されていれば即ロビーへ戻す
+  if (db) goOnline(db); // ★最優先で接続を確立し、タイムアウトデータの同期書き込みを可能にします
+  if (checkActivityTimeout()) return; // その後放置判定。退室処理が安全にサーバーへ送られます
   if (db) { 
-    goOnline(db); 
     startAutoExitChecker(); 
   } 
 };

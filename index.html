@@ -259,8 +259,7 @@ window.makeTrip = (name, tripKey) => {
       }
     }
 
-    // 初期化ブロック内の深刻なCSSバグを修正
-    // 未入室（else）の際、発言入力欄（#ib）と退室ボタン（#exBtn）を強制非表示（display: none）に固定
+    // 初期化ブロック内のCSS調整
     if (isJoined && !isTimedOut && ni && tripi) {
       document.write('<style>#joinForm { display: none !important; } #ib { display: flex !important; } #exBtn { display: block !important; }</style>');
     } else {
@@ -319,7 +318,6 @@ window.makeTrip = (name, tripKey) => {
       <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px; width: 100%; gap: 8px;">
         <span id="tripPrevText" style="font-size: 11.5px; font-weight: bold; color: var(--usr-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;"><script>
           (function() {
-            // ドキュメントロード完了を待たず、HTMLパース時に最速で保存データを読み込んでプレビューテキストを即表示します
             const n = localStorage.getItem("nz_ni") || "名無し";
             const tk = localStorage.getItem("nz_tripi") || "";
             const t = tk ? window.makeTrip(n, tk) : "";
@@ -409,8 +407,8 @@ window.makeTrip = (name, tripKey) => {
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { getDatabase, ref, push, onValue, set, remove, serverTimestamp, query, limitToLast, runTransaction, goOnline, goOffline }
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import { getDatabase, ref, push, onValue, set, remove, serverTimestamp, query, limitToLast, runTransaction, goOnline, goOffline, onDisconnect }
   from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -523,12 +521,12 @@ const escapeSelector = (val) => {
   return typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(val) : val.replace(/(:|\.|\[|\]|,|=|@)/g, "\\$1");
 };
 
-// 管理者権限判定（UIDベースで完全に厳格化）
+// 管理者権限判定
 const isAdmin = () => {
   return myUid === "J64MocsPo0QD7hSwZpQgEeDdO6X2";
 };
 
-// 安全かつ厳格な日付フォーマッタ（不正値によるNaN/NaNを完全に防止）
+// 安全かつ厳格な日付フォーマッタ
 const fDT = (ts) => {
   if (!ts || typeof ts !== "number") return "--:--:--";
   const d = new Date(ts);
@@ -545,7 +543,7 @@ const updateAdminUI = () => {
 };
 
 /* =========================================================
-   30分無発言自動退室タイマー制御 (生存条件は変えずに)
+   30分無発言自動退室タイマー制御
    ========================================================= */
 function checkActivityTimeout() {
   if (!isJoined) return false;
@@ -560,7 +558,6 @@ function checkActivityTimeout() {
     return false;
   }
 
-  // 30分放置された場合に自動退室を実行
   if (elapsed >= 30 * 60 * 1000) {
     stopAutoExitTimer();
     doExit(true); 
@@ -620,8 +617,8 @@ async function joinRoom(isReconnect = false) {
       }
       myName = n;
       myTrip = window.makeTrip(n, tk);
-      isJoined = true; // doExitのガードを抜けるため一時的にtrueに設定
-      await doExit(true); // 退室お知らせログありで退室
+      isJoined = true;
+      await doExit(true);
       return;
     }
   }
@@ -640,12 +637,10 @@ async function joinRoom(isReconnect = false) {
       myUid = auth.currentUser.uid;
     }
   } catch (err) {
-    // ローカル環境等のAuth失敗時のフォールバック先
     if (!myUid) {
       if (n === "ねづお" && window.makeTrip(n, tk) === "◆JoNrMB") {
         myUid = "J64MocsPo0QD7hSwZpQgEeDdO6X2";
       } else {
-        // 同一ブラウザでの複数タブ検証時にお互いのUIDを上書きしないよう、sessionStorageからUIDを解決
         myUid = safeSS.get("nz_session_uid") || "local_" + Math.random().toString(36).slice(2, 10);
         safeSS.set("nz_session_uid", myUid);
       }
@@ -682,6 +677,26 @@ async function joinRoom(isReconnect = false) {
   renderPresence(optimisticMembers);
 
   const myPresRef = ref(db, `presence/official/${myUid}`);
+
+  // オンディスクネクト (回線切断・タブ閉じ・ブラウザ終了時) の自動退室処理の登録
+  try {
+    await onDisconnect(myPresRef).cancel().catch(() => {});
+    onDisconnect(myPresRef).remove();
+    
+    // 切断時の退室ログ送信予約
+    const disconnectChatRef = push(ref(db, "chat/official"));
+    onDisconnect(disconnectChatRef).set({
+      u: myUid,
+      n: myName,
+      p: myTrip,
+      c: curColor,
+      m: "[SYS]::" + `${myName} ${myTrip}`.trim() + " が退室しました (回線切断)",
+      t: serverTimestamp()
+    });
+  } catch (e) {
+    console.warn("onDisconnect登録エラー:", e);
+  }
+
   await set(myPresRef, {
     n: myName,
     p: myTrip,
@@ -701,7 +716,6 @@ async function joinRoom(isReconnect = false) {
 
   // 手動で入室ボタンを押した場合のみ入室ログを確実に送信
   if (!isReconnect) {
-    // 楽観的表示を追加して、サーバーからのレスポンスを待たずに画面へ即座に描画
     const tempId = "pnd_sys_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
     const enterText = `${myName} ${myTrip}`.trim() + " が入室しました";
     const tempObj = {
@@ -721,7 +735,7 @@ async function joinRoom(isReconnect = false) {
 
     await push(ref(db, "chat/official"), {
       u: myUid,
-      pnd: tempId, // pndを渡して、タイムライン受信時にこの楽観表示を自動で消去させる
+      pnd: tempId, 
       n: myName,
       p: myTrip,
       c: curColor,
@@ -729,7 +743,6 @@ async function joinRoom(isReconnect = false) {
       t: serverTimestamp()
     }).catch((err) => {
       console.error("入室ログ送信失敗:", err);
-      // 送信失敗時は楽観表示を消去
       const el = D.tli.querySelector(`.mw[data-mid="${escapeSelector(tempId)}"]`);
       if (el) el.remove();
       pendingMsgs.delete(tempId);
@@ -747,7 +760,6 @@ async function joinRoom(isReconnect = false) {
 async function doExit(isAuto = false) {
   if (!isJoined) return;
 
-  // 切断・ログアウト処理を行う前に送信用の情報を確保
   const cleanName = myName || safeLS.get("nz_ni") || "名無し";
   const tk = safeLS.get("nz_tripi") || "";
   const cleanTrip = myTrip || (tk ? window.makeTrip(cleanName, tk) : "");
@@ -774,15 +786,20 @@ async function doExit(isAuto = false) {
   D.tli.appendChild(tempEl);
   scBottom(true);
 
-  // 2. データベースのオンラインリストから削除 & 退室ログを登録
+  // 2. 切断時自動ログを解除した上で、プレゼンス削除および退室ログの登録
   const promises = [];
   if (cleanUid) {
-    promises.push(remove(ref(db, `presence/official/${cleanUid}`)));
+    const myPresRef = ref(db, `presence/official/${cleanUid}`);
+    promises.push(
+      onDisconnect(myPresRef).cancel()
+        .then(() => remove(myPresRef))
+        .catch(() => remove(myPresRef))
+    );
   }
   
   promises.push(push(ref(db, "chat/official"), {
     u: cleanUid || "sys_exit",
-    pnd: tempId, // サーバーから同期が戻ってきた時に重複させないための紐付け
+    pnd: tempId, 
     n: cleanName,
     p: cleanTrip,
     c: cleanColor,
@@ -790,7 +807,6 @@ async function doExit(isAuto = false) {
     t: exitTime
   }));
 
-  // 同期書き込みの終了を完全に待機
   await Promise.all(promises).catch((err) => {
     console.error("退室データベース処理失敗:", err);
   });
@@ -830,7 +846,6 @@ async function sendMsg(overrideText = null, imgData = null) {
   D.mi.value = ""; 
   D.mi.style.height = "auto";
   
-  // 「キーボード：閉」設定の時は入力（送信）完了時にキーボードを閉じる、「開」の時は開いたまま
   if (!keepKbOpen) {
     D.mi.blur();
   } else {
@@ -848,7 +863,7 @@ async function sendMsg(overrideText = null, imgData = null) {
     t: getTrueTime()
   };
 
-  // 楽観的アップデート：サーバーの応答を待たずにDOMへ即時描画（遅延0ms）
+  // 楽観的アップデート
   pendingMsgs.set(tempId, tempObj);
   displayedMsgIds.add(tempId);
 
@@ -856,7 +871,6 @@ async function sendMsg(overrideText = null, imgData = null) {
   tempEl.style.opacity = "0.7"; 
   D.tli.appendChild(tempEl);
   
-  // 自分の送信時は、強制的に追従を有効化し、未読をクリア
   isAutoScroll = true;
   unreadMsgIds.clear();
   updateUnreadBadge();
@@ -877,7 +891,6 @@ async function sendMsg(overrideText = null, imgData = null) {
   };
 
   await push(ref(db, "chat/official"), pushData).catch(() => {
-    // 送信エラー時は即座に一時DOMを削除
     const localEl = D.tli.querySelector(`.mw[data-mid="${escapeSelector(tempId)}"]`);
     if (localEl) localEl.remove();
     pendingMsgs.delete(tempId);
@@ -887,7 +900,7 @@ async function sendMsg(overrideText = null, imgData = null) {
 }
 
 /* =========================================================
-   メッセージDOM生成 (innerHTMLを使わない最速レンダリング)
+   メッセージDOM生成
    ========================================================= */
 function cMsg(m) {
   const el = document.createElement("div");
@@ -896,14 +909,12 @@ function cMsg(m) {
   const msgTime = getMsgTime(m);
   el.dataset.ts = msgTime;
 
-  // 過去ログ（sys: true）および新システムログ（[SYS]:: から始まる通常投稿）の双方に対応
   const isSys = m.sys === true || (typeof m.m === "string" && m.m.startsWith("[SYS]::"));
 
   if (isSys) {
     const sysDiv = document.createElement("div");
     sysDiv.className = "sys-msg";
     
-    // シグネチャを取り除いた文字列を表示させる
     let displayTxt = "";
     if (typeof m.m === "string") {
       displayTxt = m.m.startsWith("[SYS]::") ? m.m.substring(7) : m.m;
@@ -1028,7 +1039,7 @@ function scBottom(force = false) {
 }
 
 /* =========================================================
-   未読件数バッジ of 表示制御
+   未読件数バッジ
    ========================================================= */
 function updateUnreadBadge() {
   const badge = D.unreadBadge;
@@ -1061,12 +1072,10 @@ function updateJumpBtns() {
   }
 }
 
-// タイムライン of scroll hook
 D.tl.addEventListener("scroll", () => {
   const scrollTop = D.tl.scrollTop;
   const clientHeight = D.tl.clientHeight;
   const scrollHeight = D.tl.scrollHeight;
-  const isScrollable = scrollHeight > clientHeight;
 
   const isNearBottom = scrollTop + clientHeight >= scrollHeight - 40;
 
@@ -1119,7 +1128,7 @@ const getNicoId = (url) => {
 };
 
 /* =========================================================
-   インライン動画プレイヤー (ログ上部・入室者リスト下に完全固定)
+   インライン動画プレイヤー (入室者リスト下に完全固定)
    ========================================================= */
 function createMediaContainer(url) {
   const ytId = getYoutubeId(url);
@@ -1217,7 +1226,6 @@ D.playerCloseBtn.onclick = closePlayer;
 let presenceCache = [];
 try { presenceCache = JSON.parse(safeLS.get("nz_presence_cache") || "[]"); } catch(e) {}
 
-// リロード・起動時にオンラインリストを即時描画
 const loadPresenceCache = () => {
   drawPresenceList(presenceCache);
 };
@@ -1273,7 +1281,6 @@ function drawPresenceList(membersList) {
 D.joinBtn.onclick = () => joinRoom(false);
 D.exBtn.onclick = () => { if (confirm("チャットから退室しますか？")) doExit(); };
 
-// リアルタイムでのトリッププレビュー更新（名前の横にトリップを表記）
 const updateTripPreview = () => {
   const n = D.ni.value.trim() || "名無し";
   const tk = D.tripi.value.trim();
@@ -1301,7 +1308,6 @@ D.adminClearBtn.onclick = async () => {
   if (!isAdmin()) return;
   if (confirm("⚠️ チャット履歴を完全に全消去しますか？")) {
     if (confirm("本当に実行しますか？")) {
-      // 1. ローカル画面を即座にクリーンアップし、楽観的に全消去お知らせを描画
       displayedMsgIds.clear();
       D.tli.innerHTML = "";
       
@@ -1323,10 +1329,8 @@ D.adminClearBtn.onclick = async () => {
       D.tli.appendChild(tempEl);
       scBottom(true);
 
-      // 2. サーバーのデータを一括クリア
       await set(ref(db, "chat/official"), null).catch(() => {});
       
-      // 3. サーバーへ全消去ログを書き込み (他のメッセージと同様の標準スキーマに統一し、書き込み拒否を防止)
       const clearRef = push(ref(db, "chat/official"));
       await set(clearRef, {
         u: myUid,
@@ -1338,7 +1342,6 @@ D.adminClearBtn.onclick = async () => {
         t: serverTimestamp()
       }).catch((err) => {
         alert("全消去の書き込みに失敗しました: " + err.message);
-        // エラー時は楽観ログを削除
         const el = D.tli.querySelector(`.mw[data-mid="${escapeSelector(tempId)}"]`);
         if (el) el.remove();
         pendingMsgs.delete(tempId);
@@ -1351,17 +1354,14 @@ D.adminClearBtn.onclick = async () => {
 D.ni.addEventListener("input", updateTripPreview);
 D.tripi.addEventListener("input", updateTripPreview);
 
-// キーボードの物理的な開閉状態（フォーカス有無）に合わせてボタンの表記とスタイルを同期する
 const updateKbButton = (isOpen) => {
   D.kbToggleBtn.classList.toggle("active", isOpen);
   D.kbStatusText.textContent = isOpen ? "キーボード:開" : "キーボード:閉";
   D.kbStatusText.style.color = isOpen ? "#fff" : "var(--tx)";
 };
 
-// 開閉ボタンを押した際のイベント：設定をトグルし、現在のフォーカスも完全に同期させる
 D.kbToggleBtn.onclick = (e) => {
   e.preventDefault();
-  // ボタンを押した場合は送信後の動作設定（keepKbOpen）を反転させ、実際の開閉を連動させます
   const nextState = !keepKbOpen;
   keepKbOpen = nextState;
   safeLS.set("nz_keep_kb_open", nextState ? "true" : "false");
@@ -1373,7 +1373,6 @@ D.kbToggleBtn.onclick = (e) => {
   }
 };
 
-// スムーズなフォーカス制御：タップ・クリック時の意図しないフォーカス損失を防ぐ
 const preventFocusLoss = (el) => {
   el.addEventListener("mousedown", e => e.preventDefault());
   el.addEventListener("touchstart", e => {
@@ -1396,21 +1395,18 @@ D.jumpDownBtn.onclick = () => {
   D.tl.scrollTo({ top: D.tl.scrollHeight, behavior: "smooth" });
 };
 
-/* =========================================================
-   追従オフであっても、フォーカス時・入力時は強制追従スクロール
-   ========================================================= */
 D.mi.addEventListener("focus", () => { 
   isAutoScroll = true;
   unreadMsgIds.clear();
   updateUnreadBadge();
   scBottom(true); 
-  updateKbButton(true); // 入力欄を直接タップしてキーボードを開いた際も自動的に「開」に同期
+  updateKbButton(true);
 });
 
 D.mi.addEventListener("blur", () => {
   setTimeout(() => {
     if (document.activeElement !== D.mi) {
-      updateKbButton(false); // キーボードが閉じられた際は自動的に「閉」に同期
+      updateKbButton(false);
     }
   }, 100);
 });
@@ -1432,7 +1428,6 @@ D.clrMsgBtn.onclick = () => { D.mi.value = ""; D.mi.style.height = "auto"; };
 
 D.delCancelBtn.onclick = () => { D.delConfirmMod.classList.remove("show"); targetDelId = null; };
 
-// 削除実行ボタン押下：物理削除 ＆ 論理削除フラグ更新 of 二重書き込み
 D.delExecuteBtn.onclick = async () => {
   if (!targetDelId) return;
   const idToDelete = targetDelId;
@@ -1512,7 +1507,6 @@ function buildPicker(con, sel, cls, onChange) {
   });
 }
 
-// 色設定モーダル内のプレビュー：名前の横にトリップを表記
 function updateModalColorPreview(color) {
   const con = D.clrPrev; if (!con) return; con.innerHTML = "";
   con.style.background = "rgba(0, 0, 0, 0.25)"; con.style.border = "1px solid var(--bd)"; con.style.borderRadius = "4px"; con.style.padding = "8px"; con.style.textAlign = "left";
@@ -1576,12 +1570,11 @@ D.imgViewCloseBtn.onclick = () => D.imgViewMod.classList.remove("show");
 loadPresenceCache(); 
 updateAdminUI(); 
 updateTripPreview(); 
-updateKbButton(false); // 初期起動時は閉じられた状態（キーボード:閉）からスタート
+updateKbButton(false);
 
 /* =========================================================
    Firebaseリアルタイム同期 & 高速再接続マネジメント
    ========================================================= */
-const cleaningUids = new Set(); let lastPresenceHash = "";      
 const boostSync = () => { 
   if (db) goOnline(db); 
   if (checkActivityTimeout()) return; 
@@ -1594,8 +1587,6 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") {
     boostSync(); 
   }
-  // バックグラウンド移行時に強制オフラインにする処理を完全に撤去し、
-  // 退室ログ等の送信処理中にWebSocket接続が切断されて同期が未完了になるバグを解消
 });
 
 window.addEventListener("focus", boostSync); window.addEventListener("pageshow", boostSync);
@@ -1618,8 +1609,6 @@ function setupFirebaseListeners() {
         const mTime = getMsgTime(m);
         const isSys = m.sys === true || (typeof m.m === "string" && m.m.startsWith("[SYS]::"));
         
-        // データベーススキーマ制限を回避するため、メッセージ本文の文字列からクリアアクションを判別
-        // サーバーが時刻を確定させた型(number)でのみ最新クリア時刻を適用し、ミリ秒単位の描画バグを防ぐ
         const isClearMsg = isSys && typeof m.m === "string" && m.m.includes("全消去されました") && typeof m.t === "number";
         if (isClearMsg) {
           if (mTime > latestClearTs) {
@@ -1641,7 +1630,6 @@ function setupFirebaseListeners() {
 
     const serverMsgIds = new Set(serverMsgs.map(m => m.id));
 
-    // タイムスタンプの書き換え処理をシステム（sys-ts）・通常メッセージ（ts）問わず完璧にデータベース時刻へ強制同期
     serverMsgs.forEach(m => {
       if (m.deleted) return;
       const existingEl = D.tli.querySelector(`.mw[data-mid="${escapeSelector(m.id)}"]`);
@@ -1659,7 +1647,6 @@ function setupFirebaseListeners() {
     });
 
     let unreadChanged = false;
-
     const localMwEls = D.tli.querySelectorAll(".mw");
     localMwEls.forEach(el => {
       const mid = el.dataset.mid;
@@ -1667,36 +1654,25 @@ function setupFirebaseListeners() {
       if (mid && !mid.startsWith("pnd_")) {
         const sMsg = serverMsgs.find(m => m.id === mid);
         
-        // 削除マーカーが存在するか判定
         const isDeletedOnServerMarker = sMsg && sMsg.deleted === true;
-        
-        // 最新100件のサーバーリストに存在しないか判定
         const isNotExistent = !serverMsgIds.has(mid);
-        
-        // 全消去時刻よりも古いか判定
         const isOlderThanClear = latestClearTs > 0 && ts < latestClearTs;
 
         let shouldRemove = false;
         if (serverMsgs.length === 0) {
-          // データベースが真に全消去されて空になった場合のみクリア
           shouldRemove = true;
         } else if (isDeletedOnServerMarker || isOlderThanClear) {
           shouldRemove = true;
         } else if (isNotExistent) {
-          // サーバー上のメッセージ群の最古タイムスタンプ（minTs）を取得
           let minTs = Infinity;
           serverMsgs.forEach(sm => {
             const smTime = getMsgTime(sm);
             if (smTime < minTs) minTs = smTime;
           });
           
-          // 画面上のデータが、サーバーから返ってきている範囲内（minTs以降）であるにもかかわらず
-          // サーバーに存在しない場合は、物理削除されたとみなし、画面から消去する
           if (ts >= minTs) {
             shouldRemove = true;
           }
-          // minTsより古いデータ（ts < minTs）はスライディングウィンドウからはみ出た過去ログであるため
-          // 削除せず、画面上に残し続ける（shouldRemove = false）
         }
 
         if (shouldRemove) {
@@ -1755,6 +1731,7 @@ function setupFirebaseListeners() {
     console.error("Firebaseデータ受信エラー:", error);
   });
 
+  // オンラインプレゼンス(入室者リスト)のリアルタイム監視
   onValue(ref(db, "presence/official"), s => {
     const list = s.val() || {}; 
     const membersMap = {};
@@ -1762,31 +1739,12 @@ function setupFirebaseListeners() {
 
     for (const [id, u] of Object.entries(list)) {
       if (u && u.n) {
-        let ut = u.t; if (ut && typeof ut === "object") ut = nowTrue;
+        let ut = u.t; 
+        if (ut && typeof ut === "object") ut = nowTrue;
         if (!ut || typeof ut !== "number") continue;
 
+        // 30分放置されたプレゼンスデータは、描画上およびリスト処理上除外する (常に最新の状態を担保)
         if (nowTrue - ut > 30 * 60 * 1000) {
-          if (id === myUid) continue; 
-          if (cleaningUids.has(id)) continue;
-          cleaningUids.add(id);
-          const targetId = id; const targetUser = u;
-          const pRef = ref(db, `presence/official/${targetId}`);
-          runTransaction(pRef, (currentData) => { if (currentData === null) return currentData; return null; }).then((result) => {
-            if (result.committed) {
-              const exitTime = ut + 30 * 60 * 1000;
-              // 検出した自分のUID（myUid）を送信者として付与しセキュリティルールを通過させる
-              // 独自スキーマでの拒否を防ぐため、他者の自動退室検知メッセージも通常メッセージ構造で送信
-              push(ref(db, "chat/official"), { 
-                u: myUid,
-                n: targetUser.n,
-                p: targetUser.p,
-                c: targetUser.c || "#94a3b8",
-                m: "[SYS]::" + `${targetUser.n} ${targetUser.p}`.trim() + " が退室しました (自動退室)", 
-                t: exitTime 
-              }).catch(() => {});
-            }
-            cleaningUids.delete(targetId);
-          }).catch(() => { cleaningUids.delete(targetId); });
           continue;
         }
         membersMap[id] = { id, ...u, t: ut };
@@ -1807,8 +1765,7 @@ const initAuthProcess = async () => {
       myUid = auth.currentUser.uid;
     }
   } catch (err) {
-    console.warn("匿名認証試行に失敗しました（ローカル制限の可能性があります）:", err);
-    // 認証がブロックされた環境のみ、一意のローカルUIDで代用
+    console.warn("匿名認証試行に失敗しました:", err);
     if (!myUid) {
       myUid = safeSS.get("nz_session_uid") || "local_tmout_" + Math.random().toString(36).slice(2, 10);
       safeSS.set("nz_session_uid", myUid);
@@ -1818,8 +1775,34 @@ const initAuthProcess = async () => {
   updateAdminUI(); setupFirebaseListeners();
   
   onValue(ref(db, ".info/serverTimeOffset"), (snap) => { serverTimeOffset = snap.val() || 0; });
+  
+  // 接続確立・再接続時の同期リスナー設定
   onValue(ref(db, ".info/connected"), (snap) => {
-    if (snap.val() === true && isJoined && myUid) set(ref(db, `presence/official/${myUid}/t`), serverTimestamp()).catch(() => {});
+    if (snap.val() === true && isJoined && myUid) {
+      const myPresRef = ref(db, `presence/official/${myUid}`);
+      
+      // 再接続された際、onDisconnectの再設定とプレゼンス情報の強制更新を実行する
+      onDisconnect(myPresRef).cancel().then(() => {
+        onDisconnect(myPresRef).remove();
+        
+        const disconnectChatRef = push(ref(db, "chat/official"));
+        onDisconnect(disconnectChatRef).set({
+          u: myUid,
+          n: myName,
+          p: myTrip,
+          c: curColor,
+          m: "[SYS]::" + `${myName} ${myTrip}`.trim() + " が退室しました (回線切断)",
+          t: serverTimestamp()
+        });
+        
+        set(myPresRef, {
+          n: myName,
+          p: myTrip,
+          c: curColor,
+          t: serverTimestamp()
+        }).catch(() => {});
+      }).catch(() => {});
+    }
   });
   
   if (safeSS.get("nz_is_joined") === "true" && _initNi && _initTrip) joinRoom(true);

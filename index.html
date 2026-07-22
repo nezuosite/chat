@@ -46,7 +46,9 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 #fixedPlayer{display:none;flex-direction:column;background:var(--s2);border-bottom:1px solid var(--bd);flex-shrink:0;width:100%;box-shadow:0 4px 15px rgba(0,0,0,0.2)}
 #playerHeader{background:var(--sf);padding:8px 12px;font-size:12px;font-weight:bold;display:flex;justify-content:space-between;align-items:center;user-select:none;border-bottom:1px solid var(--bd)}
 #playerContent{width:100%;max-width:480px;aspect-ratio:16/9;background:#000;display:flex;justify-content:center;align-items:center;position:relative;margin:0 auto;border-radius:4px;overflow:hidden}
-#tl{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px;background-color:#0d1117;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;contain:layout;will-change:scroll-position}
+
+/* タイムライン：初期描画時のガタつき防止に初期不透明度を0に。JSロード完了後に1へ瞬時遷移 */
+#tl{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px;background-color:#0d1117;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;contain:layout;will-change:scroll-position;opacity:0;transition:opacity 0.08s ease-in}
 #tl-inner{display:flex;flex-direction:column;justify-content:flex-end;gap:0;width:100%;max-width:800px;margin:0 auto;min-height:100%}
 
 /* メッセージ外枠 */
@@ -606,7 +608,7 @@ window.addEventListener("storage", function(e) {
 });
 
 // =========================================================================
-// 30分間無発言での自動退室タイマー制御
+// 30分間無発言での自動退室タイマー制御 (ミリ秒精度・1秒毎チェックで確実な送信)
 // =========================================================================
 function checkActivityTimeout() {
   if (!isJoined) return false;
@@ -633,7 +635,8 @@ function startAutoExitChecker() {
   if (autoExitTimer) clearInterval(autoExitTimer);
   if (!isJoined) return;
   if (checkActivityTimeout()) return;
-  autoExitTimer = setInterval(() => { checkActivityTimeout(); }, 10000);
+  // 遅延なく「30分無発言」を検出するためインターバルを1秒に変更
+  autoExitTimer = setInterval(() => { checkActivityTimeout(); }, 1000);
 }
 
 function stopAutoExitTimer() {
@@ -732,6 +735,7 @@ async function joinRoom(isReconnect = false) {
     };
     pendingMsgs.set(tempId, tempObj);
     displayedMsgIds.add(tempId);
+    // 新規メッセージとして滑らかに追加
     const tempEl = cMsg(tempObj, true);
     D.tli.appendChild(tempEl);
     scBottom(true);
@@ -770,6 +774,7 @@ async function doExit(isAuto = false) {
   const cleanColor = curColor;
 
   const logText = "[SYS]::" + `${cleanName} ${cleanTrip}`.trim() + (isAuto ? " が退室しました (自動退室)" : " が退室しました");
+  // 自動退室の場合、タイムアウト予定時刻ちょうど(last_active_time + 30分)を正確に記録
   const exitTime = isAuto ? (parseInt(safeSS.get("nz_last_active_time") || "0") + 30 * 60 * 1000) : firebase.database.ServerValue.TIMESTAMP;
 
   const tempId = "pnd_sys_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
@@ -780,7 +785,7 @@ async function doExit(isAuto = false) {
     p: cleanTrip,
     c: cleanColor,
     m: logText,
-    t: getTrueTime()
+    t: isAuto ? (parseInt(safeSS.get("nz_last_active_time") || "0") + 30 * 60 * 1000) : getTrueTime()
   };
   pendingMsgs.set(tempId, tempObj);
   displayedMsgIds.add(tempId);
@@ -891,7 +896,7 @@ async function sendMsg(overrideText = null, imgData = null) {
   });
 }
 
-// レンダリング済みの要素（mid -> DOM要素）をキャッシュし、低速なDOM検索処理を徹底排除
+// レンダリング済みの要素（mid -> DOM要素）をキャッシュ
 const renderedMwNodes = new Map();
 
 function cMsg(m, isNewIncoming = false) {
@@ -918,7 +923,7 @@ function cMsg(m, isNewIncoming = false) {
 
     if (isAdmin()) {
       sysDiv.style.position = "relative";
-      sysDiv.style.paddingRight = "65px"; // 削除ボタンのための余白を確保
+      sysDiv.style.paddingRight = "65px"; 
       const delBtn = document.createElement("button");
       delBtn.className = "del-btn-inline";
       delBtn.style.bottom = "8px";
@@ -950,7 +955,6 @@ function cMsg(m, isNewIncoming = false) {
   mm.className = "mm";
   mm.style.color = color;
 
-  // 1行に確実に収まるよう、各要素のクラス・スタイル構造を構築
   const nameSpan = document.createElement("span");
   nameSpan.className = "mm-name";
   nameSpan.textContent = name;
@@ -1580,6 +1584,8 @@ document.addEventListener("visibilitychange", () => {
 window.addEventListener("focus", boostSync); window.addEventListener("pageshow", boostSync);
 
 let listenersInitialized = false;
+let isFirstLoad = true; // 初回ロードフラグ (チラつきアニメーション制御用)
+
 function setupFirebaseListeners() {
   if (listenersInitialized) return;
   listenersInitialized = true;
@@ -1622,7 +1628,7 @@ function setupFirebaseListeners() {
     const serverMsgIds = new Set(serverMsgs.map(m => m.id));
     let unreadChanged = false;
 
-    // キャッシュMapを使用し、低速なDOM探索を行わずに完全にクリーンアップを完了
+    // キャッシュMapを使用し、不要なDOM探索を行わずに完全に同期・削除
     renderedMwNodes.forEach((el, mid) => {
       if (mid && !mid.startsWith("pnd_")) {
         const ts = parseInt(el.dataset.ts || "0");
@@ -1684,7 +1690,8 @@ function setupFirebaseListeners() {
         displayedMsgIds.add(m.id);
         newlyAdded = true;
         
-        const animateIncoming = (isAutoScroll && m.u !== myUid) || m.u === myUid;
+        // 初回ロード時はチラつきを防ぐためアニメーションを強制無効。それ以外のリアルタイム新着のみ有効化
+        const animateIncoming = !isFirstLoad && ((isAutoScroll && m.u !== myUid) || m.u === myUid);
         const newEl = cMsg(m, animateIncoming);
         
         let sibling = null;
@@ -1726,6 +1733,14 @@ function setupFirebaseListeners() {
 
     scBottom();
     updateJumpBtns(); 
+
+    // 初回ロード完了時の最下部スクロール後、不透明度を1にしてチラつきのない描画を提供
+    if (isFirstLoad) {
+      isFirstLoad = false;
+      requestAnimationFrame(() => {
+        D.tl.style.opacity = "1";
+      });
+    }
   }, (error) => {
     console.error("Firebaseデータ受信エラー:", error);
   });
@@ -1744,20 +1759,33 @@ function setupFirebaseListeners() {
 
         const elapsed = nowTrue - ut;
 
+        // 30分経過した他ユーザーをトランザクションを用いて世界で唯一人だけがアトミックに退室ログへ処理 (重複送信防止)
         if (elapsed > 30 * 60 * 1000) {
           if (isJoined && myUid && id !== myUid) {
-            const targetUser = u;
             const targetId = id;
-            db.ref(`presence/official/${targetId}`).remove().then(() => {
-              db.ref("chat/official").push({
-                u: targetId,
-                n: targetUser.n,
-                p: targetUser.p || "",
-                c: targetUser.c || "#94a3b8",
-                m: "[SYS]::" + `${targetUser.n} ${targetUser.p || ""}`.trim() + " が退室しました (自動退室)",
-                t: firebase.database.ServerValue.TIMESTAMP
-              }).catch(() => {});
-            }).catch(() => {});
+            const targetUser = u;
+            // ちょうどタイムアウトした時刻をミリ秒精度で正確に算出し、お知らせログに反映
+            const calculatedTimeoutTime = ut + 30 * 60 * 1000;
+
+            db.ref(`presence/official/${targetId}`).transaction((current) => {
+              if (current !== null) {
+                // まだデータが存在していれば、トランザクションで削除
+                return null;
+              }
+              return undefined; // すでに他人に削除されていれば何もしない
+            }, (error, committed) => {
+              if (committed) {
+                // 自分が削除コミット権を得た場合のみ、アトミックに退室システムログを1回だけ投稿
+                db.ref("chat/official").push({
+                  u: targetId,
+                  n: targetUser.n,
+                  p: targetUser.p || "",
+                  c: targetUser.c || "#94a3b8",
+                  m: "[SYS]::" + `${targetUser.n} ${targetUser.p || ""}`.trim() + " が退室しました (自動退室)",
+                  t: calculatedTimeoutTime // タイムアウトした真の時刻でお知らせログを設定
+                }).catch(() => {});
+              }
+            });
           }
           continue; 
         }

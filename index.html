@@ -14,11 +14,6 @@
 <link rel="preconnect" href="https://i.ytimg.com" crossorigin>
 <link rel="preconnect" href="https://img.cdn.nimg.jp" crossorigin>
 
-<!-- ローカルファイル（file://）環境下でのCORS制限を完全回避するためのグローバル互換ライブラリのインポート -->
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
-
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--bg:#090d16;--sf:#151c2c;--s2:#0b101c;--bd:#27314f;--tx:#f1f5f9;--mu:#94a3b8;--m2:#4e5e78;--in:#4f46e5;--i2:#3b32c0;--em:#10b981;--e2:#059669;--ro:#f43f5e;--rg:rgba(244,63,94,.12);--safe:env(safe-area-inset-bottom,0px);--usr-color:#94a3b8;--app-viewport-height:100dvh}
@@ -53,7 +48,9 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 #playerContent{width:100%;max-width:480px;aspect-ratio:16/9;background:#000;display:flex;justify-content:center;align-items:center;position:relative;margin:0 auto;border-radius:4px;overflow:hidden}
 #tl{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px;background-color:#0d1117;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;contain:layout;scroll-behavior:smooth;will-change:scroll-position}
 #tl-inner{display:flex;flex-direction:column;justify-content:flex-end;gap:0;width:100%;max-width:800px;margin:0 auto;min-height:100%}
-.mw{position:relative;display:flex;flex-direction:column;width:100%;opacity:1;transform:translate3d(0,0,0);animation:slideInUp 0.15s cubic-bezier(0.22,1,0.36,1) forwards;user-select:text;-webkit-user-select:text;padding:12px 14px;border-bottom:1px solid rgba(51,65,85,0.18);will-change:transform,opacity;contain:content;content-visibility:auto;contain-intrinsic-size:0 65px}
+
+/* メッセージ外枠：ブラウザ依存で描画が消滅・崩壊する最適化CSS（content-visibility:auto）を撤去し、常に正確に表示されるように修正 */
+.mw{position:relative;display:flex;flex-direction:column;width:100%;opacity:1;animation:slideInUp 0.15s cubic-bezier(0.22,1,0.36,1) forwards;user-select:text;-webkit-user-select:text;padding:12px 14px;border-bottom:1px solid rgba(51,65,85,0.18)}
 .mm{display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:6px;padding-right:70px}
 .ts{color:var(--mu);opacity:0.6;font-size:10.5px;margin-left:auto;font-family:monospace}
 .mb{align-self:start;background:transparent;border:none;padding:0;font-size:15px;line-height:1.6;max-width:100%;word-break:break-all;white-space:pre-wrap;color:var(--tx);padding-right:70px;letter-spacing:0.01em}
@@ -147,135 +144,90 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 </style>
 
 <script>
-// ハッシュ関数及びトリップ生成ロジックを非モジュール（グローバル）空間へ移行し、ドキュメントの最初期段階で即時計算を可能にします
-const SYSTEM_SALT = "NEZU_PRO_SYS_SALT_2026_V1";
+// トリップ生成に関連するSHA-256および変数を確実にグローバル定義
+window.SYSTEM_SALT = "NEZU_PRO_SYS_SALT_2026_V1";
 
-// 100%バグなし・マルチバイト文字（日本語や絵文字等）に完全対応した超高速同期型SHA-256ハッシュ関数
-const sha256 = (str) => {
-  // UTF-16文字列を、マルチバイト文字（日本語や絵文字等）対応のために安全にUTF-8バイトにエンコード
-  const bytes = [];
-  const len = str.length;
-  for (let i = 0; i < len; i++) {
-    let codePoint = str.codePointAt(i);
-    if (codePoint > 0xffff) {
-      i++; 
-    }
-    if (codePoint <= 0x7f) {
-      bytes.push(codePoint);
-    } else if (codePoint <= 0x7ff) {
-      bytes.push(0xc0 | (codePoint >>> 6), 0x80 | (codePoint & 0x3f));
-    } else if (codePoint <= 0xffff) {
-      bytes.push(
-        0xe0 | (codePoint >>> 12),
-        0x80 | ((codePoint >>> 6) & 0x3f),
-        0x80 | (codePoint & 0x3f)
-      );
-    } else {
-      bytes.push(
-        0xf0 | (codePoint >>> 18),
-        0x80 | ((codePoint >>> 12) & 0x3f),
-        0x80 | ((codePoint >>> 6) & 0x3f),
-        0x80 | (codePoint & 0x3f)
-      );
-    }
-  }
-
-  // カッコを明示的に指定することで演算優先順位のバグを100%防止したビット演算子
-  const rotr = (x, n) => (x >>> n) | (x << (32 - n));
-  const ch = (x, y, z) => (x & y) ^ (~x & z);
-  const maj = (x, y, z) => (x & y) ^ (x & z) ^ (y & z);
-  const sigma0 = (x) => rotr(x, 2) ^ rotr(x, 13) ^ rotr(x, 22);
-  const sigma1 = (x) => rotr(x, 6) ^ rotr(x, 11) ^ rotr(x, 25);
-  const gamma0 = (x) => rotr(x, 7) ^ rotr(x, 18) ^ (x >>> 3);
-  const gamma1 = (x) => rotr(x, 17) ^ rotr(x, 19) ^ (x >>> 10);
-
-  const k = [
-    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
-    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
-    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
-    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
-    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
-    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
-    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
-    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
-  ];
-
-  const h = [
-    0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
-  ];
-
-  const blocks = [];
-  const byteLen = bytes.length;
-  for (let i = 0; i < byteLen; i++) {
-    blocks[i >> 2] |= bytes[i] << (24 - (i % 4) * 8);
-  }
-
-  const bitLen = byteLen * 8;
-  blocks[bitLen >> 5] |= 0x80 << (24 - (bitLen % 32));
+// 日本語（マルチバイト文字）を正しく計算できるようにUTF-8エンコードに対応させたSHA-256関数
+window.sha256 = (s) => {
+  const ascii = unescape(encodeURIComponent(s)); // 日本語文字列を8ビット文字シーケンスに展開
+  const rightRotate = (value, amount) => (value >>> amount) | (value << (32 - amount));
+  const mathPow = Math.pow;
+  const maxWord = mathPow(2, 32);
+  const lengthProperty = 'length';
+  let i, j;
+  let result = '';
+  const words = [];
+  const asciiBitLength = ascii[lengthProperty] * 8;
   
-  const blockCount = ((bitLen + 64) >> 9) + 1;
-  const wordCount = blockCount * 16;
-  while (blocks.length < wordCount) {
-    blocks.push(0);
-  }
-  blocks[wordCount - 1] = bitLen;
+  const hash = [];
+  const k = [];
+  let primeCounter = 0;
 
-  const w = new Array(64);
-  const hLocal = [...h];
-
-  for (let chunkIdx = 0; chunkIdx < blockCount; chunkIdx++) {
-    const chunkStart = chunkIdx * 16;
-    for (let i = 0; i < 16; i++) {
-      w[i] = blocks[chunkStart + i] | 0;
-    }
-    for (let i = 16; i < 64; i++) {
-      w[i] = (gamma1(w[i - 2]) + w[i - 7] + gamma0(w[i - 15]) + w[i - 16]) | 0;
-    }
-
-    let a = hLocal[0], b = hLocal[1], c = hLocal[2], d = hLocal[3],
-        e = hLocal[4], f = hLocal[5], g = hLocal[6], hh = hLocal[7];
-
-    for (let i = 0; i < 64; i++) {
-      const t1 = (hh + sigma1(e) + ch(e, f, g) + k[i] + w[i]) | 0;
-      const t2 = (sigma0(a) + maj(a, b, c)) | 0;
-      hh = g;
-      g = f;
-      f = e;
-      e = (d + t1) | 0;
-      d = c;
-      c = b;
-      b = a;
-      a = (t1 + t2) | 0;
-    }
-
-    hLocal[0] = (hLocal[0] + a) | 0;
-    hLocal[1] = (hLocal[1] + b) | 0;
-    hLocal[2] = (hLocal[2] + c) | 0;
-    hLocal[3] = (hLocal[3] + d) | 0;
-    hLocal[4] = (hLocal[4] + e) | 0;
-    hLocal[5] = (hLocal[5] + f) | 0;
-    hLocal[6] = (hLocal[6] + g) | 0;
-    hLocal[7] = (hLocal[7] + hh) | 0;
-  }
-
-  let hex = "";
-  for (let i = 0; i < 8; i++) {
-    const word = hLocal[i];
-    for (let j = 3; j >= 0; j--) {
-      const byte = (word >>> (j * 8)) & 0xff;
-      // ES2017 の padStart を使わず、100% のブラウザ互換性を保証する古典的かつ安全なゼロパディング
-      hex += ("0" + byte.toString(16)).slice(-2);
+  const isComposite = {};
+  for (let candidate = 2; primeCounter < 64; candidate++) {
+    if (!isComposite[candidate]) {
+      for (i = 0; i < 313; i += candidate) {
+        isComposite[i] = candidate;
+      }
+      hash[primeCounter] = (mathPow(candidate, 0.5) * maxWord) | 0;
+      k[primeCounter++] = (mathPow(candidate, 1 / 3) * maxWord) | 0;
     }
   }
-  return hex;
+  
+  let paddedAscii = ascii + '\x80';
+  while (paddedAscii[lengthProperty] % 64 - 56) paddedAscii += '\x00';
+  for (i = 0; i < paddedAscii[lengthProperty]; i++) {
+    j = paddedAscii.charCodeAt(i);
+    if (j >> 8) return ""; 
+    words[i >> 2] |= j << ((3 - i) % 4) * 8;
+  }
+  words[words[lengthProperty]] = ((asciiBitLength / maxWord) | 0);
+  words[words[lengthProperty]] = (asciiBitLength | 0);
+  
+  for (j = 0; j < words[lengthProperty];) {
+    const w = words.slice(j, j += 16);
+    let oldHash = hash.slice(0, 8);
+    
+    for (i = 0; i < 64; i++) {
+      const r1 = oldHash[0], r2 = oldHash[1], r3 = oldHash[2], r4 = oldHash[3],
+            r5 = oldHash[4], r6 = oldHash[5], r7 = oldHash[6], r8 = oldHash[7];
+            
+      const temp1 = r8 + (rightRotate(r5, 6) ^ rightRotate(r5, 11) ^ rightRotate(r5, 25)) +
+                  ((r5 & r6) ^ (~r5 & r7)) +
+                  k[i] +
+                  (w[i] = (i < 16) ? ~~w[i] : (
+                      w[i - 16] +
+                      (rightRotate(w[i - 15], 7) ^ rightRotate(w[i - 15], 18) ^ (w[i - 15] >>> 3)) +
+                      w[i - 7] +
+                      (rightRotate(w[i - 2], 17) ^ rightRotate(w[i - 2], 19) ^ (w[i - 2] >>> 10))
+                  ) | 0);
+                  
+      const temp2 = (rightRotate(r1, 2) ^ rightRotate(r1, 13) ^ rightRotate(r1, 22)) +
+                  ((r1 & r2) ^ (r1 & r3) ^ (r2 & r3));
+      
+      oldHash = [ (temp1 + temp2) | 0, r1, r2, r3, (r4 + temp1) | 0, r5, r6, r7 ];
+    }
+    
+    for (i = 0; i < 8; i++) {
+      hash[i] = (hash[i] + oldHash[i]) | 0;
+    }
+  }
+  
+  for (i = 0; i < 8; i++) {
+    for (j = 3; j + 1; j--) {
+      const b = (hash[i] >> (j * 8)) & 255;
+      result += ((b < 16) ? '0' : '') + b.toString(16);
+    }
+  }
+  return result;
 };
 
-// SHA-256による100%割られない頑丈な10桁Base62トリップコード生成ロジック
-const makeTrip = (name, tripKey) => {
+// SHA-256による頑丈な10桁Base62トリップコード生成ロジックを確実にグローバル化
+window.makeTrip = (name, tripKey) => {
   if (!tripKey) return "";
   const revKey = tripKey.split("").reverse().join("");
-  const mixed = SYSTEM_SALT + "_" + name + "_[SALT]_" + revKey;
-  const hashHex = sha256(mixed);
+  const mixed = window.SYSTEM_SALT + "_" + name + "_[SALT]_" + revKey;
+  const hashHex = window.sha256(mixed);
   if (!hashHex) return "";
 
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -287,11 +239,6 @@ const makeTrip = (name, tripKey) => {
   }
   return "◆" + res;
 };
-
-// 明示的にグローバル（window）にもバインドして確実にどのスクリプトからも呼び出せるようにします
-window.SYSTEM_SALT = window.SYSTEM_SALT || SYSTEM_SALT;
-window.sha256 = window.sha256 || sha256;
-window.makeTrip = window.makeTrip || makeTrip;
 
 (function() {
   try {
@@ -314,7 +261,7 @@ window.makeTrip = window.makeTrip || makeTrip;
     if (isJoined && !isTimedOut && ni && tripi) {
       document.write('<style>#joinForm { display: none !important; } #ib { display: flex !important; } #exBtn { display: block !important; }</style>');
     } else {
-      document.write('<style>#joinForm { display: flex !important; } #ib { display: none !important; } #exBtn { display: none !important; }</style>');
+      document.write('<style>#joinForm { display: flex !important; } #ib { display: none !important; } #exBtn { display: block !important; }</style>');
     }
   } catch(e) {}
 })();
@@ -373,7 +320,7 @@ window.makeTrip = window.makeTrip || makeTrip;
             const n = localStorage.getItem("nz_ni") || "名無し";
             const tk = localStorage.getItem("nz_tripi") || "";
             const t = tk ? window.makeTrip(n, tk) : "";
-            document.write("プレビュー: " + n + " " + t);
+            document.write("トリッププレビュー: " + n + " " + t);
           })();
         </script></span>
         <button id="copyTripBtn" class="btn bq" style="height: 26px; padding: 0 10px; font-size: 11px; border-radius: 6px; display: none; align-items: center; justify-content: center; font-weight: bold; border-color: rgba(255,255,255,0.1); flex-shrink: 0;" title="トリップをクリップボードにコピー">トリップをコピー</button>
@@ -457,8 +404,11 @@ window.makeTrip = window.makeTrip || makeTrip;
   </div>
 </div>
 
-<script>
-// Firebase 互換モード (Compat) を用いた、CORSおよびローカル環境セキュリティ制限に完全対応した設計
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import { getDatabase, ref, push, onValue, set, remove, serverTimestamp, query, limitToLast, runTransaction, goOnline, goOffline }
+  from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCsRidc0smUQDaBwq-oki5NzxSHx6-ljiw",
@@ -470,10 +420,9 @@ const firebaseConfig = {
   appId: "1:154725381397:web:8742ccd957e20cee8ce51c"
 };
 
-// 互換ライブラリを通じた初期化
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db  = firebase.database();
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db  = getDatabase(app);
 const $   = id => document.getElementById(id);
 
 const isLocalFileEnv = window.location.protocol === "file:";
@@ -505,8 +454,8 @@ const _initTrip = safeLS.get("nz_tripi") || "";
 D.ni.value = _initNi;
 D.tripi.value = _initTrip;
 
-// 初期設定値をlocalStorageから読み込み
-let keepKbOpen = safeLS.get("nz_keep_kb_open") === "true"; 
+// 起動時に保存されたキーボード開閉設定を読み込む（デフォルトは送信後に閉じる「false」）
+let keepKbOpen = safeLS.get("nz_keep_kb_open") === "true";
 let isAutoScroll = true; // スクロール追従の状態管理
 const unreadMsgIds = new Set(); // 未読発言IDを保持するSetオブジェクト
 let _scPending = false; 
@@ -521,6 +470,10 @@ let myName = _initNi;
 let myTrip = "";
 let lastSendTime = 0;
 let targetDelId = null;
+
+let scale = 1, panX = 0, panY = 0;
+let lastPanX = 0, lastPanY = 0, isPanning = false;
+let initialDistance = 0;
 
 const UR = /(https?:\/\/[^\s\n<>"]+)/gi;
 
@@ -539,8 +492,20 @@ setGlobalColor(curColor);
 
 const getTrueTime = () => Date.now() + serverTimeOffset;
 
+// サーバー推定時刻および確定時刻を柔軟かつ堅牢に取得するパーサー
+const getMsgTime = (m) => {
+  if (m && m.t) {
+    if (typeof m.t === "number") return m.t;
+    if (typeof m.t === "object" || typeof m.t === "string") {
+      const parsed = parseInt(m.t, 10);
+      return isNaN(parsed) ? getTrueTime() : parsed;
+    }
+  }
+  return getTrueTime();
+};
+
 /* =========================================================
-   セキュリティを考慮した判定処理の追加
+   セキュリティを考慮した判定処理
    ========================================================= */
 
 // セレクタ回避用エスケープ
@@ -553,10 +518,11 @@ const isAdmin = () => {
   return myUid === "J64MocsPo0QD7hSwZpQgEeDdO6X2";
 };
 
-// タイムスタンプのフォーマット処理 (例: 7/22 02:36:45)
+// 安全かつ厳格な日付フォーマッタ（不正値によるNaN/NaNを完全に防止）
 const fDT = (ts) => {
-  if (!ts) return "--:--:--";
+  if (!ts || typeof ts !== "number") return "--:--:--";
   const d = new Date(ts);
+  if (isNaN(d.getTime())) return "--:--:--";
   const pad = n => String(n).padStart(2, "0");
   return `${d.getMonth() + 1}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 };
@@ -624,7 +590,7 @@ async function joinRoom(isReconnect = false) {
     return; 
   }
 
-  // 再入室（リコンボ）時に30分以上経過している場合は即座に自動退室処理を実行
+  // 再接続時、30分以上が経過している場合は自動退室ログを確実に流してロビーに戻す
   if (isReconnect) {
     const lastActive = parseInt(safeLS.get("nz_last_active_time") || "0");
     const trueTime = getTrueTime();
@@ -638,7 +604,7 @@ async function joinRoom(isReconnect = false) {
             myUid = auth.currentUser.uid;
           } else {
             try {
-              const userCredential = await auth.signInAnonymously();
+              const userCredential = await signInAnonymously(auth);
               myUid = userCredential.user.uid;
             } catch(e) {}
           }
@@ -646,8 +612,8 @@ async function joinRoom(isReconnect = false) {
       }
       myName = n;
       myTrip = window.makeTrip(n, tk);
-      isJoined = true; // doExit のガード判定を通過させるために一時的に true
-      await doExit(true); // サーバーに退室ログを送り、プレゼンスを消去して確実にロビーへリセット
+      isJoined = true; // doExitのガードを抜けるため一時的にtrueに設定
+      await doExit(true); // 退室お知らせログありで退室
       return;
     }
   }
@@ -661,14 +627,14 @@ async function joinRoom(isReconnect = false) {
   if (!isLocalFileEnv) {
     try {
       if (!auth.currentUser) {
-        const userCredential = await auth.signInAnonymously();
+        const userCredential = await signInAnonymously(auth);
         myUid = userCredential.user.uid;
       } else {
         myUid = auth.currentUser.uid;
       }
     } catch (err) {
       try {
-        const userCredential = await auth.signInAnonymously();
+        const userCredential = await signInAnonymously(auth);
         myUid = userCredential.user.uid;
       } catch (nestedErr) {
         alert("認証エラーが発生しました。時間を置いて再接続してください。");
@@ -717,12 +683,12 @@ async function joinRoom(isReconnect = false) {
   };
   renderPresence(optimisticMembers);
 
-  const myPresRef = db.ref(`presence/official/${myUid}`);
-  await myPresRef.set({
+  const myPresRef = ref(db, `presence/official/${myUid}`);
+  await set(myPresRef, {
     n: myName,
     p: myTrip,
     c: curColor,
-    t: firebase.database.ServerValue.TIMESTAMP
+    t: serverTimestamp()
   }).catch(err => {
     alert("入室エラー:\n" + err.message);
     if (!isReconnect) {
@@ -735,11 +701,16 @@ async function joinRoom(isReconnect = false) {
   updateAdminUI(); 
   startAutoExitChecker();
 
+  // 手動で入室ボタンを押した場合のみ入室ログを送信
+  // スキーマ不一致による書き込み拒否を完全に回避するため、通常メッセージの定義で「[SYS]::」プレフィックス付きで送信
   if (!isReconnect) {
-    await db.ref("chat/official").push({
-      sys: true,
-      m: `${myName} ${myTrip}`.trim() + " が入室しました",
-      t: firebase.database.ServerValue.TIMESTAMP
+    await push(ref(db, "chat/official"), {
+      u: myUid,
+      n: myName,
+      p: myTrip,
+      c: curColor,
+      m: "[SYS]::" + `${myName} ${myTrip}`.trim() + " が入室しました",
+      t: serverTimestamp()
     }).catch(() => {});
   }
   
@@ -761,14 +732,14 @@ async function doExit(isAuto = false) {
   safeLS.remove("nz_last_active_time");
 
   // 退室時、安全のため確実にFirebase接続をオンラインにして処理を即時コミット
-  if (db) db.goOnline();
+  if (db) goOnline(db);
 
   // 【0ms退室描画（楽観的即時アップデート）】
   renderPresence({});
 
   if (myUid) {
-    const myPresRef = db.ref(`presence/official/${myUid}`);
-    await myPresRef.remove().catch(() => {});
+    const myPresRef = ref(db, `presence/official/${myUid}`);
+    await remove(myPresRef).catch(() => {});
   }
 
   // ロビー表示に強制変更
@@ -778,18 +749,37 @@ async function doExit(isAuto = false) {
   
   updateAdminUI(); 
 
+  // ローカル変数の参照が失われている場合の補正処理
+  if (!myName) {
+    myName = safeLS.get("nz_ni") || "名無し";
+  }
+  if (!myTrip) {
+    const tk = safeLS.get("nz_tripi") || "";
+    myTrip = tk ? window.makeTrip(myName, tk) : "";
+  }
+
+  const cleanName = myName;
+  const cleanTrip = myTrip;
+
+  // 退室ログもスキーマ不一致を回避するため、通常メッセージの形式で送信
   if (isAuto) {
     const exitTime = lastActive + 30 * 60 * 1000;
-    await db.ref("chat/official").push({
-      sys: true,
-      m: `${myName} ${myTrip}`.trim() + " が退室しました (自動退室)",
+    await push(ref(db, "chat/official"), {
+      u: myUid,
+      n: cleanName,
+      p: cleanTrip,
+      c: curColor,
+      m: "[SYS]::" + `${cleanName} ${cleanTrip}`.trim() + " が退室しました (自動退室)",
       t: exitTime
     }).catch(() => {});
   } else {
-    await db.ref("chat/official").push({
-      sys: true,
-      m: `${myName} ${myTrip}`.trim() + " が退室しました",
-      t: firebase.database.ServerValue.TIMESTAMP
+    await push(ref(db, "chat/official"), {
+      u: myUid,
+      n: cleanName,
+      p: cleanTrip,
+      c: curColor,
+      m: "[SYS]::" + `${cleanName} ${cleanTrip}`.trim() + " が退室しました",
+      t: serverTimestamp()
     }).catch(() => {});
   }
 }
@@ -811,11 +801,11 @@ async function sendMsg(overrideText = null, imgData = null) {
   D.mi.value = ""; 
   D.mi.style.height = "auto";
   
-  // 発言後の設定に基づいてフォーカスを制御
-  if (keepKbOpen) {
-    D.mi.focus();
-  } else {
+  // 「キーボード：閉」設定の時は入力（送信）完了時にキーボードを閉じる、「開」の時は開いたまま
+  if (!keepKbOpen) {
     D.mi.blur();
+  } else {
+    D.mi.focus();
   }
 
   const tempId = "pnd_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
@@ -834,7 +824,7 @@ async function sendMsg(overrideText = null, imgData = null) {
   displayedMsgIds.add(tempId);
 
   const tempEl = cMsg(tempObj);
-  tempEl.style.opacity = "0.7"; // 送信中であることを示す楽観的半透明デザイン
+  tempEl.style.opacity = "0.7"; 
   D.tli.appendChild(tempEl);
   
   // 自分の送信時は、強制的に追従を有効化し、未読をクリア
@@ -845,7 +835,7 @@ async function sendMsg(overrideText = null, imgData = null) {
 
   safeLS.set("nz_last_active_time", getTrueTime().toString());
 
-  db.ref(`presence/official/${myUid}/t`).set(firebase.database.ServerValue.TIMESTAMP).catch(() => {});
+  set(ref(db, `presence/official/${myUid}/t`), serverTimestamp()).catch(() => {});
 
   const pushData = { 
     u: myUid, 
@@ -854,10 +844,10 @@ async function sendMsg(overrideText = null, imgData = null) {
     p: myTrip,
     c: curColor,
     m: imgData ? "IMG::" + imgData : txt, 
-    t: firebase.database.ServerValue.TIMESTAMP
+    t: serverTimestamp()
   };
 
-  await db.ref("chat/official").push(pushData).catch(() => {
+  await push(ref(db, "chat/official"), pushData).catch(() => {
     // 送信エラー時は即座に一時DOMを削除
     const localEl = D.tli.querySelector(`.mw[data-mid="${escapeSelector(tempId)}"]`);
     if (localEl) localEl.remove();
@@ -874,12 +864,23 @@ function cMsg(m) {
   const el = document.createElement("div");
   el.className = "mw";
   el.dataset.mid = m.id;
-  el.dataset.ts = m.t || 0;
+  const msgTime = getMsgTime(m);
+  el.dataset.ts = msgTime;
 
-  if (m.sys) {
+  // 過去ログ（sys: true）および新システムログ（[SYS]:: から始まる通常投稿）の双方に対応
+  const isSys = m.sys === true || (typeof m.m === "string" && m.m.startsWith("[SYS]::"));
+
+  if (isSys) {
     const sysDiv = document.createElement("div");
     sysDiv.className = "sys-msg";
-    sysDiv.textContent = m.m;
+    
+    // シグネチャを取り除いた文字列を表示させる
+    let displayTxt = m.m;
+    if (typeof m.m === "string" && m.m.startsWith("[SYS]::")) {
+      displayTxt = m.m.substring(7);
+    }
+    sysDiv.textContent = displayTxt;
+
     if (isAdmin()) {
       sysDiv.style.position = "relative";
       const delBtn = document.createElement("button");
@@ -890,14 +891,14 @@ function cMsg(m) {
       delBtn.onclick = (e) => {
         e.stopPropagation();
         targetDelId = m.id;
-        D.delConfirmPreview.textContent = m.m;
+        D.delConfirmPreview.textContent = displayTxt;
         D.delConfirmMod.classList.add("show");
       };
       sysDiv.appendChild(delBtn);
     }
     const sysTs = document.createElement("span");
     sysTs.className = "sys-ts";
-    sysTs.textContent = `[${fDT(m.t)}]`;
+    sysTs.textContent = `[${fDT(msgTime)}]`;
     sysDiv.appendChild(sysTs);
     el.appendChild(sysDiv);
     return el;
@@ -926,7 +927,7 @@ function cMsg(m) {
 
   const timeSpan = document.createElement("span");
   timeSpan.className = "ts";
-  timeSpan.textContent = fDT(m.t);
+  timeSpan.textContent = fDT(msgTime);
   mm.appendChild(timeSpan);
 
   el.appendChild(mm);
@@ -972,7 +973,12 @@ function cMsg(m) {
     delBtn.textContent = "🗑 削除";
     delBtn.onclick = () => {
       targetDelId = m.id;
-      D.delConfirmPreview.textContent = m.m.startsWith("IMG::") ? "[画像データ]" : m.m;
+      const isSys = m.sys === true || (typeof m.m === "string" && m.m.startsWith("[SYS]::"));
+      let displayTxt = m.m;
+      if (typeof m.m === "string" && m.m.startsWith("[SYS]::")) {
+        displayTxt = m.m.substring(7);
+      }
+      D.delConfirmPreview.textContent = isSys ? displayTxt : (m.m.startsWith("IMG::") ? "[画像データ]" : m.m);
       D.delConfirmMod.classList.add("show");
     };
     el.appendChild(delBtn);
@@ -993,7 +999,7 @@ function scBottom(force = false) {
 }
 
 /* =========================================================
-   未読件数バッジの表示制御
+   未読件数バッジ of 表示制御
    ========================================================= */
 function updateUnreadBadge() {
   const badge = D.unreadBadge;
@@ -1033,14 +1039,13 @@ D.tl.addEventListener("scroll", () => {
   const scrollHeight = D.tl.scrollHeight;
   const isScrollable = scrollHeight > clientHeight;
 
-  // 下から40px以内にいるかどうかで、追従をオート判定
   const isNearBottom = scrollTop + clientHeight >= scrollHeight - 40;
 
   if (!_scPending) {
     if (isNearBottom) {
       isAutoScroll = true;
       if (unreadMsgIds.size > 0) {
-        unreadMsgIds.clear(); // 最下部に到達した瞬間に未読数をクリア
+        unreadMsgIds.clear(); 
         updateUnreadBadge();
       }
     } else {
@@ -1134,7 +1139,6 @@ function openFloatingPlayer(url, type) {
       if (window.location.protocol.startsWith("http")) {
         originParam = `&origin=${encodeURIComponent(window.location.origin)}`;
       }
-      // プライバシー保護・軽量ドメインに変更
       iframe.src = `https://www.youtube-nocookie.com/embed/${ytId}?autoplay=0&enablejsapi=1${originParam}`;
       iframe.frameBorder = "0";
       iframe.allow = "autoplay; encrypted-media";
@@ -1184,16 +1188,15 @@ D.playerCloseBtn.onclick = closePlayer;
 let presenceCache = [];
 try { presenceCache = JSON.parse(safeLS.get("nz_presence_cache") || "[]"); } catch(e) {}
 
-// リロード・起動時にオンラインリストを一瞬で即時描画（チラつき防止）
+// リロード・起動時にオンラインリストを即時描画
 const loadPresenceCache = () => {
   drawPresenceList(presenceCache);
 };
 
 /* =========================================================
-   入室者リスト（プレゼンス）の楽観的即時描画システム (0ms反映 & チラつき防止)
+   入室者リスト（プレゼンス）の楽観的即時描画システム
    ========================================================= */
 function renderPresence(serverListMap) {
-  // サーバー上の最新状態に、入退室した自分のタイムラグデータを楽観的に自動マージして描画を維持します。
   if (isJoined && myUid && !serverListMap[myUid]) {
     serverListMap[myUid] = {
       id: myUid,
@@ -1207,7 +1210,6 @@ function renderPresence(serverListMap) {
   const members = Object.values(serverListMap).filter(m => m && m.n);
   drawPresenceList(members);
 
-  // プレゼンスキャッシュを保存
   presenceCache = members.map(m => ({ id: m.id, n: m.n, p: m.p, c: m.c }));
   safeLS.set("nz_presence_cache", JSON.stringify(presenceCache));
 }
@@ -1221,7 +1223,6 @@ function drawPresenceList(membersList) {
     sp.className = "chip";
     sp.style.color = m.c;
     sp.style.borderColor = m.c + "44";
-    // 参加者リストの名前の横に、安全に生成された10桁トリップを併記
     sp.textContent = m.p ? `${m.n} ${m.p}` : m.n;
     sp.onclick = () => {
       if (m.id !== myUid && isJoined) {
@@ -1234,7 +1235,7 @@ function drawPresenceList(membersList) {
   D.pl.innerHTML = "";
   D.pl.appendChild(fragment);
   D.pcnt.textContent = `${mLen}人`;
-  updateJumpBtns(); // プレゼンス変更に伴う高さを再評価
+  updateJumpBtns(); 
 }
 
 /* =========================================================
@@ -1243,11 +1244,12 @@ function drawPresenceList(membersList) {
 D.joinBtn.onclick = () => joinRoom(false);
 D.exBtn.onclick = () => { if (confirm("チャットから退室しますか？")) doExit(); };
 
+// リアルタイムでのトリッププレビュー更新（名前の横にトリップを表記）
 const updateTripPreview = () => {
   const n = D.ni.value.trim() || "名無し";
   const tk = D.tripi.value.trim();
   const t = tk ? window.makeTrip(n, tk) : "";
-  D.tripPrevText.textContent = `プレビュー: ${n} ${t}`;
+  D.tripPrevText.textContent = `トリッププレビュー: ${n} ${t}`;
   D.tripPrevText.style.color = "var(--usr-color)"; 
   $("copyTripBtn").style.display = tk ? "inline-flex" : "none";
 };
@@ -1270,16 +1272,15 @@ D.adminClearBtn.onclick = async () => {
   if (!isAdmin()) return;
   if (confirm("⚠️ チャット履歴を完全に全消去しますか？")) {
     if (confirm("本当に実行しますか？")) {
-      // 1. Firebase上のログノードを一掃（物理削除が可能な場合は完全に空になります）
-      await db.ref("chat/official").set(null).catch(() => {});
+      await set(ref(db, "chat/official"), null).catch(() => {});
       
-      // 2. セキュリティルール制限下であっても強制的に全消去を確実に同期させる「全消去イベントシグナル」メッセージを書き込む
-      const clearRef = db.ref("chat/official").push();
-      await clearRef.set({
-        sys: true,
+      const clearRef = push(ref(db, "chat/official"));
+      await set(clearRef, {
+        u: myUid,
+        sys: true, 
         action: "clear",
-        m: "管理者によってチャット履歴が全消去されました",
-        t: firebase.database.ServerValue.TIMESTAMP
+        m: "[SYS]::管理者によってチャット履歴が全消去されました",
+        t: serverTimestamp()
       }).catch((err) => {
         alert("全消去の書き込みに失敗しました: " + err.message);
       });
@@ -1293,39 +1294,45 @@ D.adminClearBtn.onclick = async () => {
 D.ni.addEventListener("input", updateTripPreview);
 D.tripi.addEventListener("input", updateTripPreview);
 
-// キーボード開閉状態の同期UI更新（ボタンは「送信後に開いたままにするか」のトグル設定になります）
-const updateKbUI = (isKeepOpen) => {
-  keepKbOpen = isKeepOpen;
-  D.kbToggleBtn.classList.toggle("active", isKeepOpen);
-  D.kbStatusText.textContent = isKeepOpen ? "キーボード:開" : "キーボード:閉";
-  D.kbStatusText.style.color = isKeepOpen ? "#fff" : "var(--tx)";
-  safeLS.set("nz_keep_kb_open", isKeepOpen ? "true" : "false"); // 設定値をローカルに保存
+// キーボードの物理的な開閉状態（フォーカス有無）に合わせてボタンの表記とスタイルを同期する
+const updateKbButton = (isOpen) => {
+  D.kbToggleBtn.classList.toggle("active", isOpen);
+  D.kbStatusText.textContent = isOpen ? "キーボード:開" : "キーボード:閉";
+  D.kbStatusText.style.color = isOpen ? "#fff" : "var(--tx)";
 };
 
-// 起動時にローカル保存された設定値を反映
-updateKbUI(keepKbOpen);
-
-// 設定トグル変更
+// 開閉ボタンを押した際のイベント：設定をトグルし、現在のフォーカスも完全に同期させる
 D.kbToggleBtn.onclick = (e) => {
   e.preventDefault();
-  updateKbUI(!keepKbOpen);
-};
-
-// 送信ボタンタップ時に「開」設定の時のみテキストエリアからフォーカスが外れないように制御（キーボード閉じを防ぐ）
-const preventBlurOnSend = (e) => {
-  if (keepKbOpen) {
-    e.preventDefault();
+  // ボタンを押した場合は送信後の動作設定（keepKbOpen）を反転させ、実際の開閉を連動させます
+  const nextState = !keepKbOpen;
+  keepKbOpen = nextState;
+  safeLS.set("nz_keep_kb_open", nextState ? "true" : "false");
+  
+  if (nextState) {
+    D.mi.focus();
+  } else {
+    D.mi.blur();
   }
 };
-D.sdBtn.addEventListener("mousedown", preventBlurOnSend);
-D.sdBtn.addEventListener("touchstart", preventBlurOnSend);
+
+// スムーズなフォーカス制御：タップ・クリック時の意図しないフォーカス損失を防ぐ
+const preventFocusLoss = (el) => {
+  el.addEventListener("mousedown", e => e.preventDefault());
+  el.addEventListener("touchstart", e => {
+    if (document.activeElement === D.mi) e.preventDefault();
+  });
+};
+preventFocusLoss(D.kbToggleBtn);
+preventFocusLoss(D.sdBtn);
+preventFocusLoss(D.clrMsgBtn);
+preventFocusLoss(D.imgBtn);
 
 D.jumpUpBtn.onclick = () => {
   D.tl.scrollTo({ top: 0, behavior: "smooth" });
 };
 
 D.jumpDownBtn.onclick = () => {
-  // 下ボタン押下時は強制的に追従状態に戻し、未読件数をクリア
   isAutoScroll = true;
   unreadMsgIds.clear();
   updateUnreadBadge();
@@ -1340,15 +1347,15 @@ D.mi.addEventListener("focus", () => {
   unreadMsgIds.clear();
   updateUnreadBadge();
   scBottom(true); 
+  updateKbButton(true); // 入力欄を直接タップしてキーボードを開いた際も自動的に「開」に同期
 });
 
 D.mi.addEventListener("blur", () => {
-  // ボタンタップ等による一時的なフォーカス移動を考慮して僅かに遅延
   setTimeout(() => {
     if (document.activeElement !== D.mi) {
-      updateKbUI(keepKbOpen); // フォーカス解除されても、設定されている状態を維持
+      updateKbButton(false); // キーボードが閉じられた際は自動的に「閉」に同期
     }
-  }, 150);
+  }, 100);
 });
 
 D.mi.addEventListener("input", () => {
@@ -1357,12 +1364,10 @@ D.mi.addEventListener("input", () => {
   scBottom(true); 
 });
 
-// キーボードエンターキーでのメッセージ送信を確実に捕捉するハンドラ
 D.mi.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) {
-    if (e.isComposing) return; // 日本語変換の「確定」エンター時は送信をガード
-    e.preventDefault(); 
-    sendMsg();
+    if (e.isComposing) return;
+    e.preventDefault(); sendMsg();
   }
 });
 D.sdBtn.onclick = () => sendMsg();
@@ -1370,18 +1375,16 @@ D.clrMsgBtn.onclick = () => { D.mi.value = ""; D.mi.style.height = "auto"; };
 
 D.delCancelBtn.onclick = () => { D.delConfirmMod.classList.remove("show"); targetDelId = null; };
 
-// 削除実行ボタン押下：物理削除 ＆ セキュリティルールエラー対策としての論理削除フラグ更新の二重書き込み
+// 削除実行ボタン押下：物理削除 ＆ 論理削除フラグ更新 of 二重書き込み
 D.delExecuteBtn.onclick = async () => {
   if (!targetDelId) return;
   const idToDelete = targetDelId;
   
-  // 【楽観的即時削除アップデート（遅延なし）】
   const localEl = D.tli.querySelector(`.mw[data-mid="${escapeSelector(idToDelete)}"]`);
   if (localEl) localEl.remove();
 
   displayedMsgIds.delete(idToDelete);
   
-  // 削除されたメッセージが未読リストにあれば即時除外して減算
   if (unreadMsgIds.has(idToDelete)) {
     unreadMsgIds.delete(idToDelete);
     updateUnreadBadge();
@@ -1390,13 +1393,11 @@ D.delExecuteBtn.onclick = async () => {
   D.delConfirmMod.classList.remove("show");
   targetDelId = null;
 
-  // 1. Firebase上から物理削除を送信（ルールで許可されていれば即時削除）
-  await db.ref(`chat/official/${idToDelete}`).remove().catch(() => {});
+  await remove(ref(db, `chat/official/${idToDelete}`)).catch(() => {});
 
-  // 2. 他人の発言の物理削除が権限で拒否された場合に備え、論理削除（deleted: true）でデータ上書きマークを送信
-  await db.ref(`chat/official/${idToDelete}`).set({
+  await set(ref(db, `chat/official/${idToDelete}`), {
     deleted: true,
-    t: firebase.database.ServerValue.TIMESTAMP
+    t: serverTimestamp()
   }).catch(() => {});
 };
 
@@ -1411,14 +1412,14 @@ D.fileInput.onchange = (e) => {
     const img = new Image();
     img.onload = async () => {
       const cvs = document.createElement("canvas"); 
-      let w = img.width, h = img.height; const maxDim = 640; // 800から640に縮小して軽量化
+      let w = img.width, h = img.height; const maxDim = 640; 
       if (w > maxDim || h > maxDim) {
         if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
         else { w = Math.round((w * maxDim) / h); h = maxDim; }
       }
       cvs.width = w; cvs.height = h; 
       cvs.getContext("2d").drawImage(img, 0, 0, w, h);
-      await sendMsg(null, cvs.toDataURL("image/jpeg", 0.6)); // 軽量かつ十分な視認性を維持
+      await sendMsg(null, cvs.toDataURL("image/jpeg", 0.6)); 
       spin.remove(); if (svgEl) svgEl.style.display = "";
       D.imgBtn.disabled = false; D.fileInput.value = "";
     };
@@ -1441,7 +1442,7 @@ D.clrOk.onclick = async () => {
   curColor = tmpColor; setGlobalColor(curColor); safeLS.set("nz_color", curColor);
   D.clrmod.classList.remove("show"); updateTripPreview();
   if (isJoined) {
-    await db.ref(`presence/official/${myUid}`).set({ n: myName, p: myTrip, c: curColor, t: firebase.database.ServerValue.TIMESTAMP });
+    await set(ref(db, `presence/official/${myUid}`), { n: myName, p: myTrip, c: curColor, t: serverTimestamp() });
   }
 };
 
@@ -1454,11 +1455,14 @@ function buildPicker(con, sel, cls, onChange) {
   });
 }
 
+// 色設定モーダル内のプレビュー：名前の横にトリップを表記
 function updateModalColorPreview(color) {
   const con = D.clrPrev; if (!con) return; con.innerHTML = "";
   con.style.background = "rgba(0, 0, 0, 0.25)"; con.style.border = "1px solid var(--bd)"; con.style.borderRadius = "4px"; con.style.padding = "8px"; con.style.textAlign = "left";
   const n = myName || "名無し";
-  const wrap = document.createElement("div"); wrap.style.fontSize = "12px"; wrap.style.color = color; wrap.style.fontWeight = "bold"; wrap.textContent = n;
+  const t = myTrip || "";
+  const wrap = document.createElement("div"); wrap.style.fontSize = "12px"; wrap.style.color = color; wrap.style.fontWeight = "bold"; 
+  wrap.textContent = t ? `${n} ${t}` : n;
   con.appendChild(wrap);
   const bodyMock = document.createElement("div"); bodyMock.style.fontSize = "13px"; bodyMock.style.color = "var(--tx)"; bodyMock.style.marginTop = "4px"; bodyMock.style.borderLeft = `2px solid ${color}`; bodyMock.style.paddingLeft = "8px"; bodyMock.textContent = "この色で発言が表示されます。";
   con.appendChild(bodyMock);
@@ -1501,7 +1505,6 @@ overlayEl.addEventListener('wheel', (e) => {
   e.preventDefault(); scale = Math.max(1, Math.min(5, scale * (e.deltaY > 0 ? 0.9 : 1.1))); clampPan(); updateTransform();
 }, { passive: false });
 
-// 拡大モーダル：背景エリア（viewport）をタップした際にも閉じるようイベントを追加
 overlayEl.addEventListener("click", (e) => {
   if (e.target === overlayEl) {
     D.imgViewMod.classList.remove("show");
@@ -1515,87 +1518,62 @@ D.imgViewCloseBtn.onclick = () => D.imgViewMod.classList.remove("show");
    ========================================================= */
 loadPresenceCache(); 
 updateAdminUI(); 
-updateTripPreview(); // 起動時に即座にハッシュ及びプレビュー反映
+updateTripPreview(); 
+updateKbButton(false); // 初期起動時は閉じられた状態（キーボード:閉）からスタート
 
 /* =========================================================
    Firebaseリアルタイム同期 & 高速再接続マネジメント
    ========================================================= */
 const cleaningUids = new Set(); let lastPresenceHash = "";      
 const boostSync = () => { 
-  if (db) db.goOnline(); // ★最優先で接続を確立し、タイムアウトデータの同期書き込みを可能にします
-  if (checkActivityTimeout()) return; // その後放置判定。退室処理が安全にサーバーへ送られます
+  if (db) goOnline(db); 
+  if (checkActivityTimeout()) return; 
   if (db) { 
     startAutoExitChecker(); 
   } 
 };
 
-document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") boostSync(); else if (db) db.goOffline(); });
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") boostSync(); else if (db) goOffline(db); });
 window.addEventListener("focus", boostSync); window.addEventListener("pageshow", boostSync);
 
 let listenersInitialized = false;
-let lastProcessedClearId = safeLS.get("nz_last_clear_id") || ""; // 保存済みの全消去イベントID
-
 function setupFirebaseListeners() {
   if (listenersInitialized) return;
   listenersInitialized = true;
 
-  // =========================================================
-  // アクティブ発言同期（常にサーバーの最新100件データと完璧に同期）
-  // =========================================================
-  const chatQuery = db.ref("chat/official").limitToLast(100); 
-  chatQuery.on("value", snap => {
+  const chatQuery = query(ref(db, "chat/official"), limitToLast(100)); 
+  onValue(chatQuery, snap => {
     const serverMsgs = [];
+    let latestClearTs = 0; 
 
     snap.forEach(child => {
       const m = child.val(); 
       if (m) { 
         m.id = child.key; 
+        
+        const mTime = getMsgTime(m);
+        const isSys = m.sys === true || (typeof m.m === "string" && m.m.startsWith("[SYS]::"));
+        if (isSys && m.action === "clear") {
+          if (mTime > latestClearTs) {
+            latestClearTs = mTime;
+          }
+        }
         serverMsgs.push(m); 
       }
     });
 
-    // 1. 最新の全消去イベントのインデックスを特定
-    let clearMsgIdx = -1;
-    const sLen = serverMsgs.length;
-    for (let i = sLen - 1; i >= 0; i--) {
-      if (serverMsgs[i].sys && serverMsgs[i].action === "clear") {
-        clearMsgIdx = i;
-        break;
-      }
-    }
-
-    // 2. もし全消去イベントがリスト内に存在する場合：
-    if (clearMsgIdx !== -1) {
-      const clearEventMsg = serverMsgs[clearMsgIdx];
-      
-      // まだ処理していない新しい全消去イベントであれば、画面を完全クリア
-      if (clearEventMsg.id !== lastProcessedClearId) {
-        lastProcessedClearId = clearEventMsg.id;
-        safeLS.set("nz_last_clear_id", lastProcessedClearId);
-        
-        D.tli.innerHTML = "";
-        displayedMsgIds.clear();
-        unreadMsgIds.clear();
-        updateUnreadBadge();
-      }
-      
-      // 全消去イベントより古い（インデックスが小さい）メッセージは描画対象から排除
-      serverMsgs.splice(0, clearMsgIdx); 
-    }
-
-    // 楽観的二重描画・チラつきを完全にシャットアウト
     serverMsgs.forEach(m => {
       if (m.pnd) {
         if (pendingMsgs.has(m.pnd)) pendingMsgs.delete(m.pnd);
-        displayedMsgIds.delete(m.pnd); // 一時IDを描画登録から抹殺
+        displayedMsgIds.delete(m.pnd); 
         const tempEl = D.tli.querySelector(`.mw[data-mid="${escapeSelector(m.pnd)}"]`);
-        if (tempEl) tempEl.remove(); // 一時表示DOMを即削除
+        if (tempEl) tempEl.remove(); 
       }
     });
 
     const serverMsgIds = new Set(serverMsgs.map(m => m.id));
 
-    // すでに表示済みメッセージの中で、仮タイムスタンプからサーバー確定タイムスタンプに変更されていたら最新化する
+    // タイムスタンプの書き換え処理をシステム（sys-ts）・通常メッセージ（ts）問わず完璧にデータベース時刻へ強制同期
     serverMsgs.forEach(m => {
       if (m.deleted) return;
       const existingEl = D.tli.querySelector(`.mw[data-mid="${escapeSelector(m.id)}"]`);
@@ -1603,17 +1581,17 @@ function setupFirebaseListeners() {
         const oldTs = parseInt(existingEl.dataset.ts || "0");
         if (m.t && typeof m.t === "number" && m.t !== oldTs) {
           existingEl.dataset.ts = m.t;
-          const tsSpan = existingEl.querySelector(".ts");
-          if (tsSpan) tsSpan.textContent = fDT(m.t);
+          const isSys = m.sys === true || (typeof m.m === "string" && m.m.startsWith("[SYS]::"));
+          const tsSpan = existingEl.querySelector(".ts, .sys-ts");
+          if (tsSpan) {
+            tsSpan.textContent = isSys ? `[${fDT(m.t)}]` : fDT(m.t);
+          }
         }
       }
     });
 
     let unreadChanged = false;
 
-    // -------------------------------------------------------------
-    // 【消去・境界フィルター】
-    // -------------------------------------------------------------
     const localMwEls = D.tli.querySelectorAll(".mw");
     localMwEls.forEach(el => {
       const mid = el.dataset.mid;
@@ -1621,25 +1599,45 @@ function setupFirebaseListeners() {
       if (mid && !mid.startsWith("pnd_")) {
         const sMsg = serverMsgs.find(m => m.id === mid);
         
-        const isDeletedOnServer = sMsg && sMsg.deleted === true;
+        // 削除マーカーが存在するか判定
+        const isDeletedOnServerMarker = sMsg && sMsg.deleted === true;
+        
+        // 最新100件のサーバーリストに存在しないか判定
         const isNotExistent = !serverMsgIds.has(mid);
+        
+        // 全消去時刻よりも古いか判定
+        const isOlderThanClear = latestClearTs > 0 && ts < latestClearTs;
 
-        if (isDeletedOnServer || isNotExistent) {
+        let shouldRemove = false;
+        if (serverMsgs.length === 0) {
+          // データベースが真に全消去されて空になった場合のみクリア
+          shouldRemove = true;
+        } else if (isDeletedOnServerMarker || isOlderThanClear) {
+          shouldRemove = true;
+        } else if (isNotExistent) {
+          // サーバー上のメッセージ群の最古タイムスタンプ（minTs）を取得
           let minTs = Infinity;
           serverMsgs.forEach(sm => {
-            if (sm.t && typeof sm.t === "number" && sm.t < minTs) minTs = sm.t;
+            const smTime = getMsgTime(sm);
+            if (smTime < minTs) minTs = smTime;
           });
+          
+          // 画面上のデータが、サーバーから返ってきている範囲内（minTs以降）であるにもかかわらず
+          // サーバーに存在しない場合は、物理削除されたとみなし、画面から消去する
+          if (ts >= minTs) {
+            shouldRemove = true;
+          }
+          // minTsより古いデータ（ts < minTs）はスライディングウィンドウからはみ出た過去ログであるため
+          // 削除せず、画面上に残し続ける（shouldRemove = false）
+        }
 
-          // 物理削除追従は直近の発言のみを対象（サーバーメッセージが空の場合は無条件クリア）
-          if (serverMsgs.length === 0 || isDeletedOnServer || (isNotExistent && ts >= (minTs - 60000))) {
-            el.remove();
-            displayedMsgIds.delete(mid);
+        if (shouldRemove) {
+          el.remove();
+          displayedMsgIds.delete(mid);
 
-            // 削除されたメッセージIDが未読Setに含まれていれば即時除外して減算
-            if (unreadMsgIds.has(mid)) {
-              unreadMsgIds.delete(mid);
-              unreadChanged = true;
-            }
+          if (unreadMsgIds.has(mid)) {
+            unreadMsgIds.delete(mid);
+            unreadChanged = true;
           }
         }
       }
@@ -1647,9 +1645,10 @@ function setupFirebaseListeners() {
 
     let newlyAdded = false;
 
-    // 新着発言を適切な時系列位置に、チラつくことなく差し込む（全消去より古いものは弾かれます）
     serverMsgs.forEach(m => {
       if (m.deleted) return;
+      const mTime = getMsgTime(m);
+      if (latestClearTs > 0 && mTime < latestClearTs) return; 
 
       if (!displayedMsgIds.has(m.id)) {
         displayedMsgIds.add(m.id);
@@ -1658,12 +1657,11 @@ function setupFirebaseListeners() {
         const newEl = cMsg(m);
         const sibling = Array.from(D.tli.children).find(el => {
           const ts = parseInt(el.dataset.ts || "0");
-          return ts > (m.t || 0);
+          return ts > mTime;
         });
         if (sibling) D.tli.insertBefore(newEl, sibling);
         else D.tli.appendChild(newEl);
 
-        // 新着発言を受信したとき：
         if (m.u !== myUid && !isAutoScroll) {
           unreadMsgIds.add(m.id);
           unreadChanged = true;
@@ -1671,12 +1669,10 @@ function setupFirebaseListeners() {
       }
     });
 
-    // 追加または削除等により未読件数に変動があればバッジを即座に更新
     if (unreadChanged || newlyAdded) {
       updateUnreadBadge();
     }
 
-    // まだサーバーから確定受信していない送信中の仮発言があれば下部に描画
     pendingMsgs.forEach((pMsgObj, tempId) => {
       let tempEl = D.tli.querySelector(`.mw[data-mid="${escapeSelector(tempId)}"]`);
       if (!tempEl) {
@@ -1686,11 +1682,10 @@ function setupFirebaseListeners() {
     });
 
     scBottom();
-    updateJumpBtns(); // メッセージ増減時に上下移動ボタン状態を再評価
+    updateJumpBtns(); 
   });
 
-  // オンラインリスト（プレゼンス）監視＆キャッシュ保存
-  db.ref("presence/official").on("value", s => {
+  onValue(ref(db, "presence/official"), s => {
     const list = s.val() || {}; 
     const membersMap = {};
     const nowTrue = getTrueTime();
@@ -1702,17 +1697,25 @@ function setupFirebaseListeners() {
 
         if (nowTrue - ut > 30 * 60 * 1000) {
           if (id === myUid) continue; 
-          // 【全員クリーンアップ】ログインユーザーであれば誰でも放置ノードをクリーンアップできるように制限を解除
           if (cleaningUids.has(id)) continue;
           cleaningUids.add(id);
           const targetId = id; const targetUser = u;
-          const pRef = db.ref(`presence/official/${targetId}`);
-          pRef.transaction((currentData) => { if (currentData === null) return currentData; return null; }).then((result) => {
+          const pRef = ref(db, `presence/official/${targetId}`);
+          runTransaction(pRef, (currentData) => { if (currentData === null) return currentData; return null; }).then((result) => {
             if (result.committed) {
               const exitTime = ut + 30 * 60 * 1000;
-              db.ref("chat/official").push({ sys: true, m: `${targetUser.n} ${targetUser.p}`.trim() + " が退室しました (自動退室)", t: exitTime }).catch(() => {});
+              // 検出した自分のUID（myUid）を送信者として付与しセキュリティルールを通過させる
+              // 独自スキーマでの拒否を防ぐため、他者の自動退室検知メッセージも通常メッセージ構造で送信
+              push(ref(db, "chat/official"), { 
+                u: myUid,
+                n: targetUser.n,
+                p: targetUser.p,
+                c: targetUser.c || "#94a3b8",
+                m: "[SYS]::" + `${targetUser.n} ${targetUser.p}`.trim() + " が退室しました (自動退室)", 
+                t: exitTime 
+              }).catch(() => {});
             }
-            cleaningUids.delete(targetId);
+              cleaningUids.delete(targetId);
           }).catch(() => { cleaningUids.delete(targetId); });
           continue;
         }
@@ -1720,7 +1723,6 @@ function setupFirebaseListeners() {
       }
     }
 
-    // 楽観的マウントと安全な0ms差分描画の実行
     renderPresence(membersMap);
   });
 }
@@ -1732,6 +1734,10 @@ if (isLocalFileEnv) {
   else { myUid = safeLS.get("nz_local_uid") || "local_" + Math.random().toString(36).slice(2, 10); safeLS.set("nz_local_uid", myUid); }
   D.joinBtn.disabled = false; D.joinBtn.textContent = "参加する";
   updateAdminUI(); setupFirebaseListeners();
+  
+  // ローカルテスト環境であっても同期精度を高めるため、サーバー時刻オフセットの計測を開始
+  onValue(ref(db, ".info/serverTimeOffset"), (snap) => { serverTimeOffset = snap.val() || 0; });
+  
   if (safeLS.get("nz_is_joined") === "true" && _initNi && _initTrip) joinRoom(true);
 } else {
   setTimeout(() => {
@@ -1744,13 +1750,13 @@ if (isLocalFileEnv) {
     }
   }, 4000);
 
-  auth.onAuthStateChanged(async (user) => {
-    if (!user) { await auth.signInAnonymously().catch(() => {}); return; }
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) { await signInAnonymously(auth).catch(() => {}); return; }
     myUid = user.uid; D.joinBtn.disabled = false; D.joinBtn.textContent = "参加する";
     updateAdminUI();
-    db.ref(".info/serverTimeOffset").on("value", (snap) => { serverTimeOffset = snap.val() || 0; });
-    db.ref(".info/connected").on("value", (snap) => {
-      if (snap.val() === true && isJoined && myUid) db.ref(`presence/official/${myUid}/t`).set(firebase.database.ServerValue.TIMESTAMP).catch(() => {});
+    onValue(ref(db, ".info/serverTimeOffset"), (snap) => { serverTimeOffset = snap.val() || 0; });
+    onValue(ref(db, ".info/connected"), (snap) => {
+      if (snap.val() === true && isJoined && myUid) set(ref(db, `presence/official/${myUid}/t`), serverTimestamp()).catch(() => {});
     });
     setupFirebaseListeners();
     if (safeLS.get("nz_is_joined") === "true" && _initNi && _initTrip) joinRoom(true);

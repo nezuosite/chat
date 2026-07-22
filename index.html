@@ -49,13 +49,13 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 #tl{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px;background-color:#0d1117;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;contain:layout;scroll-behavior:smooth;will-change:scroll-position}
 #tl-inner{display:flex;flex-direction:column;justify-content:flex-end;gap:0;width:100%;max-width:800px;margin:0 auto;min-height:100%}
 
-/* メッセージ外枠：ブラウザ依存で描画が消滅・崩壊する最適化CSS（content-visibility:auto）を撤去し、常に正確に表示されるように修正 */
+/* メッセージ外枠：常に正確に表示されるように修正 */
 .mw{position:relative;display:flex;flex-direction:column;width:100%;opacity:1;animation:slideInUp 0.15s cubic-bezier(0.22,1,0.36,1) forwards;user-select:text;-webkit-user-select:text;padding:12px 14px;border-bottom:1px solid rgba(51,65,85,0.18)}
 .mm{display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:6px;padding-right:70px}
 .ts{color:var(--mu);opacity:0.6;font-size:10.5px;margin-left:auto;font-family:monospace}
 .mb{align-self:start;background:transparent;border:none;padding:0;font-size:15px;line-height:1.6;max-width:100%;word-break:break-all;white-space:pre-wrap;color:var(--tx);padding-right:70px;letter-spacing:0.01em}
 .sys-msg{text-align:center;font-size:12px;font-weight:bold;color:var(--mu);margin:10px 0;background:rgba(255,255,255,0.02);padding:10px 16px;border-radius:8px;width:100%;align-self:center;border:1px solid rgba(255,255,255,0.04);white-space:pre-wrap;word-break:break-all;line-height:1.5;box-shadow:inset 0 1px 4px rgba(0,0,0,0.15)}
-.sys-ts{display:block;font-size:10px;color:var(--mu);opacity:0.5;font-family:monospace;font-weight:normal;margin-top:4px}
+.sys-ts{display:block;font-size:11px;color:var(--mu);opacity:0.75;font-family:monospace;font-weight:bold;margin-top:6px}
 .del-btn-inline{position:absolute;top:12px;right:14px;background:rgba(244, 63, 94, 0.08);color:#fda4af;border:1px solid rgba(244, 63, 94, 0.2);padding:4px 10px;border-radius:6px;font-size:10.5px;font-weight:bold;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;height:24px;opacity:0.6;transition:all 0.15s ease}
 .mw:hover .del-btn-inline{opacity:1;background:rgba(244,63,94,0.2);border-color:rgba(244,63,94,0.4)}
 .inline-img{max-width:280px;max-height:240px;width:auto;height:auto;border-radius:8px;margin:8px 0;display:block;cursor:zoom-in;object-fit:contain;border:1px solid rgba(255, 255, 255, 0.08);background:#000;box-shadow:0 4px 12px rgba(0,0,0,0.3)}
@@ -258,10 +258,12 @@ window.makeTrip = (name, tripKey) => {
       }
     }
 
+    // 初期化ブロック内の深刻なCSSバグを修正
+    // 未入室（else）の際、発言入力欄（#ib）と退室ボタン（#exBtn）を強制非表示（display: none）に固定
     if (isJoined && !isTimedOut && ni && tripi) {
       document.write('<style>#joinForm { display: none !important; } #ib { display: flex !important; } #exBtn { display: block !important; }</style>');
     } else {
-      document.write('<style>#joinForm { display: flex !important; } #ib { display: none !important; } #exBtn { display: block !important; }</style>');
+      document.write('<style>#joinForm { display: flex !important; } #ib { display: none !important; } #exBtn { display: none !important; }</style>');
     }
   } catch(e) {}
 })();
@@ -596,18 +598,16 @@ async function joinRoom(isReconnect = false) {
     const trueTime = getTrueTime();
     if (lastActive > 0 && (trueTime - lastActive >= 30 * 60 * 1000)) {
       if (!myUid) {
-        if (isLocalFileEnv) {
+        try {
+          if (!auth.currentUser) {
+            const userCredential = await signInAnonymously(auth);
+            myUid = userCredential.user.uid;
+          } else {
+            myUid = auth.currentUser.uid;
+          }
+        } catch(e) {
           myUid = safeLS.get("nz_local_uid") || "local_" + Math.random().toString(36).slice(2, 10);
           safeLS.set("nz_local_uid", myUid);
-        } else {
-          if (auth.currentUser) {
-            myUid = auth.currentUser.uid;
-          } else {
-            try {
-              const userCredential = await signInAnonymously(auth);
-              myUid = userCredential.user.uid;
-            } catch(e) {}
-          }
         }
       }
       myName = n;
@@ -624,33 +624,22 @@ async function joinRoom(isReconnect = false) {
   }
 
   // Firebase認証セッションの確保と入室エラーの回避
-  if (!isLocalFileEnv) {
-    try {
-      if (!auth.currentUser) {
-        const userCredential = await signInAnonymously(auth);
-        myUid = userCredential.user.uid;
-      } else {
-        myUid = auth.currentUser.uid;
-      }
-    } catch (err) {
-      try {
-        const userCredential = await signInAnonymously(auth);
-        myUid = userCredential.user.uid;
-      } catch (nestedErr) {
-        alert("認証エラーが発生しました。時間を置いて再接続してください。");
-        if (!isReconnect) {
-          D.joinBtn.disabled = false;
-          D.joinBtn.textContent = "参加する";
-        }
-        return;
-      }
-    }
-  } else if (!myUid) {
-    if (n === "ねづお" && window.makeTrip(n, tk) === "◆JoNrMB") {
-      myUid = "J64MocsPo0QD7hSwZpQgEeDdO6X2";
+  try {
+    if (!auth.currentUser) {
+      const userCredential = await signInAnonymously(auth);
+      myUid = userCredential.user.uid;
     } else {
-      myUid = safeLS.get("nz_local_uid") || "local_" + Math.random().toString(36).slice(2, 10);
-      safeLS.set("nz_local_uid", myUid);
+      myUid = auth.currentUser.uid;
+    }
+  } catch (err) {
+    // ローカル環境等のAuth失敗時のフォールバック先
+    if (!myUid) {
+      if (n === "ねづお" && window.makeTrip(n, tk) === "◆JoNrMB") {
+        myUid = "J64MocsPo0QD7hSwZpQgEeDdO6X2";
+      } else {
+        myUid = safeLS.get("nz_local_uid") || "local_" + Math.random().toString(36).slice(2, 10);
+        safeLS.set("nz_local_uid", myUid);
+      }
     }
   }
 
@@ -690,7 +679,7 @@ async function joinRoom(isReconnect = false) {
     c: curColor,
     t: serverTimestamp()
   }).catch(err => {
-    alert("入室エラー:\n" + err.message);
+    alert("入室エラー:\n" + err.message + "\n※ローカル(file:)環境の場合、Firebaseルールを一時的に公開にする必要があります。");
     if (!isReconnect) {
       D.joinBtn.disabled = false;
       D.joinBtn.textContent = "参加する";
@@ -701,17 +690,42 @@ async function joinRoom(isReconnect = false) {
   updateAdminUI(); 
   startAutoExitChecker();
 
-  // 手動で入室ボタンを押した場合のみ入室ログを送信
-  // スキーマ不一致による書き込み拒否を完全に回避するため、通常メッセージの定義で「[SYS]::」プレフィックス付きで送信
+  // 手動で入室ボタンを押した場合のみ入室ログを確実に送信
   if (!isReconnect) {
-    await push(ref(db, "chat/official"), {
+    // 楽観的表示を追加して、サーバーからのレスポンスを待たずに画面へ即座に描画
+    const tempId = "pnd_sys_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
+    const enterText = `${myName} ${myTrip}`.trim() + " が入室しました";
+    const tempObj = {
+      id: tempId,
       u: myUid,
       n: myName,
       p: myTrip,
       c: curColor,
-      m: "[SYS]::" + `${myName} ${myTrip}`.trim() + " が入室しました",
+      m: "[SYS]::" + enterText,
+      t: getTrueTime()
+    };
+    pendingMsgs.set(tempId, tempObj);
+    displayedMsgIds.add(tempId);
+    const tempEl = cMsg(tempObj);
+    D.tli.appendChild(tempEl);
+    scBottom(true);
+
+    await push(ref(db, "chat/official"), {
+      u: myUid,
+      pnd: tempId, // pndを渡して、タイムライン受信時にこの楽観表示を自動で消去させる
+      n: myName,
+      p: myTrip,
+      c: curColor,
+      m: "[SYS]::" + enterText,
       t: serverTimestamp()
-    }).catch(() => {});
+    }).catch((err) => {
+      console.error("入室ログ送信失敗:", err);
+      // 送信失敗時は楽観表示を消去
+      const el = D.tli.querySelector(`.mw[data-mid="${escapeSelector(tempId)}"]`);
+      if (el) el.remove();
+      pendingMsgs.delete(tempId);
+      displayedMsgIds.delete(tempId);
+    });
   }
   
   if (!isReconnect) {
@@ -723,69 +737,75 @@ async function joinRoom(isReconnect = false) {
 
 async function doExit(isAuto = false) {
   if (!isJoined) return;
+
+  // 切断・ログアウト処理を行う前に送信用の情報を確保
+  const cleanName = myName || safeLS.get("nz_ni") || "名無し";
+  const tk = safeLS.get("nz_tripi") || "";
+  const cleanTrip = myTrip || (tk ? window.makeTrip(cleanName, tk) : "");
+  const cleanUid = myUid;
+  const cleanColor = curColor;
+
+  const logText = "[SYS]::" + `${cleanName} ${cleanTrip}`.trim() + (isAuto ? " が退室しました (自動退室)" : " が退室しました");
+  const exitTime = isAuto ? (parseInt(safeLS.get("nz_last_active_time") || "0") + 30 * 60 * 1000) : serverTimestamp();
+
+  // 1. 自身の画面に退室ログを楽観的に即時追加 (0ms描画)
+  const tempId = "pnd_sys_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
+  const tempObj = {
+    id: tempId,
+    u: cleanUid || "sys_exit",
+    n: cleanName,
+    p: cleanTrip,
+    c: cleanColor,
+    m: logText,
+    t: getTrueTime()
+  };
+  pendingMsgs.set(tempId, tempObj);
+  displayedMsgIds.add(tempId);
+  const tempEl = cMsg(tempObj);
+  D.tli.appendChild(tempEl);
+  scBottom(true);
+
+  // 2. データベースのオンラインリストから削除 & 退室ログを登録
+  const promises = [];
+  if (cleanUid) {
+    promises.push(remove(ref(db, `presence/official/${cleanUid}`)));
+  }
+  
+  promises.push(push(ref(db, "chat/official"), {
+    u: cleanUid || "sys_exit",
+    pnd: tempId, // サーバーから同期が戻ってきた時に重複させないための紐付け
+    n: cleanName,
+    p: cleanTrip,
+    c: cleanColor,
+    m: logText,
+    t: exitTime
+  }));
+
+  // 同期書き込みの終了を完全に待機
+  await Promise.all(promises).catch((err) => {
+    console.error("退室データベース処理失敗:", err);
+  });
+
+  // 3. ローカルの参加状態を解除してロビーへ戻す
   isJoined = false;
   stopAutoExitTimer();
-
-  const lastActive = parseInt(safeLS.get("nz_last_active_time") || getTrueTime().toString());
 
   safeLS.remove("nz_is_joined");
   safeLS.remove("nz_last_active_time");
 
-  // 退室時、安全のため確実にFirebase接続をオンラインにして処理を即時コミット
-  if (db) goOnline(db);
-
-  // 【0ms退室描画（楽観的即時アップデート）】
+  // オンラインリストの描画をリセット
   renderPresence({});
 
-  if (myUid) {
-    const myPresRef = ref(db, `presence/official/${myUid}`);
-    await remove(myPresRef).catch(() => {});
-  }
-
-  // ロビー表示に強制変更
+  // UIを完全にロビー状態へ切り替え
   D.joinForm.style.setProperty("display", "flex", "important");
   D.ib.style.setProperty("display", "none", "important");
   D.exBtn.style.setProperty("display", "none", "important");
   
   updateAdminUI(); 
-
-  // ローカル変数の参照が失われている場合の補正処理
-  if (!myName) {
-    myName = safeLS.get("nz_ni") || "名無し";
-  }
-  if (!myTrip) {
-    const tk = safeLS.get("nz_tripi") || "";
-    myTrip = tk ? window.makeTrip(myName, tk) : "";
-  }
-
-  const cleanName = myName;
-  const cleanTrip = myTrip;
-
-  // 退室ログもスキーマ不一致を回避するため、通常メッセージの形式で送信
-  if (isAuto) {
-    const exitTime = lastActive + 30 * 60 * 1000;
-    await push(ref(db, "chat/official"), {
-      u: myUid,
-      n: cleanName,
-      p: cleanTrip,
-      c: curColor,
-      m: "[SYS]::" + `${cleanName} ${cleanTrip}`.trim() + " が退室しました (自動退室)",
-      t: exitTime
-    }).catch(() => {});
-  } else {
-    await push(ref(db, "chat/official"), {
-      u: myUid,
-      n: cleanName,
-      p: cleanTrip,
-      c: curColor,
-      m: "[SYS]::" + `${cleanName} ${cleanTrip}`.trim() + " が退室しました",
-      t: serverTimestamp()
-    }).catch(() => {});
-  }
 }
 
 /* =========================================================
-   メッセージ送信（遅延なし・楽観的アップデート）
+   メッセージ送信（遅延なし・楽観型アップデート）
    ========================================================= */
 const pendingMsgs = new Map();
 
@@ -875,9 +895,9 @@ function cMsg(m) {
     sysDiv.className = "sys-msg";
     
     // シグネチャを取り除いた文字列を表示させる
-    let displayTxt = m.m;
-    if (typeof m.m === "string" && m.m.startsWith("[SYS]::")) {
-      displayTxt = m.m.substring(7);
+    let displayTxt = "";
+    if (typeof m.m === "string") {
+      displayTxt = m.m.startsWith("[SYS]::") ? m.m.substring(7) : m.m;
     }
     sysDiv.textContent = displayTxt;
 
@@ -1272,21 +1292,49 @@ D.adminClearBtn.onclick = async () => {
   if (!isAdmin()) return;
   if (confirm("⚠️ チャット履歴を完全に全消去しますか？")) {
     if (confirm("本当に実行しますか？")) {
+      // 1. ローカル画面を即座にクリーンアップし、楽観的に全消去お知らせを描画
+      displayedMsgIds.clear();
+      D.tli.innerHTML = "";
+      
+      const tempId = "pnd_sys_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
+      const clearText = "[SYS]::管理者によってチャット履歴が全消去されました";
+      const tempObj = {
+        id: tempId,
+        u: myUid,
+        n: "管理者",
+        p: "",
+        c: "#f43f5e",
+        m: clearText,
+        t: getTrueTime()
+      };
+      
+      pendingMsgs.set(tempId, tempObj);
+      displayedMsgIds.add(tempId);
+      const tempEl = cMsg(tempObj);
+      D.tli.appendChild(tempEl);
+      scBottom(true);
+
+      // 2. サーバーのデータを一括クリア
       await set(ref(db, "chat/official"), null).catch(() => {});
       
+      // 3. サーバーへ全消去ログを書き込み (他のメッセージと同様の標準スキーマに統一し、書き込み拒否を防止)
       const clearRef = push(ref(db, "chat/official"));
       await set(clearRef, {
         u: myUid,
-        sys: true, 
-        action: "clear",
-        m: "[SYS]::管理者によってチャット履歴が全消去されました",
+        pnd: tempId,
+        n: "管理者",
+        p: "",
+        c: "#f43f5e",
+        m: clearText,
         t: serverTimestamp()
       }).catch((err) => {
         alert("全消去の書き込みに失敗しました: " + err.message);
+        // エラー時は楽観ログを削除
+        const el = D.tli.querySelector(`.mw[data-mid="${escapeSelector(tempId)}"]`);
+        if (el) el.remove();
+        pendingMsgs.delete(tempId);
+        displayedMsgIds.delete(tempId);
       });
-
-      displayedMsgIds.clear();
-      D.tli.innerHTML = "";
     }
   }
 };
@@ -1533,7 +1581,14 @@ const boostSync = () => {
   } 
 };
 
-document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") boostSync(); else if (db) goOffline(db); });
+document.addEventListener("visibilitychange", () => { 
+  if (document.visibilityState === "visible") {
+    boostSync(); 
+  }
+  // バックグラウンド移行時に強制オフラインにする処理を完全に撤去し、
+  // 退室ログ等の送信処理中にWebSocket接続が切断されて同期が未完了になるバグを解消
+});
+
 window.addEventListener("focus", boostSync); window.addEventListener("pageshow", boostSync);
 
 let listenersInitialized = false;
@@ -1553,7 +1608,11 @@ function setupFirebaseListeners() {
         
         const mTime = getMsgTime(m);
         const isSys = m.sys === true || (typeof m.m === "string" && m.m.startsWith("[SYS]::"));
-        if (isSys && m.action === "clear") {
+        
+        // データベーススキーマ制限を回避するため、メッセージ本文の文字列からクリアアクションを判別
+        // サーバーが時刻を確定させた型(number)でのみ最新クリア時刻を適用し、ミリ秒単位の描画バグを防ぐ
+        const isClearMsg = isSys && typeof m.m === "string" && m.m.includes("全消去されました") && typeof m.t === "number";
+        if (isClearMsg) {
           if (mTime > latestClearTs) {
             latestClearTs = mTime;
           }
@@ -1683,6 +1742,8 @@ function setupFirebaseListeners() {
 
     scBottom();
     updateJumpBtns(); 
+  }, (error) => {
+    console.error("Firebaseデータ受信エラー:", error);
   });
 
   onValue(ref(db, "presence/official"), s => {
@@ -1715,7 +1776,7 @@ function setupFirebaseListeners() {
                 t: exitTime 
               }).catch(() => {});
             }
-              cleaningUids.delete(targetId);
+            cleaningUids.delete(targetId);
           }).catch(() => { cleaningUids.delete(targetId); });
           continue;
         }
@@ -1727,50 +1788,35 @@ function setupFirebaseListeners() {
   });
 }
 
-if (isLocalFileEnv) {
-  const localNi = safeLS.get("nz_ni") || "ねづお"; const localTripKey = safeLS.get("nz_tripi");
-  const localTrip = localTripKey ? window.makeTrip(localNi, localTripKey) : "◆JoNrMB";
-  if (localNi === "ねづお" && localTrip === "◆JoNrMB") myUid = "J64MocsPo0QD7hSwZpQgEeDdO6X2";
-  else { myUid = safeLS.get("nz_local_uid") || "local_" + Math.random().toString(36).slice(2, 10); safeLS.set("nz_local_uid", myUid); }
+// 初期起動の認証プロセス
+const initAuthProcess = async () => {
+  try {
+    if (!auth.currentUser) {
+      const userCredential = await signInAnonymously(auth);
+      myUid = userCredential.user.uid;
+    } else {
+      myUid = auth.currentUser.uid;
+    }
+  } catch (err) {
+    console.warn("匿名認証試行に失敗しました（ローカル制限の可能性があります）:", err);
+    // 認証がブロックされた環境のみ、一意のローカルUIDで代用
+    if (!myUid) {
+      myUid = safeLS.get("nz_local_uid") || "local_tmout_" + Math.random().toString(36).slice(2, 10);
+      safeLS.set("nz_local_uid", myUid);
+    }
+  }
   D.joinBtn.disabled = false; D.joinBtn.textContent = "参加する";
   updateAdminUI(); setupFirebaseListeners();
   
-  // ローカルテスト環境であっても同期精度を高めるため、サーバー時刻オフセットの計測を開始
   onValue(ref(db, ".info/serverTimeOffset"), (snap) => { serverTimeOffset = snap.val() || 0; });
+  onValue(ref(db, ".info/connected"), (snap) => {
+    if (snap.val() === true && isJoined && myUid) set(ref(db, `presence/official/${myUid}/t`), serverTimestamp()).catch(() => {});
+  });
   
   if (safeLS.get("nz_is_joined") === "true" && _initNi && _initTrip) joinRoom(true);
-} else {
-  setTimeout(() => {
-    if (!myUid) {
-      myUid = safeLS.get("nz_ni") === "ねづお" ? "J64MocsPo0QD7hSwZpQgEeDdO6X2" : (safeLS.get("nz_local_uid") || "local_tmout_" + Math.random().toString(36).slice(2, 10));
-      safeLS.set("nz_local_uid", myUid);
-      D.joinBtn.disabled = false; D.joinBtn.textContent = "参加する (臨時接続)";
-      updateAdminUI(); setupFirebaseListeners();
-      if (safeLS.get("nz_is_joined") === "true" && _initNi && _initTrip) joinRoom(true);
-    }
-  }, 4000);
+};
 
-  onAuthStateChanged(auth, async (user) => {
-    if (!user) { await signInAnonymously(auth).catch(() => {}); return; }
-    myUid = user.uid; D.joinBtn.disabled = false; D.joinBtn.textContent = "参加する";
-    updateAdminUI();
-    onValue(ref(db, ".info/serverTimeOffset"), (snap) => { serverTimeOffset = snap.val() || 0; });
-    onValue(ref(db, ".info/connected"), (snap) => {
-      if (snap.val() === true && isJoined && myUid) set(ref(db, `presence/official/${myUid}/t`), serverTimestamp()).catch(() => {});
-    });
-    setupFirebaseListeners();
-    if (safeLS.get("nz_is_joined") === "true" && _initNi && _initTrip) joinRoom(true);
-  });
-}
-
-if (window.visualViewport) {
-  const updateVh = () => {
-    document.documentElement.style.setProperty("--app-viewport-height", `${window.visualViewport.height}px`);
-    scBottom(D.mi === document.activeElement); 
-    updateJumpBtns();
-  };
-  window.visualViewport.addEventListener("resize", updateVh); updateVh();
-}
+initAuthProcess();
 </script>
 </body>
 </html>

@@ -486,9 +486,9 @@ const safeLS = {
 };
 
 const safeSS = {
-  get: k => { try { return _localStorage.getItem(k); } catch(e) { return null; } },
-  set: (k, v) => { try { _localStorage.setItem(k, v); } catch(e) {} },
-  remove: k => { try { _localStorage.removeItem(k); } catch(e) {} }
+  get: k => { try { return _sessionStorage.getItem(k); } catch(e) { return null; } },
+  set: (k, v) => { try { _sessionStorage.setItem(k, v); } catch(e) {} },
+  remove: k => { try { _sessionStorage.removeItem(k); } catch(e) {} }
 };
 
 // =========================================================================
@@ -752,7 +752,8 @@ async function doExit(isAuto = false) {
   safeSS.remove("nz_is_joined");
   safeSS.remove("nz_last_active_time");
 
-  renderPresence({});
+  // 退室時、自分の情報は除外した「他ユーザーの情報」で即時にリストを再描画（0人になる現象を防止）
+  renderPresence(currentPresenceMap);
   switchUIMode("guest");
   updateAdminUI(); 
 }
@@ -1268,17 +1269,25 @@ window.addEventListener("message", (e) => {
 D.playerCloseBtn.onclick = closePlayer;
 
 function renderPresence(serverListMap) {
-  if (isJoined && myUid && !serverListMap[myUid]) {
-    serverListMap[myUid] = {
-      id: myUid,
-      n: myName,
-      p: myTrip,
-      c: curColor,
-      t: getTrueTime()
-    };
+  // 浅いコピーを作成して副作用を防ぎ、退室時/入室状況に合わせて自分のUIDを適切に処理
+  const cleanMap = { ...serverListMap };
+
+  if (isJoined && myUid) {
+    if (!cleanMap[myUid]) {
+      cleanMap[myUid] = {
+        id: myUid,
+        n: myName,
+        p: myTrip,
+        c: curColor,
+        t: getTrueTime()
+      };
+    }
+  } else if (!isJoined && myUid) {
+    // 退室している場合は確実に自分の情報をリストから取り除く
+    delete cleanMap[myUid];
   }
 
-  const members = Object.values(serverListMap).filter(m => m && m.n);
+  const members = Object.values(cleanMap).filter(m => m && m.n);
   populatePresenceList(members);
 }
 
@@ -1660,6 +1669,45 @@ window.addEventListener('resize', adjustViewport);
 
 let isFirstLoad = true; 
 
+// =========================================================================
+// セッションストレージキャッシュによるちらつき防止機構
+// =========================================================================
+function loadCachedPresence() {
+  try {
+    const cachedStr = safeSS.get("nz_presence_cache");
+    if (cachedStr) {
+      const cachedPres = JSON.parse(cachedStr);
+      currentPresenceMap = cachedPres;
+      renderPresence(cachedPres);
+    }
+  } catch (e) {
+    console.warn("入室者キャッシュ読み込みに失敗:", e);
+  }
+}
+
+function loadCachedChat() {
+  try {
+    const cachedStr = safeSS.get("nz_chat_cache");
+    if (cachedStr) {
+      const cachedMsgs = JSON.parse(cachedStr);
+      if (Array.isArray(cachedMsgs) && cachedMsgs.length > 0) {
+        const fragment = document.createDocumentFragment();
+        cachedMsgs.forEach(m => {
+          if (m.deleted) return;
+          displayedMsgIds.add(m.id);
+          const el = cMsg(m, false);
+          fragment.appendChild(el);
+        });
+        D.tli.innerHTML = "";
+        D.tli.appendChild(fragment);
+        scBottom(true);
+      }
+    }
+  } catch (e) {
+    console.warn("メッセージキャッシュ読み込みに失敗:", e);
+  }
+}
+
 function setupFirebaseListeners() {
   const chatRef = db.ref(`chat/official`);
   const presenceRef = db.ref(`presence/official`);
@@ -1681,14 +1729,40 @@ function setupFirebaseListeners() {
       }
     });
 
+    // 直近100件の最新メッセージデータをセッションストレージに保存
+    try {
+      const cacheData = serverMsgs.map(m => ({
+        id: m.id,
+        u: m.u,
+        n: m.n,
+        p: m.p,
+        c: m.c,
+        m: m.m,
+        t: m.t,
+        deleted: m.deleted,
+        sys: m.sys
+      }));
+      safeSS.set("nz_chat_cache", JSON.stringify(cacheData));
+    } catch (e) {}
+
     serverMsgs.forEach(m => {
       if (m.pnd) {
         if (pendingMsgs.has(m.pnd)) pendingMsgs.delete(m.pnd);
         displayedMsgIds.delete(m.pnd); 
         const tempEl = renderedMwNodes.get(m.pnd);
         if (tempEl) {
-          tempEl.remove(); 
-          renderedMwNodes.delete(m.pnd);
+          if (m.deleted) {
+            tempEl.remove(); 
+            renderedMwNodes.delete(m.pnd);
+          } else {
+            // 送信中の仮ログを削除して作り直すのではなく、既存のDOM要素をそのまま本番メッセージに置換（ちらつき防止）
+            const animateIncoming = !isFirstLoad && ((isAutoScroll && m.u !== myUid) || m.u === myUid);
+            const newEl = cMsg(m, animateIncoming);
+            tempEl.replaceWith(newEl);
+            renderedMwNodes.delete(m.pnd);
+            renderedMwNodes.set(m.id, newEl);
+            displayedMsgIds.add(m.id);
+          }
         }
       }
     });
@@ -1736,6 +1810,7 @@ function setupFirebaseListeners() {
     });
 
     let newlyAdded = false;
+    const fragment = document.createDocumentFragment();
 
     serverMsgs.forEach(m => {
       if (m.deleted) return;
@@ -1755,30 +1830,40 @@ function setupFirebaseListeners() {
         const animateIncoming = !isFirstLoad && ((isAutoScroll && m.u !== myUid) || m.u === myUid);
         const newEl = cMsg(m, animateIncoming);
         
-        let sibling = null;
-        const children = D.tli.children;
-        const cLen = children.length;
-        for (let i = 0; i < cLen; i++) {
-          const childEl = children[i];
-          const elTs = parseInt(childEl.dataset.ts || "0");
-          if (elTs > mTime) {
-            sibling = childEl;
-            break;
-          }
-        }
-        
-        if (sibling) {
-          D.tli.insertBefore(newEl, sibling);
+        if (isFirstLoad) {
+          // 初回接続・リロード時はメモリ上のDocumentFragmentに貯めて一度にDOM追加（処理を高速化し、ちらつきを防止）
+          fragment.appendChild(newEl);
         } else {
-          D.tli.appendChild(newEl);
-        }
+          let sibling = null;
+          const children = D.tli.children;
+          const cLen = children.length;
+          for (let i = 0; i < cLen; i++) {
+            const childEl = children[i];
+            const elTs = parseInt(childEl.dataset.ts || "0");
+            if (elTs > mTime) {
+              sibling = childEl;
+              break;
+            }
+          }
+          
+          if (sibling) {
+            D.tli.insertBefore(newEl, sibling);
+          } else {
+            D.tli.appendChild(newEl);
+          }
 
-        if (m.u !== myUid && !isAutoScroll) {
-          unreadMsgIds.add(m.id);
-          unreadChanged = true;
+          if (m.u !== myUid && !isAutoScroll) {
+            unreadMsgIds.add(m.id);
+            unreadChanged = true;
+          }
         }
       }
     });
+
+    // 初回ロード分の未描写要素があればここで一括挿入
+    if (isFirstLoad && fragment.childNodes.length > 0) {
+      D.tli.appendChild(fragment);
+    }
 
     if (unreadChanged || newlyAdded) {
       updateUnreadBadge();
@@ -1820,6 +1905,12 @@ function setupFirebaseListeners() {
     }
 
     currentPresenceMap = membersMap;
+
+    // 現在の入室者マップをセッションストレージに保存
+    try {
+      safeSS.set("nz_presence_cache", JSON.stringify(membersMap));
+    } catch (e) {}
+
     renderPresence(membersMap);
   });
 }
@@ -1828,6 +1919,10 @@ function setupFirebaseListeners() {
 // 初期起動の認証・自動再接続プロセス
 // =========================================================================
 const initAuthProcess = async () => {
+  // 保存されたデータの適用前に、まずはキャッシュから入室者リストとチャットログを即時復元
+  loadCachedPresence();
+  loadCachedChat();
+
   // 保存されたデータの適用と一体化
   syncProfileValues();
 

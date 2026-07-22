@@ -58,7 +58,10 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .sys-ts{display:block;font-size:11px;color:var(--mu);opacity:0.75;font-family:monospace;font-weight:bold;margin-top:6px}
 .del-btn-inline{position:absolute;top:12px;right:14px;background:rgba(244, 63, 94, 0.08);color:#fda4af;border:1px solid rgba(244, 63, 94, 0.2);padding:4px 10px;border-radius:6px;font-size:10.5px;font-weight:bold;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;height:24px;opacity:0.6;transition:all 0.15s ease}
 .mw:hover .del-btn-inline{opacity:1;background:rgba(244,63,94,0.2);border-color:rgba(244,63,94,0.4)}
-.inline-img{max-width:280px;max-height:240px;width:auto;height:auto;border-radius:8px;margin:8px 0;display:block;cursor:zoom-in;object-fit:contain;border:1px solid rgba(255, 255, 255, 0.08);background:#000;box-shadow:0 4px 12px rgba(0,0,0,0.3)}
+
+/* 画像の角は元の通りに、完全に四角(0)に修正 */
+.inline-img{max-width:280px;max-height:240px;width:auto;height:auto;border-radius:0 !important;margin:8px 0;display:block;cursor:zoom-in;object-fit:contain;border:1px solid rgba(255, 255, 255, 0.08);background:#000;box-shadow:0 4px 12px rgba(0,0,0,0.3)}
+
 .media-link-container{display:flex;flex-direction:column;gap:4px;margin-top:6px;background:rgba(255,255,255,0.02);padding:10px 14px;border-radius:8px;border:1px solid rgba(255, 255, 255, 0.04);width:100%;max-width:100%;box-sizing:border-box}
 .media-inline-row{display:flex;align-items:center;gap:8px;width:100%}
 .media-badge{display:inline-flex;align-items:center;gap:2px;font-weight:800;padding:3px 6px;border-radius:4px;font-size:9.5px;color:#fff;text-transform:uppercase;line-height:1;white-space:nowrap;pointer-events:none}
@@ -129,11 +132,12 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   justify-content: center;
   overflow: hidden;
 }
+/* 拡大画像の角も四角(0)に修正 */
 #imgViewSrc{
   max-width: 95%;
   max-height: 95%;
   object-fit: contain;
-  border-radius: 4px;
+  border-radius: 0 !important;
   box-shadow: 0 10px 40px rgba(0,0,0,0.5);
 }
 .modal-bottom-close-container{width:100%;display:flex;justify-content:center;position:absolute;bottom:0;left:0;padding:16px 0 calc(16px + var(--safe));background:linear-gradient(to top,rgba(0,0,0,0.85) 40%,rgba(0,0,0,0));backdrop-filter:blur(2px);z-index:10001}
@@ -261,9 +265,9 @@ window.makeTrip = (name, tripKey) => {
 };
 
 // =========================================================================
-// localStorage / sessionStorage のSecurityErrorによるJS強制終了の防止
+// localStorage のSecurityErrorによるJS強制終了の防止
 // =========================================================================
-var _localStorage, _sessionStorage;
+var _localStorage;
 try {
   _localStorage = window.localStorage;
   _localStorage.getItem("__nz_test_key__");
@@ -277,28 +281,19 @@ try {
   };
 }
 
-try {
-  _sessionStorage = window.sessionStorage;
-  _sessionStorage.getItem("__nz_test_key__");
-} catch (e) {
-  var mockSS = {};
-  _sessionStorage = {
-    getItem: function(k) { return mockSS[k] || null; },
-    setItem: function(k, v) { mockSS[k] = String(v); },
-    removeItem: function(k) { delete mockSS[k]; },
-    clear: function() { mockSS = {}; }
-  };
-}
+// ⚠️ 仕様変更：複数タブ間で1つのログインセッションを完全に共有・同期させるため、
+// タブ別のsessionStorageを廃止し、すべてlocalStorageへ統合・マッピングしました。
+var _sessionStorage = _localStorage;
 
 (function() {
   try {
-    const isJoined = _sessionStorage.getItem("nz_is_joined") === "true";
+    const isJoined = _localStorage.getItem("nz_is_joined") === "true";
     const ni = _localStorage.getItem("nz_ni");
     const tripi = _localStorage.getItem("nz_tripi");
     const color = _localStorage.getItem("nz_color") || "#94a3b8";
     document.documentElement.style.setProperty("--usr-color", color);
     
-    const lastActiveStr = _sessionStorage.getItem("nz_last_active_time");
+    const lastActiveStr = _localStorage.getItem("nz_last_active_time");
     let isTimedOut = false;
     if (isJoined && lastActiveStr) {
       const lastActive = parseInt(lastActiveStr, 10);
@@ -420,7 +415,7 @@ try {
     <h3 style="font-size:13px; color:var(--ro);">⚠️ 発言の削除確認</h3>
     <div style="font-size:10px; color:var(--mu);">以下の発言を完全に消去しますか？（復元できません）</div>
     <div id="delConfirmPreview" class="del-modal-text"></div>
-    <div class="wait-btns; display:flex; justify-content:space-between; gap:8px; margin-top:12px; width:100%;">
+    <div class="wait-btns" style="display:flex; justify-content:space-between; gap:8px; margin-top:12px; width:100%;">
       <button class="btn bp" id="delExecuteBtn" style="width:100%; background:var(--ro); border:1px solid rgba(244, 63, 94, 0.4); color:#fda4af;">完全に削除</button>
       <button class="btn bq" id="delCancelBtn" style="width:100%;">戻る</button>
     </div>
@@ -503,9 +498,9 @@ const safeLS = {
 };
 
 const safeSS = {
-  get: k => { try { return _sessionStorage.getItem(k); } catch(e) { return null; } },
-  set: (k, v) => { try { _sessionStorage.setItem(k, v); } catch(e) {} },
-  remove: k => { try { _sessionStorage.removeItem(k); } catch(e) {} }
+  get: k => { try { return _localStorage.getItem(k); } catch(e) { return null; } },
+  set: (k, v) => { try { _localStorage.setItem(k, v); } catch(e) {} },
+  remove: k => { try { _localStorage.removeItem(k); } catch(e) {} }
 };
 
 const _initJoined = safeSS.get("nz_is_joined") === "true";
@@ -585,6 +580,23 @@ const updateAdminUI = () => {
     adminBtn.style.display = isAdmin() ? "block" : "none";
   }
 };
+
+// =========================================================================
+// 複数タブでのセッション自動ログイン・ログアウト連動監視
+// =========================================================================
+window.addEventListener("storage", function(e) {
+  if (e.key === "nz_is_joined") {
+    if (e.newValue !== "true" && isJoined) {
+      // 他のタブで退室処理が行われた場合、こちらも連動して終了（リロード）
+      isJoined = false;
+      location.reload();
+    } else if (e.newValue === "true" && !isJoined) {
+      // 他のタブで入室処理が行われた場合、こちらも連動して入室（リロード）
+      isJoined = true;
+      location.reload();
+    }
+  }
+});
 
 // =========================================================================
 // 30分間無発言での自動退室タイマー制御
@@ -681,9 +693,6 @@ async function joinRoom(isReconnect = false) {
   renderPresence(optimisticMembers);
 
   const myPresRef = db.ref(`presence/official/${myUid}`);
-
-  // ⚠️ 回線瞬断時の勝手なもぎ取り（リスト非表示・誤爆退室ログ）を防ぐため
-  // onDisconnect設定は一切行いません。これにより、切断中やタブ閉じ、スリープ時でも30分間確実に生存します。
 
   await myPresRef.set({
     n: myName,
@@ -1696,14 +1705,25 @@ function setupFirebaseListeners() {
         if (ut && typeof ut === "object") ut = nowTrue;
         if (!ut || typeof ut !== "number") continue;
 
-        // ⚠️ 接続初期化のタイムスタンプ補正ラグ（serverTimeOffsetがまだ取得できていない時間）による
-        // お互いのゾンビ削除の誤判定ループを100%防止するため、他端末のデータを強制削除する
-        // デリケートな他律削除をすべて撤廃し、「30分経過したメンバーを表示上でのみ除外する」ように変更しました。
-        if (serverTimeOffset !== 0) {
-          const elapsed = nowTrue - ut;
-          if (elapsed > 30 * 60 * 1000) {
-            continue; 
+        const elapsed = nowTrue - ut;
+
+        // 30分間全く発言も入室もしなかった場合、自動退室（クリーンアップ）の対象とします
+        if (elapsed > 30 * 60 * 1000) {
+          if (isJoined && myUid && id !== myUid) {
+            const targetUser = u;
+            const targetId = id;
+            db.ref(`presence/official/${targetId}`).remove().then(() => {
+              db.ref("chat/official").push({
+                u: targetId,
+                n: targetUser.n,
+                p: targetUser.p || "",
+                c: targetUser.c || "#94a3b8",
+                m: "[SYS]::" + `${targetUser.n} ${targetUser.p || ""}`.trim() + " が退室しました (自動退室)",
+                t: firebase.database.ServerValue.TIMESTAMP
+              }).catch(() => {});
+            }).catch(() => {});
           }
+          continue; 
         }
         membersMap[id] = { id, ...u };
       }

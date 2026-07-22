@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#090d16">
-<title>NEZU CHAT PLATFORM</title>
+<title>NEZUO CHAT</title>
 
 <!-- 動画プレイヤー等の初期読み込み高速化のための事前接続設定 -->
 <link rel="preconnect" href="https://www.youtube-nocookie.com" crossorigin>
@@ -702,112 +702,6 @@ function startAutoExitChecker() {
   autoExitTimer = setInterval(() => { checkActivityTimeout(); }, 1000);
 }
 
-function stopAutoExitTimer() {
-  if (autoExitTimer) {
-    clearInterval(autoExitTimer);
-    autoExitTimer = null;
-  }
-}
-
-// =========================================================================
-// 部屋への「参加する」処理
-// =========================================================================
-async function joinRoom(isReconnect = false) {
-  let n = ""; let tk = "";
-  if (isReconnect) {
-    n = safeLS.get("nz_ni") || "";
-    tk = safeLS.get("nz_tripi") || "";
-  } else {
-    n = D.ni.value.trim();
-    tk = D.tripi.value.trim();
-  }
-  if (!n) { 
-    if (!isReconnect) alert("名前を入力してください。");
-    return; 
-  }
-
-  myName = n;
-  myTrip = window.makeTrip(n, tk);
-
-  isJoined = true;
-  safeLS.set("nz_ni", n);
-  safeLS.set("nz_tripi", tk);
-  safeSS.set("nz_is_joined", "true");
-  safeSS.set("nz_last_active_time", getTrueTime().toString());
-
-  switchUIMode("joined");
-
-  // 楽観的メンバーリスト構築
-  const optimisticMembers = {};
-  presenceCache.forEach(m => { optimisticMembers[m.id] = m; });
-  optimisticMembers[myUid || "temp_uid"] = {
-    id: myUid || "temp_uid",
-    n: myName,
-    p: myTrip,
-    c: curColor,
-    t: getTrueTime()
-  };
-  renderPresence(optimisticMembers);
-
-  // オンラインプレゼンス登録
-  const myPresRef = db.ref(`presence/official/${myUid}`);
-  await myPresRef.set({
-    n: myName,
-    p: myTrip,
-    c: curColor,
-    t: firebase.database.ServerValue.TIMESTAMP
-  }).catch(err => {
-    alert("入室エラー:\n" + err.message);
-    exitToLobbyDirectly();
-    throw err;
-  });
-
-  myPresRef.onDisconnect().remove();
-
-  updateAdminUI(); 
-  setupFirebaseListeners();
-  startAutoExitChecker();
-
-  if (!isReconnect) {
-    const enterText = `${myName} ${myTrip}`.trim() + " が入室しました";
-    const encEnterText = "[SYS]::" + enterText;
-    const tempId = "pnd_sys_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
-    
-    const tempObj = {
-      id: tempId,
-      u: myUid,
-      n: myName,
-      p: myTrip,
-      c: curColor,
-      m: "[SYS]::" + enterText,
-      t: getTrueTime()
-    };
-    pendingMsgs.set(tempId, tempObj);
-    displayedMsgIds.add(tempId);
-    const tempEl = cMsg(tempObj, true);
-    D.tli.appendChild(tempEl);
-    scBottom(true);
-
-    await db.ref(`chat/official`).push({
-      u: myUid,
-      pnd: tempId, 
-      n: myName,
-      p: myTrip,
-      c: curColor,
-      m: encEnterText,
-      t: firebase.database.ServerValue.TIMESTAMP
-    }).catch((err) => {
-      const el = renderedMwNodes.get(tempId);
-      if (el) el.remove();
-      renderedMwNodes.delete(tempId);
-      pendingMsgs.delete(tempId);
-      displayedMsgIds.delete(tempId);
-    });
-  }
-
-  scBottom(true);
-}
-
 // =========================================================================
 // 退室プロセス (公式部屋からの退室)
 // =========================================================================
@@ -861,6 +755,110 @@ async function doExit(isAuto = false) {
   renderPresence({});
   switchUIMode("guest");
   updateAdminUI(); 
+}
+
+function stopAutoExitTimer() {
+  if (autoExitTimer) {
+    clearInterval(autoExitTimer);
+    autoExitTimer = null;
+  }
+}
+
+// =========================================================================
+// 部屋への「参加する」処理
+// =========================================================================
+async function joinRoom(isReconnect = false) {
+  let n = ""; let tk = "";
+  if (isReconnect) {
+    n = safeLS.get("nz_ni") || "";
+    tk = safeLS.get("nz_tripi") || "";
+  } else {
+    n = D.ni.value.trim();
+    tk = D.tripi.value.trim();
+  }
+  if (!n) { 
+    if (!isReconnect) alert("名前を入力してください。");
+    return; 
+  }
+
+  myName = n;
+  myTrip = window.makeTrip(n, tk);
+
+  isJoined = true;
+  safeLS.set("nz_ni", n);
+  safeLS.set("nz_tripi", tk);
+  safeSS.set("nz_is_joined", "true");
+  safeSS.set("nz_last_active_time", getTrueTime().toString());
+
+  switchUIMode("joined");
+
+  // 楽観的メンバーリスト構築 (通信データに残っている現在のメンバー + 自分)
+  const optimisticMembers = { ...currentPresenceMap };
+  optimisticMembers[myUid || "temp_uid"] = {
+    id: myUid || "temp_uid",
+    n: myName,
+    p: myTrip,
+    c: curColor,
+    t: getTrueTime()
+  };
+  renderPresence(optimisticMembers);
+
+  // オンラインプレゼンス登録
+  const myPresRef = db.ref(`presence/official/${myUid}`);
+  await myPresRef.set({
+    n: myName,
+    p: myTrip,
+    c: curColor,
+    t: firebase.database.ServerValue.TIMESTAMP
+  }).catch(err => {
+    alert("入室エラー:\n" + err.message);
+    doExit();
+    throw err;
+  });
+
+  myPresRef.onDisconnect().remove();
+
+  updateAdminUI(); 
+  startAutoExitChecker();
+
+  if (!isReconnect) {
+    const enterText = `${myName} ${myTrip}`.trim() + " が入室しました";
+    const encEnterText = "[SYS]::" + enterText;
+    const tempId = "pnd_sys_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
+    
+    const tempObj = {
+      id: tempId,
+      u: myUid,
+      n: myName,
+      p: myTrip,
+      c: curColor,
+      m: "[SYS]::" + enterText,
+      t: getTrueTime()
+    };
+    pendingMsgs.set(tempId, tempObj);
+    displayedMsgIds.add(tempId);
+    const tempEl = cMsg(tempObj, true);
+    D.tli.appendChild(tempEl);
+    scBottom(true);
+
+    await db.ref(`chat/official`).push({
+      u: myUid,
+      pnd: tempId, 
+      n: myName,
+      p: myTrip,
+      c: curColor,
+      m: encEnterText,
+      t: firebase.database.ServerValue.TIMESTAMP
+    }).catch((err) => {
+      const el = renderedMwNodes.get(tempId);
+      if (el) el.remove();
+      renderedMwNodes.delete(tempId);
+      pendingMsgs.delete(tempId);
+      displayedMsgIds.delete(tempId);
+    });
+  }
+
+  scBottom(true);
 }
 
 const pendingMsgs = new Map();
@@ -1269,13 +1267,6 @@ window.addEventListener("message", (e) => {
 
 D.playerCloseBtn.onclick = closePlayer;
 
-let presenceCache = [];
-try { presenceCache = JSON.parse(safeLS.get("nz_presence_cache") || "[]"); } catch(e) {}
-
-const loadPresenceCache = () => {
-  populatePresenceList(presenceCache);
-};
-
 function renderPresence(serverListMap) {
   if (isJoined && myUid && !serverListMap[myUid]) {
     serverListMap[myUid] = {
@@ -1617,7 +1608,18 @@ D.tripi.addEventListener("input", () => {
   syncProfileValues();
 });
 
-loadPresenceCache(); 
+// 「参加する」ボタンへのクリック処理紐づけ
+D.joinBtn.onclick = () => joinRoom();
+
+// 名前・トリップキー入力欄でEnterキーを押しても参加できるようにする処理
+const handleJoinKey = (e) => {
+  if (e.key === "Enter") {
+    joinRoom();
+  }
+};
+D.ni.addEventListener("keydown", handleJoinKey);
+D.tripi.addEventListener("keydown", handleJoinKey);
+
 
 const boostSync = () => { 
   if (db) db.goOnline(); 

@@ -35,7 +35,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .bx{background:rgba(244,63,94,.16)!important;border-color:rgba(244,63,94,.4)!important;color:#fda4af!important;font-weight:900!important;padding:6px 16px!important;display:none}
 .bx:hover{background:rgba(244,63,94,.25)!important;border-color:var(--ro)!important}
 
-/* 入室者リスト：人数増加時の省スペース・横スクロール最適化 */
+/* 入室者リスト */
 #pl{display:flex;gap:6px;padding:6px 12px;background:var(--s2);border-bottom:1px solid rgba(255,255,255,0.02);flex-shrink:0;align-items:center;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;white-space:nowrap;-webkit-overflow-scrolling:touch;min-height:40px;max-height:40px}
 #pl::-webkit-scrollbar{height:3px}
 #pl::-webkit-scrollbar-track{background:rgba(0,0,0,0.05)}
@@ -79,7 +79,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .jump-btn:active{background:var(--in);color:#fff}
 .jump-btn:disabled{opacity:0.3;cursor:not-allowed}
 
-/* キーボード開閉スイッチボタンのビジュアル改善 */
+/* キーボード開閉スイッチボタン */
 .switch-kb{width:112px!important;height:34px!important;position:relative;border-radius:18px!important;background:var(--s2)!important;border:1px solid var(--bd);padding:0 2px!important;overflow:hidden;transition:all 0.25s ease;cursor:pointer;display:flex;align-items:center}
 .switch-kb::after{content:"";position:absolute;top:2px;left:2px;width:26px;height:26px;background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);border-radius:50%;transition:transform 0.25s ease;z-index:1}
 .switch-kb.active{background:var(--in)!important;border-color:var(--in)!important}
@@ -142,6 +142,14 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .clrc2{aspect-ratio:1;width:100%;max-width:24px;border-radius:50%;margin:0 auto;border:2px solid transparent;cursor:pointer;transition:transform 0.15s,border-color 0.15s}
 .clrc2.sel{border-color:var(--tx)!important;transform:scale(1.25);box-shadow:0 0 10px rgba(255,255,255,0.5);border-width:2px!important}
 </style>
+
+<!-- =========================================================================
+     Firebase compat SDK の読み込み (通常 script タグ方式)
+     ESModule(import)が制限される「Opera Miniの中継サーバー」や「file:プロトコル」でも100%パースされ稼働します
+     ========================================================================= -->
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
 
 <script>
 window.SYSTEM_SALT = "NEZU_PRO_SYS_SALT_2026_V1";
@@ -287,7 +295,7 @@ window.makeTrip = (name, tripKey) => {
     <!-- 参加者リスト -->
     <div id="pl"></div>
 
-    <!-- インライン動画プレイヤー (入室者リストの下に完全に固定) -->
+    <!-- インライン動画プレイヤー -->
     <div id="fixedPlayer">
       <div id="playerHeader">
         <span>📺 インライン再生プレイヤー</span>
@@ -399,12 +407,10 @@ window.makeTrip = (name, tripKey) => {
   </div>
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { getDatabase, ref, push, onValue, set, remove, serverTimestamp, query, limitToLast, runTransaction, goOnline, goOffline, onDisconnect }
-  from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
-
+<script>
+// =========================================================================
+// Firebase compat SDK に対応したコード
+// =========================================================================
 const firebaseConfig = {
   apiKey: "AIzaSyCsRidc0smUQDaBwq-oki5NzxSHx6-ljiw",
   authDomain: "nezuochat.firebaseapp.com",
@@ -415,9 +421,10 @@ const firebaseConfig = {
   appId: "1:154725381397:web:8742ccd957e20cee8ce51c"
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db  = getDatabase(app);
+// 初期化 (UMDグローバル変数の使用)
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db  = firebase.database();
 const $   = id => document.getElementById(id);
 
 const isLocalFileEnv = window.location.protocol === "file:";
@@ -442,7 +449,6 @@ const safeLS = {
   remove: k => { try { localStorage.removeItem(k); } catch(e) {} }
 };
 
-// タブ個別のメモリ空間である sessionStorage にセッション状態を移行
 const safeSS = {
   get: k => { try { return sessionStorage.getItem(k); } catch(e) { return null; } },
   set: (k, v) => { try { sessionStorage.setItem(k, v); } catch(e) {} },
@@ -456,10 +462,9 @@ const _initTrip = safeLS.get("nz_tripi") || "";
 D.ni.value = _initNi;
 D.tripi.value = _initTrip;
 
-// 起動時に保存されたキーボード開閉設定を読み込む（デフォルトは送信後に閉じる「false」）
 let keepKbOpen = safeLS.get("nz_keep_kb_open") === "true";
-let isAutoScroll = true; // スクロール追従の状態管理
-const unreadMsgIds = new Set(); // 未読発言IDを保持するSetオブジェクト
+let isAutoScroll = true; 
+const unreadMsgIds = new Set(); 
 let _scPending = false; 
 let myUid = null;
 let isJoined = _initJoined; 
@@ -494,7 +499,6 @@ setGlobalColor(curColor);
 
 const getTrueTime = () => Date.now() + serverTimeOffset;
 
-// サーバー推定時刻および確定時刻を柔軟かつ堅牢に取得するパーサー
 const getMsgTime = (m) => {
   if (m && m.t) {
     if (typeof m.t === "number") return m.t;
@@ -506,21 +510,14 @@ const getMsgTime = (m) => {
   return getTrueTime();
 };
 
-/* =========================================================
-   セキュリティを考慮した判定処理
-   ========================================================= */
-
-// セレクタ回避用エスケープ
 const escapeSelector = (val) => {
   return typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(val) : val.replace(/(:|\.|\[|\]|,|=|@)/g, "\\$1");
 };
 
-// 管理者権限判定（UIDベース）
 const isAdmin = () => {
   return myUid === "J64MocsPo0QD7hSwZpQgEeDdO6X2";
 };
 
-// 安全かつ厳格な日付フォーマッタ
 const fDT = (ts) => {
   if (!ts || typeof ts !== "number") return "--:--:--";
   const d = new Date(ts);
@@ -536,9 +533,6 @@ const updateAdminUI = () => {
   }
 };
 
-/* =========================================================
-   30分無発言自動退室タイマー制御
-   ========================================================= */
 function checkActivityTimeout() {
   if (!isJoined) return false;
   const lastActive = parseInt(safeSS.get("nz_last_active_time") || "0");
@@ -552,7 +546,6 @@ function checkActivityTimeout() {
     return false;
   }
 
-  // 30分放置された場合に自動退室を実行
   if (elapsed >= 30 * 60 * 1000) {
     stopAutoExitTimer();
     doExit(true); 
@@ -575,9 +568,6 @@ function stopAutoExitTimer() {
   }
 }
 
-/* =========================================================
-   閲覧 / 参加 状態遷移 (遅延なし & 常に最新描写に連動)
-   ========================================================= */
 async function joinRoom(isReconnect = false) {
   let n = ""; let tk = "";
   if (isReconnect) {
@@ -592,13 +582,12 @@ async function joinRoom(isReconnect = false) {
     return; 
   }
 
-  // 再接続時、30分以上が経過している場合は自動退室ログを確実に流してロビーに戻す
   if (isReconnect) {
     const lastActive = parseInt(safeSS.get("nz_last_active_time") || "0");
     const trueTime = getTrueTime();
     if (lastActive > 0 && (trueTime - lastActive >= 30 * 60 * 1000)) {
       isJoined = true;
-      await doExit(true); // 退室お知らせログありで退室
+      await doExit(true);
       return;
     }
   }
@@ -611,7 +600,6 @@ async function joinRoom(isReconnect = false) {
   myName = n;
   myTrip = window.makeTrip(n, tk);
 
-  // 【0ms入室描画（楽観的即時アップデート）】
   isJoined = true;
   safeLS.set("nz_ni", n);
   safeLS.set("nz_tripi", tk);
@@ -625,7 +613,6 @@ async function joinRoom(isReconnect = false) {
   D.ib.style.setProperty("display", "flex", "important");
   D.exBtn.style.setProperty("display", "block", "important");
 
-  // 楽観的メンバーリスト仮追加
   const optimisticMembers = {};
   presenceCache.forEach(m => { optimisticMembers[m.id] = m; });
   optimisticMembers[myUid || "temp_uid"] = {
@@ -637,31 +624,30 @@ async function joinRoom(isReconnect = false) {
   };
   renderPresence(optimisticMembers);
 
-  const myPresRef = ref(db, `presence/official/${myUid}`);
+  const myPresRef = db.ref(`presence/official/${myUid}`);
   
-  // オンディスクネクト処理の設定 (Auth非依存の動作維持のため、失敗しても例外を無視して処理)
   try {
-    await onDisconnect(myPresRef).cancel().catch(() => {});
-    onDisconnect(myPresRef).remove();
+    await myPresRef.onDisconnect().cancel().catch(() => {});
+    myPresRef.onDisconnect().remove();
     
-    const disconnectChatRef = push(ref(db, "chat/official"));
-    onDisconnect(disconnectChatRef).set({
+    const disconnectChatRef = db.ref("chat/official").push();
+    disconnectChatRef.onDisconnect().set({
       u: myUid,
       n: myName,
       p: myTrip,
       c: curColor,
       m: "[SYS]::" + `${myName} ${myTrip}`.trim() + " が退室しました (回線切断)",
-      t: serverTimestamp()
+      t: firebase.database.ServerValue.TIMESTAMP
     });
   } catch (e) {
     console.warn("onDisconnect登録エラー:", e);
   }
 
-  await set(myPresRef, {
+  await myPresRef.set({
     n: myName,
     p: myTrip,
     c: curColor,
-    t: serverTimestamp()
+    t: firebase.database.ServerValue.TIMESTAMP
   }).catch(err => {
     alert("入室エラー:\n" + err.message + "\n※ローカル(file:)環境の場合、Firebaseルールをオープンにする必要があります。");
     if (!isReconnect) {
@@ -674,7 +660,6 @@ async function joinRoom(isReconnect = false) {
   updateAdminUI(); 
   startAutoExitChecker();
 
-  // 手動で入室ボタンを押した場合のみ入室ログを確実に送信
   if (!isReconnect) {
     const tempId = "pnd_sys_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
     const enterText = `${myName} ${myTrip}`.trim() + " が入室しました";
@@ -693,14 +678,14 @@ async function joinRoom(isReconnect = false) {
     D.tli.appendChild(tempEl);
     scBottom(true);
 
-    await push(ref(db, "chat/official"), {
+    await db.ref("chat/official").push({
       u: myUid,
       pnd: tempId, 
       n: myName,
       p: myTrip,
       c: curColor,
       m: "[SYS]::" + enterText,
-      t: serverTimestamp()
+      t: firebase.database.ServerValue.TIMESTAMP
     }).catch((err) => {
       console.error("入室ログ送信失敗:", err);
       const el = D.tli.querySelector(`.mw[data-mid="${escapeSelector(tempId)}"]`);
@@ -727,9 +712,8 @@ async function doExit(isAuto = false) {
   const cleanColor = curColor;
 
   const logText = "[SYS]::" + `${cleanName} ${cleanTrip}`.trim() + (isAuto ? " が退室しました (自動退室)" : " が退室しました");
-  const exitTime = isAuto ? (parseInt(safeSS.get("nz_last_active_time") || "0") + 30 * 60 * 1000) : serverTimestamp();
+  const exitTime = isAuto ? (parseInt(safeSS.get("nz_last_active_time") || "0") + 30 * 60 * 1000) : firebase.database.ServerValue.TIMESTAMP;
 
-  // 1. 自身の画面に退室ログを楽観的に即時追加 (0ms描画)
   const tempId = "pnd_sys_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
   const tempObj = {
     id: tempId,
@@ -746,18 +730,17 @@ async function doExit(isAuto = false) {
   D.tli.appendChild(tempEl);
   scBottom(true);
 
-  // 2. データベースのオンラインリストから削除 & 退室ログを登録
   const promises = [];
   if (cleanUid) {
-    const myPresRef = ref(db, `presence/official/${cleanUid}`);
+    const myPresRef = db.ref(`presence/official/${cleanUid}`);
     promises.push(
-      onDisconnect(myPresRef).cancel()
-        .then(() => remove(myPresRef))
-        .catch(() => remove(myPresRef))
+      myPresRef.onDisconnect().cancel()
+        .then(() => myPresRef.remove())
+        .catch(() => myPresRef.remove())
     );
   }
   
-  promises.push(push(ref(db, "chat/official"), {
+  promises.push(db.ref("chat/official").push({
     u: cleanUid || "sys_exit",
     pnd: tempId, 
     n: cleanName,
@@ -771,17 +754,14 @@ async function doExit(isAuto = false) {
     console.error("退室データベース処理失敗:", err);
   });
 
-  // 3. ローカルの参加状態を解除してロビーへ戻す
   isJoined = false;
   stopAutoExitTimer();
 
   safeSS.remove("nz_is_joined");
   safeSS.remove("nz_last_active_time");
 
-  // オンラインリストの描画をリセット
   renderPresence({});
 
-  // UIを完全にロビー状態へ切り替え
   D.joinForm.style.setProperty("display", "flex", "important");
   D.ib.style.setProperty("display", "none", "important");
   D.exBtn.style.setProperty("display", "none", "important");
@@ -789,9 +769,6 @@ async function doExit(isAuto = false) {
   updateAdminUI(); 
 }
 
-/* =========================================================
-   メッセージ送信（遅延なし・楽観型アップデート）
-   ========================================================= */
 const pendingMsgs = new Map();
 
 async function sendMsg(overrideText = null, imgData = null) {
@@ -823,7 +800,6 @@ async function sendMsg(overrideText = null, imgData = null) {
     t: getTrueTime()
   };
 
-  // 楽観的アップデート
   pendingMsgs.set(tempId, tempObj);
   displayedMsgIds.add(tempId);
 
@@ -838,7 +814,7 @@ async function sendMsg(overrideText = null, imgData = null) {
 
   safeSS.set("nz_last_active_time", getTrueTime().toString());
 
-  set(ref(db, `presence/official/${myUid}/t`), serverTimestamp()).catch(() => {});
+  db.ref(`presence/official/${myUid}/t`).set(firebase.database.ServerValue.TIMESTAMP).catch(() => {});
 
   const pushData = { 
     u: myUid, 
@@ -847,10 +823,10 @@ async function sendMsg(overrideText = null, imgData = null) {
     p: myTrip,
     c: curColor,
     m: imgData ? "IMG::" + imgData : txt, 
-    t: serverTimestamp()
+    t: firebase.database.ServerValue.TIMESTAMP
   };
 
-  await push(ref(db, "chat/official"), pushData).catch(() => {
+  await db.ref("chat/official").push(pushData).catch(() => {
     const localEl = D.tli.querySelector(`.mw[data-mid="${escapeSelector(tempId)}"]`);
     if (localEl) localEl.remove();
     pendingMsgs.delete(tempId);
@@ -859,9 +835,6 @@ async function sendMsg(overrideText = null, imgData = null) {
   });
 }
 
-/* =========================================================
-   メッセージDOM生成
-   ========================================================= */
 function cMsg(m) {
   const el = document.createElement("div");
   el.className = "mw";
@@ -998,9 +971,6 @@ function scBottom(force = false) {
   });
 }
 
-/* =========================================================
-   未読件数バッジ
-   ========================================================= */
 function updateUnreadBadge() {
   const badge = D.unreadBadge;
   if (!badge) return;
@@ -1013,9 +983,6 @@ function updateUnreadBadge() {
   }
 }
 
-/* =========================================================
-   タイムライン上下移動ボタン
-   ========================================================= */
 function updateJumpBtns() {
   if (!D.tl) return;
   const scrollTop = D.tl.scrollTop;
@@ -1072,9 +1039,6 @@ function parseTxtSplit(txt) {
   return elements;
 }
 
-/* =========================================================
-   YouTube / ニコニコ動画URLパース
-   ========================================================= */
 const getYoutubeId = (url) => {
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|shorts\/|live\/)([^#\&\?]*).*/;
   const match = url.match(regExp);
@@ -1087,9 +1051,6 @@ const getNicoId = (url) => {
   return match ? match[1] : null;
 };
 
-/* =========================================================
-   インライン動画プレイヤー
-   ========================================================= */
 function createMediaContainer(url) {
   const ytId = getYoutubeId(url);
   const nicoId = getNicoId(url);
@@ -1180,9 +1141,6 @@ window.addEventListener("message", (e) => {
 
 D.playerCloseBtn.onclick = closePlayer;
 
-/* =========================================================
-   キャッシュストレージ & ローカル初期ロード
-   ========================================================= */
 let presenceCache = [];
 try { presenceCache = JSON.parse(safeLS.get("nz_presence_cache") || "[]"); } catch(e) {}
 
@@ -1190,9 +1148,6 @@ const loadPresenceCache = () => {
   drawPresenceList(presenceCache);
 };
 
-/* =========================================================
-   入室者リスト（プレゼンス）の描画
-   ========================================================= */
 function renderPresence(serverListMap) {
   if (isJoined && myUid && !serverListMap[myUid]) {
     serverListMap[myUid] = {
@@ -1235,9 +1190,6 @@ function drawPresenceList(membersList) {
   updateJumpBtns(); 
 }
 
-/* =========================================================
-   UIインタラクション・イベントバインド
-   ========================================================= */
 D.joinBtn.onclick = () => joinRoom(false);
 D.exBtn.onclick = () => { if (confirm("チャットから退室しますか？")) doExit(); };
 
@@ -1289,17 +1241,17 @@ D.adminClearBtn.onclick = async () => {
       D.tli.appendChild(tempEl);
       scBottom(true);
 
-      await set(ref(db, "chat/official"), null).catch(() => {});
+      await db.ref("chat/official").set(null).catch(() => {});
       
-      const clearRef = push(ref(db, "chat/official"));
-      await set(clearRef, {
+      const clearRef = db.ref("chat/official").push();
+      await clearRef.set({
         u: myUid,
         pnd: tempId,
         n: "管理者",
         p: "",
         c: "#f43f5e",
         m: clearText,
-        t: serverTimestamp()
+        t: firebase.database.ServerValue.TIMESTAMP
       }).catch((err) => {
         alert("全消去の書き込みに失敗しました: " + err.message);
         const el = D.tli.querySelector(`.mw[data-mid="${escapeSelector(tempId)}"]`);
@@ -1405,11 +1357,11 @@ D.delExecuteBtn.onclick = async () => {
   D.delConfirmMod.classList.remove("show");
   targetDelId = null;
 
-  await remove(ref(db, `chat/official/${idToDelete}`)).catch(() => {});
+  await db.ref(`chat/official/${idToDelete}`).remove().catch(() => {});
 
-  await set(ref(db, `chat/official/${idToDelete}`), {
+  await db.ref(`chat/official/${idToDelete}`).set({
     deleted: true,
-    t: serverTimestamp()
+    t: firebase.database.ServerValue.TIMESTAMP
   }).catch(() => {});
 };
 
@@ -1454,7 +1406,7 @@ D.clrOk.onclick = async () => {
   curColor = tmpColor; setGlobalColor(curColor); safeLS.set("nz_color", curColor);
   D.clrmod.classList.remove("show"); updateTripPreview();
   if (isJoined) {
-    await set(ref(db, `presence/official/${myUid}`), { n: myName, p: myTrip, c: curColor, t: serverTimestamp() });
+    await db.ref(`presence/official/${myUid}`).set({ n: myName, p: myTrip, c: curColor, t: firebase.database.ServerValue.TIMESTAMP });
   }
 };
 
@@ -1524,19 +1476,13 @@ overlayEl.addEventListener("click", (e) => {
 
 D.imgViewCloseBtn.onclick = () => D.imgViewMod.classList.remove("show");
 
-/* =========================================================
-   オンラインリスト起動時描画
-   ========================================================= */
 loadPresenceCache(); 
 updateAdminUI(); 
 updateTripPreview(); 
 updateKbButton(false);
 
-/* =========================================================
-   Firebaseリアルタイム同期 & 高速再接続マネジメント
-   ========================================================= */
 const boostSync = () => { 
-  if (db) goOnline(db); 
+  if (db) db.goOnline(); 
   if (checkActivityTimeout()) return; 
   if (db) { 
     startAutoExitChecker(); 
@@ -1556,8 +1502,8 @@ function setupFirebaseListeners() {
   if (listenersInitialized) return;
   listenersInitialized = true;
 
-  const chatQuery = query(ref(db, "chat/official"), limitToLast(100)); 
-  onValue(chatQuery, snap => {
+  const chatQuery = db.ref("chat/official").limitToLast(100); 
+  chatQuery.on("value", snap => {
     const serverMsgs = [];
     let latestClearTs = 0; 
 
@@ -1691,7 +1637,7 @@ function setupFirebaseListeners() {
     console.error("Firebaseデータ受信エラー:", error);
   });
 
-  onValue(ref(db, "presence/official"), s => {
+  db.ref("presence/official").on("value", s => {
     const list = s.val() || {}; 
     const membersMap = {};
     const nowTrue = getTrueTime();
@@ -1715,7 +1661,6 @@ function setupFirebaseListeners() {
 
 // 初期起動の認証プロセス
 const initAuthProcess = async () => {
-  // Auth非依存：匿名認証がブロックされる極限環境用に、まず固有のセッション用ゲストUIDを発行
   if (!myUid) {
     myUid = safeSS.get("nz_session_uid") || "guest_" + Math.random().toString(36).slice(2, 10);
     safeSS.set("nz_session_uid", myUid);
@@ -1723,7 +1668,7 @@ const initAuthProcess = async () => {
 
   try {
     if (!auth.currentUser) {
-      const userCredential = await signInAnonymously(auth);
+      const userCredential = await auth.signInAnonymously();
       myUid = userCredential.user.uid;
       safeSS.set("nz_session_uid", myUid);
     } else {
@@ -1731,7 +1676,6 @@ const initAuthProcess = async () => {
     }
   } catch (err) {
     console.warn("匿名認証に失敗しました。ゲストUIDで処理を続行します:", err);
-    // エラーが起きてもあらかじめ確保したゲストUIDを維持し、処理を止めずにデータベース同期を走らせます
   }
 
   D.joinBtn.disabled = false; 
@@ -1740,33 +1684,37 @@ const initAuthProcess = async () => {
   updateAdminUI(); 
   setupFirebaseListeners();
   
-  onValue(ref(db, ".info/serverTimeOffset"), (snap) => { serverTimeOffset = snap.val() || 0; });
-  
-  onValue(ref(db, ".info/connected"), (snap) => {
-    if (snap.val() === true && isJoined && myUid) {
-      const myPresRef = ref(db, `presence/official/${myUid}`);
-      onDisconnect(myPresRef).cancel().then(() => {
-        onDisconnect(myPresRef).remove();
-        
-        const disconnectChatRef = push(ref(db, "chat/official"));
-        onDisconnect(disconnectChatRef).set({
-          u: myUid,
-          n: myName,
-          p: myTrip,
-          c: curColor,
-          m: "[SYS]::" + `${myName} ${myTrip}`.trim() + " が退室しました (回線切断)",
-          t: serverTimestamp()
-        });
-        
-        set(myPresRef, {
-          n: myName,
-          p: myTrip,
-          c: curColor,
-          t: serverTimestamp()
+  try {
+    db.ref(".info/serverTimeOffset").on("value", (snap) => { serverTimeOffset = snap.val() || 0; });
+    
+    db.ref(".info/connected").on("value", (snap) => {
+      if (snap.val() === true && isJoined && myUid) {
+        const myPresRef = db.ref(`presence/official/${myUid}`);
+        myPresRef.onDisconnect().cancel().then(() => {
+          myPresRef.onDisconnect().remove();
+          
+          const disconnectChatRef = db.ref("chat/official").push();
+          disconnectChatRef.onDisconnect().set({
+            u: myUid,
+            n: myName,
+            p: myTrip,
+            c: curColor,
+            m: "[SYS]::" + `${myName} ${myTrip}`.trim() + " が退室しました (回線切断)",
+            t: firebase.database.ServerValue.TIMESTAMP
+          });
+          
+          myPresRef.set({
+            n: myName,
+            p: myTrip,
+            c: curColor,
+            t: firebase.database.ServerValue.TIMESTAMP
+          }).catch(() => {});
         }).catch(() => {});
-      }).catch(() => {});
-    }
-  });
+      }
+    });
+  } catch (e) {
+    console.warn("接続情報監視の設定に失敗しました:", e);
+  }
   
   if (safeSS.get("nz_is_joined") === "true" && _initNi && _initTrip) joinRoom(true);
 };

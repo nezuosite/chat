@@ -242,14 +242,15 @@ window.makeTrip = (name, tripKey) => {
 
 (function() {
   try {
-    const isJoined = localStorage.getItem("nz_is_joined") === "true";
+    // 同一ブラウザの複数タブ競合を防ぐため、入室管理状態は sessionStorage（タブ個別領域）を参照
+    const isJoined = sessionStorage.getItem("nz_is_joined") === "true";
     const ni = localStorage.getItem("nz_ni");
     const tripi = localStorage.getItem("nz_tripi");
     const color = localStorage.getItem("nz_color") || "#94a3b8";
     document.documentElement.style.setProperty("--usr-color", color);
     
     // 起動時に最速で30分放置判定を行い、タイムアウト判定時に即時にUIをロビー表示にさせます
-    const lastActiveStr = localStorage.getItem("nz_last_active_time");
+    const lastActiveStr = sessionStorage.getItem("nz_last_active_time");
     let isTimedOut = false;
     if (isJoined && lastActiveStr) {
       const lastActive = parseInt(lastActiveStr, 10);
@@ -449,7 +450,14 @@ const safeLS = {
   remove: k => { try { localStorage.removeItem(k); } catch(e) {} }
 };
 
-const _initJoined = safeLS.get("nz_is_joined") === "true";
+// タブ個別のメモリ空間である sessionStorage にセッション状態を移行
+const safeSS = {
+  get: k => { try { return sessionStorage.getItem(k); } catch(e) { return null; } },
+  set: (k, v) => { try { sessionStorage.setItem(k, v); } catch(e) {} },
+  remove: k => { try { sessionStorage.removeItem(k); } catch(e) {} }
+};
+
+const _initJoined = safeSS.get("nz_is_joined") === "true";
 const _initNi = safeLS.get("nz_ni") || "";
 const _initTrip = safeLS.get("nz_tripi") || "";
 
@@ -541,14 +549,14 @@ const updateAdminUI = () => {
    ========================================================= */
 function checkActivityTimeout() {
   if (!isJoined) return false;
-  const lastActive = parseInt(safeLS.get("nz_last_active_time") || "0");
+  const lastActive = parseInt(safeSS.get("nz_last_active_time") || "0");
   if (!lastActive) return false;
 
   const trueTime = getTrueTime();
   const elapsed = trueTime - lastActive;
   
   if (elapsed < 0) {
-    safeLS.set("nz_last_active_time", trueTime.toString());
+    safeSS.set("nz_last_active_time", trueTime.toString());
     return false;
   }
 
@@ -594,7 +602,7 @@ async function joinRoom(isReconnect = false) {
 
   // 再接続時、30分以上が経過している場合は自動退室ログを確実に流してロビーに戻す
   if (isReconnect) {
-    const lastActive = parseInt(safeLS.get("nz_last_active_time") || "0");
+    const lastActive = parseInt(safeSS.get("nz_last_active_time") || "0");
     const trueTime = getTrueTime();
     if (lastActive > 0 && (trueTime - lastActive >= 30 * 60 * 1000)) {
       if (!myUid) {
@@ -606,8 +614,8 @@ async function joinRoom(isReconnect = false) {
             myUid = auth.currentUser.uid;
           }
         } catch(e) {
-          myUid = safeLS.get("nz_local_uid") || "local_" + Math.random().toString(36).slice(2, 10);
-          safeLS.set("nz_local_uid", myUid);
+          myUid = safeSS.get("nz_session_uid") || "local_" + Math.random().toString(36).slice(2, 10);
+          safeSS.set("nz_session_uid", myUid);
         }
       }
       myName = n;
@@ -637,8 +645,9 @@ async function joinRoom(isReconnect = false) {
       if (n === "ねづお" && window.makeTrip(n, tk) === "◆JoNrMB") {
         myUid = "J64MocsPo0QD7hSwZpQgEeDdO6X2";
       } else {
-        myUid = safeLS.get("nz_local_uid") || "local_" + Math.random().toString(36).slice(2, 10);
-        safeLS.set("nz_local_uid", myUid);
+        // 同一ブラウザでの複数タブ検証時にお互いのUIDを上書きしないよう、sessionStorageからUIDを解決
+        myUid = safeSS.get("nz_session_uid") || "local_" + Math.random().toString(36).slice(2, 10);
+        safeSS.set("nz_session_uid", myUid);
       }
     }
   }
@@ -650,10 +659,10 @@ async function joinRoom(isReconnect = false) {
   isJoined = true;
   safeLS.set("nz_ni", n);
   safeLS.set("nz_tripi", tk);
-  safeLS.set("nz_is_joined", "true");
+  safeSS.set("nz_is_joined", "true");
 
   if (!isReconnect) {
-    safeLS.set("nz_last_active_time", getTrueTime().toString());
+    safeSS.set("nz_last_active_time", getTrueTime().toString());
   }
 
   D.joinForm.style.setProperty("display", "none", "important");
@@ -746,7 +755,7 @@ async function doExit(isAuto = false) {
   const cleanColor = curColor;
 
   const logText = "[SYS]::" + `${cleanName} ${cleanTrip}`.trim() + (isAuto ? " が退室しました (自動退室)" : " が退室しました");
-  const exitTime = isAuto ? (parseInt(safeLS.get("nz_last_active_time") || "0") + 30 * 60 * 1000) : serverTimestamp();
+  const exitTime = isAuto ? (parseInt(safeSS.get("nz_last_active_time") || "0") + 30 * 60 * 1000) : serverTimestamp();
 
   // 1. 自身の画面に退室ログを楽観的に即時追加 (0ms描画)
   const tempId = "pnd_sys_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
@@ -790,8 +799,8 @@ async function doExit(isAuto = false) {
   isJoined = false;
   stopAutoExitTimer();
 
-  safeLS.remove("nz_is_joined");
-  safeLS.remove("nz_last_active_time");
+  safeSS.remove("nz_is_joined");
+  safeSS.remove("nz_last_active_time");
 
   // オンラインリストの描画をリセット
   renderPresence({});
@@ -853,7 +862,7 @@ async function sendMsg(overrideText = null, imgData = null) {
   updateUnreadBadge();
   scBottom(true);
 
-  safeLS.set("nz_last_active_time", getTrueTime().toString());
+  safeSS.set("nz_last_active_time", getTrueTime().toString());
 
   set(ref(db, `presence/official/${myUid}/t`), serverTimestamp()).catch(() => {});
 
@@ -1801,8 +1810,8 @@ const initAuthProcess = async () => {
     console.warn("匿名認証試行に失敗しました（ローカル制限の可能性があります）:", err);
     // 認証がブロックされた環境のみ、一意のローカルUIDで代用
     if (!myUid) {
-      myUid = safeLS.get("nz_local_uid") || "local_tmout_" + Math.random().toString(36).slice(2, 10);
-      safeLS.set("nz_local_uid", myUid);
+      myUid = safeSS.get("nz_session_uid") || "local_tmout_" + Math.random().toString(36).slice(2, 10);
+      safeSS.set("nz_session_uid", myUid);
     }
   }
   D.joinBtn.disabled = false; D.joinBtn.textContent = "参加する";
@@ -1813,7 +1822,7 @@ const initAuthProcess = async () => {
     if (snap.val() === true && isJoined && myUid) set(ref(db, `presence/official/${myUid}/t`), serverTimestamp()).catch(() => {});
   });
   
-  if (safeLS.get("nz_is_joined") === "true" && _initNi && _initTrip) joinRoom(true);
+  if (safeSS.get("nz_is_joined") === "true" && _initNi && _initTrip) joinRoom(true);
 };
 
 initAuthProcess();

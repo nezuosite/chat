@@ -49,7 +49,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 #tl{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px;background-color:#0d1117;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;contain:layout;scroll-behavior:smooth;will-change:scroll-position}
 #tl-inner{display:flex;flex-direction:column;justify-content:flex-end;gap:0;width:100%;max-width:800px;margin:0 auto;min-height:100%}
 
-/* メッセージ外枠：常に正確に表示されるように修正 */
+/* メッセージ外枠 */
 .mw{position:relative;display:flex;flex-direction:column;width:100%;opacity:1;animation:slideInUp 0.15s cubic-bezier(0.22,1,0.36,1) forwards;user-select:text;-webkit-user-select:text;padding:12px 14px;border-bottom:1px solid rgba(51,65,85,0.18)}
 .mm{display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:6px;padding-right:70px}
 .ts{color:var(--mu);opacity:0.6;font-size:10.5px;margin-left:auto;font-family:monospace}
@@ -117,7 +117,7 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 #imgViewMod{background:rgba(0,0,0,0.96);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);flex-direction:column;align-items:center;justify-content:center;touch-action:none}
 #imgViewMod.show{display:flex!important}
 
-/* 拡大モーダル：操作領域と下部閉じるボタン領域を完全に分離 */
+/* 拡大モーダル */
 #zoomViewport {
   width: 100%;
   height: calc(100dvh - 100px);
@@ -144,12 +144,10 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 </style>
 
 <script>
-// トリップ生成に関連するSHA-256および変数を確実にグローバル定義
 window.SYSTEM_SALT = "NEZU_PRO_SYS_SALT_2026_V1";
 
-// 日本語（マルチバイト文字）を正しく計算できるようにUTF-8エンコードに対応させたSHA-256関数
 window.sha256 = (s) => {
-  const ascii = unescape(encodeURIComponent(s)); // 日本語文字列を8ビット文字シーケンスに展開
+  const ascii = unescape(encodeURIComponent(s)); 
   const rightRotate = (value, amount) => (value >>> amount) | (value << (32 - amount));
   const mathPow = Math.pow;
   const maxWord = mathPow(2, 32);
@@ -222,7 +220,6 @@ window.sha256 = (s) => {
   return result;
 };
 
-// SHA-256による頑丈な10桁Base62トリップコード生成ロジックを確実にグローバル化
 window.makeTrip = (name, tripKey) => {
   if (!tripKey) return "";
   const revKey = tripKey.split("").reverse().join("");
@@ -242,14 +239,12 @@ window.makeTrip = (name, tripKey) => {
 
 (function() {
   try {
-    // 同一ブラウザの複数タブ競合を防ぐため、入室管理状態は sessionStorage（タブ個別領域）を参照
     const isJoined = sessionStorage.getItem("nz_is_joined") === "true";
     const ni = localStorage.getItem("nz_ni");
     const tripi = localStorage.getItem("nz_tripi");
     const color = localStorage.getItem("nz_color") || "#94a3b8";
     document.documentElement.style.setProperty("--usr-color", color);
     
-    // 起動時に最速で30分放置判定を行い、タイムアウト判定時に即時にUIをロビー表示にさせます
     const lastActiveStr = sessionStorage.getItem("nz_last_active_time");
     let isTimedOut = false;
     if (isJoined && lastActiveStr) {
@@ -259,7 +254,6 @@ window.makeTrip = (name, tripKey) => {
       }
     }
 
-    // 初期化ブロック内のCSS調整
     if (isJoined && !isTimedOut && ni && tripi) {
       document.write('<style>#joinForm { display: none !important; } #ib { display: flex !important; } #exBtn { display: block !important; }</style>');
     } else {
@@ -521,7 +515,7 @@ const escapeSelector = (val) => {
   return typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(val) : val.replace(/(:|\.|\[|\]|,|=|@)/g, "\\$1");
 };
 
-// 管理者権限判定
+// 管理者権限判定（UIDベース）
 const isAdmin = () => {
   return myUid === "J64MocsPo0QD7hSwZpQgEeDdO6X2";
 };
@@ -558,6 +552,7 @@ function checkActivityTimeout() {
     return false;
   }
 
+  // 30分放置された場合に自動退室を実行
   if (elapsed >= 30 * 60 * 1000) {
     stopAutoExitTimer();
     doExit(true); 
@@ -602,23 +597,8 @@ async function joinRoom(isReconnect = false) {
     const lastActive = parseInt(safeSS.get("nz_last_active_time") || "0");
     const trueTime = getTrueTime();
     if (lastActive > 0 && (trueTime - lastActive >= 30 * 60 * 1000)) {
-      if (!myUid) {
-        try {
-          if (!auth.currentUser) {
-            const userCredential = await signInAnonymously(auth);
-            myUid = userCredential.user.uid;
-          } else {
-            myUid = auth.currentUser.uid;
-          }
-        } catch(e) {
-          myUid = safeSS.get("nz_session_uid") || "local_" + Math.random().toString(36).slice(2, 10);
-          safeSS.set("nz_session_uid", myUid);
-        }
-      }
-      myName = n;
-      myTrip = window.makeTrip(n, tk);
       isJoined = true;
-      await doExit(true);
+      await doExit(true); // 退室お知らせログありで退室
       return;
     }
   }
@@ -626,25 +606,6 @@ async function joinRoom(isReconnect = false) {
   if (!isReconnect) {
     D.joinBtn.disabled = true;
     D.joinBtn.textContent = "接続中...";
-  }
-
-  // Firebase認証セッションの確保と入室エラーの回避
-  try {
-    if (!auth.currentUser) {
-      const userCredential = await signInAnonymously(auth);
-      myUid = userCredential.user.uid;
-    } else {
-      myUid = auth.currentUser.uid;
-    }
-  } catch (err) {
-    if (!myUid) {
-      if (n === "ねづお" && window.makeTrip(n, tk) === "◆JoNrMB") {
-        myUid = "J64MocsPo0QD7hSwZpQgEeDdO6X2";
-      } else {
-        myUid = safeSS.get("nz_session_uid") || "local_" + Math.random().toString(36).slice(2, 10);
-        safeSS.set("nz_session_uid", myUid);
-      }
-    }
   }
 
   myName = n;
@@ -677,13 +638,12 @@ async function joinRoom(isReconnect = false) {
   renderPresence(optimisticMembers);
 
   const myPresRef = ref(db, `presence/official/${myUid}`);
-
-  // オンディスクネクト (回線切断・タブ閉じ・ブラウザ終了時) の自動退室処理の登録
+  
+  // オンディスクネクト処理の設定 (Auth非依存の動作維持のため、失敗しても例外を無視して処理)
   try {
     await onDisconnect(myPresRef).cancel().catch(() => {});
     onDisconnect(myPresRef).remove();
     
-    // 切断時の退室ログ送信予約
     const disconnectChatRef = push(ref(db, "chat/official"));
     onDisconnect(disconnectChatRef).set({
       u: myUid,
@@ -703,7 +663,7 @@ async function joinRoom(isReconnect = false) {
     c: curColor,
     t: serverTimestamp()
   }).catch(err => {
-    alert("入室エラー:\n" + err.message + "\n※ローカル(file:)環境の場合、Firebaseルールを一時的に公開にする必要があります。");
+    alert("入室エラー:\n" + err.message + "\n※ローカル(file:)環境の場合、Firebaseルールをオープンにする必要があります。");
     if (!isReconnect) {
       D.joinBtn.disabled = false;
       D.joinBtn.textContent = "参加する";
@@ -786,7 +746,7 @@ async function doExit(isAuto = false) {
   D.tli.appendChild(tempEl);
   scBottom(true);
 
-  // 2. 切断時自動ログを解除した上で、プレゼンス削除および退室ログの登録
+  // 2. データベースのオンラインリストから削除 & 退室ログを登録
   const promises = [];
   if (cleanUid) {
     const myPresRef = ref(db, `presence/official/${cleanUid}`);
@@ -1054,7 +1014,7 @@ function updateUnreadBadge() {
 }
 
 /* =========================================================
-   タイムライン上下移動ボタンの活性・非活性制御
+   タイムライン上下移動ボタン
    ========================================================= */
 function updateJumpBtns() {
   if (!D.tl) return;
@@ -1113,7 +1073,7 @@ function parseTxtSplit(txt) {
 }
 
 /* =========================================================
-   すべてのYouTube / ニコニコ動画URLへの包括パース処理
+   YouTube / ニコニコ動画URLパース
    ========================================================= */
 const getYoutubeId = (url) => {
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|shorts\/|live\/)([^#\&\?]*).*/;
@@ -1128,7 +1088,7 @@ const getNicoId = (url) => {
 };
 
 /* =========================================================
-   インライン動画プレイヤー (入室者リスト下に完全固定)
+   インライン動画プレイヤー
    ========================================================= */
 function createMediaContainer(url) {
   const ytId = getYoutubeId(url);
@@ -1231,7 +1191,7 @@ const loadPresenceCache = () => {
 };
 
 /* =========================================================
-   入室者リスト（プレゼンス）の楽観的即時描画システム
+   入室者リスト（プレゼンス）の描画
    ========================================================= */
 function renderPresence(serverListMap) {
   if (isJoined && myUid && !serverListMap[myUid]) {
@@ -1731,7 +1691,6 @@ function setupFirebaseListeners() {
     console.error("Firebaseデータ受信エラー:", error);
   });
 
-  // オンラインプレゼンス(入室者リスト)のリアルタイム監視
   onValue(ref(db, "presence/official"), s => {
     const list = s.val() || {}; 
     const membersMap = {};
@@ -1743,7 +1702,6 @@ function setupFirebaseListeners() {
         if (ut && typeof ut === "object") ut = nowTrue;
         if (!ut || typeof ut !== "number") continue;
 
-        // 30分放置されたプレゼンスデータは、描画上およびリスト処理上除外する (常に最新の状態を担保)
         if (nowTrue - ut > 30 * 60 * 1000) {
           continue;
         }
@@ -1757,31 +1715,36 @@ function setupFirebaseListeners() {
 
 // 初期起動の認証プロセス
 const initAuthProcess = async () => {
+  // Auth非依存：匿名認証がブロックされる極限環境用に、まず固有のセッション用ゲストUIDを発行
+  if (!myUid) {
+    myUid = safeSS.get("nz_session_uid") || "guest_" + Math.random().toString(36).slice(2, 10);
+    safeSS.set("nz_session_uid", myUid);
+  }
+
   try {
     if (!auth.currentUser) {
       const userCredential = await signInAnonymously(auth);
       myUid = userCredential.user.uid;
+      safeSS.set("nz_session_uid", myUid);
     } else {
       myUid = auth.currentUser.uid;
     }
   } catch (err) {
-    console.warn("匿名認証試行に失敗しました:", err);
-    if (!myUid) {
-      myUid = safeSS.get("nz_session_uid") || "local_tmout_" + Math.random().toString(36).slice(2, 10);
-      safeSS.set("nz_session_uid", myUid);
-    }
+    console.warn("匿名認証に失敗しました。ゲストUIDで処理を続行します:", err);
+    // エラーが起きてもあらかじめ確保したゲストUIDを維持し、処理を止めずにデータベース同期を走らせます
   }
-  D.joinBtn.disabled = false; D.joinBtn.textContent = "参加する";
-  updateAdminUI(); setupFirebaseListeners();
+
+  D.joinBtn.disabled = false; 
+  D.joinBtn.textContent = "参加する";
+  
+  updateAdminUI(); 
+  setupFirebaseListeners();
   
   onValue(ref(db, ".info/serverTimeOffset"), (snap) => { serverTimeOffset = snap.val() || 0; });
   
-  // 接続確立・再接続時の同期リスナー設定
   onValue(ref(db, ".info/connected"), (snap) => {
     if (snap.val() === true && isJoined && myUid) {
       const myPresRef = ref(db, `presence/official/${myUid}`);
-      
-      // 再接続された際、onDisconnectの再設定とプレゼンス情報の強制更新を実行する
       onDisconnect(myPresRef).cancel().then(() => {
         onDisconnect(myPresRef).remove();
         

@@ -334,6 +334,8 @@ const safeSS = {
 // =========================================================================
 let currentRoomId = "official"; 
 let isJoined = false;
+let isFirstLoad = true; // ★追加：初期読み込み制御フラグ
+let isFirebaseListenersBound = false; // ★追加：重複リスナー防止フラグ
 
 let keepKbOpen = safeLS.get("nz_keep_kb_open") === "true";
 let isAutoScroll = true; 
@@ -1776,7 +1778,6 @@ const initAuthProcess = async () => {
 
   await syncProfileValues();
 
-  // 認証の完了（非同期）を確実にハンドリングしてから、Firebase監視を起動する
   if (auth) {
     auth.onAuthStateChanged(async (user) => {
       if (!user) {
@@ -1792,8 +1793,11 @@ const initAuthProcess = async () => {
         safeLS.set("nz_permanent_uid", myUid);
       }
 
-      // 認証確定後にリスナー登録
-      setupFirebaseListeners();
+      // 認証確定後にリスナー登録（★修正：重複呼び出し防止）
+      if (!isFirebaseListenersBound) {
+        setupFirebaseListeners();
+        isFirebaseListenersBound = true;
+      }
 
       if (isJoined) {
         await joinRoom(true);

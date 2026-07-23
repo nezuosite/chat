@@ -662,6 +662,18 @@ async function doExit(isAuto = false) {
   D.tli.appendChild(tempEl);
   scBottom(true);
 
+  // 他のタブとの即時同期のため、まずはローカル情報を更新
+  isJoined = false;
+  stopAutoExitTimer();
+
+  safeSS.remove("nz_is_joined");
+  safeSS.remove("nz_last_post_time");
+
+  renderPresence(currentPresenceMap);
+  switchUIMode("guest");
+  updateAdminUI(); 
+
+  // サーバー上のデータを削除
   if (cleanUid) {
     await db.ref(`presence/official/${cleanUid}`).remove().catch(() => {});
   }
@@ -675,16 +687,6 @@ async function doExit(isAuto = false) {
     m: logText,
     t: exitTimeMillis
   }).catch(() => {});
-
-  isJoined = false;
-  stopAutoExitTimer();
-
-  safeSS.remove("nz_is_joined");
-  safeSS.remove("nz_last_post_time");
-
-  renderPresence(currentPresenceMap);
-  switchUIMode("guest");
-  updateAdminUI(); 
 }
 
 function stopAutoExitTimer() {
@@ -1605,7 +1607,7 @@ function clampPan() {
   const ir = imgEl.naturalWidth / imgEl.naturalHeight, cr = cw / ch;
   let iw, ih;
   if (ir > cr) { iw = cw; ih = cw / ir; } else { ih = ch; iw = ch * ir; }
-  const currentWidth = iw * scale, currentHeight = iw * scale;
+  const currentWidth = iw * scale, currentHeight = ih * scale;
   let limitX = currentWidth > cw ? (currentWidth - cw) / 2 : 0;
   let limitY = currentHeight > ch ? (currentHeight - ch) / 2 : 0;
   panX = Math.max(-limitX, Math.min(limitX, panX)); panY = Math.max(-limitY, Math.min(limitY, panY));
@@ -1700,6 +1702,48 @@ if (window.visualViewport) {
   });
 }
 window.addEventListener('resize', adjustViewport);
+
+// =========================================================================
+// 同一ブラウザ内・複数タブ間でのリアルタイム同期処理
+// =========================================================================
+window.addEventListener('storage', (e) => {
+  if (e.key === "nz_is_joined") {
+    const joined = e.newValue === "true";
+    if (joined !== isJoined) {
+      isJoined = joined;
+      if (isJoined) {
+        // 他のタブで入室した場合：状態を読み込んでUIを同期
+        myName = safeLS.get("nz_ni") || "";
+        const tk = safeLS.get("nz_tripi") || "";
+        myTrip = window.makeTrip(myName, tk);
+        curColor = safeLS.get("nz_color") || "#94a3b8";
+        setGlobalColor(curColor);
+        switchUIMode("joined");
+        startAutoExitChecker();
+      } else {
+        // 他のタブで退室（または自動退室）した場合：UIを未参加に戻す
+        stopAutoExitTimer();
+        switchUIMode("guest");
+      }
+      renderPresence(currentPresenceMap);
+    }
+  }
+  // 入力欄の入力内容のリアルタイム同期
+  if (e.key === "nz_ni" || e.key === "nz_tripi") {
+    syncProfileValues();
+  }
+  // 色設定の変更の同期
+  if (e.key === "nz_color") {
+    curColor = e.newValue || "#94a3b8";
+    setGlobalColor(curColor);
+    updateModalColorPreview(curColor);
+  }
+  // キーボード維持設定の同期
+  if (e.key === "nz_keep_kb_open") {
+    keepKbOpen = e.newValue === "true";
+    if (D.kbKeepOpenChk) D.kbKeepOpenChk.checked = keepKbOpen;
+  }
+});
 
 let isFirstLoad = true; 
 
@@ -1849,7 +1893,6 @@ function setupFirebaseListeners() {
 }
 
 const initAuthProcess = async () => {
-  // UIDの保管先をlocalStorageに変更することで過去ログの自分の発言も後から削除可能に
   myUid = safeLS.get("nz_permanent_uid");
   if (!myUid) {
     myUid = "user_" + Math.random().toString(36).slice(2, 10) + "_" + Date.now();

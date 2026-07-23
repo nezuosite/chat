@@ -334,8 +334,8 @@ const safeSS = {
 // =========================================================================
 let currentRoomId = "official"; 
 let isJoined = false;
-let isFirstLoad = true; // ★追加：初期読み込み制御フラグ
-let isFirebaseListenersBound = false; // ★追加：重複リスナー防止フラグ
+let isFirstLoad = true; // ★追加：初期読み込みフラグ
+let isFirebaseListenersBound = false; // ★追加：リスナー重複登録を防止するフラグ
 
 let keepKbOpen = safeLS.get("nz_keep_kb_open") === "true";
 let isAutoScroll = true; 
@@ -353,9 +353,7 @@ let myTrip = "";
 let lastSendTime = 0;
 let targetDelId = null;
 
-let isSyncingAfterReconnect = true;
-let reconnectSyncTimeout = null;
-let cachedPresenceMap = {};
+// ★ isSyncingAfterReconnect, reconnectSyncTimeout, cachedPresenceMap は完全に削除されました
 
 let isJoinFormExpanded = false;
 
@@ -491,16 +489,6 @@ function switchUIMode(mode) {
 const updateLastPostTime = (time) => {
   safeSS.set("nz_last_post_time", time.toString());
 };
-
-function startReconnectGracePeriod() {
-  isSyncingAfterReconnect = true;
-  if (reconnectSyncTimeout) clearTimeout(reconnectSyncTimeout);
-  reconnectSyncTimeout = setTimeout(() => {
-    isSyncingAfterReconnect = false;
-    cachedPresenceMap = { ...currentPresenceMap };
-    renderPresence(currentPresenceMap);
-  }, 2500); 
-}
 
 function checkActivityTimeout() {
   if (!isJoined) return;
@@ -1186,13 +1174,7 @@ function renderPresence(serverListMap) {
     delete cleanMap[myUid];
   }
 
-  if (isSyncingAfterReconnect && cachedPresenceMap) {
-    for (const [id, u] of Object.entries(cachedPresenceMap)) {
-      if (!cleanMap[id]) {
-        cleanMap[id] = u;
-      }
-    }
-  }
+  // ★キャッシュから旧ユーザー情報を無理やりマージする復活処理（復活バグの原因）は削除されました
 
   const members = Object.values(cleanMap).filter(m => m && m.n);
   populatePresenceList(members);
@@ -1614,7 +1596,6 @@ function loadCachedPresence() {
       const cachedPres = JSON.parse(cachedStr);
       if (cachedPres && typeof cachedPres === "object") {
         currentPresenceMap = cachedPres;
-        cachedPresenceMap = cachedPres; 
         renderPresence(cachedPres);
       }
     }
@@ -1793,7 +1774,7 @@ const initAuthProcess = async () => {
         safeLS.set("nz_permanent_uid", myUid);
       }
 
-      // 認証確定後にリスナー登録（★修正：重複呼び出し防止）
+      // 認証確定後にリスナー登録（重複呼び出し防止）
       if (!isFirebaseListenersBound) {
         setupFirebaseListeners();
         isFirebaseListenersBound = true;
@@ -1816,7 +1797,6 @@ const initAuthProcess = async () => {
           
           db.ref(".info/connected").on("value", (snap) => {
             if (snap.val() === true) {
-              startReconnectGracePeriod();
               if (isJoined && myUid) {
                 const myPresRef = db.ref(`presence/official/${myUid}`);
                 
@@ -1827,6 +1807,8 @@ const initAuthProcess = async () => {
                   t: firebase.database.ServerValue.TIMESTAMP,
                   p_t: firebase.database.ServerValue.TIMESTAMP
                 }).catch(() => {});
+                
+                // ★ブラウザ閉じ・通信切断時は意図通り生存させるため、onDisconnect().remove() は設定しません
               }
             }
           });

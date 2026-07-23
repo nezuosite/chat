@@ -784,10 +784,6 @@ async function joinRoom(isReconnect = false) {
     throw err;
   });
 
-  // 【最重要】ご要望の通り、スリープ、回線切れ、タブ閉じなどでは勝手に消さないため、
-  // onDisconnect().remove() のバインドを完全に廃止（コメントアウトまたは削除）
-  // myPresRef.onDisconnect().remove();
-
   updateAdminUI(); 
   startAutoExitChecker();
 
@@ -1054,7 +1050,8 @@ function cMsg(m, isNewIncoming = false) {
     let displayTxt = m.m.startsWith("[SYS]::") ? m.m.substring(7) : m.m;
     el.innerHTML = `<div class="sys-msg">${escapeHtml(displayTxt)}<span class="sys-ts">[${fDT(msgTime)}]</span></div>`;
     
-    if (isAdmin()) {
+    // 自分のお知らせ(システムメッセージ)または管理者であれば削除ボタンを表示
+    if (m.u === myUid || isAdmin()) {
       const sysDiv = el.querySelector(".sys-msg");
       sysDiv.style.position = "relative";
       sysDiv.style.paddingRight = "65px";
@@ -1117,6 +1114,7 @@ function cMsg(m, isNewIncoming = false) {
     }
   }
 
+  // 自分の発言(過去ログ含む)または管理者であれば削除ボタンを表示
   if (m.u === myUid || isAdmin()) {
     const delBtn = document.createElement("button");
     delBtn.className = "del-btn-inline";
@@ -1607,7 +1605,7 @@ function clampPan() {
   const ir = imgEl.naturalWidth / imgEl.naturalHeight, cr = cw / ch;
   let iw, ih;
   if (ir > cr) { iw = cw; ih = cw / ir; } else { ih = ch; iw = ch * ir; }
-  const currentWidth = iw * scale, currentHeight = ih * scale;
+  const currentWidth = iw * scale, currentHeight = iw * scale;
   let limitX = currentWidth > cw ? (currentWidth - cw) / 2 : 0;
   let limitY = currentHeight > ch ? (currentHeight - ch) / 2 : 0;
   panX = Math.max(-limitX, Math.min(limitX, panX)); panY = Math.max(-limitY, Math.min(limitY, panY));
@@ -1662,8 +1660,16 @@ const handleJoinKey = (e) => {
 D.ni.addEventListener("keydown", handleJoinKey);
 D.tripi.addEventListener("keydown", handleJoinKey);
 
+let lastBoostTime = 0;
 const boostSync = () => { 
-  if (db) db.goOnline(); 
+  const now = Date.now();
+  if (now - lastBoostTime < 1000) return; 
+  lastBoostTime = now;
+
+  if (db) {
+    db.goOffline(); 
+    db.goOnline(); 
+  }
   checkActivityTimeout(); 
   if (db && isJoined && myUid) { 
     startAutoExitChecker(); 
@@ -1757,13 +1763,28 @@ function setupFirebaseListeners() {
       safeSS.set("nz_chat_cache", JSON.stringify(cacheData));
     } catch (e) {}
 
+    const activeServerMsgIds = new Set();
+    serverMsgs.forEach(m => {
+      if (!m.deleted) activeServerMsgIds.add(m.id);
+    });
+
     let unreadChanged = false;
+
+    unreadMsgIds.forEach(mid => {
+      if (!activeServerMsgIds.has(mid)) {
+        unreadMsgIds.delete(mid);
+        unreadChanged = true;
+      }
+    });
+
     if (!isFirstLoad) {
       serverMsgs.forEach(m => {
         if (m.deleted) return;
         if (!displayedMsgIds.has(m.id) && m.u !== myUid && !isAutoScroll) {
-          unreadMsgIds.add(m.id);
-          unreadChanged = true;
+          if (!unreadMsgIds.has(m.id)) {
+            unreadMsgIds.add(m.id);
+            unreadChanged = true;
+          }
         }
       });
     }
@@ -1808,7 +1829,6 @@ function setupFirebaseListeners() {
 
         let pt = u.p_t || ut;
 
-        // 他人が30分以上無発言（放置）であることを検知した場合の代行処理
         if (isJoined && id !== myUid && (nowTrue - pt >= 1800000)) {
           triggerOtherExit(id, u, pt + 1800000);
           continue; 
@@ -1829,22 +1849,24 @@ function setupFirebaseListeners() {
 }
 
 const initAuthProcess = async () => {
+  // UIDの保管先をlocalStorageに変更することで過去ログの自分の発言も後から削除可能に
+  myUid = safeLS.get("nz_permanent_uid");
+  if (!myUid) {
+    myUid = "user_" + Math.random().toString(36).slice(2, 10) + "_" + Date.now();
+    safeLS.set("nz_permanent_uid", myUid);
+  }
+
   loadCachedPresence();
   loadCachedChat();
 
   syncProfileValues();
-
-  if (!myUid) {
-    myUid = safeSS.get("nz_session_uid") || "guest_" + Math.random().toString(36).slice(2, 10);
-    safeSS.set("nz_session_uid", myUid);
-  }
 
   if (auth) {
     try {
       if (!auth.currentUser) {
         const userCredential = await auth.signInAnonymously();
         myUid = userCredential.user.uid;
-        safeSS.set("nz_session_uid", myUid);
+        safeLS.set("nz_permanent_uid", myUid);
       } else {
         myUid = auth.currentUser.uid;
       }

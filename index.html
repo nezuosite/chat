@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://i.ytimg.com" crossorigin>
 <link rel="preconnect" href="https://img.cdn.nimg.jp" crossorigin>
 
-<!-- Firebase SDK v8 の追加 -->
+<!-- Firebase SDK v8 の読み込み -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -76,7 +76,8 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .media-badge{display:inline-flex;align-items:center;gap:2px;font-weight:800;padding:3px 6px;border-radius:4px;font-size:9.5px;color:#fff;text-transform:uppercase;line-height:1;white-space:nowrap;pointer-events:none}
 .open-player-btn{background:var(--in);color:#fff;font-size:11px;font-weight:bold;border-radius:6px;padding:5px 12px;cursor:pointer;border:none;transition:background 0.15s;white-space:nowrap;box-shadow:0 2px 6px rgba(79,70,229,0.25)}
 .open-player-btn:hover{background:var(--i2)}
-#joinForm{display:none;flex-direction:column;padding:16px 14px calc(16px + var(--safe));background:var(--sf);border-top:1px solid var(--bd);gap:12px;flex-shrink:0;width:100%;box-shadow:0 -4px 20px rgba(0,0,0,0.25)}
+
+#joinForm{display:none;flex-direction:column;background:var(--sf);border-top:1px solid var(--bd);gap:0;flex-shrink:0;width:100%;box-shadow:0 -4px 20px rgba(0,0,0,0.25)}
 .jrow{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:center}
 @media (max-width:580px){
   .jrow{grid-template-columns:1fr;gap:10px}
@@ -84,7 +85,6 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 }
 #ib{display:none;flex-direction:column;padding:6px calc(8px + env(safe-area-inset-right,0px)) calc(6px + var(--safe)) calc(8px + env(safe-area-inset-left,0px));background:var(--sf);border-top:1px solid var(--bd);gap:6px;flex-shrink:0;width:100%;transform:translate3d(0,0,0);will-change:transform;box-shadow:0 -4px 20px rgba(0,0,0,0.25)}
 #ib.show{display:flex}
-#ibTopBar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.03)}
 #ibToolbar{width:100%;align-items:center;display:flex;gap:6px}
 .jump-btns{display:flex;flex-direction:row;gap:6px;flex-shrink:0}
 .jump-btn{width:56px;height:34px;border-radius:8px;background:var(--s2);border:1px solid var(--bd);color:var(--tx);font-size:12px;font-weight:bold;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;cursor:pointer}
@@ -197,36 +197,44 @@ var _sessionStorage = _localStorage;
       <div id="tl-inner"></div>
     </div>
 
-    <!-- ゲスト用参加フォーム -->
-    <div id="joinForm">
-      <div style="font-size: 12px; color: var(--mu); font-weight: bold; text-align: center; margin-bottom: 4px;">💬 表示名と本人証明キーを入力してチャットに参加</div>
-      <div class="jrow">
-        <input type="text" id="ni" class="inp" placeholder="名前 (10文字まで)" maxlength="10" autocomplete="off">
-        <input type="text" id="tripi" class="inp" placeholder="トリップキー (任意)" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
-        <button class="btn bp" id="joinBtn" style="height: 42px; padding: 0 16px;">参加する</button>
+    <!-- タイムライン操作バー (ゲスト・参加者問わず常に表示) -->
+    <div id="ibTopBar" style="background: var(--sf); border-top: 1px solid var(--bd); padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-shrink: 0;">
+      <div style="display: flex; align-items: center; gap: 6px; height: 34px;">
+        <div id="kbKeepOpenContainer" style="display: none; align-items: center; gap: 6px;">
+          <input type="checkbox" id="kbKeepOpenChk" style="width: 15px; height: 15px; accent-color: var(--in); cursor: pointer;">
+          <label for="kbKeepOpenChk" style="font-size: 11.5px; font-weight: bold; color: var(--tx); cursor: pointer; user-select: none; white-space: nowrap;">発言後にキーボードを開いたままにする</label>
+        </div>
       </div>
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px; width: 100%; gap: 8px;">
-        <span id="tripPrevText" style="font-size: 11.5px; font-weight: bold; color: var(--usr-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">トリッププレビュー: 名無し</span>
-        <button id="copyTripBtn" class="btn bq" style="height: 26px; padding: 0 10px; font-size: 11px; border-radius: 6px; display: none; align-items: center; justify-content: center; font-weight: bold; border-color: rgba(255,255,255,0.1); flex-shrink: 0;" title="トリップをクリップボードにコピー">トリップをコピー</button>
+      <div class="jump-btns">
+        <button class="jump-btn" id="jumpUpBtn" title="タイムラインの最上部へ" disabled>▲</button>
+        <div style="position: relative; display: inline-block;">
+          <button class="jump-btn" id="jumpDownBtn" title="タイムラインの最下部へ" disabled>▼</button>
+          <span id="unreadBadge" style="display: none; position: absolute; top: -6px; right: -6px; background: var(--ro); color: #fff; font-size: 9px; font-weight: bold; border-radius: 10px; min-width: 18px; height: 18px; padding: 0 4px; align-items: center; justify-content: center; line-height: 1; border: 1.5px solid var(--sf); box-shadow: 0 2px 5px rgba(0,0,0,0.3); pointer-events: none; z-index: 5;">0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ゲスト用参加フォーム（折りたたみアコーディオン） -->
+    <div id="joinForm">
+      <div id="joinFormHeader" style="padding: 12px; text-align: center; cursor: pointer; font-size: 12.5px; color: var(--tx); font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 6px; user-select: none; background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.02);">
+        <span>💬 チャットに参加する (タップで展開)</span>
+        <span id="joinFormArrow" style="transition: transform 0.15s ease; display: inline-block;">▼</span>
+      </div>
+      <div id="joinFormContent" style="display: none; flex-direction: column; padding: 16px 14px calc(16px + var(--safe)); gap: 12px; border-top: 1px solid var(--bd);">
+        <div class="jrow">
+          <input type="text" id="ni" class="inp" placeholder="名前 (10文字まで)" maxlength="10" autocomplete="off">
+          <input type="text" id="tripi" class="inp" placeholder="トリップキー (任意)" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
+          <button class="btn bp" id="joinBtn" style="height: 42px; padding: 0 16px;">参加する</button>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px; width: 100%; gap: 8px;">
+          <span id="tripPrevText" style="font-size: 11.5px; font-weight: bold; color: var(--usr-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">トリッププレビュー: 名無し</span>
+          <button id="copyTripBtn" class="btn bq" style="height: 26px; padding: 0 10px; font-size: 11px; border-radius: 6px; display: none; align-items: center; justify-content: center; font-weight: bold; border-color: rgba(255,255,255,0.1); flex-shrink: 0;" title="トリップをクリップボードにコピー">トリップをコピー</button>
+        </div>
       </div>
     </div>
 
     <!-- 発言用入力バー -->
     <div id="ib">
-      <div id="ibTopBar">
-        <div style="display: flex; align-items: center; gap: 6px; padding-left: 4px; height: 34px;">
-          <input type="checkbox" id="kbKeepOpenChk" style="width: 15px; height: 15px; accent-color: var(--in); cursor: pointer;">
-          <label for="kbKeepOpenChk" style="font-size: 11.5px; font-weight: bold; color: var(--tx); cursor: pointer; user-select: none; white-space: nowrap;">発言後にキーボードを開いたままにする</label>
-        </div>
-        <div class="jump-btns">
-          <button class="jump-btn" id="jumpUpBtn" title="タイムラインの最上部へ" disabled>▲</button>
-          <div style="position: relative; display: inline-block;">
-            <button class="jump-btn" id="jumpDownBtn" title="タイムラインの最下部へ" disabled>▼</button>
-            <span id="unreadBadge" style="display: none; position: absolute; top: -6px; right: -6px; background: var(--ro); color: #fff; font-size: 9px; font-weight: bold; border-radius: 10px; min-width: 18px; height: 18px; padding: 0 4px; align-items: center; justify-content: center; line-height: 1; border: 1.5px solid var(--sf); box-shadow: 0 2px 5px rgba(0,0,0,0.3); pointer-events: none; z-index: 5;">0</span>
-          </div>
-        </div>
-      </div>
-
       <div id="ibToolbar">
         <input type="file" id="fileInput" accept="image/jpeg, image/png, image/gif, image/webp" style="display:none;">
         <div class="mi-container">
@@ -363,6 +371,14 @@ let myTrip = "";
 let lastSendTime = 0;
 let targetDelId = null;
 
+// 再接続時チラつき防止用グローバル変数
+let isSyncingAfterReconnect = true;
+let reconnectSyncTimeout = null;
+let cachedPresenceMap = {};
+
+// 参加フォーム開閉フラグ
+let isJoinFormExpanded = false;
+
 let scale = 1, panX = 0, panY = 0;
 let lastPanX = 0, lastPanY = 0, isPanning = false;
 let initialDistance = 0;
@@ -431,7 +447,7 @@ const updateAdminUI = () => {
 // =========================================================================
 // Web Crypto API を使用した超軽量・高速ネイティブSHA256 (0ms遅延・バグ完全排除)
 // =========================================================================
-window.SYSTEM_SALT = window.SYSTEM_SALT || "nz_chat_salt_default_key"; // デフォルトソルト定義
+window.SYSTEM_SALT = window.SYSTEM_SALT || "nz_chat_salt_default_key";
 
 window.sha256 = async (str) => {
   const buf = new TextEncoder().encode(str);
@@ -481,12 +497,19 @@ function switchUIMode(mode) {
     D.joinForm.style.display = "flex";
     D.exBtn.style.display = "none";
     D.clrBtn.style.display = "none";
+    $("kbKeepOpenContainer").style.display = "none";
+    
+    // 入力アコーディオンは初期状態で折りたたむ
+    isJoinFormExpanded = false;
+    $("joinFormContent").style.display = "none";
+    $("joinFormArrow").style.transform = "rotate(0deg)";
   } else if (mode === "joined") {
     D.ib.style.display = "flex";
     D.joinForm.style.display = "none";
     D.exBtn.style.display = "block";
     D.exBtn.textContent = "退室";
     D.clrBtn.style.display = "block";
+    $("kbKeepOpenContainer").style.display = "flex";
   }
 }
 
@@ -494,6 +517,19 @@ function switchUIMode(mode) {
 const updateLastPostTime = (time) => {
   safeSS.set("nz_last_post_time", time.toString());
 };
+
+// =========================================================================
+// 猶予期間（Grace Period）の設定
+// =========================================================================
+function startReconnectGracePeriod() {
+  isSyncingAfterReconnect = true;
+  if (reconnectSyncTimeout) clearTimeout(reconnectSyncTimeout);
+  reconnectSyncTimeout = setTimeout(() => {
+    isSyncingAfterReconnect = false;
+    cachedPresenceMap = { ...currentPresenceMap };
+    renderPresence(currentPresenceMap);
+  }, 2500); 
+}
 
 // =========================================================================
 // 確実な自立型自動退室タイマー（10秒に1回チェック。無発言30分で確実に発火）
@@ -549,6 +585,9 @@ async function doExit(isAuto = false) {
 
   const tempEl = cMsg(tempObj, true);
   D.tli.appendChild(tempEl);
+  
+  // 退室した瞬間だけ自動追従（強制スクロール）を実行
+  isAutoScroll = true;
   scBottom(true);
 
   // 他のタブとの即時同期のため、まずはローカル情報を更新
@@ -680,6 +719,8 @@ async function joinRoom(isReconnect = false) {
     displayedMsgIds.add(tempId);
     const tempEl = cMsg(tempObj, true);
     D.tli.appendChild(tempEl);
+    
+    isAutoScroll = true;
     scBottom(true);
 
     await db.ref(`chat/official`).push({
@@ -780,7 +821,6 @@ const renderedMwNodes = new Map();
 // =========================================================================
 function syncMessagesDOM(targetMsgs) {
   if (!targetMsgs || !Array.isArray(targetMsgs)) return;
-  // キャッシュ破損などによるスクリプトクラッシュを完全に防ぐガード
   const cleanMsgs = targetMsgs.filter(m => m && m.id);
 
   const currentNodes = Array.from(D.tli.children);
@@ -923,7 +963,6 @@ function cMsg(m, isNewIncoming = false) {
     let displayTxt = m.m.startsWith("[SYS]::") ? m.m.substring(7) : m.m;
     el.innerHTML = `<div class="sys-msg">${escapeHtml(displayTxt)}<span class="sys-ts">[${fDT(msgTime)}]</span></div>`;
     
-    // 自分のお知らせ(システムメッセージ)または管理者であれば削除ボタンを表示
     if (m.u === myUid || isAdmin()) {
       const sysDiv = el.querySelector(".sys-msg");
       sysDiv.style.position = "relative";
@@ -985,7 +1024,6 @@ function cMsg(m, isNewIncoming = false) {
     }
   }
 
-  // 自分の発言(過去ログ含む)または管理者であれば削除ボタンを表示
   if (m.u === myUid || isAdmin()) {
     const delBtn = document.createElement("button");
     delBtn.className = "del-btn-inline";
@@ -1003,6 +1041,7 @@ function cMsg(m, isNewIncoming = false) {
   return el;
 }
 
+// タイムラインを最下部に強制または追従スクロールする
 function scBottom(force = false) {
   if (!isAutoScroll && !force) return;
   if (_scPending) return;
@@ -1204,6 +1243,15 @@ function renderPresence(serverListMap) {
     delete cleanMap[myUid];
   }
 
+  // 起動時、およびネットワークの再接続猶予中におけるチラつきマージ処理
+  if (isSyncingAfterReconnect && cachedPresenceMap) {
+    for (const [id, u] of Object.entries(cachedPresenceMap)) {
+      if (!cleanMap[id]) {
+        cleanMap[id] = u;
+      }
+    }
+  }
+
   const members = Object.values(cleanMap).filter(m => m && m.n);
   populatePresenceList(members);
 }
@@ -1267,6 +1315,8 @@ D.adminClearBtn.onclick = async () => {
       displayedMsgIds.add(tempId);
       const tempEl = cMsg(tempObj, true);
       D.tli.appendChild(tempEl);
+      
+      isAutoScroll = true;
       scBottom(true);
 
       await db.ref(`chat/official`).set(null).catch(() => {});
@@ -1299,7 +1349,6 @@ preventFocusLoss(D.sdBtn);
 preventFocusLoss(D.clrMsgBtn);
 preventFocusLoss(D.imgBtn);
 
-// 標準的なclickイベントへ統一して競合バグを完全解消
 D.sdBtn.onclick = () => sendMsg();
 D.clrMsgBtn.onclick = () => {
   D.mi.value = ""; 
@@ -1568,6 +1617,19 @@ if (window.visualViewport) {
 }
 window.addEventListener('resize', adjustViewport);
 
+// 参加フォーム折りたたみアコーディオンのクリックリスナー
+$("joinFormHeader").onclick = () => {
+  isJoinFormExpanded = !isJoinFormExpanded;
+  if (isJoinFormExpanded) {
+    $("joinFormContent").style.display = "flex";
+    $("joinFormArrow").style.transform = "rotate(180deg)";
+  } else {
+    $("joinFormContent").style.display = "none";
+    $("joinFormArrow").style.transform = "rotate(0deg)";
+  }
+  scBottom(true);
+};
+
 // =========================================================================
 // 同一ブラウザ内・複数タブ間でのリアルタイム同期処理
 // =========================================================================
@@ -1608,8 +1670,6 @@ window.addEventListener('storage', (e) => {
   }
 });
 
-let isFirstLoad = true; 
-
 function loadCachedPresence() {
   try {
     const cachedStr = safeSS.get("nz_presence_cache");
@@ -1617,6 +1677,7 @@ function loadCachedPresence() {
       const cachedPres = JSON.parse(cachedStr);
       if (cachedPres && typeof cachedPres === "object") {
         currentPresenceMap = cachedPres;
+        cachedPresenceMap = cachedPres; // 初期表示データの補完用キャッシュに退避
         renderPresence(cachedPres);
       }
     }
@@ -1697,13 +1758,11 @@ function setupFirebaseListeners() {
       });
     }
 
-    // 楽観的送信メッセージがサーバーに書き込まれて戻ってきた際、DOMを消して再構築するのを防ぐ
     serverMsgs.forEach(m => {
       if (m.pnd && pendingMsgs.has(m.pnd)) {
         pendingMsgs.delete(m.pnd);
         const tempEl = renderedMwNodes.get(m.pnd);
         if (tempEl) {
-          // 要素のデータIDを書き換えて、そのまま再利用（完全なフェード・置換によりチラつきを100%防止）
           tempEl.dataset.mid = m.id;
           tempEl.classList.remove("new-msg-anim"); 
           tempEl.style.opacity = "1"; 
@@ -1744,7 +1803,6 @@ function setupFirebaseListeners() {
 
         let pt = u.p_t || ut;
 
-        // サーバーとの時差(serverTimeOffset)がロード完了するまでは、時刻のズレによる他人の誤判定キックを防ぐ
         if (isOffsetLoaded && isJoined && id !== myUid && (nowTrue - pt >= 1800000)) {
           triggerOtherExit(id, u, pt + 1800000);
           continue; 
@@ -1771,7 +1829,6 @@ const initAuthProcess = async () => {
     safeLS.set("nz_permanent_uid", myUid);
   }
 
-  // 1. 参加状態の確認を復元処理よりも前に行い、リロード時の人数減少を防ぐ
   const hasNi = safeLS.get("nz_ni") || "";
   isJoined = (safeSS.get("nz_is_joined") === "true") && (hasNi !== "");
 
@@ -1779,7 +1836,6 @@ const initAuthProcess = async () => {
   const tk = safeLS.get("nz_tripi") || ""; 
   myTrip = await window.makeTrip(myName, tk);
 
-  // 2. その後にキャッシュ読み込みを即座に実行
   loadCachedPresence();
   loadCachedChat();
 
@@ -1811,23 +1867,25 @@ const initAuthProcess = async () => {
 
   if (!isConnectedBound) {
     try {
-      // データベースから時差補正値を読み込んでフラグを立てる
       db.ref(".info/serverTimeOffset").on("value", (snap) => { 
         serverTimeOffset = snap.val() || 0; 
         isOffsetLoaded = true; 
       });
       
       db.ref(".info/connected").on("value", (snap) => {
-        if (snap.val() === true && isJoined && myUid) {
-          const myPresRef = db.ref(`presence/official/${myUid}`);
-          
-          myPresRef.set({
-            n: myName,
-            p: myTrip,
-            c: curColor,
-            t: firebase.database.ServerValue.TIMESTAMP,
-            p_t: firebase.database.ServerValue.TIMESTAMP
-          }).catch(() => {});
+        if (snap.val() === true) {
+          startReconnectGracePeriod(); // ネットワーク接続復帰のたびに表示補完モードを起動
+          if (isJoined && myUid) {
+            const myPresRef = db.ref(`presence/official/${myUid}`);
+            
+            myPresRef.set({
+              n: myName,
+              p: myTrip,
+              c: curColor,
+              t: firebase.database.ServerValue.TIMESTAMP,
+              p_t: firebase.database.ServerValue.TIMESTAMP
+            }).catch(() => {});
+          }
         }
       });
       isConnectedBound = true;

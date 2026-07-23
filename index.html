@@ -28,11 +28,9 @@ button, .chip, .btn, .jump-btn, .bsd, .bclrm, .battach, .open-player-btn, .modal
   border: none;
   background: none;
   touch-action: manipulation;
-  /* 離したときはスプリングのように戻る */
   transition: transform 0.08s cubic-bezier(0, 0, 0.2, 1), opacity 0.08s cubic-bezier(0, 0, 0.2, 1), background-color 0.12s ease, border-color 0.12s ease;
 }
 button:active, .chip:active, .btn:active, .jump-btn:active, .bsd:active, .bclrm:active, .battach:active, .open-player-btn:active, .modal-bottom-close:active, .del-btn-inline:active {
-  /* 触れた瞬間(0.01秒)に凹んでレスポンスを脳に伝える */
   transform: scale(0.93) !important;
   opacity: 0.75 !important;
   transition: transform 0.01s linear, opacity 0.01s linear !important;
@@ -51,6 +49,19 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .bclr-dot{ width:11px;height:10px;border-radius:50%;display:inline-block;transition:background 0.15s;background: var(--usr-color) !important; }
 .bx{background:rgba(244,63,94,.16)!important;border-color:rgba(244,63,94,.4)!important;color:#fda4af!important;font-weight:900!important;padding:6px 16px!important;display:none}
 .bx:hover{background:rgba(244,63,94,.25)!important;border-color:var(--ro)!important}
+
+.logo {
+  font-size: 16.5px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  background: linear-gradient(90deg, #38bdf8 0%, #818cf8 50%, #f472b6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+  text-shadow: 0 0 25px rgba(129, 140, 248, 0.25);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  user-select: none;
+}
 
 #pl{display:flex;gap:6px;padding:6px 12px;background:var(--s2);border-bottom:1px solid rgba(255,255,255,0.02);flex-shrink:0;align-items:center;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;white-space:nowrap;-webkit-overflow-scrolling:touch;min-height:40px;max-height:40px}
 #pl::-webkit-scrollbar{height:3px}
@@ -154,6 +165,33 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
 .clrpick-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
 .clrc2{aspect-ratio:1;width:100%;max-width:24px;border-radius:50%;margin:0 auto;border:2px solid transparent;cursor:pointer;transition:transform 0.15s,border-color 0.15s}
 .clrc2.sel{border-color:var(--tx)!important;transform:scale(1.25);box-shadow:0 0 10px rgba(255,255,255,0.5);border-width:2px!important}
+
+/* =========================================================================
+   参加・トリップコピーボタンの装飾強化
+   ========================================================================= */
+#joinBtn {
+  background: linear-gradient(135deg, var(--in) 0%, #6366f1 100%) !important;
+  color: #fff !important;
+  font-weight: 900 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+}
+#joinBtn:hover {
+  background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%) !important;
+}
+
+#copyTripBtn {
+  background: #0ea5e9 !important;
+  color: #fff !important;
+  border: none !important;
+  font-weight: 800 !important;
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3) !important;
+  transition: all 0.15s ease !important;
+}
+#copyTripBtn:hover {
+  background: #38bdf8 !important;
+}
 </style>
 
 <script>
@@ -898,7 +936,7 @@ async function sendMsg(overrideText = null, imgData = null) {
 
   await db.ref(`chat/official`).push(pushData).catch(() => {
     const localEl = renderedMwNodes.get(tempId);
-    if (localEl) localEl.remove();
+    if (localEl) el.remove();
     renderedMwNodes.delete(tempId);
     pendingMsgs.delete(tempId);
     displayedMsgIds.delete(tempId);
@@ -1368,7 +1406,7 @@ function populatePresenceList(membersList) {
 
 D.exBtn.onclick = () => {
   if (isJoined) {
-    if (confirm("このチャットから退室して名前入力をやり直しますか？")) {
+    if (confirm("退室して参加前の覗き見画面に戻りますか？")) {
       doExit();
     }
   }
@@ -1652,6 +1690,31 @@ D.tripi.addEventListener("input", () => {
 
 D.joinBtn.onclick = () => joinRoom();
 
+// =========================================================================
+// トリップコピー機能の実装
+// =========================================================================
+$("copyTripBtn").onclick = async () => {
+  const niVal = D.ni.value.trim() || "名無し";
+  const tripiVal = D.tripi.value.trim();
+  if (!tripiVal) return;
+  const tLobby = window.makeTrip(niVal, tripiVal);
+  if (tLobby) {
+    try {
+      await navigator.clipboard.writeText(tLobby);
+      const copyBtn = $("copyTripBtn");
+      const originalText = copyBtn.textContent;
+      copyBtn.textContent = "コピー完了！";
+      copyBtn.style.background = "#10b981"; // 一時的にエメラルド
+      setTimeout(() => {
+        copyBtn.textContent = originalText;
+        copyBtn.style.background = "";
+      }, 1500);
+    } catch (err) {
+      alert("コピーに失敗しました。");
+    }
+  }
+};
+
 const handleJoinKey = (e) => {
   if (e.key === "Enter") {
     joinRoom();
@@ -1667,7 +1730,6 @@ const boostSync = () => {
   lastBoostTime = now;
 
   if (db) {
-    db.goOffline(); 
     db.goOnline(); 
   }
   checkActivityTimeout(); 
@@ -1826,14 +1888,21 @@ function setupFirebaseListeners() {
       });
     }
 
+    // 楽観的送信メッセージがサーバーに書き込まれて戻ってきた際、DOMを消して再構築するのを防ぐ
     serverMsgs.forEach(m => {
       if (m.pnd && pendingMsgs.has(m.pnd)) {
         pendingMsgs.delete(m.pnd);
         const tempEl = renderedMwNodes.get(m.pnd);
         if (tempEl) {
-          tempEl.remove();
+          // 要素のデータIDを書き換えて、そのまま再利用（完全なフェード・置換によりチラつきを100%防止）
+          tempEl.dataset.mid = m.id;
+          tempEl.classList.remove("new-msg-anim"); 
+          tempEl.style.opacity = "1"; 
+          
           renderedMwNodes.delete(m.pnd);
+          renderedMwNodes.set(m.id, tempEl);
           displayedMsgIds.delete(m.pnd);
+          displayedMsgIds.add(m.id);
         }
       }
     });

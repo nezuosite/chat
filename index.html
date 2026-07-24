@@ -137,6 +137,7 @@ try {
     clear: function() { mockLS = {}; }
   };
 }
+// ★ sessionも統一してlocalStorage（safeLS）を指すようにし、セッションデータの永続化を保証 [1]
 var _sessionStorage = _localStorage;
 </script>
 </head>
@@ -204,7 +205,7 @@ var _sessionStorage = _localStorage;
         <div class="jrow">
           <input type="text" id="ni" class="inp" placeholder="名前 (10文字まで)" maxlength="10" autocomplete="off">
           <input type="text" id="tripi" class="inp" placeholder="トリップキー (任意)" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
-          <button class="btn bp" id="joinBtn" style="height: 42px; padding: 0 16px;">参加する</button>
+          <button class="btn bp" id="joinBtn" style="height: 42px; padding: 0 16px;" disabled>接続中...</button>
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px; width: 100%; gap: 8px;">
           <span id="tripPrevText" style="font-size: 11.5px; font-weight: bold; color: var(--usr-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">トリッププレビュー: 名無し</span>
@@ -330,30 +331,30 @@ const safeSS = {
 };
 
 // =========================================================================
-// 部屋管理用のグローバルステート
+// 部屋管理用のグローバルステート（同期ロードに最適化） [1]
 // =========================================================================
 let currentRoomId = "official"; 
-let isJoined = false;
-let isFirstLoad = true; // ★追加：初期読み込みフラグ
-let isFirebaseListenersBound = false; // ★追加：リスナー重複登録を防止するフラグ
+
+// 1. キャッシュからセッションデータを最速（同期）ロードして待機時間を削減 [1]
+let myUid = safeLS.get("nz_permanent_uid"); 
+let myName = safeLS.get("nz_ni") || "";
+let myTrip = "";
+let isJoined = (safeLS.get("nz_is_joined") === "true") && (myName !== ""); 
 
 let keepKbOpen = safeLS.get("nz_keep_kb_open") === "true";
 let isAutoScroll = true; 
 const unreadMsgIds = new Set(); 
 let _scPending = false; 
-let myUid = null;
 let autoExitTimer = null; 
 let serverTimeOffset = 0; 
 let isOffsetLoaded = false;
 const displayedMsgIds = new Set();
 let curColor = safeLS.get("nz_color") || "#94a3b8";
 let tmpColor = curColor;
-let myName = safeLS.get("nz_ni") || "";
-let myTrip = "";
 let lastSendTime = 0;
 let targetDelId = null;
-
-// ★ isSyncingAfterReconnect, reconnectSyncTimeout, cachedPresenceMap は完全に削除されました
+let isFirstLoad = true; // ★追加：初期読み込みフラグ
+let isFirebaseListenersBound = false; // ★追加：リスナー重複登録を防止するフラグ
 
 let isJoinFormExpanded = false;
 
@@ -487,12 +488,12 @@ function switchUIMode(mode) {
 }
 
 const updateLastPostTime = (time) => {
-  safeSS.set("nz_last_post_time", time.toString());
+  safeLS.set("nz_last_post_time", time.toString()); // ★永続ストレージに変更 [1]
 };
 
 function checkActivityTimeout() {
   if (!isJoined) return;
-  const lastPost = parseInt(safeSS.get("nz_last_post_time") || "0");
+  const lastPost = parseInt(safeLS.get("nz_last_post_time") || "0"); // ★永続ストレージから取得 [1]
   if (!lastPost) return;
 
   const elapsed = getTrueTime() - lastPost;
@@ -512,13 +513,28 @@ function startAutoExitChecker() {
 async function doExit(isAuto = false) {
   if (!isJoined) return;
 
-  const cleanName = myName || "名無し";
+  const cleanName = (myName || "").trim();
+  // ★名前がない場合は、ログを書き込まずに静かに退室処理のみを行う（謎の空ログ発生を防止）
+  if (!cleanName) {
+    isJoined = false;
+    stopAutoExitTimer();
+    safeLS.remove("nz_is_joined"); // ★永続 [1]
+    safeLS.remove("nz_last_post_time");
+    if (myUid) {
+      await db.ref(`presence/official/${myUid}`).remove().catch(() => {});
+    }
+    renderPresence(currentPresenceMap);
+    switchUIMode("guest");
+    updateAdminUI();
+    return;
+  }
+
   const cleanTrip = myTrip || "";
   const cleanUid = myUid;
   const cleanColor = curColor;
 
   const logText = "[SYS]::" + `${cleanName} ${cleanTrip}`.trim() + (isAuto ? " が退室しました (自動退室)" : " が退室しました");
-  const lastPost = parseInt(safeSS.get("nz_last_post_time") || "0");
+  const lastPost = parseInt(safeLS.get("nz_last_post_time") || "0");
   const exitTimeMillis = isAuto ? (lastPost + 30 * 60 * 1000) : getTrueTime();
 
   const tempId = "pnd_sys_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
@@ -543,8 +559,8 @@ async function doExit(isAuto = false) {
   isJoined = false;
   stopAutoExitTimer();
 
-  safeSS.remove("nz_is_joined");
-  safeSS.remove("nz_last_post_time");
+  safeLS.remove("nz_is_joined"); // ★永続 [1]
+  safeLS.remove("nz_last_post_time");
 
   renderPresence(currentPresenceMap);
   switchUIMode("guest");
@@ -588,12 +604,20 @@ function triggerOtherExit(targetId, targetUser, calculatedTimeoutTime) {
     }
     if (committed && snapshot.exists()) {
       const actualUser = snapshot.val();
-      const rawLog = `${actualUser.n} ${actualUser.p || ""}`.trim() + " が退室しました (自動退室)";
+      const userDisplayName = (actualUser.n || "").trim();
+      
+      // ★名前がない場合はログを書き込まずに静かに存在データのみ消去（謎の空白ログの発生を防止）
+      if (!userDisplayName) {
+        db.ref(`presence/official/${targetId}`).remove().catch(() => {});
+        return;
+      }
+
+      const rawLog = `${userDisplayName} ${actualUser.p || ""}`.trim() + " が退室しました (自動退室)";
       const encLog = "[SYS]::" + rawLog;
 
       db.ref(`chat/official`).push({
         u: targetId,
-        n: actualUser.n,
+        n: userDisplayName,
         p: actualUser.p || "",
         c: actualUser.c || "#94a3b8",
         m: encLog,
@@ -609,10 +633,16 @@ function triggerOtherExit(targetId, targetUser, calculatedTimeoutTime) {
 
 async function joinRoom(isReconnect = false) {
   let n = isReconnect ? (safeLS.get("nz_ni") || "") : D.ni.value.trim();
-  let tk = isReconnect ? (safeLS.get("nz_tripi") || "") : D.tripi.value.trim();
-  if (!n) { if (!isReconnect) alert("名前を入力してください。"); return; }
+  
+  // ★空欄のみブロック（「名無し」等の文字列はブロックしません）
+  if (!n) { 
+    if (!isReconnect) alert("名前を入力してください。"); 
+    return; 
+  }
+
+  const tk = isReconnect ? (safeLS.get("nz_tripi") || "") : D.tripi.value.trim();
   myName = n; myTrip = await window.makeTrip(n, tk); isJoined = true;
-  safeLS.set("nz_ni", n); safeLS.set("nz_tripi", tk); safeSS.set("nz_is_joined", "true");
+  safeLS.set("nz_ni", n); safeLS.set("nz_tripi", tk); safeLS.set("nz_is_joined", "true"); // ★永続化 [1]
   
   const nowTime = getTrueTime();
   updateLastPostTime(nowTime);
@@ -647,38 +677,41 @@ async function joinRoom(isReconnect = false) {
   startAutoExitChecker();
 
   if (!isReconnect) {
-    const enterText = `${myName} ${myTrip}`.trim() + " が入室しました", encEnterText = "[SYS]::" + enterText;
-    const tempId = "pnd_sys_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
-    
-    const tempObj = {
-      id: tempId,
-      u: myUid,
-      n: myName,
-      p: myTrip,
-      c: curColor,
-      m: "[SYS]::" + enterText,
-      t: nowTime
-    };
-    pendingMsgs.set(tempId, tempObj);
-    displayedMsgIds.add(tempId);
-    const tempEl = cMsg(tempObj, true);
-    D.tli.appendChild(tempEl);
-    
-    isAutoScroll = true;
-    scBottom(true);
+    const cleanName = (myName || "").trim();
+    if (cleanName) {
+      const enterText = `${cleanName} ${myTrip}`.trim() + " が入室しました", encEnterText = "[SYS]::" + enterText;
+      const tempId = "pnd_sys_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
+      
+      const tempObj = {
+        id: tempId,
+        u: myUid,
+        n: myName,
+        p: myTrip,
+        c: curColor,
+        m: "[SYS]::" + enterText,
+        t: nowTime
+      };
+      pendingMsgs.set(tempId, tempObj);
+      displayedMsgIds.add(tempId);
+      const tempEl = cMsg(tempObj, true);
+      D.tli.appendChild(tempEl);
+      
+      isAutoScroll = true;
+      scBottom(true);
 
-    await db.ref(`chat/official`).push({
-      u: myUid,
-      pnd: tempId, 
-      n: myName,
-      p: myTrip,
-      c: curColor,
-      m: encEnterText,
-      t: firebase.database.ServerValue.TIMESTAMP
-    }).catch(() => {
-      const localEl = renderedMwNodes.get(tempId); if (localEl) localEl.remove();
-      renderedMwNodes.delete(tempId); pendingMsgs.delete(tempId); displayedMsgIds.delete(tempId);
-    });
+      await db.ref(`chat/official`).push({
+        u: myUid,
+        pnd: tempId, 
+        n: myName,
+        p: myTrip,
+        c: curColor,
+        m: encEnterText,
+        t: firebase.database.ServerValue.TIMESTAMP
+      }).catch(() => {
+        const localEl = renderedMwNodes.get(tempId); if (localEl) localEl.remove();
+        renderedMwNodes.delete(tempId); pendingMsgs.delete(tempId); displayedMsgIds.delete(tempId);
+      });
+    }
   }
 
   scBottom(true);
@@ -895,7 +928,8 @@ function cMsg(m, isNewIncoming = false) {
     let displayTxt = m.m.startsWith("[SYS]::") ? m.m.substring(7) : m.m;
     el.innerHTML = `<div class="sys-msg">${escapeHtml(displayTxt)}<span class="sys-ts">[${fDT(msgTime)}]</span></div>`;
     
-    if (m.u === myUid || isAdmin()) {
+    // ★削除ボタンを表示するのは管理者（isAdmin()）のみ。一般ユーザーには一切表示しません。
+    if (isAdmin()) {
       const sysDiv = el.querySelector(".sys-msg");
       sysDiv.style.position = "relative";
       sysDiv.style.paddingRight = "65px";
@@ -956,7 +990,8 @@ function cMsg(m, isNewIncoming = false) {
     }
   }
 
-  if (m.u === myUid || isAdmin()) {
+  // ★一般メッセージの削除ボタンも、管理者（isAdmin()）のみに表示します。
+  if (isAdmin()) {
     const delBtn = document.createElement("button");
     delBtn.className = "del-btn-inline";
     delBtn.textContent = "🗑 削除";
@@ -1183,7 +1218,11 @@ function renderPresence(serverListMap) {
 let lastPresenceHash = "";
 
 function populatePresenceList(membersList) {
-  const sortedList = [...membersList].sort((a, b) => a.id.localeCompare(b.id));
+  // ★名前が完全に空のユーザーを入室リストから除外
+  const sortedList = [...membersList]
+    .filter(m => m.n && m.n.trim() !== "")
+    .sort((a, b) => a.id.localeCompare(b.id));
+
   const currentHash = sortedList.map(m => `${m.id}_${m.n}_${m.p || ""}_${m.c}`).join("|");
   if (currentHash === lastPresenceHash) {
     return; 
@@ -1359,12 +1398,10 @@ D.delExecuteBtn.onclick = async () => {
   D.delConfirmMod.classList.remove("show");
   targetDelId = null;
 
-  await db.ref(`chat/official/${idToDelete}`).remove().catch(() => {});
-
-  await db.ref(`chat/official/${idToDelete}`).set({
-    deleted: true,
-    t: firebase.database.ServerValue.TIMESTAMP
-  }).catch(() => {});
+  // ★修正：セキュリティルールとの競合を防ぐため、2重書き込みを廃止し、シンプルに完全削除（remove）のみを実行します
+  await db.ref(`chat/official/${idToDelete}`).remove().catch((err) => {
+    console.warn("削除エラー:", err);
+  });
 };
 
 D.fileInput.onchange = (e) => {
@@ -1423,9 +1460,9 @@ function buildPicker(con, sel, cls, onChange) {
 function updateModalColorPreview(color) {
   const con = D.clrPrev; if (!con) return; con.innerHTML = "";
   con.style.background = "rgba(0, 0, 0, 0.25)"; con.style.border = "1px solid var(--bd)"; con.style.borderRadius = "4px"; con.style.padding = "8px"; con.style.textAlign = "left";
-  const n = myName || "名無し", t = myTrip || "";
+  const n = myName || "名無し";
   const wrap = document.createElement("div"); wrap.style.fontSize = "12px"; wrap.style.color = color; wrap.style.fontWeight = "bold"; 
-  wrap.textContent = t ? `${n} ${t}` : n;
+  wrap.textContent = n;
   con.appendChild(wrap);
   const bodyMock = document.createElement("div"); bodyMock.style.fontSize = "13px"; bodyMock.style.color = "var(--tx)"; bodyMock.style.marginTop = "4px"; bodyMock.style.borderLeft = `2px solid ${color}`; bodyMock.style.paddingLeft = "8px"; bodyMock.textContent = "この色で発言が表示されます。";
   con.appendChild(bodyMock);
@@ -1559,6 +1596,13 @@ window.addEventListener('storage', (e) => {
       isJoined = joined;
       if (isJoined) {
         myName = safeLS.get("nz_ni") || "";
+        if (!myName.trim()) {
+          // ★名前が何らかの同期ラグで空になっていた場合は、参加状態を解除する
+          isJoined = false;
+          safeLS.set("nz_is_joined", "false"); // ★永続化 [1]
+          switchUIMode("guest");
+          return;
+        }
         const tk = safeLS.get("nz_tripi") || "";
         window.makeTrip(myName, tk).then(t => {
           myTrip = t;
@@ -1589,9 +1633,38 @@ window.addEventListener('storage', (e) => {
   }
 });
 
+// ★メッセージ描画用のクリーンアップフィルター（幽霊ログや名無しログを徹底的に弾く共通関数）
+function filterMsg(m) {
+  if (m.deleted) return false;
+  
+  // 1. 本文（m.m）が存在しない、または空文字のものは非表示
+  if (!m.m || typeof m.m !== "string" || m.m.trim() === "") {
+    return false;
+  }
+  // 2. 送信者名（m.n）が完全に存在しない、あるいは空文字の場合は非表示（バグ幽霊メッセージを完全に抹殺）
+  if (!m.n || typeof m.n !== "string" || m.n.trim() === "") {
+    return false;
+  }
+  // 3. システムログで名前部分が完全に空白になっているものを非表示フィルターリング
+  if (m.m.startsWith("[SYS]::")) {
+    const sysText = m.m.substring(7).trim();
+    if (sysText.startsWith("が退室しました") || sysText.startsWith("が入室しました") || !sysText) {
+      return false;
+    }
+  }
+  // 4. ★追加：24時間（86400000ミリ秒）以上前の古い発言（幽霊ログ）はタイムラインに絶対に出さない
+  const msgTime = getMsgTime(m);
+  const now = getTrueTime();
+  if (now - msgTime > 24 * 60 * 60 * 1000) {
+    return false;
+  }
+  
+  return true;
+}
+
 function loadCachedPresence() {
   try {
-    const cachedStr = safeSS.get("nz_presence_cache");
+    const cachedStr = safeLS.get("nz_presence_cache"); // ★永続化 [1]
     if (cachedStr) {
       const cachedPres = JSON.parse(cachedStr);
       if (cachedPres && typeof cachedPres === "object") {
@@ -1606,11 +1679,13 @@ function loadCachedPresence() {
 
 function loadCachedChat() {
   try {
-    const cachedStr = safeSS.get("nz_chat_cache");
+    const cachedStr = safeLS.get("nz_chat_cache"); // ★永続化 [1]
     if (cachedStr) {
       const cachedMsgs = JSON.parse(cachedStr);
       if (Array.isArray(cachedMsgs) && cachedMsgs.length > 0) {
-        syncMessagesDOM(cachedMsgs);
+        // ★修正：起動時のキャッシュ読み込み段階でもフィルターを適用して描画する
+        const activeCached = cachedMsgs.filter(m => filterMsg(m));
+        syncMessagesDOM(activeCached);
       }
     }
   } catch (e) {
@@ -1634,21 +1709,6 @@ function setupFirebaseListeners() {
         serverMsgs.push(m); 
       }
     });
-
-    try {
-      const cacheData = serverMsgs.map(m => ({
-        id: m.id,
-        u: m.u,
-        n: m.n,
-        p: m.p,
-        c: m.c,
-        m: m.m,
-        t: m.t,
-        deleted: m.deleted,
-        sys: m.sys
-      }));
-      safeSS.set("nz_chat_cache", JSON.stringify(cacheData));
-    } catch (e) {}
 
     const activeServerMsgIds = new Set();
     serverMsgs.forEach(m => {
@@ -1693,7 +1753,24 @@ function setupFirebaseListeners() {
       }
     });
 
-    const activeMsgs = serverMsgs.filter(m => !m.deleted);
+    // ★修正：共通フィルターを通して有効なメッセージのみを抽出
+    const activeMsgs = serverMsgs.filter(m => filterMsg(m));
+
+    try {
+      // ★修正：キャッシュにもフィルターを適用した後のクリーンなデータのみを保存するように変更
+      const cacheData = activeMsgs.map(m => ({
+        id: m.id,
+        u: m.u,
+        n: m.n,
+        p: m.p,
+        c: m.c,
+        m: m.m,
+        t: m.t,
+        deleted: m.deleted,
+        sys: m.sys
+      }));
+      safeLS.set("nz_chat_cache", JSON.stringify(cacheData)); // ★永続化 [1]
+    } catch (e) {}
 
     syncMessagesDOM(activeMsgs);
 
@@ -1733,7 +1810,7 @@ function setupFirebaseListeners() {
     currentPresenceMap = membersMap;
 
     try {
-      safeSS.set("nz_presence_cache", JSON.stringify(membersMap));
+      safeLS.set("nz_presence_cache", JSON.stringify(membersMap)); // ★永続化 [1]
     } catch (e) {}
 
     renderPresence(membersMap);
@@ -1741,37 +1818,58 @@ function setupFirebaseListeners() {
 }
 
 const initAuthProcess = async () => {
+  // ★最速起動のためにキャッシュ（ローカルストレージ）から同期的にセッション情報を即座に読み込む [1]
   myUid = safeLS.get("nz_permanent_uid");
   if (!myUid) {
     myUid = "user_" + Math.random().toString(36).slice(2, 10) + "_" + Date.now();
     safeLS.set("nz_permanent_uid", myUid);
   }
 
-  const hasNi = safeLS.get("nz_ni") || "";
-  isJoined = (safeSS.get("nz_is_joined") === "true") && (hasNi !== "");
+  const hasNi = (safeLS.get("nz_ni") || "").trim();
+  isJoined = (safeLS.get("nz_is_joined") === "true") && (hasNi !== ""); // ★一時sessionから永続localに変更 [1]
 
-  myName = safeLS.get("nz_ni") || ""; 
+  myName = hasNi; 
   const tk = safeLS.get("nz_tripi") || ""; 
   myTrip = await window.makeTrip(myName, tk);
 
+  // 1. 同期的に即座に描画を実行（UIDや参加フラグが揃っているため、削除ボタンや覗き見画面が一瞬で完成する）
   loadCachedPresence();
   loadCachedChat();
-
   await syncProfileValues();
 
+  if (isJoined) {
+    switchUIMode("joined");
+  } else {
+    switchUIMode("guest");
+  }
+  D.tl.style.opacity = "1";
+
+  // 2. バックグラウンドで非同期にFirebase Authを初期化解決させる
   if (auth) {
     auth.onAuthStateChanged(async (user) => {
+      let activeUid = null;
       if (!user) {
         try {
           const userCredential = await auth.signInAnonymously();
-          myUid = userCredential.user.uid;
-          safeLS.set("nz_permanent_uid", myUid);
+          activeUid = userCredential.user.uid;
         } catch (err) {
           console.warn("認証エラー:", err);
+          return;
         }
       } else {
-        myUid = user.uid;
+        activeUid = user.uid;
+      }
+
+      // 予測UIDと実際のFirebase UIDが異なる場合のみ、再描画・再初期化を実行
+      if (myUid !== activeUid) {
+        myUid = activeUid;
         safeLS.set("nz_permanent_uid", myUid);
+        
+        // UIDが入れ替わった場合のみ完全に再描画（チラつきやボタン消えを完全に防止）
+        D.tli.innerHTML = "";
+        renderedMwNodes.clear();
+        displayedMsgIds.clear();
+        loadCachedChat();
       }
 
       // 認証確定後にリスナー登録（重複呼び出し防止）
@@ -1782,11 +1880,14 @@ const initAuthProcess = async () => {
 
       if (isJoined) {
         await joinRoom(true);
-      } else {
-        switchUIMode("guest");
       }
 
-      D.tl.style.opacity = "1";
+      // 接続完了後に参加ボタンの無効ロックを解除してアクティブ化
+      D.joinBtn.disabled = false;
+      D.joinBtn.textContent = "参加する";
+
+      // 管理者用のUI更新
+      updateAdminUI();
 
       if (!isConnectedBound) {
         try {
@@ -1797,7 +1898,7 @@ const initAuthProcess = async () => {
           
           db.ref(".info/connected").on("value", (snap) => {
             if (snap.val() === true) {
-              if (isJoined && myUid) {
+              if (isJoined && myUid && myName.trim()) { // ★名前が空でない場合のみ送信
                 const myPresRef = db.ref(`presence/official/${myUid}`);
                 
                 myPresRef.set({

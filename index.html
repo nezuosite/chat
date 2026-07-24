@@ -122,6 +122,26 @@ button:focus-visible{outline:2px solid var(--in);outline-offset:2px}
   font-weight: 800 !important; box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3) !important; transition: all 0.15s ease !important;
 }
 #copyTripBtn:hover { background: #38bdf8 !important; }
+
+/* =========================================================================
+   スプラッシュ画面による接続待ちチラつき防止用
+   ========================================================================= */
+#splash {
+  position: fixed;
+  inset: 0;
+  background: #05070a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+#splash.hide {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
 </style>
 <script>
 var _localStorage;
@@ -137,11 +157,16 @@ try {
     clear: function() { mockLS = {}; }
   };
 }
-// ★ sessionも統一してlocalStorage（safeLS）を指すようにし、セッションデータの永続化を保証 [1]
 var _sessionStorage = _localStorage;
 </script>
 </head>
 <body>
+<!-- ★追加：スプラッシュ接続オーバーレイ [1] -->
+<div id="splash">
+  <div class="logo" style="font-size: 28px; margin-bottom: 24px;">NEZUO CHAT</div>
+  <div class="spin" style="width: 28px; height: 28px; border-width: 3.5px; border-top-color: var(--in);"></div>
+</div>
+
 <div id="app">
   <div id="cp">
     <!-- ヘッダー -->
@@ -280,62 +305,11 @@ var _sessionStorage = _localStorage;
 
 <script>
 // =========================================================================
-// 部屋管理のFirebase Script
-// =========================================================================
-const firebaseConfig = {
-  apiKey: "AIzaSyCsRidc0smUQDaBwq-oki5NzxSHx6-ljiw",
-  authDomain: "nezuochat.firebaseapp.com",
-  databaseURL: "https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "nezuochat",
-  storageBucket: "nezuochat.appspot.com",
-  messagingSenderId: "154725381397",
-  appId: "1:154725381397:web:8742ccd957e20cee8ce51c"
-};
-
-firebase.initializeApp(firebaseConfig);
-
-let auth = null;
-try {
-  auth = firebase.auth();
-} catch (e) {
-  console.warn("認証制限モード稼働:", e);
-}
-
-const db  = firebase.database();
-const $   = id => document.getElementById(id);
-
-const D = {
-  ni:$("ni"), tripi:$("tripi"), joinBtn:$("joinBtn"), joinForm:$("joinForm"),
-  tripPrevText:$("tripPrevText"), clrmod:$("clrmod"), clrPick2:$("clrPick2"), 
-  clrPrev:$("clrPrev"), clrOk:$("clrOk"), clrCancel:$("clrCancel"), clrBtn:$("clrBtn"), curDot:$("clrDot"),
-  pcnt:$("pcnt"), exBtn:$("exBtn"), tl:$("tl"), tli:$("tl-inner"), ib:$("ib"), mi:$("mi"), 
-  sdBtn:$("sdBtn"), clrMsgBtn:$("clrMsgBtn"), kbKeepOpenChk:$("kbKeepOpenChk"),
-  jumpUpBtn:$("jumpUpBtn"), jumpDownBtn:$("jumpDownBtn"), imgBtn:$("imgBtn"), fileInput:$("fileInput"),
-  adminClearBtn:$("adminClearBtn"), pl:$("pl"), delConfirmMod:$("delConfirmMod"),
-  delConfirmPreview:$("delConfirmPreview"), delCancelBtn:$("delCancelBtn"), delExecuteBtn:$("delExecuteBtn"),
-  imgViewMod:$("imgViewMod"), imgViewSrc:$("imgViewSrc"), imgViewCloseBtn:$("imgViewCloseBtn"),
-  fixedPlayer:$("fixedPlayer"), playerContent:$("playerContent"), playerCloseBtn:$("playerCloseBtn"),
-  unreadBadge:$("unreadBadge"), copyTripBtn:$("copyTripBtn")
-};
-
-const safeLS = {
-  get: k => { try { return _localStorage.getItem(k); } catch(e) { return null; } },
-  set: (k, v) => { try { _localStorage.setItem(k, v); } catch(e) {} },
-  remove: k => { try { _localStorage.removeItem(k); } catch(e) {} }
-};
-
-const safeSS = {
-  get: k => { try { return _sessionStorage.getItem(k); } catch(e) { return null; } },
-  set: (k, v) => { try { _sessionStorage.setItem(k, v); } catch(e) {} },
-  remove: k => { try { _sessionStorage.removeItem(k); } catch(e) {} }
-};
-
-// =========================================================================
-// 部屋管理用のグローバルステート（同期ロードに最適化） [1]
+// 部屋管理のグローバルステート（同期ロードに最適化） [1]
 // =========================================================================
 let currentRoomId = "official"; 
 
-// 1. キャッシュからセッションデータを最速（同期）ロードして待機時間を削減 [1]
+// 1. キャッシュからセッションデータを最速（同期）ロードして待機時間・チラつきを皆無に [1]
 let myUid = safeLS.get("nz_permanent_uid"); 
 let myName = safeLS.get("nz_ni") || "";
 let myTrip = "";
@@ -928,8 +902,8 @@ function cMsg(m, isNewIncoming = false) {
     let displayTxt = m.m.startsWith("[SYS]::") ? m.m.substring(7) : m.m;
     el.innerHTML = `<div class="sys-msg">${escapeHtml(displayTxt)}<span class="sys-ts">[${fDT(msgTime)}]</span></div>`;
     
-    // ★削除ボタンを表示するのは管理者（isAdmin()）のみ。一般ユーザーには一切表示しません。
-    if (isAdmin()) {
+    // ★システムメッセージは、その「対象本人（m.u === myUid）」または「管理者（isAdmin）」のみ完全消去可能 [1]
+    if (m.u === myUid || isAdmin()) {
       const sysDiv = el.querySelector(".sys-msg");
       sysDiv.style.position = "relative";
       sysDiv.style.paddingRight = "65px";
@@ -990,8 +964,8 @@ function cMsg(m, isNewIncoming = false) {
     }
   }
 
-  // ★一般メッセージの削除ボタンも、管理者（isAdmin()）のみに表示します。
-  if (isAdmin()) {
+  // ★削除ボタンを「本人のみ」表示に戻し、さらに「管理者」も常時操作可能に [1]
+  if (m.u === myUid || isAdmin()) {
     const delBtn = document.createElement("button");
     delBtn.className = "del-btn-inline";
     delBtn.textContent = "🗑 削除";
@@ -1552,7 +1526,7 @@ D.tripi.addEventListener("keydown", handleJoinKey);
 let lastBoostTime = 0;
 const boostSync = () => { 
   const now = Date.now();
-  if (now - lastBoostTime < 1000) return; 
+  if (now - lastBoostTime < 800) return; // ★さらに同期のレスポンスを高めるため、再接続ブーストの間隔を調整 [1]
   lastBoostTime = now;
 
   if (db) {
@@ -1561,6 +1535,12 @@ const boostSync = () => {
   checkActivityTimeout(); 
   if (db && isJoined && myUid) { 
     startAutoExitChecker(); 
+    // ★復帰した瞬間に、裏側でサーバー側に対してもプレゼンスのアクティブ更新を直接送信する [1]
+    const myPresRef = db.ref(`presence/official/${myUid}`);
+    myPresRef.update({
+      t: firebase.database.ServerValue.TIMESTAMP,
+      p_t: firebase.database.ServerValue.TIMESTAMP
+    }).catch(() => {});
   } 
 };
 
@@ -1599,7 +1579,7 @@ window.addEventListener('storage', (e) => {
         if (!myName.trim()) {
           // ★名前が何らかの同期ラグで空になっていた場合は、参加状態を解除する
           isJoined = false;
-          safeLS.set("nz_is_joined", "false"); // ★永続化 [1]
+          safeLS.set("nz_is_joined", "false"); 
           switchUIMode("guest");
           return;
         }
@@ -1664,7 +1644,7 @@ function filterMsg(m) {
 
 function loadCachedPresence() {
   try {
-    const cachedStr = safeLS.get("nz_presence_cache"); // ★永続化 [1]
+    const cachedStr = safeLS.get("nz_presence_cache"); 
     if (cachedStr) {
       const cachedPres = JSON.parse(cachedStr);
       if (cachedPres && typeof cachedPres === "object") {
@@ -1679,7 +1659,7 @@ function loadCachedPresence() {
 
 function loadCachedChat() {
   try {
-    const cachedStr = safeLS.get("nz_chat_cache"); // ★永続化 [1]
+    const cachedStr = safeLS.get("nz_chat_cache"); 
     if (cachedStr) {
       const cachedMsgs = JSON.parse(cachedStr);
       if (Array.isArray(cachedMsgs) && cachedMsgs.length > 0) {
@@ -1769,7 +1749,7 @@ function setupFirebaseListeners() {
         deleted: m.deleted,
         sys: m.sys
       }));
-      safeLS.set("nz_chat_cache", JSON.stringify(cacheData)); // ★永続化 [1]
+      safeLS.set("nz_chat_cache", JSON.stringify(cacheData)); 
     } catch (e) {}
 
     syncMessagesDOM(activeMsgs);
@@ -1810,7 +1790,7 @@ function setupFirebaseListeners() {
     currentPresenceMap = membersMap;
 
     try {
-      safeLS.set("nz_presence_cache", JSON.stringify(membersMap)); // ★永続化 [1]
+      safeLS.set("nz_presence_cache", JSON.stringify(membersMap)); 
     } catch (e) {}
 
     renderPresence(membersMap);
@@ -1826,7 +1806,7 @@ const initAuthProcess = async () => {
   }
 
   const hasNi = (safeLS.get("nz_ni") || "").trim();
-  isJoined = (safeLS.get("nz_is_joined") === "true") && (hasNi !== ""); // ★一時sessionから永続localに変更 [1]
+  isJoined = (safeLS.get("nz_is_joined") === "true") && (hasNi !== ""); 
 
   myName = hasNi; 
   const tk = safeLS.get("nz_tripi") || ""; 
@@ -1842,7 +1822,6 @@ const initAuthProcess = async () => {
   } else {
     switchUIMode("guest");
   }
-  D.tl.style.opacity = "1";
 
   // 2. バックグラウンドで非同期にFirebase Authを初期化解決させる
   if (auth) {
@@ -1880,6 +1859,12 @@ const initAuthProcess = async () => {
 
       if (isJoined) {
         await joinRoom(true);
+      }
+
+      // ★匿名認証の解決が裏側で完了した瞬間に、接続待ちスプラッシュを解除 [1]
+      const splash = $("splash");
+      if (splash) {
+        splash.classList.add("hide");
       }
 
       // 接続完了後に参加ボタンの無効ロックを解除してアクティブ化

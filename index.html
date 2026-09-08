@@ -523,6 +523,7 @@ function toggleAcc(id) {
     } catch (e) {}
   }
 
+  // 🚀 【爆速同期：全接続経路の即時検知＆キャッシュ完全排除】
   if (typeof document !== 'undefined') {
     const triggerInstantSync = async () => {
       if (isJoined && currentRoomId) {
@@ -845,7 +846,7 @@ function toggleAcc(id) {
         $("inviteBtn").style.display = (rawRoomId === "official") ? "none" : "inline-flex";
       }
       if (logoTitle && rawRoomId) logoTitle.innerHTML = `NEZUO CHAT<span class="sub-room">${rawRoomId === "official" ? "常設公式部屋" : rawRoomId}</span>`;
-      if (!isSilent) showToast("🚪 部屋に入室しました");
+      // 💡 トースト（通知UI）は完全に廃止
     } else {
       if ($("lobbyScreen")) $("lobbyScreen").style.display = "flex";
       if ($("roomStatusBadges")) $("roomStatusBadges").style.display = "none";
@@ -909,6 +910,7 @@ function toggleAcc(id) {
             const userName = (u.n || "").trim();
             const userTrip = (u.p || "").trim();
             if (userName) {
+              // 💡 1秒のズレも許さない正確無比なタイムスタンプ：最終活動時刻（u.t）から正確に3分後（u.t + 180000）を刻む
               const exactExpiryTime = u.t + AUTO_EXIT_MS;
               const rawSysText = "[SYS]::📢 [お知らせ] " + `${userName} ${userTrip}`.trim() + " が自動退室しました (3分間発言がなかったため)";
               const encLog = await E2EE.encrypt(rawSysText, activeKey);
@@ -1085,6 +1087,7 @@ function toggleAcc(id) {
     applyRoomSettingsUI(); 
   }
 
+  // 💡 【上を最新】スクロールを最上部（最新位置）に固定する関数
   function scTop(force = false) {
     if (!D.tl) return;
     requestAnimationFrame(() => {
@@ -1146,6 +1149,11 @@ function toggleAcc(id) {
       if (msgTime > latestDisplayedTs) latestDisplayedTs = msgTime;
       updateUnreadBadge();
       
+      // 💡 【完璧な自然挙動の追従ロジック】：
+      // 1. 初回ロード時は一番上
+      // 2. 自分が発言した直後は強制的に一番上に追従（スナップ）
+      // 3. 一番上にいるときは、自分・相手問わず新着で自動追従して常に最新が見られる
+      // 4. 下（過去ログ）を見ているときは、新着が来ても勝手に動かない
       const isMine = (m.u === myUid && m.u !== "" && m.u !== "system");
       const shouldAutoScroll = isFirstLoad || isMine || (isNewIncoming && isAtTop);
 
@@ -1333,6 +1341,7 @@ function toggleAcc(id) {
     updateJumpBtns();
   }
 
+  // 💡 【入室者リストのチラつきゼロ化】：要素の完全再生成を廃し、差分更新（Virtual DOMライク）で滑らかに同期
   function renderPresence(serverListMap) {
     if (!D.pl) return;
     const sorted = Object.values(serverListMap).filter(m => m && m.n).sort((a, b) => a.id.localeCompare(b.id));

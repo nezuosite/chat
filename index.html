@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#090d16">
-<title>NEZUO CHAT</title>
+<title>NEZUO CHAT - LIVE STREAM</title>
 <link rel="preconnect" href="https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app" crossorigin>
 <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
@@ -67,7 +67,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 #lobbyTripPrev { font-size: 11px; font-weight: bold; color: var(--usr-color); text-align: center; background: rgba(0,0,0,0.3); padding: 6px; border-radius: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border: 1.5px solid var(--usr-color); }
 
-/* 💡 チラつき・キャッシュ完全排除：完全ロック（Zero-FOUC） */
+/* 💡 チラつき・キャッシュ完全排除：読み込み完了まで完全非表示ロック */
 #chatScreen { display: none; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; position: relative; }
 #chatScreen.is-loading { opacity: 0; pointer-events: none; visibility: hidden; }
 #chatScreen:not(.is-loading) { opacity: 1; visibility: visible; transition: opacity 0.02s ease-in; }
@@ -90,7 +90,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 #playerContent{ width:100%;max-width:480px;background:#000;display:flex;justify-content:center;align-items:center;position:relative;margin:0 auto;overflow:hidden; }
 #playerCloseBtn{background:rgba(244, 63, 94, 0.15) !important;border:1px solid rgba(244, 63, 94, 0.4) !important;color: #fda4af !important;font-weight: 900 !important;padding: 4px 10px !important;font-size: 12px !important;border-radius: 5px;}
 
-/* 💡 【上を最新】通常の標準フロー。新しいメッセージはDOMの先頭（上部）に積まれる */
+/* 💡 【下を最新】通常の標準フロー。新しいメッセージはDOMの末尾（下部）に積まれる */
 #tl{flex:1;min-height:0;overflow-y:scroll;padding:8px 12px;background-color:#070a10;will-change:transform,scroll-position;-webkit-overflow-scrolling:touch;}
 #tl-inner{display:flex;flex-direction:column;justify-content:flex-start;gap:6px;width:100%;max-width:800px;margin:0 auto;min-height:100%}
 
@@ -98,7 +98,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .mw{position:relative;display:flex;flex-direction:column;width:100%;padding:3px 6px;border-radius:4px;user-select:none;-webkit-user-select:none;transition:background 0.1s ease;}
 .mw:hover{background:rgba(255,255,255,0.02);}
 .mw.new-msg-anim{animation:fadeIn .05s ease-out forwards}
-@keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
 .mw-content-row { display: flex; align-items: baseline; gap: 6px; width: 100%; flex-wrap: wrap; }
 .mm{display:inline-flex;align-items:center;gap:4px;font-size:12px;flex-shrink:0;}
@@ -351,9 +351,9 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
           </div>
         </div>
         <div class="jump-btns">
-          <button class="jump-btn" id="jumpUpBtn" title="最新（最上部）へ" disabled>▲</button>
+          <button class="jump-btn" id="jumpUpBtn" title="最上部へ" disabled>▲</button>
           <div style="position: relative; display: inline-block;">
-            <button class="jump-btn" id="jumpDownBtn" title="最下部（過去ログ）へ" disabled>▼</button>
+            <button class="jump-btn" id="jumpDownBtn" title="最下部へ" disabled>▼</button>
             <span id="unreadBadge" style="display: none; position: absolute; top: -5px; right: -5px; background: var(--ro); color: #fff; font-size: 8.5px; font-weight: bold; border-radius: 9px; min-width: 16px; height: 16px; padding: 0 3px; align-items: center; justify-content: center; line-height: 1; border: 1.5px solid var(--sf); box-shadow: 0 2px 4px rgba(0,0,0,0.3); pointer-events: none; z-index: 5;">0</span>
           </div>
         </div>
@@ -523,7 +523,6 @@ function toggleAcc(id) {
     } catch (e) {}
   }
 
-  // 🚀 【爆速・キャッシュレス・全経路の即時強制同期】
   if (typeof document !== 'undefined') {
     const triggerInstantSync = async () => {
       if (isJoined && currentRoomId) {
@@ -582,9 +581,9 @@ function toggleAcc(id) {
 
   function updateUnreadBadge() {
     if (!D.unreadBadge) return;
-    const isAtTop = D.tl && (D.tl.scrollTop <= 20);
-    const count = isAtTop ? 0 : unreadMsgIds.size;
-    if (isAtTop) unreadMsgIds.clear();
+    const isAtBottom = D.tl && (D.tl.scrollHeight - (D.tl.scrollTop + D.tl.clientHeight) <= 40);
+    const count = isAtBottom ? 0 : unreadMsgIds.size;
+    if (isAtBottom) unreadMsgIds.clear();
 
     if (count > 0) {
       D.unreadBadge.textContent = count > 99 ? "99+" : count;
@@ -910,7 +909,6 @@ function toggleAcc(id) {
             const userName = (u.n || "").trim();
             const userTrip = (u.p || "").trim();
             if (userName) {
-              // 💡 1秒のズレも許さない正確無比なタイムスタンプ：最終活動時刻（u.t）から正確に3分後（u.t + 180000）を刻む
               const exactExpiryTime = u.t + AUTO_EXIT_MS;
               const rawSysText = "[SYS]::📢 [お知らせ] " + `${userName} ${userTrip}`.trim() + " が自動退室しました (3分間発言がなかったため)";
               const encLog = await E2EE.encrypt(rawSysText, activeKey);
@@ -1087,12 +1085,12 @@ function toggleAcc(id) {
     applyRoomSettingsUI(); 
   }
 
-  // 💡 【上を最新】スクロールを最上部（最新位置）に固定する関数
-  function scTop(force = false) {
+  // 💡 【下を最新に変更】スクロールを最下部（最新位置）へ移動する関数
+  function scBottom(force = false) {
     if (!D.tl) return;
     requestAnimationFrame(() => {
-      D.tl.scrollTop = 0;
-      setTimeout(() => { if (D.tl) D.tl.scrollTop = 0; }, 10);
+      D.tl.scrollTop = D.tl.scrollHeight;
+      setTimeout(() => { if (D.tl) D.tl.scrollTop = D.tl.scrollHeight; }, 10);
     });
   }
 
@@ -1109,12 +1107,13 @@ function toggleAcc(id) {
     const children = D.tli.children;
     let inserted = false;
 
+    // 💡 【下を最新】タイムスタンプが古いものを上へ、新しいものを下（末尾側）へ配置する昇順ソート
     for (let i = 0; i < children.length; i++) {
       const child = children[i];
       const childTs = parseInt(child.dataset.ts || "0", 10);
       const childMid = child.dataset.mid || "";
 
-      if (ts > childTs || (ts === childTs && mid.localeCompare(childMid) > 0)) {
+      if (ts < childTs || (ts === childTs && mid.localeCompare(childMid) < 0)) {
         D.tli.insertBefore(el, child);
         inserted = true;
         break;
@@ -1141,25 +1140,25 @@ function toggleAcc(id) {
       insertMessageInOrder(el);
       const msgTime = getMsgTime(m);
 
-      const isAtTop = D.tl && (D.tl.scrollTop <= 40);
+      const isAtBottom = D.tl && (D.tl.scrollHeight - (D.tl.scrollTop + D.tl.clientHeight) <= 80);
 
       if (!isFirstLoad && m.u !== myUid && m.u !== "system" && !m.sys && msgTime > latestDisplayedTs) {
-        if (!isAtTop) unreadMsgIds.add(m.id);
+        if (!isAtBottom) unreadMsgIds.add(m.id);
       }
       if (msgTime > latestDisplayedTs) latestDisplayedTs = msgTime;
       updateUnreadBadge();
       
-      // 💡 【完璧な自然挙動の追従ロジック】：
-      // 1. 初回ロード時は一番上
-      // 2. 自分が発言した直後は強制的に一番上に追従（スナップ）
-      // 3. 一番上にいるときは、自分・相手問わず新着で自動追従して常に最新が見られる
-      // 4. 下（過去ログ）を見ているときは、新着が来ても勝手に動かない
+      // 💡 【下を最新の追従ロジック】：
+      // 1. 初回ロード時は最下部
+      // 2. 自分が発言した直後は強制的に最下部へ追従
+      // 3. 自分が最下部にいるときは、新着メッセージで自動追従
+      // 4. 過去ログ（上の方）を見ているときは、新着が来ても勝手に動かない
       const isMine = (m.u === myUid && m.u !== "" && m.u !== "system");
-      const shouldAutoScroll = isFirstLoad || isMine || (isNewIncoming && isAtTop);
+      const shouldAutoScroll = isFirstLoad || isMine || (isNewIncoming && isAtBottom);
 
       if (shouldAutoScroll) {
-        scTop(true);
-        if (isAtTop || isMine) { unreadMsgIds.clear(); updateUnreadBadge(); }
+        scBottom(true);
+        if (isAtBottom || isMine) { unreadMsgIds.clear(); updateUnreadBadge(); }
       }
       updateJumpBtns();
     } finally {
@@ -1297,8 +1296,8 @@ function toggleAcc(id) {
       const img = document.createElement("img"); img.className = "inline-img"; img.src = url;
       img.loading = "lazy";
       img.onload = () => {
-        const isAtTop = D.tl && (D.tl.scrollTop <= 40);
-        if (isAtTop) scTop(true);
+        const isAtBottom = D.tl && (D.tl.scrollHeight - (D.tl.scrollTop + D.tl.clientHeight) <= 80);
+        if (isAtBottom) scBottom(true);
       };
       img.onclick = () => { if (D.imgViewSrc && D.imgViewMod) { D.imgViewSrc.src = url; resetZoom(); D.imgViewMod.classList.add("show"); } };
       wrapper.appendChild(img); return wrapper;
@@ -1452,9 +1451,9 @@ function toggleAcc(id) {
       const resolvedMsgs = await Promise.all(decryptedPromises);
 
       resolvedMsgs.sort((a, b) => {
-        const timeDiff = getMsgTime(b) - getMsgTime(a);
+        const timeDiff = getMsgTime(a) - getMsgTime(b);
         if (timeDiff !== 0) return timeDiff;
-        return b.id.localeCompare(a.id);
+        return a.id.localeCompare(b.id);
       });
 
       displayedMsgIds.clear();
@@ -1475,7 +1474,7 @@ function toggleAcc(id) {
       if (D.tli) D.tli.appendChild(fragment);
       
       isFirstLoad = false;
-      scTop(true);
+      scBottom(true);
       updateJumpBtns();
 
       const chatScr = $("chatScreen");
@@ -1762,10 +1761,10 @@ function toggleAcc(id) {
     if (D.mi) {
       D.mi.addEventListener("input", () => { updateClrMsgBtnVisibility(); D.mi.style.height = "auto"; D.mi.style.height = Math.min(D.mi.scrollHeight, 120) + "px"; });
       
-      // 💡 【ご要望対応】：入力フォーカス時に画面を最上部（最新位置）へ追従させる
+      // 💡 【ご要望対応】：入力フォーカス時に画面を最下部（最新位置）へ追従させる
       D.mi.addEventListener("focus", () => {
-        setTimeout(() => scTop(true), 50);
-        setTimeout(() => scTop(true), 200);
+        setTimeout(() => scBottom(true), 50);
+        setTimeout(() => scBottom(true), 200);
       });
 
       D.mi.addEventListener("keydown", (e) => {
@@ -1782,7 +1781,7 @@ function toggleAcc(id) {
         const currentHeight = window.innerHeight;
         if (Math.abs(lastHeight - currentHeight) > 100) {
           lastHeight = currentHeight;
-          if (isJoined) setTimeout(() => scTop(true), 80);
+          if (isJoined) setTimeout(() => scBottom(true), 80);
         }
       });
     }
@@ -1792,21 +1791,18 @@ function toggleAcc(id) {
 
     if (D.tl) {
       D.tl.addEventListener("scroll", () => {
-        const isAtTop = D.tl.scrollTop <= 40;
-        if (isAtTop) { unreadMsgIds.clear(); updateUnreadBadge(); }
+        const isAtBottom = D.tl.scrollHeight - (D.tl.scrollTop + D.tl.clientHeight) <= 80;
+        if (isAtBottom) { unreadMsgIds.clear(); updateUnreadBadge(); }
         updateJumpBtns();
       });
     }
 
-    // 💡 ジャンプボタン：▲（最新＝最上部へ）、▼（最下部＝過去ログへ）
-    if (D.jumpUpBtn) D.jumpUpBtn.addEventListener("click", (e) => { 
-      e.preventDefault(); 
-      if (D.tl) D.tl.scrollTo({ top: 0, behavior: "smooth" }); 
-      unreadMsgIds.clear(); updateUnreadBadge(); 
-    });
+    // 💡 ジャンプボタン：▲（最上部へ）、▼（最新＝最下部へ）
+    if (D.jumpUpBtn) D.jumpUpBtn.addEventListener("click", (e) => { e.preventDefault(); if (D.tl) D.tl.scrollTo({ top: 0, behavior: "smooth" }); });
     if (D.jumpDownBtn) D.jumpDownBtn.addEventListener("click", (e) => { 
       e.preventDefault(); 
       if (D.tl) D.tl.scrollTo({ top: D.tl.scrollHeight, behavior: "smooth" }); 
+      unreadMsgIds.clear(); updateUnreadBadge(); 
     });
 
     if (D.imgViewCloseBtn && D.imgViewMod) D.imgViewCloseBtn.addEventListener("click", (e) => { e.preventDefault(); D.imgViewMod.classList.remove("show"); });

@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#090d16">
-<title>NEZUO CHAT</title>
+<title>NEZUO CHAT - LIVE STREAM</title>
 <link rel="preconnect" href="https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app" crossorigin>
 <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
@@ -67,7 +67,6 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 #lobbyTripPrev { font-size: 11px; font-weight: bold; color: var(--usr-color); text-align: center; background: rgba(0,0,0,0.3); padding: 6px; border-radius: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border: 1.5px solid var(--usr-color); }
 
-/* 💡 チラつき・キャッシュ完全排除：読み込み完了まで完全非表示ロック */
 #chatScreen { display: none; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; position: relative; }
 #chatScreen.is-loading { opacity: 0; pointer-events: none; visibility: hidden; }
 #chatScreen:not(.is-loading) { opacity: 1; visibility: visible; transition: opacity 0.02s ease-in; }
@@ -90,8 +89,8 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 #playerContent{ width:100%;max-width:480px;background:#000;display:flex;justify-content:center;align-items:center;position:relative;margin:0 auto;overflow:hidden; }
 #playerCloseBtn{background:rgba(244, 63, 94, 0.15) !important;border:1px solid rgba(244, 63, 94, 0.4) !important;color: #fda4af !important;font-weight: 900 !important;padding: 4px 10px !important;font-size: 12px !important;border-radius: 5px;}
 
-/* 💡 【下を最新】通常の標準フロー。新しいメッセージはDOMの末尾（下部）に積まれる */
-#tl{flex:1;min-height:0;overflow-y:scroll;padding:8px 12px;background-color:#070a10;will-change:transform,scroll-position;-webkit-overflow-scrolling:touch;}
+/* 💡 【下を最新】通常の標準フロー。新しいメッセージはDOMの末尾（下部）に積まれる。フレックスレイアウトを固定しキーボード展開時の押し上げを防止 */
+#tl{flex:1;min-height:0;overflow-y:auto;overflow-anchor:auto;padding:8px 12px;background-color:#070a10;-webkit-overflow-scrolling:touch;}
 #tl-inner{display:flex;flex-direction:column;justify-content:flex-start;gap:6px;width:100%;max-width:800px;margin:0 auto;min-height:100%}
 
 /* ライブ配信アプリ風コメントストリーム */
@@ -125,7 +124,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .sys-msg{position:relative;text-align:center;font-size:11px;font-weight:bold;color:var(--mu);margin:4px auto;background:rgba(255,255,255,.04);padding:3px 10px;border-radius:8px;max-width:90%;word-break:break-all;line-height:1.4}
 .sys-ts{display:inline-block;font-size:9px;color:var(--mu);opacity:.75;font-family:monospace;margin-left:4px}
 
-#ib{display:flex;flex-direction:column;padding:6px calc(8px + env(safe-area-inset-right,0px)) calc(6px + var(--safe)) calc(8px + env(safe-area-inset-left,0px));background:var(--sf);border-top:1px solid var(--bd);gap:4px}
+#ib{display:flex;flex-direction:column;padding:6px calc(8px + env(safe-area-inset-right,0px)) calc(6px + var(--safe)) calc(8px + env(safe-area-inset-left,0px));background:var(--sf);border-top:1px solid var(--bd);gap:4px;flex-shrink:0;}
 #ibToolbar{width:100%;align-items:flex-end;display:flex;gap:8px}
 .jump-btns{display:flex;gap:4px}
 .jump-btn{width:50px;height:32px;border-radius:6px;background:var(--s2);border:1px solid var(--bd);color:var(--tx);font-size:11px;font-weight:bold;display:flex;align-items:center;justify-content:center}
@@ -987,6 +986,7 @@ function toggleAcc(id) {
     if (isBanned) { alert("この部屋の管理者により、アクセスが制限されています。"); return; }
 
     let settingsSnap = null;
+    let isNewRoom = false;
     try {
       settingsSnap = await db.ref(`settings/${safeRoomPath}`).once("value");
     } catch (e) {
@@ -1001,6 +1001,7 @@ function toggleAcc(id) {
     roomSettings.creatorUid = val.creatorUid || "";
 
     if (!settingsSnap.exists() || !roomSettings.creatorUid) {
+      isNewRoom = true;
       const isGlobalAdmin = checkIsGlobalAdmin();
       roomSettings.creatorUid = (safeRoomPath === "official") ? (isGlobalAdmin ? myUid : ADMIN_UID) : myUid;
       try {
@@ -1058,6 +1059,14 @@ function toggleAcc(id) {
     if (!options.silent && cleanName && !hasEnteredLogged) {
       hasEnteredLogged = true;
       const enterTs = getTrueTime();
+      
+      // 💡 【ご要望対応】：新規作成部屋の場合はまず「作成しました」ログを押し、その直後に入室ログを押す
+      if (isNewRoom) {
+        const createText = "[SYS]::📢 [お知らせ] " + `${cleanName} ${myTrip}`.trim() + " が部屋を作成しました";
+        const encCreate = await E2EE.encrypt(createText, activeKey);
+        await db.ref(`chat/${currentRoomId}`).push({ u: "system", n: "システム", p: "", c: "#f43f5e", m: encCreate, t: enterTs - 10, sys: true });
+      }
+
       const rawEnterText = "[SYS]::📢 [お知らせ] " + `${cleanName} ${myTrip}`.trim() + " が入室しました";
       E2EE.encrypt(rawEnterText, activeKey).then(encEnter => {
         db.ref(`chat/${currentRoomId}`).push({ u: "system", n: "システム", p: "", c: "#f43f5e", m: encEnter, t: enterTs, sys: true }).catch(()=>{});

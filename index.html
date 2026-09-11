@@ -304,7 +304,6 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
         </div>
 
         <div style="display: flex; gap: 6px; align-items: center; width: 100%;">
-          <button class="btn" id="admClearBtn" style="background: rgba(244,63,94,0.1); border: 1px solid rgba(244,63,94,0.25); color: #fda4af; font-size: 10px; height: 26px; flex: 1; font-weight: bold; border-radius: 4px;">🚨 ログ初期化</button>
           <button class="btn" id="admMembersToggleBtn" style="background: var(--s2); border: 1px solid var(--bd); color: var(--tx); font-size: 10px; height: 26px; flex: 1; font-weight: bold; border-radius: 4px;">👥 メンバー管理</button>
         </div>
 
@@ -362,7 +361,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
       <div id="ib">
         <div id="ibToolbar">
           <div class="mi-container">
-            <textarea id="mi" rows="1" placeholder="メッセージを入力... (長押しで削除)" maxlength="500"></textarea>
+            <textarea id="mi" rows="1" placeholder="メッセージを入力..." maxlength="500"></textarea>
             <button class="bclrm" id="clrMsgBtn" title="クリア">×</button>
           </div>
           <button class="bsd" id="sdBtn" aria-label="送信">
@@ -485,14 +484,13 @@ function toggleAcc(id) {
   let currentPresenceMap = {}, isConnectedBound = false;
   let roomSettings = { passcode: "", newEntriesDisabled: false, approvedTrips: {}, creatorUid: "" };
   let localLastClearedTime = 0;
-  const AUTO_EXIT_MS = 180000;
+  const AUTO_EXIT_MS = 1800000; // 💡 30分 (1,800,000ms)
   const UR = /(https?:\/\/[^\s\n<>"]+)/gi;
 
   const checkIsGlobalAdmin = () => (ADMIN_TRIPS.includes(myTrip) || ADMIN_TRIPS.includes(myTrip.replace("◆", "")));
 
   function showLobbyNotice(msg) {
     safeLS.set("nz_lobby_notice", msg);
-    showToast(msg, 3000);
   }
   function clearLobbyNotice() { safeLS.remove("nz_lobby_notice"); }
 
@@ -594,23 +592,7 @@ function toggleAcc(id) {
   }
 
   function showToast(text, duration = 1400) {
-    const container = $("toastContainer");
-    if (!container) return;
-    if (container.timeoutId) {
-      clearTimeout(container.timeoutId);
-      container.timeoutId = null;
-    }
-    container.textContent = text;
-    container.style.display = "flex";
-    container.offsetHeight;
-    container.classList.add("show");
-
-    container.timeoutId = setTimeout(() => {
-      container.classList.remove("show");
-      setTimeout(() => { 
-        if (!container.classList.contains("show")) container.style.display = "none"; 
-      }, 120);
-    }, duration);
+    // 💡 通知UI廃止のため非表示
   }
 
   function customConfirm(title, message, okText = "OK", cancelText = "キャンセル", isDanger = false) {
@@ -910,7 +892,7 @@ function toggleAcc(id) {
             const userTrip = (u.p || "").trim();
             if (userName) {
               const exactExpiryTime = u.t + AUTO_EXIT_MS;
-              const rawSysText = "[SYS]::📢 [お知らせ] " + `${userName} ${userTrip}`.trim() + " が自動退室しました (3分間発言がなかったため)";
+              const rawSysText = "[SYS]::📢 [お知らせ] " + `${userName} ${userTrip}`.trim() + " が自動退室しました (30分間発言がなかったため)";
               const encLog = await E2EE.encrypt(rawSysText, activeKey);
               
               await db.ref(`chat/${currentRoomId}`).push({ 
@@ -924,7 +906,7 @@ function toggleAcc(id) {
               });
 
               if (id === myUid) {
-                showLobbyNotice("⏱️ 3分間発言がなかったため、自動退室しました。");
+                showLobbyNotice("⏱️ 30分間発言がなかったため、自動退室しました。");
                 doExit(true);
               }
             }
@@ -969,7 +951,7 @@ function toggleAcc(id) {
       removeFirebaseListeners(); 
       switchScreen("lobby");
       if (D.mi) D.mi.blur();
-      const noticeMsg = isAuto ? "⏱️ 3分間発言がなかったため、自動退室しました。" : "🚪 退室しました。";
+      const noticeMsg = isAuto ? "⏱️ 30分間発言がなかったため、自動退室しました。" : "🚪 退室しました。";
       showLobbyNotice(noticeMsg);
     };
 
@@ -1160,33 +1142,6 @@ function toggleAcc(id) {
     }
   }
 
-  const setupLongPressDelete = (el, msgId, rawText, msgName, msgTrip, msgTime) => {
-    let pressTimer = null;
-    const triggerDelete = async () => {
-      const timeStr = fDT(msgTime);
-      const tripStr = msgTrip ? ` ${msgTrip}` : "";
-      const previewBlock = `[${msgName}${tripStr}] [${timeStr}]\n\n${rawText}`;
-      if (!await customConfirm("メッセージ削除の確認", `以下のメッセージを本当に削除しますか？\n\n${previewBlock}`, "削除する", "キャンセル", true)) return;
-      
-      if (el) {
-        const mwParent = el.closest(".mw");
-        if (mwParent) mwParent.remove(); else el.remove();
-        renderedMwNodes.delete(msgId); displayedMsgIds.delete(msgId); processingMsgIds.delete(msgId); unreadMsgIds.delete(msgId); updateUnreadBadge(); updateJumpBtns();
-      }
-      db.ref(`chat/${currentRoomId}/${msgId}`).remove().catch(() => showToast("削除に失敗しました。"));
-    };
-
-    const startPress = () => { if (pressTimer) clearTimeout(pressTimer); pressTimer = setTimeout(triggerDelete, 400); };
-    const cancelPress = () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } };
-
-    el.addEventListener("touchstart", startPress, { passive: true });
-    el.addEventListener("touchend", cancelPress);
-    el.addEventListener("touchmove", cancelPress);
-    el.addEventListener("mousedown", startPress);
-    el.addEventListener("mouseup", cancelPress);
-    el.addEventListener("mouseleave", cancelPress);
-  };
-
   function cMsg(m, isNewIncoming = false) {
     const el = document.createElement("div");
     const isMine = (m.u === myUid && m.u !== "" && m.u !== "system");
@@ -1206,7 +1161,6 @@ function toggleAcc(id) {
     }
 
     const name = m.n || "名無し", trip = m.p || "", color = m.c || "#f1f5f9";
-    const isDeletable = (m.u === myUid && m.u !== "") || (myUid === roomSettings.creatorUid) || checkIsGlobalAdmin();
 
     el.innerHTML = `
       <div class="mw-content-row">
@@ -1268,10 +1222,6 @@ function toggleAcc(id) {
         const matches = text.match(UR);
         if (matches) matches.forEach(u => { const media = createMediaContainer(u); if (media) mbBubble.appendChild(media); });
       }
-    }
-
-    if (isDeletable) {
-      setupLongPressDelete(mbBubble, m.id, m.m, name, trip, msgTime);
     }
 
     renderedMwNodes.set(m.id, el); displayedMsgIds.add(m.id);
@@ -1832,42 +1782,6 @@ function toggleAcc(id) {
       e.preventDefault(); const passVal = $("admPass").value.trim();
       if (db && currentRoomId) db.ref(`settings/${currentRoomId}/passcode`).set(passVal).then(() => showToast("🔑 合言葉を設定しました"));
     });
-
-    if ($("admClearBtn")) {
-      $("admClearBtn").addEventListener("click", (e) => {
-        e.preventDefault();
-        customConfirm("ログの初期化", "この部屋のすべてのチャットログを消去しますか？", "消去する", "キャンセル", true).then(async ok => {
-          if (!ok || !db || !currentRoomId) return;
-          if (D.adminAccordion) D.adminAccordion.style.display = "none";
-          try {
-            const clearTs = getTrueTime();
-            localLastClearedTime = clearTs;
-
-            if (D.tli) D.tli.innerHTML = "";
-            displayedMsgIds.clear(); processingMsgIds.clear(); renderedMwNodes.clear(); unreadMsgIds.clear(); latestDisplayedTs = clearTs; updateUnreadBadge();
-
-            const updates = {};
-            updates[`chat/${currentRoomId}`] = null;
-            updates[`settings/${currentRoomId}/last_cleared_at`] = clearTs;
-            await db.ref().update(updates);
-
-            const clearLogText = "[SYS]::🚨 [お知らせ] 管理者によってログが初期化されました";
-            const encClearLog = await E2EE.encrypt(clearLogText, activeKey);
-
-            await db.ref(`chat/${currentRoomId}`).push({
-              u: myUid,
-              n: await E2EE.encrypt("システム", activeKey),
-              p: "",
-              c: "#f43f5e",
-              m: encClearLog,
-              t: firebase.database.ServerValue.TIMESTAMP,
-              sys: true
-            });
-            showToast("🚨 チャットログを初期化しました");
-          } catch (err) { showToast("⚠️ ログの初期化に失敗しました"); }
-        });
-      });
-    }
 
     if ($("admDestroyRoomBtn")) {
       $("admDestroyRoomBtn").addEventListener("click", (e) => {

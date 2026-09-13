@@ -105,6 +105,9 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .mm-trip{font-size:10px;color:var(--mu);opacity:0.8}
 .ts{color:var(--mu);opacity:.5;font-size:9px;font-family:monospace;margin-left:auto;}
 
+.msg-del-btn{flex-shrink:0;font-size:10.5px;line-height:1;padding:2px 5px;border-radius:4px;background:rgba(244,63,94,0.12);border:1px solid rgba(244,63,94,0.3);color:#fda4af;margin-left:4px;}
+.msg-del-btn:active{opacity:.6}
+
 .mb-bubble {
   position:relative;
   font-size:13.5px;
@@ -304,6 +307,10 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 
         <div style="display: flex; gap: 6px; align-items: center; width: 100%;">
           <button class="btn" id="admMembersToggleBtn" style="background: var(--s2); border: 1px solid var(--bd); color: var(--tx); font-size: 10px; height: 26px; flex: 1; font-weight: bold; border-radius: 4px;">👥 メンバー管理</button>
+        </div>
+
+        <div id="admClearChatContainer" style="display: none; width: 100%; margin-top: 2px;">
+          <button class="btn" id="admClearChatBtn" style="background: rgba(244,63,94,0.15); border: 1px solid rgba(244,63,94,0.4); color: #fda4af; font-size: 10px; height: 26px; width: 100%; font-weight: bold; border-radius: 4px;">🗑️ 発言ログを全削除（部屋は維持）</button>
         </div>
 
         <div id="admDestroyRoomContainer" style="display: none; width: 100%; margin-top: 2px;">
@@ -520,20 +527,25 @@ function toggleAcc(id) {
     } catch (e) {}
   }
 
-  if (typeof document !== 'undefined') {
-    const triggerInstantSync = async () => {
-      if (isJoined && currentRoomId) {
-        if (db) {
-          db.goOnline();
-          await syncServerOffset();
-          await loadFullRoomDataAndSync(true);
-          if (myPresenceRef) {
-            myPresenceRef.child("t").set(firebase.database.ServerValue.TIMESTAMP).catch(()=>{});
-          }
-        }
-      }
-    };
+  let isSyncingNow = false;
+  // 💡 【ご要望対応】：バックグラウンド復帰・再接続時に「発言ログ／削除／入室者リスト」を
+  //    必ずサーバーの最新状態へ強制同期する唯一の窓口。多重発火は isSyncingNow で防止。
+  //    ※ ここでは presence.t（最終発言時刻）を更新しない＝単に画面を開いただけで
+  //      自動退室タイマーがリセットされてしまう不具合を修正。
+  const triggerInstantSync = async () => {
+    if (!isJoined || !currentRoomId || !db) return;
+    if (isSyncingNow) return;
+    isSyncingNow = true;
+    try {
+      db.goOnline();
+      await syncServerOffset();
+      await loadFullRoomDataAndSync(true);
+    } finally {
+      isSyncingNow = false;
+    }
+  };
 
+  if (typeof document !== 'undefined') {
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
         triggerInstantSync();
@@ -840,34 +852,54 @@ function toggleAcc(id) {
   const updateSessionStartTime = time => safeLS.set("nz_session_start_time", time.toString());
 
   let smartTimerId = null;
+  let preciseExitTimerId = null;
+
+  // 💡 【ご要望対応】「自動退室を1秒もズレないように」
+  //    presence/{room}/{uid}/t（サーバー時刻）だけを唯一の基準とし、
+  //    次に期限切れになる瞬間を正確に計算してsetTimeoutで狙い撃ちする。
+  //    自分/他人を区別せず全員同じ基準で判定するため、二重基準によるズレ・失敗が起きない。
+  function schedulePreciseExitCheck() {
+    if (preciseExitTimerId) { clearTimeout(preciseExitTimerId); preciseExitTimerId = null; }
+    if (!isJoined || !currentPresenceMap) return;
+    const now = getTrueTime();
+    let soonestRemain = Infinity;
+    for (const u of Object.values(currentPresenceMap)) {
+      if (u && typeof u.t === "number") {
+        const remain = (u.t + AUTO_EXIT_MS) - now;
+        if (remain < soonestRemain) soonestRemain = remain;
+      }
+    }
+    if (soonestRemain === Infinity) return;
+    const delay = Math.max(0, soonestRemain) + 30; // 期限超過を確実にするための余裕(30ms)
+    preciseExitTimerId = setTimeout(() => {
+      if (isJoined && currentPresenceMap) checkAndTriggerExitForInactiveUsers(currentPresenceMap);
+      schedulePreciseExitCheck();
+    }, delay);
+  }
 
   function startSmartAutoExitChecker() {
     stopSmartAutoExitChecker();
     if (!isJoined) return;
-    
+
+    // 1秒間隔のポーリングはネットワーク遅延やタブのスリープ復帰時の保険（自己修復用）
     smartTimerId = setInterval(() => {
       if (!isJoined) return;
-      
-      const nowTrue = getTrueTime();
-      const sessionStart = parseInt(safeLS.get("nz_session_start_time") || nowTrue.toString(), 10);
-      const lastPost = parseInt(safeLS.get("nz_last_post_time") || sessionStart.toString(), 10);
-      const myBaseline = Math.max(sessionStart, lastPost);
-
-      if (nowTrue - myBaseline >= AUTO_EXIT_MS) {
-        doExit(true);
-        return;
-      }
-
       if (currentPresenceMap && Object.keys(currentPresenceMap).length > 0) {
         checkAndTriggerExitForInactiveUsers(currentPresenceMap);
       }
     }, 1000);
+
+    schedulePreciseExitCheck();
   }
 
   function stopSmartAutoExitChecker() {
     if (smartTimerId) {
       clearInterval(smartTimerId);
       smartTimerId = null;
+    }
+    if (preciseExitTimerId) {
+      clearTimeout(preciseExitTimerId);
+      preciseExitTimerId = null;
     }
   }
   
@@ -1061,7 +1093,8 @@ function toggleAcc(id) {
       const enterTs = getTrueTime();
       
       // 💡 【ご要望対応】：新規作成部屋の場合はまず「作成しました」ログを押し、その直後に入室ログを押す
-      if (isNewRoom) {
+      //    ただし公式部屋では「部屋を作成しました」ログは出さない
+      if (isNewRoom && currentRoomId !== "official") {
         const createText = "[SYS]::📢 [お知らせ] " + `${cleanName} ${myTrip}`.trim() + " が部屋を作成しました";
         const encCreate = await E2EE.encrypt(createText, activeKey);
         await db.ref(`chat/${currentRoomId}`).push({ u: "system", n: "システム", p: "", c: "#f43f5e", m: encCreate, t: enterTs - 10, sys: true });
@@ -1170,6 +1203,8 @@ function toggleAcc(id) {
     }
 
     const name = m.n || "名無し", trip = m.p || "", color = m.c || "#f1f5f9";
+    const isAdminForRoom = currentRoomId === "official" ? checkIsGlobalAdmin() : (myUid === roomSettings.creatorUid);
+    const canDelete = isMine || isAdminForRoom;
 
     el.innerHTML = `
       <div class="mw-content-row">
@@ -1179,6 +1214,7 @@ function toggleAcc(id) {
         </div>
         <div class="mb-bubble"></div>
         <span class="ts">${fDT(msgTime)}</span>
+        ${canDelete ? `<button class="msg-del-btn" data-mid="${m.id}" title="この発言を削除">🗑</button>` : ''}
       </div>
     `;
     const mbBubble = el.querySelector(".mb-bubble");
@@ -1386,6 +1422,7 @@ function toggleAcc(id) {
       currentPresenceMap = members;
       renderPresence(members);
       checkAndTriggerExitForInactiveUsers(members);
+      schedulePreciseExitCheck();
 
       const msgs = [];
       chatSnap.forEach(child => {
@@ -1486,6 +1523,7 @@ function toggleAcc(id) {
         
         if (Object.keys(members).length === 0) checkRoomSelfDestruct(currentRoomId);
         checkAndTriggerExitForInactiveUsers(members);
+        schedulePreciseExitCheck();
       });
     });
 
@@ -1582,9 +1620,11 @@ function toggleAcc(id) {
     if (currentRoomId === "official") {
       $("adminBtnContainer").style.display = isGlobalAdmin ? "inline-flex" : "none";
       if ($("admDestroyRoomContainer")) $("admDestroyRoomContainer").style.display = "none";
+      if ($("admClearChatContainer")) $("admClearChatContainer").style.display = isGlobalAdmin ? "flex" : "none";
     } else {
       $("adminBtnContainer").style.display = (myUid === roomSettings.creatorUid) ? "inline-flex" : "none";
       if ($("admDestroyRoomContainer")) $("admDestroyRoomContainer").style.display = (myUid === roomSettings.creatorUid) ? "flex" : "none";
+      if ($("admClearChatContainer")) $("admClearChatContainer").style.display = (myUid === roomSettings.creatorUid) ? "flex" : "none";
     }
   }
 
@@ -1596,6 +1636,19 @@ function toggleAcc(id) {
     if ($("admPassToggle")) $("admPassToggle").checked = !!roomSettings.passcode;
     if ($("admPass")) $("admPass").value = roomSettings.passcode || "";
     if ($("admPassContainer")) $("admPassContainer").style.display = roomSettings.passcode ? "flex" : "none";
+  }
+
+  async function clearAllMessages() {
+    const canManage = currentRoomId === "official" ? checkIsGlobalAdmin() : (myUid === roomSettings.creatorUid);
+    if (!db || !currentRoomId || !canManage) return;
+    try {
+      const clearTs = firebase.database.ServerValue.TIMESTAMP;
+      await db.ref(`settings/${currentRoomId}/last_cleared_at`).set(clearTs);
+      await db.ref(`chat/${currentRoomId}`).remove();
+      showToast("🗑️ すべての発言を削除しました。");
+    } catch (e) {
+      showToast("⚠️ 発言の全削除に失敗しました。");
+    }
   }
 
   async function sendMessage() {
@@ -1664,6 +1717,25 @@ function toggleAcc(id) {
         serverTimeOffset = snap.val() || 0;
         isOffsetLoaded = true;
       });
+
+      // 💡 【ご要望対応】スマホのバックグラウンド復帰などの対策：
+      //    Firebaseの「本当に繋がったか」の一次情報である .info/connected を監視し、
+      //    切断→再接続を検知した瞬間に発言ログ・削除・入室者リストを強制的に最新化する。
+      //    visibilitychange/focus/pageshow/online だけに頼らず、接続断イベント自体を捕捉することで
+      //    「どこから接続しても見た瞬間に常に最新」を保証する。
+      let wasConnectedBefore = false;
+      db.ref(".info/connected").on("value", snap => {
+        const nowConnected = snap.val() === true;
+        if (nowConnected) {
+          if (wasConnectedBefore) {
+            triggerInstantSync();
+          }
+          wasConnectedBefore = true;
+        } else {
+          wasConnectedBefore = false;
+        }
+      });
+
       isConnectedBound = true;
     }
   };
@@ -1729,7 +1801,34 @@ function toggleAcc(id) {
     }
 
     if (typeof window !== 'undefined') {
+      const appEl = $("app");
       let lastHeight = window.innerHeight;
+
+      // 💡 【ご要望対応】キーボード開閉時に #app の高さ/位置を「実際に見えている領域(visualViewport)」へ
+      //    正確に追従させる。100dvhのみに頼るとログが少ない時やプレイヤー表示中に
+      //    レイアウトが一瞬「押し上げられる」ように見えることがあるため、JS側で明示的に固定する。
+      let rafPending = false;
+      function syncViewportToKeyboard() {
+        if (rafPending) return;
+        rafPending = true;
+        requestAnimationFrame(() => {
+          rafPending = false;
+          if (appEl && window.visualViewport) {
+            const vv = window.visualViewport;
+            appEl.style.height = vv.height + "px";
+            appEl.style.top = vv.offsetTop + "px";
+            window.scrollTo(0, 0);
+          }
+          if (isJoined) scBottom(true);
+        });
+      }
+
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', syncViewportToKeyboard);
+        window.visualViewport.addEventListener('scroll', syncViewportToKeyboard);
+        syncViewportToKeyboard();
+      }
+
       window.addEventListener('resize', () => {
         const currentHeight = window.innerHeight;
         if (Math.abs(lastHeight - currentHeight) > 100) {
@@ -1812,6 +1911,15 @@ function toggleAcc(id) {
       });
     }
 
+    if ($("admClearChatBtn")) {
+      $("admClearChatBtn").addEventListener("click", (e) => {
+        e.preventDefault();
+        customConfirm("発言ログの全削除", "この部屋の発言ログをすべて削除しますか？（部屋自体とメンバーは維持されます）", "全削除する", "キャンセル", true).then(async ok => {
+          if (ok) await clearAllMessages();
+        });
+      });
+    }
+
     if ($("admMembersToggleBtn") && $("admMembersDrawer")) {
       $("admMembersToggleBtn").addEventListener("click", (e) => {
         e.preventDefault();
@@ -1827,6 +1935,25 @@ function toggleAcc(id) {
         db.ref(`settings/${currentRoomId}/approvedTrips/${newKey}`).set(tripVal).then(() => {
           $("admTripInput").value = "";
           showToast("📋 事前承認トリップを追加しました");
+        });
+      });
+    }
+
+    if (D.tli) {
+      D.tli.addEventListener("click", (e) => {
+        const btn = e.target.closest(".msg-del-btn");
+        if (!btn) return;
+        e.preventDefault();
+        const mid = btn.dataset.mid;
+        if (!mid || !db || !currentRoomId) return;
+        const el = renderedMwNodes.get(mid);
+        const uidOfMsg = el ? (el.dataset.uid || "") : "";
+        const isMineMsg = (uidOfMsg === myUid && myUid !== "");
+        const isAdminForRoom = currentRoomId === "official" ? checkIsGlobalAdmin() : (myUid === roomSettings.creatorUid);
+        if (!isMineMsg && !isAdminForRoom) { showToast("⚠️ この発言を削除する権限がありません。"); return; }
+        customConfirm("発言の削除", "この発言を削除しますか？この操作は取り消せません。", "削除する", "キャンセル", true).then(ok => {
+          if (!ok) return;
+          db.ref(`chat/${currentRoomId}/${mid}`).remove().catch(() => { showToast("⚠️ 削除に失敗しました。"); });
         });
       });
     }

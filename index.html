@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#090d16">
-<title>NEZUO CHAT</title>
+<title>NEZUO CHAT - LIVE STREAM</title>
 <link rel="preconnect" href="https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app" crossorigin>
 <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
@@ -540,7 +540,7 @@ function toggleAcc(id) {
     try {
       db.goOnline();
       await syncServerOffset();
-      await loadFullRoomDataAndSync(true);
+      await reconcileRoomData();
     } finally {
       isSyncingNow = false;
     }
@@ -562,7 +562,7 @@ function toggleAcc(id) {
     //      直近の同期から一定時間(3秒)経っていれば即座に再同期する。
     //      visibilitychange等のイベントが何らかの理由で発火しない環境（一部のWebView等）でも、
     //      最初のタップで必ず最新化されるための保険。
-    const STALE_THRESHOLD_MS = 3000;
+    const STALE_THRESHOLD_MS = 2000;
     const onFirstTouchCheck = () => {
       if (!isJoined) return;
       if (getTrueTime() - lastSyncAt > STALE_THRESHOLD_MS) triggerInstantSync();
@@ -570,11 +570,10 @@ function toggleAcc(id) {
     document.addEventListener("pointerdown", onFirstTouchCheck, { passive: true });
     document.addEventListener("touchstart", onFirstTouchCheck, { passive: true });
 
-    // 💡 ②さらに、画面が表示されている間は一定間隔(15秒)ごとに強制再同期をかけ、
-    //      リアルタイムリスナーが何らかの理由で沈黙してしまうケースの保険とする。
+    // 💡 差分反映のみの軽量な再同期になったため、間隔を詰めても画面のチラつきは発生しない
     setInterval(() => {
       if (isJoined && document.visibilityState === "visible") triggerInstantSync();
-    }, 15000);
+    }, 8000);
   }
 
   (async function initInitialScreenState() {
@@ -1520,6 +1519,110 @@ function toggleAcc(id) {
     }
   }
 
+  // 💡 【ご要望対応】「リアルタイムの遅延なしに改良する」
+  //   child_added/child_removed/presence の push リスナーが本来の"即時"経路であり、
+  //   これ自体はFirebaseのWebSocketでほぼ遅延なく届く。
+  //   一方、以前の実装は「保険」の再同期のたびに #tl-inner を全消去→再構築しており、
+  //   これが定期的な画面のチラつき・スクロール位置のジャンプ＝体感的な"遅延"の原因になっていた。
+  //   そこで保険の再同期は「差分だけを反映する軽量版」に置き換え、
+  //   pushリスナー自体は張り直さず常時ライブのまま維持することで、
+  //   本来の即時性を邪魔しない形にする。
+  async function reconcileRoomData() {
+    if (!db || !isJoined || !currentRoomId) return;
+    try {
+      const [chatSnap, presSnap, settingsSnap, banSnap] = await Promise.all([
+        db.ref(`chat/${currentRoomId}`).orderByChild("t").limitToLast(100).once("value"),
+        db.ref(`presence/${currentRoomId}`).once("value"),
+        db.ref(`settings/${currentRoomId}`).once("value"),
+        db.ref(`banlist/${currentRoomId}`).once("value")
+      ]);
+
+      // 部屋設定・管理者表示・BANリストも同時に最新化（タブ/ブラウザ切替・BG復帰対策）
+      const val = settingsSnap.val() || {};
+      roomSettings.newEntriesDisabled = val.newEntriesDisabled || false;
+      roomSettings.passcode = val.passcode || "";
+      roomSettings.approvedTrips = val.approvedTrips || {};
+      roomSettings.creatorUid = val.creatorUid || "";
+      applyRoomSettingsUI();
+      const isGlobalAdminNow = checkIsGlobalAdmin();
+      if ($("adminBtnContainer")) {
+        $("adminBtnContainer").style.display = (currentRoomId === "official" ? isGlobalAdminNow : (myUid === roomSettings.creatorUid)) ? "inline-flex" : "none";
+      }
+      renderBanList(banSnap.val() || {});
+
+      // 入室者リスト：renderPresenceは元々差分更新（チラつきなし）
+      const list = presSnap.val() || {}, members = {};
+      for (const [id, u] of Object.entries(list)) {
+        if (u && u.n && typeof u.t === "number") members[id] = { id, ...u };
+      }
+      currentPresenceMap = members;
+      renderPresence(members);
+      checkAndTriggerExitForInactiveUsers(members);
+      schedulePreciseExitCheck();
+
+      // 発言ログ：サーバーに存在しない＝見逃した削除を反映（全消去はしない）
+      const serverIds = new Set();
+      const missingMsgs = [];
+      chatSnap.forEach(child => {
+        serverIds.add(child.key);
+        if (!displayedMsgIds.has(child.key) && !processingMsgIds.has(child.key)) {
+          const m = child.val();
+          if (m) { m.id = child.key; missingMsgs.push(m); }
+        }
+      });
+
+      for (const mid of Array.from(displayedMsgIds)) {
+        if (!serverIds.has(mid)) {
+          const el = renderedMwNodes.get(mid);
+          if (el) el.remove();
+          renderedMwNodes.delete(mid);
+          displayedMsgIds.delete(mid);
+          processingMsgIds.delete(mid);
+          unreadMsgIds.delete(mid);
+        }
+      }
+      updateUnreadBadge();
+
+      // 見逃していた発言だけを静かに追加（画面全体は再構築しない＝スクロール位置維持）
+      for (const m of missingMsgs) {
+        try {
+          m.m = await E2EE.decrypt(m.m, activeKey);
+          m.n = await E2EE.decrypt(m.n, activeKey);
+          m.p = await E2EE.decrypt(m.p, activeKey);
+        } catch (err) { m.m = "[復号エラー]"; }
+        await syncSingleMessage(m, true);
+      }
+
+      updateJumpBtns();
+      lastSyncAt = getTrueTime();
+    } catch (e) {}
+  }
+
+  function renderBanList(bans) {
+    const banListEl = $("admBanList");
+    if (!banListEl) return;
+    banListEl.innerHTML = "";
+    const entries = Object.entries(bans || {});
+    if (entries.length === 0) {
+      banListEl.innerHTML = `<span style="color:var(--mu); font-size:9.5px; padding:2px;">BANされたユーザーはありません</span>`;
+      return;
+    }
+    entries.forEach(([bUid, bData]) => {
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.03); padding:3px 6px; border-radius:4px; margin-bottom:2px;";
+      const info = document.createElement("span");
+      info.style.cssText = "overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:160px; font-size:10px;";
+      info.textContent = `${bData.n || '名無し'} ${bData.p || ''}`.trim();
+      const unbanBtn = document.createElement("button");
+      unbanBtn.className = "btn";
+      unbanBtn.style.cssText = "background:#334155; color:#fff; font-size:9px; height:20px; padding:0 6px; border-radius:3px; font-weight:bold;";
+      unbanBtn.textContent = "解除";
+      unbanBtn.addEventListener("click", () => unbanUser(bUid, bData.n));
+      row.appendChild(info); row.appendChild(unbanBtn);
+      banListEl.appendChild(row);
+    });
+  }
+
   async function setupFirebaseListeners() {
     if (!db || !isJoined || isFirebaseListenersBound) return;
     isFirebaseListenersBound = true;
@@ -1582,29 +1685,7 @@ function toggleAcc(id) {
     });
 
     banListRef.on("value", snap => {
-      const bans = snap.val() || {};
-      const banListEl = $("admBanList");
-      if (!banListEl) return;
-      banListEl.innerHTML = "";
-      const entries = Object.entries(bans);
-      if (entries.length === 0) {
-        banListEl.innerHTML = `<span style="color:var(--mu); font-size:9.5px; padding:2px;">BANされたユーザーはありません</span>`;
-        return;
-      }
-      entries.forEach(([bUid, bData]) => {
-        const row = document.createElement("div");
-        row.style.cssText = "display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.03); padding:3px 6px; border-radius:4px; margin-bottom:2px;";
-        const info = document.createElement("span");
-        info.style.cssText = "overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:160px; font-size:10px;";
-        info.textContent = `${bData.n || '名無し'} ${bData.p || ''}`.trim();
-        const unbanBtn = document.createElement("button");
-        unbanBtn.className = "btn";
-        unbanBtn.style.cssText = "background:#334155; color:#fff; font-size:9px; height:20px; padding:0 6px; border-radius:3px; font-weight:bold;";
-        unbanBtn.textContent = "解除";
-        unbanBtn.addEventListener("click", () => unbanUser(bUid, bData.n));
-        row.appendChild(info); row.appendChild(unbanBtn);
-        banListEl.appendChild(row);
-      });
+      renderBanList(snap.val() || {});
     });
 
     myPresenceRef = db.ref(`presence/${currentRoomId}/${myUid}`);

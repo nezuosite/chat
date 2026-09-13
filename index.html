@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#090d16">
-<title>NEZUO CHAT - LIVE STREAM</title>
+<title>NEZUO CHAT</title>
 <link rel="preconnect" href="https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app" crossorigin>
 <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
@@ -488,6 +488,7 @@ function toggleAcc(id) {
   let isFirstLoad = true, isFirebaseListenersBound = false;
   let isSending = false, lastSendTime = 0, scale = 1, panX = 0, panY = 0;
   let currentPresenceMap = {}, isConnectedBound = false;
+  let lastSyncAt = 0; // 💡 直近でサーバーの最新状態を取得できた時刻（全経路での「見た瞬間に最新」判定に使用）
   let roomSettings = { passcode: "", newEntriesDisabled: false, approvedTrips: {}, creatorUid: "" };
   let localLastClearedTime = 0;
   const AUTO_EXIT_MS = 1800000; // 💡 30分 (1,800,000ms)
@@ -555,6 +556,25 @@ function toggleAcc(id) {
     window.addEventListener("pageshow", triggerInstantSync);
     window.addEventListener("focus", triggerInstantSync);
     window.addEventListener("online", triggerInstantSync);
+
+    // 💡 【ご要望対応】「すべての接続経路で最新のログと入室者リストを遅延なく、見た瞬間に」
+    //    ①ユーザーが画面に触れた瞬間（＝実際に「見ている」ことの最も確実なサイン）に、
+    //      直近の同期から一定時間(3秒)経っていれば即座に再同期する。
+    //      visibilitychange等のイベントが何らかの理由で発火しない環境（一部のWebView等）でも、
+    //      最初のタップで必ず最新化されるための保険。
+    const STALE_THRESHOLD_MS = 3000;
+    const onFirstTouchCheck = () => {
+      if (!isJoined) return;
+      if (getTrueTime() - lastSyncAt > STALE_THRESHOLD_MS) triggerInstantSync();
+    };
+    document.addEventListener("pointerdown", onFirstTouchCheck, { passive: true });
+    document.addEventListener("touchstart", onFirstTouchCheck, { passive: true });
+
+    // 💡 ②さらに、画面が表示されている間は一定間隔(15秒)ごとに強制再同期をかけ、
+    //      リアルタイムリスナーが何らかの理由で沈黙してしまうケースの保険とする。
+    setInterval(() => {
+      if (isJoined && document.visibilityState === "visible") triggerInstantSync();
+    }, 15000);
   }
 
   (async function initInitialScreenState() {
@@ -1492,6 +1512,8 @@ function toggleAcc(id) {
           updateJumpBtns();
         }
       });
+
+      lastSyncAt = getTrueTime();
     } catch (e) {
       const chatScr = $("chatScreen");
       if (chatScr) chatScr.classList.remove("is-loading");

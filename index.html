@@ -53,6 +53,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .logo span.sub-room { font-size: 10.5px; font-weight: bold; color: var(--mu); background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.08); margin-left: 6px; }
 
 .pcnt{font-size:10px;font-weight:900;background:rgba(255,255,255,.09);padding:2px 6px;border-radius:4px;border:1px solid rgba(255,255,255,.06);flex-shrink:0;color:#e2e8f0;}
+@keyframes pulseConn { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
 
 .hbs{display:flex;gap:4px;align-items:center;flex-shrink:0;margin-left:auto;}
 .hbs button{padding:3px 8px;height:26px;border-radius:5px;font-size:10.5px;font-weight:700;background:var(--bg);border:1px solid var(--bd);color:var(--tx);display:flex;align-items:center;gap:3px}
@@ -83,6 +84,10 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 
 #pl{display:none;gap:6px;padding:6px 12px;background:var(--s2);border-bottom:1px solid var(--bd);overflow-x:auto;white-space:nowrap;min-height:36px;max-height:36px;flex-shrink:0;align-items:center;}
 .chip{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,0.04);border:1.5px solid var(--usr-color);display:inline-flex;align-items:center;color:var(--usr-color);height:24px}
+
+.call-chip{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(74,222,128,0.08);border:1.5px solid rgba(74,222,128,0.4);display:inline-flex;align-items:center;gap:3px;color:#4ade80;height:22px;flex-shrink:0;}
+.call-chip.is-listen{border-color:rgba(148,163,184,0.4);color:#94a3b8;background:rgba(148,163,184,0.06);}
+.call-chip.is-muted{opacity:0.65;}
 
 #fixedPlayer{display:none;flex-direction:column;background:var(--s2);border-bottom:1px solid var(--bd);width:100%}
 #playerHeader{background:var(--sf);padding:8px 12px;font-size:12px;font-weight:bold;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--bd)}
@@ -220,6 +225,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 </style>
 </head>
 <body>
+<noscript><div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;background:#05070a;color:#f1f5f9;font-family:sans-serif;text-align:center;line-height:1.6;">このアプリの利用にはJavaScriptを有効にする必要があります。</div></noscript>
 <div id="toastContainer"></div>
 
 <div id="clrmod" class="mod-overlay">
@@ -247,6 +253,18 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
   </div>
 </div>
 
+<div id="callModeMod" class="mod-overlay">
+  <div class="gc" style="max-width: 320px;">
+    <div style="font-size: 13px; font-weight: bold; margin-bottom: 4px;">📞 通話に参加</div>
+    <div style="font-size: 10.5px; color: var(--mu); margin-bottom: 10px; line-height: 1.5;">エコーキャンセル・ノイズ抑制を有効にして接続します。</div>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      <button class="btn" id="callJoinBothBtn" style="background:#166534; color:#fff; height:46px; font-size:12.5px; font-weight:bold; border-radius:8px; flex-direction:column; gap:2px;"><span>🎙️ 双方向で参加</span><span style="font-weight:normal; font-size:10px; opacity:.8;">自分の声も相手に届きます</span></button>
+      <button class="btn" id="callJoinListenBtn" style="background:#334155; color:#fff; height:46px; font-size:12.5px; font-weight:bold; border-radius:8px; flex-direction:column; gap:2px;"><span>🔈 聴くだけで参加</span><span style="font-weight:normal; font-size:10px; opacity:.8;">マイクへは一切アクセスしません</span></button>
+      <button class="clr-cancel" id="callModeCancelBtn" style="height:34px; font-size:12px;">キャンセル</button>
+    </div>
+  </div>
+</div>
+
 <div id="imgViewMod" class="mod-overlay">
   <button class="modal-top-close" id="imgViewCloseBtn">✕</button>
   <div id="zoomViewport">
@@ -263,6 +281,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
         </div>
         <div class="hr-bottom">
           <span class="pcnt" id="pcnt" style="display: none;"></span>
+          <span id="connStatusBadge" style="display: none; font-size: 9.5px; font-weight: 900; background: #f43f5e; color: #fff; padding: 1.5px 6px; border-radius: 3px; animation: pulseConn 1.2s ease-in-out infinite;">🔌 再接続中...</span>
           <div id="roomStatusBadges" style="display: none; gap: 3px; align-items: center;"></div>
           <div class="hbs">
             <div id="adminBtnContainer" style="display: none; align-items: center;">
@@ -271,6 +290,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
               </button>
             </div>
             <button class="bclr" id="clrBtn" title="色設定"><span class="bclr-dot" id="clrDot"></span> 色</button>
+            <button class="btn" id="callBtn" style="display: none; background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.4); color: #4ade80;">📞 通話</button>
             <button class="btn" id="inviteBtn" style="display: none;">🔗 招待</button>
             <button class="btn" id="exBtn" style="background: rgba(244,63,94,0.15); border: 1px solid rgba(244,63,94,0.3); color: #fda4af; display: none;">退室</button>
           </div>
@@ -334,6 +354,20 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
         </div>
       </div>
 
+      <div id="callBar" style="display:none; flex-direction:column; background:#0b1f16; border-bottom:1px solid #14532d; flex-shrink:0;">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 12px; gap:8px;">
+          <div style="display:flex; align-items:center; gap:6px; font-size:11px; font-weight:bold; color:#4ade80; overflow:hidden;">
+            <span>📞</span>
+            <span id="callParticipantCount">通話中</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+            <button id="callMuteBtn" style="display:none; background:#166534; border:1px solid #22c55e; color:#fff; font-size:10.5px; font-weight:bold; height:26px; padding:0 8px; border-radius:5px;">🎤 ミュート</button>
+            <button id="callLeaveBtn" style="background:rgba(244,63,94,0.15); border:1px solid rgba(244,63,94,0.4); color:#fda4af; font-size:10.5px; font-weight:bold; height:26px; padding:0 8px; border-radius:5px;">📴 退出</button>
+          </div>
+        </div>
+        <div id="callParticipantList" style="display:flex; gap:6px; padding:0 12px 6px; overflow-x:auto; white-space:nowrap;"></div>
+      </div>
+
       <div id="pl" style="display: none;"></div>
 
       <div id="fixedPlayer">
@@ -381,7 +415,9 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 
     <!-- ロビー画面 -->
     <div id="lobbyScreen" style="display: none; flex: 1; overflow-y: auto; padding: 10px 12px; background: #0d1117; flex-direction: column; gap: 10px;">
-      
+
+      <div id="lobbyNoticeBanner" style="display:none; background:rgba(244,63,94,0.12); border:1px solid rgba(244,63,94,0.35); color:#fda4af; font-size:11.5px; font-weight:bold; padding:8px 12px; border-radius:8px; text-align:center; line-height:1.4;"></div>
+
       <div class="lobby-sec">
         <h2>👤 ユーザー設定 (必須入力)</h2>
         <div style="display:flex; flex-direction:column; gap:4px; width:100%;">
@@ -443,6 +479,7 @@ function toggleAcc(id) {
 }
 
 (function() {
+ try {
   const ADMIN_TRIPS = ["◆H8tSJW", "◆ZJBSxz", "H8tSJW", "ZJBSxz"];
 
   let myUid = safeLS_get("nz_permanent_uid") || ("user_" + Math.random().toString(36).substring(2, 11));
@@ -523,6 +560,7 @@ function toggleAcc(id) {
           db.ref(`settings/${roomId}`).remove().catch(()=>{});
           db.ref(`presence/${roomId}`).remove().catch(()=>{});
           db.ref(`banlist/${roomId}`).remove().catch(()=>{});
+          db.ref(`calls/${roomId}`).remove().catch(()=>{});
         }
       }
     } catch (e) {}
@@ -603,6 +641,7 @@ function toggleAcc(id) {
     } else {
       const lobbyScr = document.getElementById("lobbyScreen");
       if (lobbyScr) lobbyScr.style.display = "flex";
+      displayAndClearLobbyNotice();
       runAdminZombieCleanup();
     }
   })();
@@ -621,8 +660,19 @@ function toggleAcc(id) {
     }
   }
 
-  function showToast(text, duration = 1400) {
-    // 💡 通知UI廃止のため非表示
+  let toastHideTimer = null, toastCleanupTimer = null;
+  function showToast(text, duration = 1600) {
+    const c = $("toastContainer");
+    if (!c) return;
+    if (toastHideTimer) { clearTimeout(toastHideTimer); toastHideTimer = null; }
+    if (toastCleanupTimer) { clearTimeout(toastCleanupTimer); toastCleanupTimer = null; }
+    c.textContent = text;
+    c.style.display = "flex";
+    requestAnimationFrame(() => c.classList.add("show"));
+    toastHideTimer = setTimeout(() => {
+      c.classList.remove("show");
+      toastCleanupTimer = setTimeout(() => { c.style.display = "none"; }, 150);
+    }, duration);
   }
 
   function customConfirm(title, message, okText = "OK", cancelText = "キャンセル", isDanger = false) {
@@ -838,6 +888,19 @@ function toggleAcc(id) {
     });
   }
 
+  function displayAndClearLobbyNotice() {
+    const el = $("lobbyNoticeBanner");
+    if (!el) return;
+    const msg = safeLS.get("nz_lobby_notice");
+    if (msg) {
+      el.textContent = msg;
+      el.style.display = "block";
+      safeLS.remove("nz_lobby_notice");
+    } else {
+      el.style.display = "none";
+    }
+  }
+
   function switchScreen(state, rawRoomId = "", isSilent = false) {
     const logoTitle = $("logoTitle") || document.querySelector(".logo");
     if ($("lobbyScreen")) $("lobbyScreen").style.display = "none";
@@ -857,13 +920,17 @@ function toggleAcc(id) {
         $("inviteBtn").style.display = (rawRoomId === "official") ? "none" : "inline-flex";
       }
       if (logoTitle && rawRoomId) logoTitle.innerHTML = `NEZUO CHAT<span class="sub-room">${rawRoomId === "official" ? "常設公式部屋" : rawRoomId}</span>`;
-      // 💡 トースト（通知UI）は完全に廃止
+      renderCallBar();
     } else {
       if ($("lobbyScreen")) $("lobbyScreen").style.display = "flex";
       if ($("roomStatusBadges")) $("roomStatusBadges").style.display = "none";
       if ($("adminBtnContainer")) $("adminBtnContainer").style.display = "none";
+      if ($("connStatusBadge")) $("connStatusBadge").style.display = "none";
       if (logoTitle) logoTitle.textContent = "NEZUO CHAT";
+      displayAndClearLobbyNotice();
       runAdminZombieCleanup();
+      leaveCall();
+      renderCallBar();
     }
   }
 
@@ -980,11 +1047,245 @@ function toggleAcc(id) {
         db.ref(`settings/${roomId}`).remove().catch(()=>{});
         db.ref(`presence/${roomId}`).remove().catch(()=>{});
         db.ref(`banlist/${roomId}`).remove().catch(()=>{});
+        db.ref(`calls/${roomId}`).remove().catch(()=>{});
       }
     });
   }
 
+  // ============================================================
+  // 📞 通話機能（WebRTC / Firebase RTDBをシグナリングに使用）
+  //   ・双方向（マイク送受信）／聴くだけ（マイクに一切アクセスしない）の2モード
+  //   ・エコーキャンセル/ノイズ抑制/自動ゲイン調整を有効化しクリアな音声を確保
+  //   ・マイクミュートのon/off切り替え（切り替えるたびにトースト確認あり）
+  //   ・自分のマイク音声は絶対にローカル再生しない（ハウリング防止）
+  // ============================================================
+  const CALL_ICE_SERVERS = [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" }
+  ];
+  const CALL_AUDIO_CONSTRAINTS = {
+    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
+    video: false
+  };
+
+  let callState = {
+    active: false,
+    mode: null,          // 'both' | 'listen'
+    localStream: null,
+    muted: false,
+    peers: {},            // otherUid -> { pc, audioEl, refs:[[ref,event,handler],...] }
+    participantsRef: null
+  };
+
+  const callPairKey = (a, b) => [a, b].sort().join("_");
+
+  function renderCallBar() {
+    const bar = $("callBar"), btn = $("callBtn");
+    if (!bar || !btn) return;
+    if (callState.active) {
+      bar.style.display = "flex";
+      btn.style.display = "none";
+      const muteBtn = $("callMuteBtn");
+      if (muteBtn) {
+        muteBtn.style.display = callState.mode === "both" ? "inline-flex" : "none";
+        muteBtn.textContent = callState.muted ? "🔇 ミュート中" : "🎤 ミュート";
+        muteBtn.style.background = callState.muted ? "rgba(244,63,94,0.2)" : "#166534";
+        muteBtn.style.borderColor = callState.muted ? "rgba(244,63,94,0.5)" : "#22c55e";
+      }
+    } else {
+      bar.style.display = "none";
+      btn.style.display = isJoined ? "inline-flex" : "none";
+    }
+  }
+
+  function renderCallParticipants(list) {
+    const wrap = $("callParticipantList"), countEl = $("callParticipantCount");
+    if (!wrap) return;
+    const entries = Object.values(list || {});
+    if (countEl) countEl.textContent = `通話中: ${entries.length}人`;
+    wrap.innerHTML = "";
+    entries.forEach(p => {
+      const chip = document.createElement("span");
+      chip.className = "call-chip" + (p.mode === "listen" ? " is-listen" : "") + (p.muted ? " is-muted" : "");
+      const icon = p.mode === "listen" ? "🔈" : (p.muted ? "🔇" : "🎤");
+      chip.textContent = `${icon} ${p.n || "名無し"}`;
+      wrap.appendChild(chip);
+    });
+  }
+
+  function closePeerConnection(otherId) {
+    const peer = callState.peers[otherId];
+    if (!peer) return;
+    try { peer.pc.close(); } catch (e) {}
+    if (peer.audioEl) {
+      try { peer.audioEl.srcObject = null; } catch (e) {}
+      peer.audioEl.remove();
+    }
+    peer.refs.forEach(([ref, evt, handler]) => { try { ref.off(evt, handler); } catch (e) {} });
+    delete callState.peers[otherId];
+  }
+
+  function connectToPeer(otherId) {
+    if (callState.peers[otherId] || !db || !currentRoomId) return;
+    const pc = new RTCPeerConnection({ iceServers: CALL_ICE_SERVERS });
+    const peerEntry = { pc, audioEl: null, refs: [] };
+    callState.peers[otherId] = peerEntry;
+
+    if (callState.localStream) {
+      callState.localStream.getAudioTracks().forEach(track => pc.addTrack(track, callState.localStream));
+    } else {
+      // 💡 聴くだけモード：マイクを一切使わず受信専用で音声だけ受け取る
+      try { pc.addTransceiver("audio", { direction: "recvonly" }); } catch (e) {}
+    }
+
+    // 💡 相手の声だけを再生する（自分の声は絶対にここに乗らない＝ハウリング防止）
+    pc.ontrack = (event) => {
+      let audioEl = peerEntry.audioEl;
+      if (!audioEl) {
+        audioEl = document.createElement("audio");
+        audioEl.autoplay = true;
+        audioEl.playsInline = true;
+        audioEl.dataset.callUid = otherId;
+        document.body.appendChild(audioEl);
+        peerEntry.audioEl = audioEl;
+      }
+      audioEl.srcObject = event.streams[0];
+    };
+
+    const pKey = callPairKey(myUid, otherId);
+    const sigBase = db.ref(`calls/${currentRoomId}/signals/${pKey}`);
+    const myCandRef = sigBase.child(`candidates/${myUid}`);
+    const otherCandRef = sigBase.child(`candidates/${otherId}`);
+    const offerRef = sigBase.child("offer");
+    const answerRef = sigBase.child("answer");
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate) myCandRef.push(event.candidate.toJSON()).catch(() => {});
+    };
+
+    const otherCandHandler = (snap) => {
+      const cand = snap.val();
+      if (cand) pc.addIceCandidate(new RTCIceCandidate(cand)).catch(() => {});
+    };
+    otherCandRef.on("child_added", otherCandHandler);
+    peerEntry.refs.push([otherCandRef, "child_added", otherCandHandler]);
+
+    // 💡 UIDの辞書順が小さい側が発信者（offerer）になる固定ルールで衝突を防止
+    const iAmInitiator = myUid < otherId;
+
+    if (iAmInitiator) {
+      pc.createOffer()
+        .then(offer => pc.setLocalDescription(offer))
+        .then(() => offerRef.set({ sdp: pc.localDescription.sdp, type: pc.localDescription.type, from: myUid }))
+        .catch(() => {});
+
+      const answerHandler = async (snap) => {
+        const ans = snap.val();
+        if (ans && ans.from === otherId && pc.signalingState !== "closed" && !pc.currentRemoteDescription) {
+          try { await pc.setRemoteDescription(new RTCSessionDescription(ans)); } catch (e) {}
+        }
+      };
+      answerRef.on("value", answerHandler);
+      peerEntry.refs.push([answerRef, "value", answerHandler]);
+    } else {
+      const offerHandler = async (snap) => {
+        const off = snap.val();
+        if (off && off.from === otherId && pc.signalingState !== "closed" && !pc.currentRemoteDescription) {
+          try {
+            await pc.setRemoteDescription(new RTCSessionDescription(off));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            await answerRef.set({ sdp: pc.localDescription.sdp, type: pc.localDescription.type, from: myUid });
+          } catch (e) {}
+        }
+      };
+      offerRef.on("value", offerHandler);
+      peerEntry.refs.push([offerRef, "value", offerHandler]);
+    }
+  }
+
+  function handleCallParticipantsChange(snap) {
+    const list = snap.val() || {};
+    renderCallParticipants(list);
+
+    const otherIds = Object.keys(list).filter(id => id !== myUid);
+    otherIds.forEach(otherId => { if (!callState.peers[otherId]) connectToPeer(otherId); });
+    Object.keys(callState.peers).forEach(id => { if (!list[id]) closePeerConnection(id); });
+  }
+
+  async function startCall(mode) {
+    if (!isJoined || !currentRoomId || !db || callState.active) return;
+
+    if (mode === "both") {
+      try {
+        callState.localStream = await navigator.mediaDevices.getUserMedia(CALL_AUDIO_CONSTRAINTS);
+      } catch (e) {
+        showToast("⚠️ マイクへのアクセスが許可されませんでした。");
+        return;
+      }
+    } else {
+      callState.localStream = null;
+    }
+
+    callState.active = true;
+    callState.mode = mode;
+    callState.muted = false;
+    renderCallBar();
+
+    try {
+      const myCallRef = db.ref(`calls/${currentRoomId}/participants/${myUid}`);
+      await myCallRef.set({ n: myName || "名無し", p: myTrip, c: curColor, mode, muted: false, t: firebase.database.ServerValue.TIMESTAMP });
+      myCallRef.onDisconnect().remove();
+
+      callState.participantsRef = db.ref(`calls/${currentRoomId}/participants`);
+      callState.participantsRef.on("value", handleCallParticipantsChange);
+
+      showToast(mode === "both" ? "📞 通話に双方向で参加しました" : "🔈 通話を聴くだけで参加しました");
+    } catch (e) {
+      showToast("⚠️ 通話への参加に失敗しました。");
+      await leaveCall();
+    }
+  }
+
+  async function leaveCall() {
+    if (!callState.active && Object.keys(callState.peers).length === 0 && !callState.localStream) return;
+
+    Object.keys(callState.peers).forEach(otherId => {
+      if (db && currentRoomId) db.ref(`calls/${currentRoomId}/signals/${callPairKey(myUid, otherId)}`).remove().catch(() => {});
+      closePeerConnection(otherId);
+    });
+
+    if (callState.localStream) {
+      callState.localStream.getTracks().forEach(t => t.stop());
+      callState.localStream = null;
+    }
+    if (callState.participantsRef) { callState.participantsRef.off("value", handleCallParticipantsChange); callState.participantsRef = null; }
+
+    const wasActive = callState.active;
+    if (db && currentRoomId && myUid) {
+      try { await db.ref(`calls/${currentRoomId}/participants/${myUid}`).remove(); } catch (e) {}
+    }
+
+    callState.active = false;
+    callState.mode = null;
+    callState.muted = false;
+    renderCallBar();
+    if (wasActive) showToast("📴 通話から退出しました");
+  }
+
+  function toggleMute() {
+    if (!callState.active || callState.mode !== "both" || !callState.localStream) return;
+    callState.muted = !callState.muted;
+    callState.localStream.getAudioTracks().forEach(t => { t.enabled = !callState.muted; });
+    if (db && currentRoomId && myUid) {
+      db.ref(`calls/${currentRoomId}/participants/${myUid}/muted`).set(callState.muted).catch(() => {});
+    }
+    renderCallBar();
+    showToast(callState.muted ? "🔇 マイクをミュートにしました" : "🎤 マイクのミュートを解除しました");
+  }
+
   async function doExit(isAuto = false) {
+    await leaveCall();
     const cleanUid = myUid, cleanName = (myName || "").trim(), cleanTrip = myTrip || "", oldRoomId = currentRoomId, wasJoined = isJoined;
     isJoined = false; 
     stopSmartAutoExitChecker(); 
@@ -1054,7 +1355,7 @@ function toggleAcc(id) {
     if (!settingsSnap.exists() || !roomSettings.creatorUid) {
       isNewRoom = true;
       const isGlobalAdmin = checkIsGlobalAdmin();
-      roomSettings.creatorUid = (safeRoomPath === "official") ? (isGlobalAdmin ? myUid : ADMIN_UID) : myUid;
+      roomSettings.creatorUid = (safeRoomPath === "official") ? (isGlobalAdmin ? myUid : "") : myUid;
       try {
         await db.ref(`settings/${safeRoomPath}`).set({ creatorUid: roomSettings.creatorUid, newEntriesDisabled: false, passcode: "" });
         if (safeRoomPath !== "official") safeLS.set("nz_my_created_room_id", safeRoomPath);
@@ -1103,7 +1404,8 @@ function toggleAcc(id) {
     switchScreen("chat", lobbyRoomId, options.silent);
     setupFirebaseListeners();
 
-    db.ref(`presence/${currentRoomId}/${myUid}`).set({ n: myName || "名無し", p: myTrip, c: curColor, t: firebase.database.ServerValue.TIMESTAMP }).catch(()=>{});
+    db.ref(`presence/${currentRoomId}/${myUid}`).set({ n: myName || "名無し", p: myTrip, c: curColor, t: firebase.database.ServerValue.TIMESTAMP })
+      .catch(() => showToast("⚠️ 入室状態の同期に失敗しました。再読み込みしてください。"));
     startSmartAutoExitChecker();
 
     const cleanName = (myName || "").trim();
@@ -1829,6 +2131,8 @@ function toggleAcc(id) {
       let wasConnectedBefore = false;
       db.ref(".info/connected").on("value", snap => {
         const nowConnected = snap.val() === true;
+        const badge = $("connStatusBadge");
+        if (badge) badge.style.display = (!nowConnected && isJoined) ? "inline-block" : "none";
         if (nowConnected) {
           if (wasConnectedBefore) {
             triggerInstantSync();
@@ -1872,13 +2176,26 @@ function toggleAcc(id) {
       e.preventDefault(); curColor = tmpColor; setGlobalColor(curColor); safeLS.set("nz_color", curColor);
       if (D.clrDot) D.clrDot.style.background = curColor; D.clrmod.classList.remove("show");
       if (isJoined && db && myUid && currentRoomId) {
-        db.ref(`presence/${currentRoomId}/${myUid}/c`).set(curColor).catch(()=>{});
+        db.ref(`presence/${currentRoomId}/${myUid}/c`).set(curColor)
+          .then(() => showToast("🎨 表示カラーを変更しました"))
+          .catch(() => showToast("⚠️ カラーの同期に失敗しました"));
+      } else {
         showToast("🎨 表示カラーを変更しました");
       }
     });
 
     if (D.exBtn) D.exBtn.addEventListener("click", (e) => { e.preventDefault(); customConfirm("退室確認", "本当にこの部屋から退室しますか？", "退室する", "キャンセル", true).then(ok => { if (ok) doExit(false); }); });
     if (D.sdBtn) D.sdBtn.addEventListener("click", (e) => { e.preventDefault(); sendMessage(); });
+
+    if ($("callBtn")) $("callBtn").addEventListener("click", (e) => { e.preventDefault(); if ($("callModeMod")) $("callModeMod").classList.add("show"); });
+    if ($("callModeCancelBtn")) $("callModeCancelBtn").addEventListener("click", (e) => { e.preventDefault(); if ($("callModeMod")) $("callModeMod").classList.remove("show"); });
+    if ($("callJoinBothBtn")) $("callJoinBothBtn").addEventListener("click", (e) => { e.preventDefault(); if ($("callModeMod")) $("callModeMod").classList.remove("show"); startCall("both"); });
+    if ($("callJoinListenBtn")) $("callJoinListenBtn").addEventListener("click", (e) => { e.preventDefault(); if ($("callModeMod")) $("callModeMod").classList.remove("show"); startCall("listen"); });
+    if ($("callMuteBtn")) $("callMuteBtn").addEventListener("click", (e) => { e.preventDefault(); toggleMute(); });
+    if ($("callLeaveBtn")) $("callLeaveBtn").addEventListener("click", (e) => {
+      e.preventDefault();
+      customConfirm("通話から退出", "通話から退出しますか？（テキストチャットの部屋自体は継続します）", "退出する", "キャンセル", true).then(ok => { if (ok) leaveCall(); });
+    });
 
     if ($("admTripClearBtn") && $("admTripInput")) {
       $("admTripClearBtn").addEventListener("click", (e) => {
@@ -1973,8 +2290,12 @@ function toggleAcc(id) {
 
     if ($("admStopJoin")) $("admStopJoin").addEventListener("change", () => {
       if (db && currentRoomId) {
-        db.ref(`settings/${currentRoomId}/newEntriesDisabled`).set($("admStopJoin").checked).then(() => {
-          showToast(`🚫 新規入室制限を ${$("admStopJoin").checked ? "有効" : "無効"} にしました`);
+        const checkedNow = $("admStopJoin").checked;
+        db.ref(`settings/${currentRoomId}/newEntriesDisabled`).set(checkedNow).then(() => {
+          showToast(`🚫 新規入室制限を ${checkedNow ? "有効" : "無効"} にしました`);
+        }).catch(() => {
+          $("admStopJoin").checked = !checkedNow;
+          showToast("⚠️ 設定の変更に失敗しました");
         });
       }
     });
@@ -2001,11 +2322,13 @@ function toggleAcc(id) {
           if (!ok || !db || !currentRoomId || currentRoomId === "official") return;
           try {
             const roomIdRef = currentRoomId;
+            await leaveCall();
             const updates = {};
             updates[`chat/${roomIdRef}`] = null;
             updates[`presence/${roomIdRef}`] = null;
             updates[`settings/${roomIdRef}`] = null;
             updates[`banlist/${roomIdRef}`] = null;
+            updates[`calls/${roomIdRef}`] = null;
 
             await db.ref().update(updates);
             showToast("🗑️ 部屋を解散し、すべてのデータを完全に消去しました。");
@@ -2108,6 +2431,10 @@ function toggleAcc(id) {
   }
 
   initApp();
+ } catch (fatalErr) {
+   console.error("NEZUO CHAT fatal init error:", fatalErr);
+   document.body.innerHTML = '<div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;background:#05070a;color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;text-align:center;line-height:1.6;font-size:14px;">⚠️ 読み込みに失敗しました。<br>通信環境をご確認のうえ、ページを再読み込みしてください。</div>';
+ }
 })();
 </script>
 </body>

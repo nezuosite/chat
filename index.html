@@ -375,11 +375,11 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
               <span id="callParticipantCount">通話中</span>
             </div>
             <div id="callRecIndicator" style="display:none; align-items:center; gap:4px; font-size:10px; font-weight:900; color:#f43f5e; animation: pulseRec 1s ease-in-out infinite;">
-              <span>● REC</span>
+              <span>● REC (WAV)</span>
             </div>
           </div>
 
-          <!-- 通話操作ボタングループ（中央揃え） -->
+          <!-- 通話操作ボタングループ（中央配置） -->
           <div class="call-actions-row">
             <button id="callSwitchModeBtn" class="call-action-btn" style="background:#334155; border:1px solid #475569; color:#f1f5f9;">🔈 聴くだけ</button>
             <button id="callMuteBtn" class="call-action-btn" style="display:none; background:#166534; border:1px solid #22c55e; color:#fff;">🎤 ミュート</button>
@@ -1059,7 +1059,7 @@ function toggleAcc(id) {
   }
 
   // ============================================================
-  // 📞 通話・録音機能（WebRTC + Web Audio API + MediaRecorder）
+  // 📞 通話・WAV最適化録音（WebRTC + Web Audio API / 16bit PCM）
   // ============================================================
   const CALL_ICE_SERVERS = [
     { urls: "stun:stun.l.google.com:19302" },
@@ -1078,12 +1078,14 @@ function toggleAcc(id) {
     peers: {},            // otherUid -> { pc, audioEl, remoteStream, refs:[...] }
     participantsRef: null,
     
-    // 録音用
+    // 💡 WAVダイレクト録音用
     isRecording: false,
-    mediaRecorder: null,
-    recordedChunks: [],
     audioContext: null,
-    recDest: null,
+    mixerBus: null,
+    muteGain: null,
+    scriptProcessor: null,
+    recordedBuffers: [],
+    recordedLength: 0,
     localSourceNode: null
   };
 
@@ -1111,7 +1113,7 @@ function toggleAcc(id) {
         }
       }
 
-      // ミュートボタン：双方向時のみ表示され、自然に中央配置される
+      // ミュートボタン：中央配置
       const muteBtn = $("callMuteBtn");
       if (muteBtn) {
         muteBtn.style.display = callState.mode === "both" ? "inline-flex" : "none";
@@ -1155,13 +1157,16 @@ function toggleAcc(id) {
     });
   }
 
-  // Web Audioミキサー管理
+  // 💡 Web Audio録音ミキサーの初期化
   function ensureAudioContext() {
     if (!callState.audioContext) {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (AudioCtx) {
         callState.audioContext = new AudioCtx();
-        callState.recDest = callState.audioContext.createMediaStreamDestination();
+        callState.mixerBus = callState.audioContext.createGain();
+        callState.muteGain = callState.audioContext.createGain();
+        callState.muteGain.gain.value = 0; // 内部集音のみ行いスピーカー出力は完全ミュート（エコー遮断）
+        callState.muteGain.connect(callState.audioContext.destination);
       }
     }
     if (callState.audioContext && callState.audioContext.state === "suspended") {
@@ -1170,12 +1175,47 @@ function toggleAcc(id) {
   }
 
   function attachStreamToRecorderMix(stream, isLocal = false) {
-    if (!callState.audioContext || !callState.recDest || !stream) return;
+    if (!callState.audioContext || !callState.mixerBus || !stream) return;
     try {
       const source = callState.audioContext.createMediaStreamSource(stream);
-      source.connect(callState.recDest);
+      source.connect(callState.mixerBus);
       if (isLocal) callState.localSourceNode = source;
     } catch(e) {}
+  }
+
+  // 💡 16bit PCM WAV生成ユーティリティ（外部ライブラリなし・超軽量）
+  function encodeWAV(buffers, totalLength, sampleRate) {
+    const buffer = new ArrayBuffer(44 + totalLength * 2);
+    const view = new DataView(buffer);
+
+    const writeString = (v, offset, str) => {
+      for (let i = 0; i < str.length; i++) v.setUint8(offset + i, str.charCodeAt(i));
+    };
+
+    writeString(view, 0, 'RIFF');
+    view.setUint32(4, 36 + totalLength * 2, true);
+    writeString(view, 8, 'WAVE');
+    writeString(view, 12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true); // PCM
+    view.setUint16(22, 1, true); // Mono
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeString(view, 36, 'data');
+    view.setUint32(40, totalLength * 2, true);
+
+    let offset = 44;
+    for (let i = 0; i < buffers.length; i++) {
+      const chunk = buffers[i];
+      for (let j = 0; j < chunk.length; j++) {
+        let s = Math.max(-1, Math.min(1, chunk[j]));
+        view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+        offset += 2;
+      }
+    }
+    return new Blob([view], { type: 'audio/wav' });
   }
 
   function closePeerConnection(otherId) {
@@ -1215,8 +1255,8 @@ function toggleAcc(id) {
       }
       audioEl.srcObject = event.streams[0];
 
-      // 録音中であれば合流させる
-      if (callState.isRecording && callState.audioContext && callState.recDest) {
+      // 録音中であればミキサーへ合流
+      if (callState.isRecording && callState.audioContext && callState.mixerBus) {
         attachStreamToRecorderMix(event.streams[0], false);
       }
     };
@@ -1320,7 +1360,6 @@ function toggleAcc(id) {
     if (!callState.active || !isJoined || !currentRoomId || !db) return;
 
     if (callState.mode === "both") {
-      // 双方向 → 聴くだけ へ
       if (callState.localStream) {
         callState.localStream.getTracks().forEach(t => t.stop());
         callState.localStream = null;
@@ -1333,7 +1372,6 @@ function toggleAcc(id) {
       callState.mode = "listen";
       callState.muted = false;
 
-      // 各PeerConnectionの送信トラックを停止・受信専用へ
       Object.values(callState.peers).forEach(peer => {
         const senders = peer.pc.getSenders();
         senders.forEach(sender => {
@@ -1343,25 +1381,21 @@ function toggleAcc(id) {
         });
       });
 
-      // Firebase状態更新
       await db.ref(`calls/${currentRoomId}/participants/${myUid}`).update({ mode: "listen", muted: false }).catch(()=>{});
       renderCallBar();
       showToast("🔈 「聴くだけ」に切り替えました（マイク停止）");
 
     } else {
-      // 聴くだけ → 双方向 へ
       try {
         const newStream = await navigator.mediaDevices.getUserMedia(CALL_AUDIO_CONSTRAINTS);
         callState.localStream = newStream;
         callState.mode = "both";
         callState.muted = false;
 
-        // 録音中であれば自分の声をミキサーに追加
-        if (callState.isRecording && callState.audioContext && callState.recDest) {
+        if (callState.isRecording && callState.audioContext && callState.mixerBus) {
           attachStreamToRecorderMix(newStream, true);
         }
 
-        // 既存のピア接続へトラックを追加して再ネゴシエーション
         const audioTrack = newStream.getAudioTracks()[0];
         for (const [otherId, peer] of Object.entries(callState.peers)) {
           try {
@@ -1386,10 +1420,9 @@ function toggleAcc(id) {
     }
   }
 
-  // 🔴 通話録音の開始／停止
+  // 🔴 WAVダイレクト録音の開始／停止
   async function toggleCallRecording() {
     if (!callState.active) return;
-
     if (callState.isRecording) {
       stopCallRecording();
     } else {
@@ -1400,10 +1433,13 @@ function toggleAcc(id) {
   function startCallRecording() {
     if (callState.isRecording) return;
     ensureAudioContext();
-    if (!callState.audioContext || !callState.recDest) {
-      showToast("⚠️ お使いのブラウザは録音に対応していません");
+    if (!callState.audioContext || !callState.mixerBus) {
+      showToast("⚠️ お使いのブラウザは録音機能に対応していません");
       return;
     }
+
+    callState.recordedBuffers = [];
+    callState.recordedLength = 0;
 
     // 自分の声を接続（双方向時のみ）
     if (callState.localStream) {
@@ -1415,36 +1451,23 @@ function toggleAcc(id) {
       if (peer.remoteStream) attachStreamToRecorderMix(peer.remoteStream, false);
     });
 
-    const destStream = callState.recDest.stream;
-    if (!destStream || destStream.getAudioTracks().length === 0) {
-      showToast("⚠️ 録音可能な音声ストリームがありません");
-      return;
-    }
-
-    let mimeType = "audio/webm";
-    if (typeof MediaRecorder.isTypeSupported === "function") {
-      if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) mimeType = "audio/webm;codecs=opus";
-      else if (MediaRecorder.isTypeSupported("audio/mp4")) mimeType = "audio/mp4";
-      else if (MediaRecorder.isTypeSupported("audio/ogg")) mimeType = "audio/ogg";
-    }
-
     try {
-      callState.recordedChunks = [];
-      const recorder = new MediaRecorder(destStream, mimeType ? { mimeType } : undefined);
-      
-      recorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) callState.recordedChunks.push(e.data);
+      // 4096バッファサイズ（モノラル）でリアルタイム集音
+      const processor = callState.audioContext.createScriptProcessor(4096, 1, 1);
+      processor.onaudioprocess = (e) => {
+        if (!callState.isRecording) return;
+        const inputData = e.inputBuffer.getChannelData(0);
+        callState.recordedBuffers.push(new Float32Array(inputData));
+        callState.recordedLength += inputData.length;
       };
 
-      recorder.onstop = () => {
-        saveRecordedAudio(mimeType);
-      };
+      callState.mixerBus.connect(processor);
+      processor.connect(callState.muteGain); // スピーカーには流さず処理パイプラインのみ維持
 
-      recorder.start(1000); // 1秒ごとにチャンク収集
-      callState.mediaRecorder = recorder;
+      callState.scriptProcessor = processor;
       callState.isRecording = true;
       renderCallBar();
-      showToast("🔴 通話の録音を開始しました");
+      showToast("🔴 通話の録音を開始しました (WAV)");
     } catch(e) {
       showToast("⚠️ 録音の開始に失敗しました");
     }
@@ -1452,24 +1475,34 @@ function toggleAcc(id) {
 
   function stopCallRecording() {
     if (!callState.isRecording) return;
-    if (callState.mediaRecorder && callState.mediaRecorder.state !== "inactive") {
-      try { callState.mediaRecorder.stop(); } catch(e) {}
-    }
     callState.isRecording = false;
+
+    if (callState.scriptProcessor) {
+      try {
+        callState.scriptProcessor.disconnect();
+        callState.mixerBus.disconnect(callState.scriptProcessor);
+      } catch(e) {}
+      callState.scriptProcessor = null;
+    }
+
     renderCallBar();
-    showToast("⏹️ 録音を停止・保存しています...");
+    saveRecordedWav();
   }
 
-  function saveRecordedAudio(mimeType) {
-    if (callState.recordedChunks.length === 0) return;
+  function saveRecordedWav() {
+    if (callState.recordedLength === 0 || !callState.audioContext) {
+      showToast("⚠️ 録音データがありません");
+      return;
+    }
     try {
-      const blob = new Blob(callState.recordedChunks, { type: mimeType || "audio/webm" });
-      const url = URL.createObjectURL(blob);
+      const sampleRate = callState.audioContext.sampleRate || 44100;
+      const wavBlob = encodeWAV(callState.recordedBuffers, callState.recordedLength, sampleRate);
+      const url = URL.createObjectURL(wavBlob);
+
       const now = new Date();
       const pad = n => String(n).padStart(2, "0");
       const timeStr = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-      const ext = (mimeType && mimeType.includes("mp4")) ? "mp4" : "webm";
-      const filename = `call_record_${timeStr}.${ext}`;
+      const filename = `call_record_${timeStr}.wav`;
 
       const a = document.createElement("a");
       a.style.display = "none";
@@ -1484,17 +1517,16 @@ function toggleAcc(id) {
 
       showToast(`💾 録音を保存しました: ${filename}`);
     } catch(e) {
-      showToast("⚠️ 録音ファイルの保存に失敗しました");
+      showToast("⚠️ WAVファイルの作成に失敗しました");
     } finally {
-      callState.recordedChunks = [];
-      callState.mediaRecorder = null;
+      callState.recordedBuffers = [];
+      callState.recordedLength = 0;
     }
   }
 
   async function leaveCall() {
     if (!callState.active && Object.keys(callState.peers).length === 0 && !callState.localStream) return;
 
-    // 録音中であれば自動停止・保存
     if (callState.isRecording) {
       stopCallRecording();
     }
@@ -1515,7 +1547,8 @@ function toggleAcc(id) {
     if (callState.audioContext) {
       try { callState.audioContext.close(); } catch(e) {}
       callState.audioContext = null;
-      callState.recDest = null;
+      callState.mixerBus = null;
+      callState.muteGain = null;
     }
     if (callState.participantsRef) { callState.participantsRef.off("value", handleCallParticipantsChange); callState.participantsRef = null; }
 

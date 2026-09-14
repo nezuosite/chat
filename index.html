@@ -54,6 +54,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 
 .pcnt{font-size:10px;font-weight:900;background:rgba(255,255,255,.09);padding:2px 6px;border-radius:4px;border:1px solid rgba(255,255,255,.06);flex-shrink:0;color:#e2e8f0;}
 @keyframes pulseConn { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
+@keyframes pulseRec { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
 
 .hbs{display:flex;gap:4px;align-items:center;flex-shrink:0;margin-left:auto;}
 .hbs button{padding:3px 8px;height:26px;border-radius:5px;font-size:10.5px;font-weight:700;background:var(--bg);border:1px solid var(--bd);color:var(--tx);display:flex;align-items:center;gap:3px}
@@ -89,16 +90,27 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .call-chip.is-listen{border-color:rgba(148,163,184,0.4);color:#94a3b8;background:rgba(148,163,184,0.06);}
 .call-chip.is-muted{opacity:0.65;}
 
+/* 📞 通話バーのスタイル調整 */
+#callBar { display:none; flex-direction:column; background:#0b1f16; border-bottom:1px solid #14532d; flex-shrink:0; }
+.call-actions-row {
+  display:flex; align-items:center; justify-content:center; gap:6px; width:100%; flex-wrap:nowrap; overflow-x:auto;
+}
+.call-action-btn {
+  font-size:10.5px; font-weight:bold; height:26px; padding:0 8px; border-radius:5px; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; gap:3px;
+}
+.call-action-btn.recording {
+  background:rgba(244,63,94,0.25) !important; border-color:#f43f5e !important; color:#fda4af !important; animation: pulseRec 1s ease-in-out infinite;
+}
+
 #fixedPlayer{display:none;flex-direction:column;background:var(--s2);border-bottom:1px solid var(--bd);width:100%}
 #playerHeader{background:var(--sf);padding:8px 12px;font-size:12px;font-weight:bold;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--bd)}
 #playerContent{ width:100%;max-width:480px;background:#000;display:flex;justify-content:center;align-items:center;position:relative;margin:0 auto;overflow:hidden; }
 #playerCloseBtn{background:rgba(244, 63, 94, 0.15) !important;border:1px solid rgba(244, 63, 94, 0.4) !important;color: #fda4af !important;font-weight: 900 !important;padding: 4px 10px !important;font-size: 12px !important;border-radius: 5px;}
 
-/* 💡 【下を最新】通常の標準フロー。新しいメッセージはDOMの末尾（下部）に積まれる。フレックスレイアウトを固定しキーボード展開時の押し上げを防止 */
+/* コメントストリーム */
 #tl{flex:1;min-height:0;overflow-y:auto;overflow-anchor:auto;padding:8px 12px;background-color:#070a10;-webkit-overflow-scrolling:touch;}
 #tl-inner{display:flex;flex-direction:column;justify-content:flex-start;gap:6px;width:100%;max-width:800px;margin:0 auto;min-height:100%}
 
-/* ライブ配信アプリ風コメントストリーム */
 .mw{position:relative;display:flex;flex-direction:column;width:100%;padding:3px 6px;border-radius:4px;user-select:none;-webkit-user-select:none;transition:background 0.1s ease;}
 .mw:hover{background:rgba(255,255,255,0.02);}
 .mw.new-msg-anim{animation:fadeIn .05s ease-out forwards}
@@ -354,18 +366,28 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
         </div>
       </div>
 
-      <div id="callBar" style="display:none; flex-direction:column; background:#0b1f16; border-bottom:1px solid #14532d; flex-shrink:0;">
-        <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 12px; gap:8px;">
-          <div style="display:flex; align-items:center; gap:6px; font-size:11px; font-weight:bold; color:#4ade80; overflow:hidden;">
-            <span>📞</span>
-            <span id="callParticipantCount">通話中</span>
+      <!-- 📞 通話コントロールバー -->
+      <div id="callBar">
+        <div style="display:flex; flex-direction:column; padding:6px 10px; gap:6px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+            <div style="display:flex; align-items:center; gap:6px; font-size:11px; font-weight:bold; color:#4ade80;">
+              <span>📞</span>
+              <span id="callParticipantCount">通話中</span>
+            </div>
+            <div id="callRecIndicator" style="display:none; align-items:center; gap:4px; font-size:10px; font-weight:900; color:#f43f5e; animation: pulseRec 1s ease-in-out infinite;">
+              <span>● REC</span>
+            </div>
           </div>
-          <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
-            <button id="callMuteBtn" style="display:none; background:#166534; border:1px solid #22c55e; color:#fff; font-size:10.5px; font-weight:bold; height:26px; padding:0 8px; border-radius:5px;">🎤 ミュート</button>
-            <button id="callLeaveBtn" style="background:rgba(244,63,94,0.15); border:1px solid rgba(244,63,94,0.4); color:#fda4af; font-size:10.5px; font-weight:bold; height:26px; padding:0 8px; border-radius:5px;">📴 退出</button>
+
+          <!-- 通話操作ボタングループ（中央揃え） -->
+          <div class="call-actions-row">
+            <button id="callSwitchModeBtn" class="call-action-btn" style="background:#334155; border:1px solid #475569; color:#f1f5f9;">🔈 聴くだけ</button>
+            <button id="callMuteBtn" class="call-action-btn" style="display:none; background:#166534; border:1px solid #22c55e; color:#fff;">🎤 ミュート</button>
+            <button id="callRecBtn" class="call-action-btn" style="background:#1e293b; border:1px solid #475569; color:#fda4af;">🔴 録音開始</button>
+            <button id="callLeaveBtn" class="call-action-btn" style="background:rgba(244,63,94,0.15); border:1px solid rgba(244,63,94,0.4); color:#fda4af;">📴 通話終了</button>
           </div>
         </div>
-        <div id="callParticipantList" style="display:flex; gap:6px; padding:0 12px 6px; overflow-x:auto; white-space:nowrap;"></div>
+        <div id="callParticipantList" style="display:flex; gap:6px; padding:0 10px 6px; overflow-x:auto; white-space:nowrap;"></div>
       </div>
 
       <div id="pl" style="display: none;"></div>
@@ -480,7 +502,8 @@ function toggleAcc(id) {
 
 (function() {
  try {
-  const ADMIN_TRIPS = ["◆H8tSJW", "◆ZJBSxz", "H8tSJW", "ZJBSxz"];
+  // 👑 全体管理者トリップ（◆VEgOTO / ◆ZJBSxz）
+  const ADMIN_TRIPS = ["◆VEgOTO", "◆ZJBSxz", "VEgOTO", "ZJBSxz"];
 
   let myUid = safeLS_get("nz_permanent_uid") || ("user_" + Math.random().toString(36).substring(2, 11));
   if (!safeLS_get("nz_permanent_uid")) {
@@ -525,17 +548,15 @@ function toggleAcc(id) {
   let isFirstLoad = true, isFirebaseListenersBound = false;
   let isSending = false, lastSendTime = 0, scale = 1, panX = 0, panY = 0;
   let currentPresenceMap = {}, isConnectedBound = false;
-  let lastSyncAt = 0; // 💡 直近でサーバーの最新状態を取得できた時刻（全経路での「見た瞬間に最新」判定に使用）
+  let lastSyncAt = 0;
   let roomSettings = { passcode: "", newEntriesDisabled: false, approvedTrips: {}, creatorUid: "" };
   let localLastClearedTime = 0;
-  const AUTO_EXIT_MS = 1800000; // 💡 30分 (1,800,000ms)
+  const AUTO_EXIT_MS = 1800000; // 30分
   const UR = /(https?:\/\/[^\s\n<>"]+)/gi;
 
   const checkIsGlobalAdmin = () => (ADMIN_TRIPS.includes(myTrip) || ADMIN_TRIPS.includes(myTrip.replace("◆", "")));
 
-  function showLobbyNotice(msg) {
-    safeLS.set("nz_lobby_notice", msg);
-  }
+  function showLobbyNotice(msg) { safeLS.set("nz_lobby_notice", msg); }
   function clearLobbyNotice() { safeLS.remove("nz_lobby_notice"); }
 
   async function runAdminZombieCleanup() {
@@ -567,10 +588,6 @@ function toggleAcc(id) {
   }
 
   let isSyncingNow = false;
-  // 💡 【ご要望対応】：バックグラウンド復帰・再接続時に「発言ログ／削除／入室者リスト」を
-  //    必ずサーバーの最新状態へ強制同期する唯一の窓口。多重発火は isSyncingNow で防止。
-  //    ※ ここでは presence.t（最終発言時刻）を更新しない＝単に画面を開いただけで
-  //      自動退室タイマーがリセットされてしまう不具合を修正。
   const triggerInstantSync = async () => {
     if (!isJoined || !currentRoomId || !db) return;
     if (isSyncingNow) return;
@@ -595,11 +612,6 @@ function toggleAcc(id) {
     window.addEventListener("focus", triggerInstantSync);
     window.addEventListener("online", triggerInstantSync);
 
-    // 💡 【ご要望対応】「すべての接続経路で最新のログと入室者リストを遅延なく、見た瞬間に」
-    //    ①ユーザーが画面に触れた瞬間（＝実際に「見ている」ことの最も確実なサイン）に、
-    //      直近の同期から一定時間(3秒)経っていれば即座に再同期する。
-    //      visibilitychange等のイベントが何らかの理由で発火しない環境（一部のWebView等）でも、
-    //      最初のタップで必ず最新化されるための保険。
     const STALE_THRESHOLD_MS = 2000;
     const onFirstTouchCheck = () => {
       if (!isJoined) return;
@@ -608,7 +620,6 @@ function toggleAcc(id) {
     document.addEventListener("pointerdown", onFirstTouchCheck, { passive: true });
     document.addEventListener("touchstart", onFirstTouchCheck, { passive: true });
 
-    // 💡 差分反映のみの軽量な再同期になったため、間隔を詰めても画面のチラつきは発生しない
     setInterval(() => {
       if (isJoined && document.visibilityState === "visible") triggerInstantSync();
     }, 8000);
@@ -940,10 +951,6 @@ function toggleAcc(id) {
   let smartTimerId = null;
   let preciseExitTimerId = null;
 
-  // 💡 【ご要望対応】「自動退室を1秒もズレないように」
-  //    presence/{room}/{uid}/t（サーバー時刻）だけを唯一の基準とし、
-  //    次に期限切れになる瞬間を正確に計算してsetTimeoutで狙い撃ちする。
-  //    自分/他人を区別せず全員同じ基準で判定するため、二重基準によるズレ・失敗が起きない。
   function schedulePreciseExitCheck() {
     if (preciseExitTimerId) { clearTimeout(preciseExitTimerId); preciseExitTimerId = null; }
     if (!isJoined || !currentPresenceMap) return;
@@ -956,7 +963,7 @@ function toggleAcc(id) {
       }
     }
     if (soonestRemain === Infinity) return;
-    const delay = Math.max(0, soonestRemain) + 30; // 期限超過を確実にするための余裕(30ms)
+    const delay = Math.max(0, soonestRemain) + 30;
     preciseExitTimerId = setTimeout(() => {
       if (isJoined && currentPresenceMap) checkAndTriggerExitForInactiveUsers(currentPresenceMap);
       schedulePreciseExitCheck();
@@ -967,7 +974,6 @@ function toggleAcc(id) {
     stopSmartAutoExitChecker();
     if (!isJoined) return;
 
-    // 1秒間隔のポーリングはネットワーク遅延やタブのスリープ復帰時の保険（自己修復用）
     smartTimerId = setInterval(() => {
       if (!isJoined) return;
       if (currentPresenceMap && Object.keys(currentPresenceMap).length > 0) {
@@ -1053,11 +1059,7 @@ function toggleAcc(id) {
   }
 
   // ============================================================
-  // 📞 通話機能（WebRTC / Firebase RTDBをシグナリングに使用）
-  //   ・双方向（マイク送受信）／聴くだけ（マイクに一切アクセスしない）の2モード
-  //   ・エコーキャンセル/ノイズ抑制/自動ゲイン調整を有効化しクリアな音声を確保
-  //   ・マイクミュートのon/off切り替え（切り替えるたびにトースト確認あり）
-  //   ・自分のマイク音声は絶対にローカル再生しない（ハウリング防止）
+  // 📞 通話・録音機能（WebRTC + Web Audio API + MediaRecorder）
   // ============================================================
   const CALL_ICE_SERVERS = [
     { urls: "stun:stun.l.google.com:19302" },
@@ -1073,8 +1075,16 @@ function toggleAcc(id) {
     mode: null,          // 'both' | 'listen'
     localStream: null,
     muted: false,
-    peers: {},            // otherUid -> { pc, audioEl, refs:[[ref,event,handler],...] }
-    participantsRef: null
+    peers: {},            // otherUid -> { pc, audioEl, remoteStream, refs:[...] }
+    participantsRef: null,
+    
+    // 録音用
+    isRecording: false,
+    mediaRecorder: null,
+    recordedChunks: [],
+    audioContext: null,
+    recDest: null,
+    localSourceNode: null
   };
 
   const callPairKey = (a, b) => [a, b].sort().join("_");
@@ -1085,6 +1095,23 @@ function toggleAcc(id) {
     if (callState.active) {
       bar.style.display = "flex";
       btn.style.display = "none";
+
+      const switchBtn = $("callSwitchModeBtn");
+      if (switchBtn) {
+        if (callState.mode === "both") {
+          switchBtn.textContent = "🔈 聴くだけに切替";
+          switchBtn.style.background = "#334155";
+          switchBtn.style.borderColor = "#475569";
+          switchBtn.style.color = "#f1f5f9";
+        } else {
+          switchBtn.textContent = "🎙️ 話す(双方向)に切替";
+          switchBtn.style.background = "#166534";
+          switchBtn.style.borderColor = "#22c55e";
+          switchBtn.style.color = "#fff";
+        }
+      }
+
+      // ミュートボタン：双方向時のみ表示され、自然に中央配置される
       const muteBtn = $("callMuteBtn");
       if (muteBtn) {
         muteBtn.style.display = callState.mode === "both" ? "inline-flex" : "none";
@@ -1092,9 +1119,24 @@ function toggleAcc(id) {
         muteBtn.style.background = callState.muted ? "rgba(244,63,94,0.2)" : "#166534";
         muteBtn.style.borderColor = callState.muted ? "rgba(244,63,94,0.5)" : "#22c55e";
       }
+
+      const recBtn = $("callRecBtn");
+      const recInd = $("callRecIndicator");
+      if (recBtn) {
+        if (callState.isRecording) {
+          recBtn.textContent = "⏹️ 録音停止";
+          recBtn.classList.add("recording");
+          if (recInd) recInd.style.display = "flex";
+        } else {
+          recBtn.textContent = "🔴 録音開始";
+          recBtn.classList.remove("recording");
+          if (recInd) recInd.style.display = "none";
+        }
+      }
     } else {
       bar.style.display = "none";
       btn.style.display = isJoined ? "inline-flex" : "none";
+      if ($("callRecIndicator")) $("callRecIndicator").style.display = "none";
     }
   }
 
@@ -1113,6 +1155,29 @@ function toggleAcc(id) {
     });
   }
 
+  // Web Audioミキサー管理
+  function ensureAudioContext() {
+    if (!callState.audioContext) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        callState.audioContext = new AudioCtx();
+        callState.recDest = callState.audioContext.createMediaStreamDestination();
+      }
+    }
+    if (callState.audioContext && callState.audioContext.state === "suspended") {
+      callState.audioContext.resume().catch(()=>{});
+    }
+  }
+
+  function attachStreamToRecorderMix(stream, isLocal = false) {
+    if (!callState.audioContext || !callState.recDest || !stream) return;
+    try {
+      const source = callState.audioContext.createMediaStreamSource(stream);
+      source.connect(callState.recDest);
+      if (isLocal) callState.localSourceNode = source;
+    } catch(e) {}
+  }
+
   function closePeerConnection(otherId) {
     const peer = callState.peers[otherId];
     if (!peer) return;
@@ -1128,18 +1193,17 @@ function toggleAcc(id) {
   function connectToPeer(otherId) {
     if (callState.peers[otherId] || !db || !currentRoomId) return;
     const pc = new RTCPeerConnection({ iceServers: CALL_ICE_SERVERS });
-    const peerEntry = { pc, audioEl: null, refs: [] };
+    const peerEntry = { pc, audioEl: null, remoteStream: null, refs: [] };
     callState.peers[otherId] = peerEntry;
 
     if (callState.localStream) {
       callState.localStream.getAudioTracks().forEach(track => pc.addTrack(track, callState.localStream));
     } else {
-      // 💡 聴くだけモード：マイクを一切使わず受信専用で音声だけ受け取る
       try { pc.addTransceiver("audio", { direction: "recvonly" }); } catch (e) {}
     }
 
-    // 💡 相手の声だけを再生する（自分の声は絶対にここに乗らない＝ハウリング防止）
     pc.ontrack = (event) => {
+      peerEntry.remoteStream = event.streams[0];
       let audioEl = peerEntry.audioEl;
       if (!audioEl) {
         audioEl = document.createElement("audio");
@@ -1150,6 +1214,11 @@ function toggleAcc(id) {
         peerEntry.audioEl = audioEl;
       }
       audioEl.srcObject = event.streams[0];
+
+      // 録音中であれば合流させる
+      if (callState.isRecording && callState.audioContext && callState.recDest) {
+        attachStreamToRecorderMix(event.streams[0], false);
+      }
     };
 
     const pKey = callPairKey(myUid, otherId);
@@ -1170,7 +1239,6 @@ function toggleAcc(id) {
     otherCandRef.on("child_added", otherCandHandler);
     peerEntry.refs.push([otherCandRef, "child_added", otherCandHandler]);
 
-    // 💡 UIDの辞書順が小さい側が発信者（offerer）になる固定ルールで衝突を防止
     const iAmInitiator = myUid < otherId;
 
     if (iAmInitiator) {
@@ -1247,8 +1315,189 @@ function toggleAcc(id) {
     }
   }
 
+  // 🎙️ 双方向 ⇔ 🔈 聴くだけ の動的切替
+  async function switchCallMode() {
+    if (!callState.active || !isJoined || !currentRoomId || !db) return;
+
+    if (callState.mode === "both") {
+      // 双方向 → 聴くだけ へ
+      if (callState.localStream) {
+        callState.localStream.getTracks().forEach(t => t.stop());
+        callState.localStream = null;
+      }
+      if (callState.localSourceNode) {
+        try { callState.localSourceNode.disconnect(); } catch(e) {}
+        callState.localSourceNode = null;
+      }
+
+      callState.mode = "listen";
+      callState.muted = false;
+
+      // 各PeerConnectionの送信トラックを停止・受信専用へ
+      Object.values(callState.peers).forEach(peer => {
+        const senders = peer.pc.getSenders();
+        senders.forEach(sender => {
+          if (sender.track) {
+            try { peer.pc.removeTrack(sender); } catch(e) {}
+          }
+        });
+      });
+
+      // Firebase状態更新
+      await db.ref(`calls/${currentRoomId}/participants/${myUid}`).update({ mode: "listen", muted: false }).catch(()=>{});
+      renderCallBar();
+      showToast("🔈 「聴くだけ」に切り替えました（マイク停止）");
+
+    } else {
+      // 聴くだけ → 双方向 へ
+      try {
+        const newStream = await navigator.mediaDevices.getUserMedia(CALL_AUDIO_CONSTRAINTS);
+        callState.localStream = newStream;
+        callState.mode = "both";
+        callState.muted = false;
+
+        // 録音中であれば自分の声をミキサーに追加
+        if (callState.isRecording && callState.audioContext && callState.recDest) {
+          attachStreamToRecorderMix(newStream, true);
+        }
+
+        // 既存のピア接続へトラックを追加して再ネゴシエーション
+        const audioTrack = newStream.getAudioTracks()[0];
+        for (const [otherId, peer] of Object.entries(callState.peers)) {
+          try {
+            peer.pc.addTrack(audioTrack, newStream);
+            const offer = await peer.pc.createOffer();
+            await peer.pc.setLocalDescription(offer);
+            const pKey = callPairKey(myUid, otherId);
+            await db.ref(`calls/${currentRoomId}/signals/${pKey}/offer`).set({
+              sdp: peer.pc.localDescription.sdp,
+              type: peer.pc.localDescription.type,
+              from: myUid
+            });
+          } catch(e) {}
+        }
+
+        await db.ref(`calls/${currentRoomId}/participants/${myUid}`).update({ mode: "both", muted: false }).catch(()=>{});
+        renderCallBar();
+        showToast("🎙️ 「双方向」に切り替えました（マイク開始）");
+      } catch (err) {
+        showToast("⚠️ マイクへのアクセスが許可されませんでした。");
+      }
+    }
+  }
+
+  // 🔴 通話録音の開始／停止
+  async function toggleCallRecording() {
+    if (!callState.active) return;
+
+    if (callState.isRecording) {
+      stopCallRecording();
+    } else {
+      startCallRecording();
+    }
+  }
+
+  function startCallRecording() {
+    if (callState.isRecording) return;
+    ensureAudioContext();
+    if (!callState.audioContext || !callState.recDest) {
+      showToast("⚠️ お使いのブラウザは録音に対応していません");
+      return;
+    }
+
+    // 自分の声を接続（双方向時のみ）
+    if (callState.localStream) {
+      attachStreamToRecorderMix(callState.localStream, true);
+    }
+
+    // 相手全員の声を接続
+    Object.values(callState.peers).forEach(peer => {
+      if (peer.remoteStream) attachStreamToRecorderMix(peer.remoteStream, false);
+    });
+
+    const destStream = callState.recDest.stream;
+    if (!destStream || destStream.getAudioTracks().length === 0) {
+      showToast("⚠️ 録音可能な音声ストリームがありません");
+      return;
+    }
+
+    let mimeType = "audio/webm";
+    if (typeof MediaRecorder.isTypeSupported === "function") {
+      if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) mimeType = "audio/webm;codecs=opus";
+      else if (MediaRecorder.isTypeSupported("audio/mp4")) mimeType = "audio/mp4";
+      else if (MediaRecorder.isTypeSupported("audio/ogg")) mimeType = "audio/ogg";
+    }
+
+    try {
+      callState.recordedChunks = [];
+      const recorder = new MediaRecorder(destStream, mimeType ? { mimeType } : undefined);
+      
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) callState.recordedChunks.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        saveRecordedAudio(mimeType);
+      };
+
+      recorder.start(1000); // 1秒ごとにチャンク収集
+      callState.mediaRecorder = recorder;
+      callState.isRecording = true;
+      renderCallBar();
+      showToast("🔴 通話の録音を開始しました");
+    } catch(e) {
+      showToast("⚠️ 録音の開始に失敗しました");
+    }
+  }
+
+  function stopCallRecording() {
+    if (!callState.isRecording) return;
+    if (callState.mediaRecorder && callState.mediaRecorder.state !== "inactive") {
+      try { callState.mediaRecorder.stop(); } catch(e) {}
+    }
+    callState.isRecording = false;
+    renderCallBar();
+    showToast("⏹️ 録音を停止・保存しています...");
+  }
+
+  function saveRecordedAudio(mimeType) {
+    if (callState.recordedChunks.length === 0) return;
+    try {
+      const blob = new Blob(callState.recordedChunks, { type: mimeType || "audio/webm" });
+      const url = URL.createObjectURL(blob);
+      const now = new Date();
+      const pad = n => String(n).padStart(2, "0");
+      const timeStr = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+      const ext = (mimeType && mimeType.includes("mp4")) ? "mp4" : "webm";
+      const filename = `call_record_${timeStr}.${ext}`;
+
+      const a = document.createElement("a");
+      a.style.display = "none";
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 500);
+
+      showToast(`💾 録音を保存しました: ${filename}`);
+    } catch(e) {
+      showToast("⚠️ 録音ファイルの保存に失敗しました");
+    } finally {
+      callState.recordedChunks = [];
+      callState.mediaRecorder = null;
+    }
+  }
+
   async function leaveCall() {
     if (!callState.active && Object.keys(callState.peers).length === 0 && !callState.localStream) return;
+
+    // 録音中であれば自動停止・保存
+    if (callState.isRecording) {
+      stopCallRecording();
+    }
 
     Object.keys(callState.peers).forEach(otherId => {
       if (db && currentRoomId) db.ref(`calls/${currentRoomId}/signals/${callPairKey(myUid, otherId)}`).remove().catch(() => {});
@@ -1258,6 +1507,15 @@ function toggleAcc(id) {
     if (callState.localStream) {
       callState.localStream.getTracks().forEach(t => t.stop());
       callState.localStream = null;
+    }
+    if (callState.localSourceNode) {
+      try { callState.localSourceNode.disconnect(); } catch(e) {}
+      callState.localSourceNode = null;
+    }
+    if (callState.audioContext) {
+      try { callState.audioContext.close(); } catch(e) {}
+      callState.audioContext = null;
+      callState.recDest = null;
     }
     if (callState.participantsRef) { callState.participantsRef.off("value", handleCallParticipantsChange); callState.participantsRef = null; }
 
@@ -1270,7 +1528,7 @@ function toggleAcc(id) {
     callState.mode = null;
     callState.muted = false;
     renderCallBar();
-    if (wasActive) showToast("📴 通話から退出しました");
+    if (wasActive) showToast("📴 通話を終了しました");
   }
 
   function toggleMute() {
@@ -1413,8 +1671,6 @@ function toggleAcc(id) {
       hasEnteredLogged = true;
       const enterTs = getTrueTime();
       
-      // 💡 【ご要望対応】：新規作成部屋の場合はまず「作成しました」ログを押し、その直後に入室ログを押す
-      //    ただし公式部屋では「部屋を作成しました」ログは出さない
       if (isNewRoom && currentRoomId !== "official") {
         const createText = "[SYS]::📢 [お知らせ] " + `${cleanName} ${myTrip}`.trim() + " が部屋を作成しました";
         const encCreate = await E2EE.encrypt(createText, activeKey);
@@ -1430,7 +1686,6 @@ function toggleAcc(id) {
     applyRoomSettingsUI(); 
   }
 
-  // 💡 【下を最新】スクロールを最下部（最新位置）へ移動する関数
   function scBottom(force = false) {
     if (!D.tl) return;
     requestAnimationFrame(() => {
@@ -1821,14 +2076,6 @@ function toggleAcc(id) {
     }
   }
 
-  // 💡 【ご要望対応】「リアルタイムの遅延なしに改良する」
-  //   child_added/child_removed/presence の push リスナーが本来の"即時"経路であり、
-  //   これ自体はFirebaseのWebSocketでほぼ遅延なく届く。
-  //   一方、以前の実装は「保険」の再同期のたびに #tl-inner を全消去→再構築しており、
-  //   これが定期的な画面のチラつき・スクロール位置のジャンプ＝体感的な"遅延"の原因になっていた。
-  //   そこで保険の再同期は「差分だけを反映する軽量版」に置き換え、
-  //   pushリスナー自体は張り直さず常時ライブのまま維持することで、
-  //   本来の即時性を邪魔しない形にする。
   async function reconcileRoomData() {
     if (!db || !isJoined || !currentRoomId) return;
     try {
@@ -1839,7 +2086,6 @@ function toggleAcc(id) {
         db.ref(`banlist/${currentRoomId}`).once("value")
       ]);
 
-      // 部屋設定・管理者表示・BANリストも同時に最新化（タブ/ブラウザ切替・BG復帰対策）
       const val = settingsSnap.val() || {};
       roomSettings.newEntriesDisabled = val.newEntriesDisabled || false;
       roomSettings.passcode = val.passcode || "";
@@ -1852,7 +2098,6 @@ function toggleAcc(id) {
       }
       renderBanList(banSnap.val() || {});
 
-      // 入室者リスト：renderPresenceは元々差分更新（チラつきなし）
       const list = presSnap.val() || {}, members = {};
       for (const [id, u] of Object.entries(list)) {
         if (u && u.n && typeof u.t === "number") members[id] = { id, ...u };
@@ -1862,7 +2107,6 @@ function toggleAcc(id) {
       checkAndTriggerExitForInactiveUsers(members);
       schedulePreciseExitCheck();
 
-      // 発言ログ：サーバーに存在しない＝見逃した削除を反映（全消去はしない）
       const serverIds = new Set();
       const missingMsgs = [];
       chatSnap.forEach(child => {
@@ -1885,7 +2129,6 @@ function toggleAcc(id) {
       }
       updateUnreadBadge();
 
-      // 見逃していた発言だけを静かに追加（画面全体は再構築しない＝スクロール位置維持）
       for (const m of missingMsgs) {
         try {
           m.m = await E2EE.decrypt(m.m, activeKey);
@@ -2123,11 +2366,6 @@ function toggleAcc(id) {
         isOffsetLoaded = true;
       });
 
-      // 💡 【ご要望対応】スマホのバックグラウンド復帰などの対策：
-      //    Firebaseの「本当に繋がったか」の一次情報である .info/connected を監視し、
-      //    切断→再接続を検知した瞬間に発言ログ・削除・入室者リストを強制的に最新化する。
-      //    visibilitychange/focus/pageshow/online だけに頼らず、接続断イベント自体を捕捉することで
-      //    「どこから接続しても見た瞬間に常に最新」を保証する。
       let wasConnectedBefore = false;
       db.ref(".info/connected").on("value", snap => {
         const nowConnected = snap.val() === true;
@@ -2187,14 +2425,20 @@ function toggleAcc(id) {
     if (D.exBtn) D.exBtn.addEventListener("click", (e) => { e.preventDefault(); customConfirm("退室確認", "本当にこの部屋から退室しますか？", "退室する", "キャンセル", true).then(ok => { if (ok) doExit(false); }); });
     if (D.sdBtn) D.sdBtn.addEventListener("click", (e) => { e.preventDefault(); sendMessage(); });
 
+    // 通話関連イベントリスナー
     if ($("callBtn")) $("callBtn").addEventListener("click", (e) => { e.preventDefault(); if ($("callModeMod")) $("callModeMod").classList.add("show"); });
     if ($("callModeCancelBtn")) $("callModeCancelBtn").addEventListener("click", (e) => { e.preventDefault(); if ($("callModeMod")) $("callModeMod").classList.remove("show"); });
     if ($("callJoinBothBtn")) $("callJoinBothBtn").addEventListener("click", (e) => { e.preventDefault(); if ($("callModeMod")) $("callModeMod").classList.remove("show"); startCall("both"); });
     if ($("callJoinListenBtn")) $("callJoinListenBtn").addEventListener("click", (e) => { e.preventDefault(); if ($("callModeMod")) $("callModeMod").classList.remove("show"); startCall("listen"); });
+    
+    if ($("callSwitchModeBtn")) $("callSwitchModeBtn").addEventListener("click", (e) => { e.preventDefault(); switchCallMode(); });
     if ($("callMuteBtn")) $("callMuteBtn").addEventListener("click", (e) => { e.preventDefault(); toggleMute(); });
+    if ($("callRecBtn")) $("callRecBtn").addEventListener("click", (e) => { e.preventDefault(); toggleCallRecording(); });
+    
+    // 📴 通話終了ボタン
     if ($("callLeaveBtn")) $("callLeaveBtn").addEventListener("click", (e) => {
       e.preventDefault();
-      customConfirm("通話から退出", "通話から退出しますか？（テキストチャットの部屋自体は継続します）", "退出する", "キャンセル", true).then(ok => { if (ok) leaveCall(); });
+      customConfirm("通話終了の確認", "通話を終了しますか？（チャット部屋自体は継続します）", "通話を終了", "キャンセル", true).then(ok => { if (ok) leaveCall(); });
     });
 
     if ($("admTripClearBtn") && $("admTripInput")) {
@@ -2206,7 +2450,6 @@ function toggleAcc(id) {
     if (D.mi) {
       D.mi.addEventListener("input", () => { updateClrMsgBtnVisibility(); D.mi.style.height = "auto"; D.mi.style.height = Math.min(D.mi.scrollHeight, 120) + "px"; });
       
-      // 💡 【ご要望対応】：入力フォーカス時に画面を最下部（最新位置）へ追従させる
       D.mi.addEventListener("focus", () => {
         setTimeout(() => scBottom(true), 50);
         setTimeout(() => scBottom(true), 200);
@@ -2224,9 +2467,6 @@ function toggleAcc(id) {
       const appEl = $("app");
       let lastHeight = window.innerHeight;
 
-      // 💡 【ご要望対応】キーボード開閉時に #app の高さ/位置を「実際に見えている領域(visualViewport)」へ
-      //    正確に追従させる。100dvhのみに頼るとログが少ない時やプレイヤー表示中に
-      //    レイアウトが一瞬「押し上げられる」ように見えることがあるため、JS側で明示的に固定する。
       let rafPending = false;
       function syncViewportToKeyboard() {
         if (rafPending) return;
@@ -2269,7 +2509,6 @@ function toggleAcc(id) {
       });
     }
 
-    // 💡 ジャンプボタン：▲（最上部へ）、▼（最新＝最下部へ）
     if (D.jumpUpBtn) D.jumpUpBtn.addEventListener("click", (e) => { e.preventDefault(); if (D.tl) D.tl.scrollTo({ top: 0, behavior: "smooth" }); });
     if (D.jumpDownBtn) D.jumpDownBtn.addEventListener("click", (e) => { 
       e.preventDefault(); 

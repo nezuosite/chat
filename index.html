@@ -93,13 +93,17 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 /* 📞 通話バーのスタイル調整 */
 #callBar { display:none; flex-direction:column; background:#0b1f16; border-bottom:1px solid #14532d; flex-shrink:0; }
 .call-actions-row {
-  display:flex; align-items:center; justify-content:center; gap:6px; width:100%; flex-wrap:nowrap; overflow-x:auto;
+  display:flex; align-items:center; justify-content:center; gap:5px; width:100%; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none;
 }
+.call-actions-row::-webkit-scrollbar { display: none; }
 .call-action-btn {
-  font-size:10.5px; font-weight:bold; height:26px; padding:0 8px; border-radius:5px; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; gap:3px;
+  font-size:10px; font-weight:bold; height:26px; padding:0 7px; border-radius:5px; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; gap:3px;
 }
 .call-action-btn.recording {
   background:rgba(244,63,94,0.25) !important; border-color:#f43f5e !important; color:#fda4af !important; animation: pulseRec 1s ease-in-out infinite;
+}
+.call-voice-select {
+  background:#1e293b; border:1px solid #475569; color:#f1f5f9; border-radius:5px; height:26px; font-size:10px; font-weight:bold; padding:0 4px; outline:none; cursor:pointer; flex-shrink:0;
 }
 
 #fixedPlayer{display:none;flex-direction:column;background:var(--s2);border-bottom:1px solid var(--bd);width:100%}
@@ -379,9 +383,24 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
             </div>
           </div>
 
-          <!-- 通話操作ボタングループ（中央配置） -->
+          <!-- 通話操作ボタングループ（変声10パターン＋WAV録音＋終了） -->
           <div class="call-actions-row">
             <button id="callSwitchModeBtn" class="call-action-btn" style="background:#334155; border:1px solid #475569; color:#f1f5f9;">🔈 聴くだけ</button>
+            
+            <select id="callVoiceFxSelect" class="call-voice-select" title="ボイスチェンジャー">
+              <option value="off">🎙️ 声: 標準</option>
+              <option value="f_anime">👧 女声・アニメ少女</option>
+              <option value="f_mature">👩 女声・お姉さん</option>
+              <option value="m_deep">👨 男声・ダンディ</option>
+              <option value="m_clean">🧑 男声・爽やか青年</option>
+              <option value="witness">🕵️ 証言者・音声モザイク</option>
+              <option value="suspect">🕶️ 警察密着・容疑者</option>
+              <option value="helium">🎈 ヘリウムガス声</option>
+              <option value="robot">🤖 サイバーロボット</option>
+              <option value="radio">📻 警察無線・トランシーバー</option>
+              <option value="monster">👹 悪役ボス・モンスター</option>
+            </select>
+
             <button id="callMuteBtn" class="call-action-btn" style="display:none; background:#166534; border:1px solid #22c55e; color:#fff;">🎤 ミュート</button>
             <button id="callRecBtn" class="call-action-btn" style="background:#1e293b; border:1px solid #475569; color:#fda4af;">🔴 録音開始</button>
             <button id="callLeaveBtn" class="call-action-btn" style="background:rgba(244,63,94,0.15); border:1px solid rgba(244,63,94,0.4); color:#fda4af;">📴 通話終了</button>
@@ -1059,7 +1078,287 @@ function toggleAcc(id) {
   }
 
   // ============================================================
-  // 📞 通話・WAV最適化録音（WebRTC + Web Audio API / 16bit PCM）
+  // 🎭 10パターン・リアルタイムボイスチェンジャーエンジン (Web Audio)
+  // ============================================================
+  const VoiceFX = {
+    activePreset: "off",
+    pitchRatio: 1.0,
+    sourceNode: null,
+    inputGain: null,
+    pitchProcessor: null,
+    filterHp: null,
+    filterPeak: null,
+    filterLp: null,
+    distortionNode: null,
+    carrierOsc: null,
+    ringModGain: null,
+    delayNode: null,
+    delayFeedback: null,
+    outputGain: null,
+    destNode: null,
+    
+    // PSOLA風グラニュラーピッチシフトバッファ
+    pBuf: new Float32Array(4096),
+    wIdx: 0,
+    pos1: 0,
+    pos2: 256,
+    rIdx1: 0,
+    rIdx2: 0,
+
+    init(ctx) {
+      if (!ctx || this.inputGain) return;
+      this.inputGain = ctx.createGain();
+
+      // ピッチシフトプロセッサ (512サンプルウィンドウ)
+      const W = 512, HALF_W = 256, BUF_LEN = 4096;
+      this.pitchProcessor = ctx.createScriptProcessor(1024, 1, 1);
+      this.pitchProcessor.onaudioprocess = (e) => {
+        const inp = e.inputBuffer.getChannelData(0);
+        const out = e.outputBuffer.getChannelData(0);
+        const pRatio = VoiceFX.pitchRatio;
+
+        if (pRatio === 1.0) {
+          out.set(inp);
+          return;
+        }
+
+        const pBuf = VoiceFX.pBuf;
+        for (let i = 0; i < inp.length; i++) {
+          pBuf[VoiceFX.wIdx] = inp[i];
+          
+          let w1 = VoiceFX.pos1 < HALF_W ? (VoiceFX.pos1 / HALF_W) : ((W - VoiceFX.pos1) / HALF_W);
+          let w2 = VoiceFX.pos2 < HALF_W ? (VoiceFX.pos2 / HALF_W) : ((W - VoiceFX.pos2) / HALF_W);
+
+          let i1 = Math.floor(VoiceFX.rIdx1);
+          let f1 = VoiceFX.rIdx1 - i1;
+          let s1 = pBuf[i1 % BUF_LEN] * (1 - f1) + pBuf[(i1 + 1) % BUF_LEN] * f1;
+
+          let i2 = Math.floor(VoiceFX.rIdx2);
+          let f2 = VoiceFX.rIdx2 - i2;
+          let s2 = pBuf[i2 % BUF_LEN] * (1 - f2) + pBuf[(i2 + 1) % BUF_LEN] * f2;
+
+          out[i] = s1 * w1 + s2 * w2;
+
+          VoiceFX.pos1++;
+          VoiceFX.rIdx1 += pRatio;
+          if (VoiceFX.pos1 >= W) {
+            VoiceFX.pos1 = 0;
+            VoiceFX.rIdx1 = (VoiceFX.wIdx - W + BUF_LEN) % BUF_LEN;
+          }
+
+          VoiceFX.pos2++;
+          VoiceFX.rIdx2 += pRatio;
+          if (VoiceFX.pos2 >= W) {
+            VoiceFX.pos2 = 0;
+            VoiceFX.rIdx2 = (VoiceFX.wIdx - W + BUF_LEN) % BUF_LEN;
+          }
+
+          VoiceFX.wIdx = (VoiceFX.wIdx + 1) % BUF_LEN;
+        }
+      };
+
+      // 多段フィルター
+      this.filterHp = ctx.createBiquadFilter();
+      this.filterHp.type = "highpass";
+      this.filterHp.frequency.value = 20;
+
+      this.filterPeak = ctx.createBiquadFilter();
+      this.filterPeak.type = "peaking";
+      this.filterPeak.frequency.value = 1000;
+      this.filterPeak.gain.value = 0;
+
+      this.filterLp = ctx.createBiquadFilter();
+      this.filterLp.type = "lowpass";
+      this.filterLp.frequency.value = 20000;
+
+      // ディストーション
+      this.distortionNode = ctx.createWaveShaper();
+
+      // リングモジュレータ用オシレーター
+      this.carrierOsc = ctx.createOscillator();
+      this.carrierOsc.type = "sine";
+      this.carrierOsc.frequency.value = 50;
+      this.ringModGain = ctx.createGain();
+      this.ringModGain.gain.value = 1.0;
+      try { this.carrierOsc.start(); } catch(e) {}
+
+      // モンスター用ショートディレイ
+      this.delayNode = ctx.createDelay();
+      this.delayNode.delayTime.value = 0.025; // 25ms
+      this.delayFeedback = ctx.createGain();
+      this.delayFeedback.gain.value = 0;
+
+      this.delayNode.connect(this.delayFeedback);
+      this.delayFeedback.connect(this.delayNode);
+
+      this.outputGain = ctx.createGain();
+      this.destNode = ctx.createMediaStreamDestination();
+
+      // パイプライン配線
+      this.inputGain.connect(this.pitchProcessor);
+      this.pitchProcessor.connect(this.filterHp);
+      this.filterHp.connect(this.filterPeak);
+      this.filterPeak.connect(this.filterLp);
+      this.filterLp.connect(this.distortionNode);
+      this.distortionNode.connect(this.ringModGain);
+      this.ringModGain.connect(this.outputGain);
+
+      // ディレイ合流
+      this.distortionNode.connect(this.delayNode);
+      this.delayNode.connect(this.outputGain);
+
+      this.outputGain.connect(this.destNode);
+    },
+
+    makeDistCurve(amount) {
+      const k = typeof amount === 'number' ? amount : 50;
+      const n_samples = 44100;
+      const curve = new Float32Array(n_samples);
+      const deg = Math.PI / 180;
+      for (let i = 0; i < n_samples; ++i) {
+        let x = (i * 2) / n_samples - 1;
+        curve[i] = ((3 + k) * x * 20 * deg) / (Math.PI + k * Math.abs(x));
+      }
+      return curve;
+    },
+
+    applyPreset(name) {
+      this.activePreset = name;
+      if (!this.inputGain) return;
+
+      // リセット
+      this.pitchRatio = 1.0;
+      this.filterHp.frequency.value = 20;
+      this.filterPeak.type = "peaking";
+      this.filterPeak.frequency.value = 1000;
+      this.filterPeak.gain.value = 0;
+      this.filterLp.frequency.value = 20000;
+      this.distortionNode.curve = null;
+      this.ringModGain.gain.value = 1.0;
+      this.delayFeedback.gain.value = 0;
+      try { this.carrierOsc.disconnect(this.ringModGain.gain); } catch(e) {}
+
+      switch(name) {
+        case "f_anime": // 👧 女声・アニメ少女
+          this.pitchRatio = 1.38;
+          this.filterHp.frequency.value = 240;
+          this.filterPeak.type = "peaking";
+          this.filterPeak.frequency.value = 3200;
+          this.filterPeak.Q.value = 1.2;
+          this.filterPeak.gain.value = 6;
+          this.filterLp.frequency.value = 16000;
+          break;
+
+        case "f_mature": // 👩 女声・お姉さん
+          this.pitchRatio = 1.20;
+          this.filterHp.frequency.value = 180;
+          this.filterPeak.type = "peaking";
+          this.filterPeak.frequency.value = 2200;
+          this.filterPeak.Q.value = 1.0;
+          this.filterPeak.gain.value = 4;
+          this.filterLp.frequency.value = 14000;
+          break;
+
+        case "m_deep": // 👨 男声・ダンディ
+          this.pitchRatio = 0.80;
+          this.filterHp.frequency.value = 40;
+          this.filterPeak.type = "lowshelf";
+          this.filterPeak.frequency.value = 180;
+          this.filterPeak.gain.value = 8;
+          this.filterLp.frequency.value = 4500;
+          break;
+
+        case "m_clean": // 🧑 男声・爽やか青年
+          this.pitchRatio = 0.88;
+          this.filterHp.frequency.value = 60;
+          this.filterPeak.type = "peaking";
+          this.filterPeak.frequency.value = 1600;
+          this.filterPeak.Q.value = 0.8;
+          this.filterPeak.gain.value = 3;
+          this.filterLp.frequency.value = 9000;
+          break;
+
+        case "witness": // 🕵️ 証言者・音声モザイク
+          this.pitchRatio = 0.72;
+          this.filterHp.frequency.value = 200;
+          this.filterPeak.type = "peaking";
+          this.filterPeak.frequency.value = 1100;
+          this.filterPeak.Q.value = 2.0;
+          this.filterPeak.gain.value = 7;
+          this.filterLp.frequency.value = 2200;
+          this.carrierOsc.frequency.value = 12; // 12Hz揺らぎ
+          this.ringModGain.gain.value = 0.7;
+          this.carrierOsc.connect(this.ringModGain.gain);
+          break;
+
+        case "suspect": // 🕶️ 警察密着・容疑者
+          this.pitchRatio = 0.65;
+          this.filterHp.frequency.value = 40;
+          this.filterLp.frequency.value = 950;
+          this.distortionNode.curve = this.makeDistCurve(15);
+          break;
+
+        case "helium": // 🎈 ヘリウムガス声
+          this.pitchRatio = 1.70;
+          this.filterHp.frequency.value = 400;
+          this.filterPeak.type = "peaking";
+          this.filterPeak.frequency.value = 4000;
+          this.filterPeak.Q.value = 1.5;
+          this.filterPeak.gain.value = 8;
+          this.filterLp.frequency.value = 18000;
+          break;
+
+        case "robot": // 🤖 サイバーロボット
+          this.pitchRatio = 1.0;
+          this.filterHp.frequency.value = 300;
+          this.filterLp.frequency.value = 3500;
+          this.carrierOsc.frequency.value = 50; // 50Hzリングモジュレーション
+          this.ringModGain.gain.value = 0;
+          this.carrierOsc.connect(this.ringModGain.gain);
+          break;
+
+        case "radio": // 📻 警察無線・トランシーバー
+          this.pitchRatio = 1.0;
+          this.filterHp.frequency.value = 450;
+          this.filterLp.frequency.value = 2800;
+          this.distortionNode.curve = this.makeDistCurve(40);
+          break;
+
+        case "monster": // 👹 悪役ボス・モンスター
+          this.pitchRatio = 0.60;
+          this.filterLp.frequency.value = 3000;
+          this.distortionNode.curve = this.makeDistCurve(70);
+          this.delayFeedback.gain.value = 0.35;
+          break;
+
+        default: // オフ
+          break;
+      }
+    },
+
+    connectMicStream(stream, ctx) {
+      this.init(ctx);
+      if (this.sourceNode) {
+        try { this.sourceNode.disconnect(); } catch(e) {}
+        this.sourceNode = null;
+      }
+      if (stream) {
+        this.sourceNode = ctx.createMediaStreamSource(stream);
+        this.sourceNode.connect(this.inputGain);
+      }
+      return this.destNode.stream;
+    },
+
+    cleanup() {
+      if (this.sourceNode) {
+        try { this.sourceNode.disconnect(); } catch(e) {}
+        this.sourceNode = null;
+      }
+    }
+  };
+
+  // ============================================================
+  // 📞 通話・WAV最適化録音（WebRTC + Web Audio / 16bit PCM）
   // ============================================================
   const CALL_ICE_SERVERS = [
     { urls: "stun:stun.l.google.com:19302" },
@@ -1073,20 +1372,21 @@ function toggleAcc(id) {
   let callState = {
     active: false,
     mode: null,          // 'both' | 'listen'
-    localStream: null,
+    rawLocalStream: null,
+    processedStream: null,
     muted: false,
     peers: {},            // otherUid -> { pc, audioEl, remoteStream, refs:[...] }
     participantsRef: null,
     
-    // 💡 WAVダイレクト録音用
+    // WAV録音用
     isRecording: false,
     audioContext: null,
     mixerBus: null,
     muteGain: null,
-    scriptProcessor: null,
+    recProcessor: null,
     recordedBuffers: [],
     recordedLength: 0,
-    localSourceNode: null
+    recSourceNodes: []
   };
 
   const callPairKey = (a, b) => [a, b].sort().join("_");
@@ -1101,19 +1401,25 @@ function toggleAcc(id) {
       const switchBtn = $("callSwitchModeBtn");
       if (switchBtn) {
         if (callState.mode === "both") {
-          switchBtn.textContent = "🔈 聴くだけに切替";
+          switchBtn.textContent = "🔈 聴くだけ";
           switchBtn.style.background = "#334155";
           switchBtn.style.borderColor = "#475569";
           switchBtn.style.color = "#f1f5f9";
         } else {
-          switchBtn.textContent = "🎙️ 話す(双方向)に切替";
+          switchBtn.textContent = "🎙️ 話す(双方向)";
           switchBtn.style.background = "#166534";
           switchBtn.style.borderColor = "#22c55e";
           switchBtn.style.color = "#fff";
         }
       }
 
-      // ミュートボタン：中央配置
+      // ボイスチェンジャー選択（双方向時のみ有効）
+      const voiceSelect = $("callVoiceFxSelect");
+      if (voiceSelect) {
+        voiceSelect.style.display = callState.mode === "both" ? "inline-flex" : "none";
+      }
+
+      // ミュートボタン
       const muteBtn = $("callMuteBtn");
       if (muteBtn) {
         muteBtn.style.display = callState.mode === "both" ? "inline-flex" : "none";
@@ -1157,7 +1463,6 @@ function toggleAcc(id) {
     });
   }
 
-  // 💡 Web Audio録音ミキサーの初期化
   function ensureAudioContext() {
     if (!callState.audioContext) {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -1165,7 +1470,7 @@ function toggleAcc(id) {
         callState.audioContext = new AudioCtx();
         callState.mixerBus = callState.audioContext.createGain();
         callState.muteGain = callState.audioContext.createGain();
-        callState.muteGain.gain.value = 0; // 内部集音のみ行いスピーカー出力は完全ミュート（エコー遮断）
+        callState.muteGain.gain.value = 0; // スピーカーへのループ遮断
         callState.muteGain.connect(callState.audioContext.destination);
       }
     }
@@ -1174,16 +1479,15 @@ function toggleAcc(id) {
     }
   }
 
-  function attachStreamToRecorderMix(stream, isLocal = false) {
+  function attachStreamToRecorderMix(stream) {
     if (!callState.audioContext || !callState.mixerBus || !stream) return;
     try {
       const source = callState.audioContext.createMediaStreamSource(stream);
       source.connect(callState.mixerBus);
-      if (isLocal) callState.localSourceNode = source;
+      callState.recSourceNodes.push(source);
     } catch(e) {}
   }
 
-  // 💡 16bit PCM WAV生成ユーティリティ（外部ライブラリなし・超軽量）
   function encodeWAV(buffers, totalLength, sampleRate) {
     const buffer = new ArrayBuffer(44 + totalLength * 2);
     const view = new DataView(buffer);
@@ -1236,8 +1540,10 @@ function toggleAcc(id) {
     const peerEntry = { pc, audioEl: null, remoteStream: null, refs: [] };
     callState.peers[otherId] = peerEntry;
 
-    if (callState.localStream) {
-      callState.localStream.getAudioTracks().forEach(track => pc.addTrack(track, callState.localStream));
+    // 変声後の音声ストリーム（または受信専用）を送信
+    const streamToSend = callState.processedStream || callState.rawLocalStream;
+    if (streamToSend) {
+      streamToSend.getAudioTracks().forEach(track => pc.addTrack(track, streamToSend));
     } else {
       try { pc.addTransceiver("audio", { direction: "recvonly" }); } catch (e) {}
     }
@@ -1255,9 +1561,8 @@ function toggleAcc(id) {
       }
       audioEl.srcObject = event.streams[0];
 
-      // 録音中であればミキサーへ合流
       if (callState.isRecording && callState.audioContext && callState.mixerBus) {
-        attachStreamToRecorderMix(event.streams[0], false);
+        attachStreamToRecorderMix(event.streams[0]);
       }
     };
 
@@ -1324,15 +1629,23 @@ function toggleAcc(id) {
   async function startCall(mode) {
     if (!isJoined || !currentRoomId || !db || callState.active) return;
 
+    ensureAudioContext();
+
     if (mode === "both") {
       try {
-        callState.localStream = await navigator.mediaDevices.getUserMedia(CALL_AUDIO_CONSTRAINTS);
+        callState.rawLocalStream = await navigator.mediaDevices.getUserMedia(CALL_AUDIO_CONSTRAINTS);
+        callState.processedStream = VoiceFX.connectMicStream(callState.rawLocalStream, callState.audioContext);
+        
+        // 選択されている変声プリセットを適用
+        const selVal = $("callVoiceFxSelect") ? $("callVoiceFxSelect").value : "off";
+        VoiceFX.applyPreset(selVal);
       } catch (e) {
         showToast("⚠️ マイクへのアクセスが許可されませんでした。");
         return;
       }
     } else {
-      callState.localStream = null;
+      callState.rawLocalStream = null;
+      callState.processedStream = null;
     }
 
     callState.active = true;
@@ -1355,19 +1668,16 @@ function toggleAcc(id) {
     }
   }
 
-  // 🎙️ 双方向 ⇔ 🔈 聴くだけ の動的切替
   async function switchCallMode() {
     if (!callState.active || !isJoined || !currentRoomId || !db) return;
 
     if (callState.mode === "both") {
-      if (callState.localStream) {
-        callState.localStream.getTracks().forEach(t => t.stop());
-        callState.localStream = null;
+      VoiceFX.cleanup();
+      if (callState.rawLocalStream) {
+        callState.rawLocalStream.getTracks().forEach(t => t.stop());
+        callState.rawLocalStream = null;
       }
-      if (callState.localSourceNode) {
-        try { callState.localSourceNode.disconnect(); } catch(e) {}
-        callState.localSourceNode = null;
-      }
+      callState.processedStream = null;
 
       callState.mode = "listen";
       callState.muted = false;
@@ -1387,19 +1697,24 @@ function toggleAcc(id) {
 
     } else {
       try {
-        const newStream = await navigator.mediaDevices.getUserMedia(CALL_AUDIO_CONSTRAINTS);
-        callState.localStream = newStream;
+        ensureAudioContext();
+        callState.rawLocalStream = await navigator.mediaDevices.getUserMedia(CALL_AUDIO_CONSTRAINTS);
+        callState.processedStream = VoiceFX.connectMicStream(callState.rawLocalStream, callState.audioContext);
+        
+        const selVal = $("callVoiceFxSelect") ? $("callVoiceFxSelect").value : "off";
+        VoiceFX.applyPreset(selVal);
+
         callState.mode = "both";
         callState.muted = false;
 
-        if (callState.isRecording && callState.audioContext && callState.mixerBus) {
-          attachStreamToRecorderMix(newStream, true);
+        if (callState.isRecording) {
+          attachStreamToRecorderMix(callState.processedStream);
         }
 
-        const audioTrack = newStream.getAudioTracks()[0];
+        const audioTrack = callState.processedStream.getAudioTracks()[0];
         for (const [otherId, peer] of Object.entries(callState.peers)) {
           try {
-            peer.pc.addTrack(audioTrack, newStream);
+            peer.pc.addTrack(audioTrack, callState.processedStream);
             const offer = await peer.pc.createOffer();
             await peer.pc.setLocalDescription(offer);
             const pKey = callPairKey(myUid, otherId);
@@ -1420,7 +1735,6 @@ function toggleAcc(id) {
     }
   }
 
-  // 🔴 WAVダイレクト録音の開始／停止
   async function toggleCallRecording() {
     if (!callState.active) return;
     if (callState.isRecording) {
@@ -1440,19 +1754,19 @@ function toggleAcc(id) {
 
     callState.recordedBuffers = [];
     callState.recordedLength = 0;
+    callState.recSourceNodes = [];
 
-    // 自分の声を接続（双方向時のみ）
-    if (callState.localStream) {
-      attachStreamToRecorderMix(callState.localStream, true);
+    // 自分の声（ボイスチェンジャー加工後の音声）を接続
+    if (callState.processedStream) {
+      attachStreamToRecorderMix(callState.processedStream);
     }
 
     // 相手全員の声を接続
     Object.values(callState.peers).forEach(peer => {
-      if (peer.remoteStream) attachStreamToRecorderMix(peer.remoteStream, false);
+      if (peer.remoteStream) attachStreamToRecorderMix(peer.remoteStream);
     });
 
     try {
-      // 4096バッファサイズ（モノラル）でリアルタイム集音
       const processor = callState.audioContext.createScriptProcessor(4096, 1, 1);
       processor.onaudioprocess = (e) => {
         if (!callState.isRecording) return;
@@ -1462,9 +1776,9 @@ function toggleAcc(id) {
       };
 
       callState.mixerBus.connect(processor);
-      processor.connect(callState.muteGain); // スピーカーには流さず処理パイプラインのみ維持
+      processor.connect(callState.muteGain);
 
-      callState.scriptProcessor = processor;
+      callState.recProcessor = processor;
       callState.isRecording = true;
       renderCallBar();
       showToast("🔴 通話の録音を開始しました (WAV)");
@@ -1477,13 +1791,16 @@ function toggleAcc(id) {
     if (!callState.isRecording) return;
     callState.isRecording = false;
 
-    if (callState.scriptProcessor) {
+    if (callState.recProcessor) {
       try {
-        callState.scriptProcessor.disconnect();
-        callState.mixerBus.disconnect(callState.scriptProcessor);
+        callState.recProcessor.disconnect();
+        callState.mixerBus.disconnect(callState.recProcessor);
       } catch(e) {}
-      callState.scriptProcessor = null;
+      callState.recProcessor = null;
     }
+
+    callState.recSourceNodes.forEach(node => { try { node.disconnect(); } catch(e) {} });
+    callState.recSourceNodes = [];
 
     renderCallBar();
     saveRecordedWav();
@@ -1525,7 +1842,7 @@ function toggleAcc(id) {
   }
 
   async function leaveCall() {
-    if (!callState.active && Object.keys(callState.peers).length === 0 && !callState.localStream) return;
+    if (!callState.active && Object.keys(callState.peers).length === 0 && !callState.rawLocalStream) return;
 
     if (callState.isRecording) {
       stopCallRecording();
@@ -1536,14 +1853,13 @@ function toggleAcc(id) {
       closePeerConnection(otherId);
     });
 
-    if (callState.localStream) {
-      callState.localStream.getTracks().forEach(t => t.stop());
-      callState.localStream = null;
+    VoiceFX.cleanup();
+    if (callState.rawLocalStream) {
+      callState.rawLocalStream.getTracks().forEach(t => t.stop());
+      callState.rawLocalStream = null;
     }
-    if (callState.localSourceNode) {
-      try { callState.localSourceNode.disconnect(); } catch(e) {}
-      callState.localSourceNode = null;
-    }
+    callState.processedStream = null;
+
     if (callState.audioContext) {
       try { callState.audioContext.close(); } catch(e) {}
       callState.audioContext = null;
@@ -1565,9 +1881,9 @@ function toggleAcc(id) {
   }
 
   function toggleMute() {
-    if (!callState.active || callState.mode !== "both" || !callState.localStream) return;
+    if (!callState.active || callState.mode !== "both" || !callState.rawLocalStream) return;
     callState.muted = !callState.muted;
-    callState.localStream.getAudioTracks().forEach(t => { t.enabled = !callState.muted; });
+    callState.rawLocalStream.getAudioTracks().forEach(t => { t.enabled = !callState.muted; });
     if (db && currentRoomId && myUid) {
       db.ref(`calls/${currentRoomId}/participants/${myUid}/muted`).set(callState.muted).catch(() => {});
     }
@@ -2465,10 +2781,20 @@ function toggleAcc(id) {
     if ($("callJoinListenBtn")) $("callJoinListenBtn").addEventListener("click", (e) => { e.preventDefault(); if ($("callModeMod")) $("callModeMod").classList.remove("show"); startCall("listen"); });
     
     if ($("callSwitchModeBtn")) $("callSwitchModeBtn").addEventListener("click", (e) => { e.preventDefault(); switchCallMode(); });
+    
+    // ボイスチェンジャー切り替えリスナー
+    if ($("callVoiceFxSelect")) {
+      $("callVoiceFxSelect").addEventListener("change", (e) => {
+        const val = e.target.value;
+        const text = e.target.options[e.target.selectedIndex].text;
+        VoiceFX.applyPreset(val);
+        showToast(`🎙️ 変声: ${text}`);
+      });
+    }
+
     if ($("callMuteBtn")) $("callMuteBtn").addEventListener("click", (e) => { e.preventDefault(); toggleMute(); });
     if ($("callRecBtn")) $("callRecBtn").addEventListener("click", (e) => { e.preventDefault(); toggleCallRecording(); });
     
-    // 📴 通話終了ボタン
     if ($("callLeaveBtn")) $("callLeaveBtn").addEventListener("click", (e) => {
       e.preventDefault();
       customConfirm("通話終了の確認", "通話を終了しますか？（チャット部屋自体は継続します）", "通話を終了", "キャンセル", true).then(ok => { if (ok) leaveCall(); });

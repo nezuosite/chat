@@ -589,8 +589,10 @@ function toggleAcc(id) {
     if (isSyncingNow) return;
     isSyncingNow = true;
     try {
+      // db.goOnline()を最優先・同期的に呼び、再接続そのものを1ミリ秒でも早く始動させる。
+      // serverTimeOffsetは常時ONの ".info/serverTimeOffset" リスナーが裏で更新し続けているため、
+      // ここで毎回await syncServerOffset()すると往復を1回無駄に増やすだけ→撤去。
       db.goOnline();
-      await syncServerOffset();
       await reconcileRoomData();
     } finally {
       isSyncingNow = false;
@@ -703,6 +705,11 @@ function toggleAcc(id) {
     });
   }
 
+  // ⚡ TextEncoder/TextDecoderはステートレスだが生成コストはゼロではないため、使い回して
+  //    ライブチャットのような高頻度送受信でも余計なアロケーションを増やさない。
+  const _txtEnc = (typeof TextEncoder !== 'undefined') ? new TextEncoder() : null;
+  const _txtDec = (typeof TextDecoder !== 'undefined') ? new TextDecoder() : null;
+
   const E2EE = {
     hasCrypto: (typeof window !== 'undefined' && window.crypto && window.crypto.subtle),
     keyCache: new Map(),
@@ -711,9 +718,9 @@ function toggleAcc(id) {
       if (this.keyCache.has(cacheKey)) return this.keyCache.get(cacheKey);
       if (!this.hasCrypto) return null;
       try {
-        const encoder = new TextEncoder();
-        const passData = encoder.encode(cacheKey.normalize('NFKC'));
+        const passData = _txtEnc.encode(cacheKey.normalize('NFKC'));
         const hash = await crypto.subtle.digest("SHA-256", passData);
+        // AES-256-GCM：安全性は据え置きのまま、ブラウザ内で実質最速の認証付き暗号（多くの端末でAES-NIによるハード支援あり）
         const key = await crypto.subtle.importKey("raw", hash, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
         this.keyCache.set(cacheKey, key);
         return key;
@@ -723,15 +730,13 @@ function toggleAcc(id) {
       if (!text) return "";
       if (!key || !this.hasCrypto) return "[PLAIN]::" + text;
       try {
-        const encoder = new TextEncoder();
         const iv = crypto.getRandomValues(new Uint8Array(12));
-        const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, encoder.encode(text));
-        const encryptedBytes = new Uint8Array(encrypted);
-        const combined = new Uint8Array(iv.length + encryptedBytes.length);
-        combined.set(iv); combined.set(encryptedBytes, iv.length);
-        let binary = "";
-        for (let i = 0; i < combined.length; i++) binary += String.fromCharCode(combined[i]);
-        return btoa(binary);
+        const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, _txtEnc.encode(text));
+        const combined = new Uint8Array(12 + encrypted.byteLength);
+        combined.set(iv); combined.set(new Uint8Array(encrypted), 12);
+        // 文字列を1バイトずつ連結するより、spread + String.fromCharCodeの方が高速
+        // （チャット1通分のサイズなら呼び出しスタック上限にも余裕で収まる）
+        return btoa(String.fromCharCode.apply(null, combined));
       } catch (e) { return "[PLAIN]::" + text; }
     },
     async decrypt(base64Text, key) {
@@ -749,7 +754,7 @@ function toggleAcc(id) {
         const iv = combined.slice(0, 12);
         const ciphertext = combined.slice(12);
         const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, key, ciphertext);
-        return new TextDecoder().decode(decrypted);
+        return _txtDec.decode(decrypted);
       } catch (e) { return base64Text; }
     }
   };
@@ -813,7 +818,7 @@ function toggleAcc(id) {
   window.sha256 = async (str) => {
     if (E2EE.hasCrypto) {
       try {
-        const buf = new TextEncoder().encode(str);
+        const buf = _txtEnc.encode(str);
         const hash = await window.crypto.subtle.digest("SHA-256", buf);
         return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
       } catch (e) {}
@@ -833,7 +838,7 @@ function toggleAcc(id) {
     let hashHex = "";
     if (E2EE.hasCrypto) {
       try {
-        const data = new TextEncoder().encode(mixed);
+        const data = _txtEnc.encode(mixed);
         const hash = await crypto.subtle.digest("SHA-256", data);
         hashHex = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
       } catch (e) { hashHex = await window.sha256(mixed); }
@@ -1922,8 +1927,11 @@ function toggleAcc(id) {
   async function reconcileRoomData() {
     if (!db || !isJoined || !currentRoomId) return;
     try {
+      // 🚀 チャットは「まだ見ていない分」だけを狙い撃ちで取得する（limitToLast(100)の全件再取得はやめた）。
+      //    数秒〜数分ブラウザを切り替えていた程度なら差分は数件で済むため、往復データ量が激減し体感がはっきり速くなる。
+      //    削除の追いつきは常設の child_removed リスナー（Firebase側の自動再同期）に任せる。
       const [chatSnap, presSnap, settingsSnap, banSnap] = await Promise.all([
-        db.ref(`chat/${currentRoomId}`).orderByChild("t").limitToLast(100).once("value"),
+        db.ref(`chat/${currentRoomId}`).orderByChild("t").startAt(latestDisplayedTs + 1).once("value"),
         db.ref(`presence/${currentRoomId}`).once("value"),
         db.ref(`settings/${currentRoomId}`).once("value"),
         db.ref(`banlist/${currentRoomId}`).once("value")
@@ -1950,27 +1958,13 @@ function toggleAcc(id) {
       checkAndTriggerExitForInactiveUsers(members);
       schedulePreciseExitCheck();
 
-      const serverIds = new Set();
       const missingMsgs = [];
       chatSnap.forEach(child => {
-        serverIds.add(child.key);
         if (!displayedMsgIds.has(child.key) && !processingMsgIds.has(child.key)) {
           const m = child.val();
           if (m) { m.id = child.key; missingMsgs.push(m); }
         }
       });
-
-      for (const mid of Array.from(displayedMsgIds)) {
-        if (!serverIds.has(mid)) {
-          const el = renderedMwNodes.get(mid);
-          if (el) el.remove();
-          renderedMwNodes.delete(mid);
-          displayedMsgIds.delete(mid);
-          processingMsgIds.delete(mid);
-          unreadMsgIds.delete(mid);
-        }
-      }
-      updateUnreadBadge();
 
       // syncSingleMessage側で復号するため、ここでは二重復号しない（無駄な処理とごく稀な誤復号を防止）
       for (const m of missingMsgs) {

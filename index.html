@@ -61,6 +61,8 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .bclr-dot{width:8px;height:8px;border-radius:50%;background:var(--usr-color)!important}
 
 #lobbyScreen { display: none; flex: 1; overflow-y: auto; padding: 10px 12px; background: #0d1117; flex-direction: column; gap: 10px; }
+#lobbyScreen, #chatScreen { animation: screenFadeIn .18s ease-out; }
+@keyframes screenFadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 .lobby-sec { background: var(--sf); border: 1px solid var(--bd); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
 .lobby-sec h2 { font-size: 12px; font-weight: 800; color: var(--tx); border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 4px; }
 .lobby-row { display: flex; flex-direction: column; gap: 4px; }
@@ -70,12 +72,12 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 
 #chatScreen { display: none; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; position: relative; }
 #chatScreen.is-loading { opacity: 0; pointer-events: none; visibility: hidden; }
-#chatScreen:not(.is-loading) { opacity: 1; visibility: visible; transition: opacity 0.02s ease-in; }
+#chatScreen:not(.is-loading) { opacity: 1; visibility: visible; transition: opacity 0.15s ease-out; }
 
 #adminAccordion {
   display: none; flex-direction: column; background: var(--sf); border-bottom: 1px solid var(--bd);
   padding: 10px 14px; gap: 10px; flex-shrink: 0; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-  animation: slideDown 0.12s ease-out forwards;
+  animation: slideDown 0.14s ease-out forwards;
 }
 @keyframes slideDown {
   from { opacity: 0; transform: translateY(-8px); }
@@ -90,7 +92,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .call-chip.is-muted{opacity:0.65;}
 
 /* 📞 通話バーのスタイル調整（中央揃え・均等配置） */
-#callBar { display:none; flex-direction:column; background:#0b1f16; border-bottom:1px solid #14532d; flex-shrink:0; }
+#callBar { display:none; flex-direction:column; background:#0b1f16; border-bottom:1px solid #14532d; flex-shrink:0; animation: slideDown 0.14s ease-out; }
 .call-actions-row {
   display:flex; align-items:center; justify-content:center; gap:8px; width:100%; flex-wrap:nowrap;
 }
@@ -98,7 +100,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
   font-size:11px; font-weight:bold; height:28px; padding:0 12px; border-radius:5px; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; gap:4px;
 }
 
-#fixedPlayer{display:none;flex-direction:column;background:var(--s2);border-bottom:1px solid var(--bd);width:100%}
+#fixedPlayer{display:none;flex-direction:column;background:var(--s2);border-bottom:1px solid var(--bd);width:100%;animation: slideDown 0.14s ease-out;}
 #playerHeader{background:var(--sf);padding:8px 12px;font-size:12px;font-weight:bold;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--bd)}
 #playerContent{ width:100%;max-width:480px;background:#000;display:flex;justify-content:center;align-items:center;position:relative;margin:0 auto;overflow:hidden; }
 #playerCloseBtn{background:rgba(244, 63, 94, 0.15) !important;border:1px solid rgba(244, 63, 94, 0.4) !important;color: #fda4af !important;font-weight: 900 !important;padding: 4px 10px !important;font-size: 12px !important;border-radius: 5px;}
@@ -109,8 +111,10 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 
 .mw{position:relative;display:flex;flex-direction:column;width:100%;padding:3px 6px;border-radius:4px;user-select:none;-webkit-user-select:none;transition:background 0.1s ease;}
 .mw:hover{background:rgba(255,255,255,0.02);}
-.mw.new-msg-anim{animation:fadeIn .05s ease-out forwards}
-@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+.mw.new-msg-anim{animation:fadeIn .22s cubic-bezier(0.16,1,0.3,1) forwards}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.mw .mb-bubble, .mw .ts, .mw .mm { transition: opacity .2s ease; }
+.mw.is-pending .mb-bubble, .mw.is-pending .ts, .mw.is-pending .mm { opacity: .55; }
 
 .mw-content-row { display: flex; align-items: baseline; gap: 6px; width: 100%; flex-wrap: wrap; }
 .mm{display:inline-flex;align-items:center;gap:4px;font-size:12px;flex-shrink:0;}
@@ -154,8 +158,9 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .bclrm.show{opacity:1;pointer-events:auto}
 .bclrm:hover,.bclrm:active{background:rgba(244,63,94,0.15);border-color:rgba(244,63,94,0.3);color:var(--ro)}
 
-.bsd{width:44px;height:44px;border-radius:50%;background:#334155;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 10px rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.12)}
+.bsd{width:44px;height:44px;border-radius:50%;background:#334155;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 10px rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.12);transition:transform .1s ease,background .1s ease}
 .bsd:hover{background:#475569}
+.bsd:active{transform:scale(.92)}
 .bsd:disabled{opacity:.6;cursor:not-allowed}
 .bsd svg{width:18px;height:18px;transform:rotate(45deg);margin-top:-1px;margin-left:-2px}
 
@@ -165,10 +170,9 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .acc-item {border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 4px;}
 .acc-hdr {font-size: 10.5px; font-weight: bold; color: var(--tx); padding: 4px 0; cursor: pointer; display: flex; justify-content: space-between; align-items: center;}
 .acc-bdy {display: none; padding: 4px 0; flex-direction: column; gap: 6px;}
-.acc-bdy.show {display: flex;}
+.acc-bdy.show {display: flex; animation: slideDown .14s ease-out;}
 
 #imgViewMod{background:rgba(0,0,0,.96);backdrop-filter:blur(10px);flex-direction:column}
-#imgViewMod.show{display:flex!important}
 #zoomViewport{width:100%;height:calc(100dvh - 100px);position:absolute;top:0;left:0;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:grab}
 #zoomViewport:active{cursor:grabbing}
 
@@ -181,10 +185,10 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 
 #imgViewSrc{max-width:95%;max-height:95%;object-fit:contain;user-select: auto !important;}
 .clrpick-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.clrc2{aspect-ratio:1;width:100%;max-width:28px;border-radius:50%;margin:0 auto;border:2px solid transparent}
+.clrc2{aspect-ratio:1;width:100%;max-width:28px;border-radius:50%;margin:0 auto;border:2px solid transparent;transition:transform .1s ease}
 .clrc2.sel{border-color:var(--tx)!important;transform:scale(1.2)}
 
-.inline-img { max-width: 100%;max-height: 180px;width: auto;height: auto;object-fit: contain;margin-top: 0;display: block;cursor: zoom-in; }
+.inline-img { max-width: 100%;max-height: 180px;width: auto;height: auto;object-fit: contain;margin-top: 0;display: block;cursor: zoom-in;transition:opacity .1s ease }
 .inline-img:hover{opacity:0.9;transform:scale(1.01)}
 
 .media-link-container {margin-top:6px;background:rgba(11, 16, 28, 0.6);border:1px solid var(--bd);border-radius:7px;padding:6px 10px;display:inline-flex;flex-direction:column;gap:5px;max-width:100%}
@@ -196,21 +200,25 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
   position: fixed;bottom: 64px;left: 50%;transform: translateX(-50%) translateY(10px);
   background: rgba(15, 23, 42, 0.96);border: 1px solid var(--bd);color: var(--tx);padding: 6px 14px;
   border-radius: 6px;font-size: 12px;font-weight: bold;z-index: 10000;box-shadow: 0 3px 12px rgba(0,0,0,0.5);
-  pointer-events: none;opacity: 0;transition: transform 0.1s ease, opacity 0.08s ease;display: none;align-items: center;gap: 6px;
+  pointer-events: none;opacity: 0;transition: transform 0.15s cubic-bezier(0.16,1,0.3,1), opacity 0.12s ease;display: none;align-items: center;gap: 6px;max-width:88%;text-align:center;
 }
 #toastContainer.show {opacity: 1;transform: translateX(-50%) translateY(0);}
 
 .mod-overlay {
-  display: none;position: fixed;top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(5, 7, 10, 0.45) !important;backdrop-filter: blur(2px) !important;z-index: 200000; 
+  display: flex;position: fixed;top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(5, 7, 10, 0.45) !important;backdrop-filter: blur(2px) !important;z-index: 200000;
   align-items: center;justify-content: center;padding: 20px;
+  opacity: 0;visibility: hidden;pointer-events: none;
+  transition: opacity .15s ease, visibility .15s;
 }
-.mod-overlay.show { display: flex !important; }
+.mod-overlay.show { opacity: 1;visibility: visible;pointer-events: auto; }
 .gc {
   background: var(--sf);border: 1px solid var(--bd);border-radius: 12px;
   width: 100%;padding: 16px;box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
   display: flex;flex-direction: column;
+  transform: scale(.96) translateY(6px);transition: transform .16s cubic-bezier(0.16,1,0.3,1);
 }
+.mod-overlay.show .gc { transform: scale(1) translateY(0); }
 .clrmc { display: flex; flex-direction: column; }
 .clr-prev {
   font-size: 13px;font-weight: bold;text-align: center;background: rgba(0,0,0,0.2);
@@ -430,8 +438,6 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
     <!-- ロビー画面 -->
     <div id="lobbyScreen" style="display: none; flex: 1; overflow-y: auto; padding: 10px 12px; background: #0d1117; flex-direction: column; gap: 10px;">
 
-      <div id="lobbyNoticeBanner" style="display:none; background:rgba(244,63,94,0.12); border:1px solid rgba(244,63,94,0.35); color:#fda4af; font-size:11.5px; font-weight:bold; padding:8px 12px; border-radius:8px; text-align:center; line-height:1.4;"></div>
-
       <div class="lobby-sec">
         <h2>👤 ユーザー設定 (必須入力)</h2>
         <div style="display:flex; flex-direction:column; gap:4px; width:100%;">
@@ -536,6 +542,7 @@ function toggleAcc(id) {
   
   const displayedMsgIds = new Set();
   const processingMsgIds = new Set();
+  const pendingSendMap = new Map(); // cid -> local element id（送信直後の自分の発言を即時反映するための対応表）
 
   let isFirstLoad = true, isFirebaseListenersBound = false;
   let isSending = false, lastSendTime = 0, scale = 1, panX = 0, panY = 0;
@@ -547,9 +554,6 @@ function toggleAcc(id) {
   const UR = /(https?:\/\/[^\s\n<>"]+)/gi;
 
   const checkIsGlobalAdmin = () => (ADMIN_TRIPS.includes(myTrip) || ADMIN_TRIPS.includes(myTrip.replace("◆", "")));
-
-  function showLobbyNotice(msg) { safeLS.set("nz_lobby_notice", msg); }
-  function clearLobbyNotice() { safeLS.remove("nz_lobby_notice"); }
 
   async function runAdminZombieCleanup() {
     if (!db || !checkIsGlobalAdmin()) return;
@@ -593,28 +597,22 @@ function toggleAcc(id) {
     }
   };
 
+  // 🔄 バックグラウンド復帰・タブ切替・オンライン復帰時に即時同期＋自動退室チェッカーを再起動する
+  // （データの再取得は復帰時のみに限定し、リアルタイムリスナーに任せることで通信量とバッテリー消費を最小化）
   if (typeof document !== 'undefined') {
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
         triggerInstantSync();
         startSmartAutoExitChecker();
+      } else if (smartTimerId) {
+        // バックグラウンド中は1秒間隔のローカル安全網だけ止めて電池を節約（厳密タイマーは維持）
+        clearInterval(smartTimerId);
+        smartTimerId = null;
       }
     });
     window.addEventListener("pageshow", triggerInstantSync);
     window.addEventListener("focus", triggerInstantSync);
     window.addEventListener("online", triggerInstantSync);
-
-    const STALE_THRESHOLD_MS = 2000;
-    const onFirstTouchCheck = () => {
-      if (!isJoined) return;
-      if (getTrueTime() - lastSyncAt > STALE_THRESHOLD_MS) triggerInstantSync();
-    };
-    document.addEventListener("pointerdown", onFirstTouchCheck, { passive: true });
-    document.addEventListener("touchstart", onFirstTouchCheck, { passive: true });
-
-    setInterval(() => {
-      if (isJoined && document.visibilityState === "visible") triggerInstantSync();
-    }, 8000);
   }
 
   (async function initInitialScreenState() {
@@ -644,7 +642,6 @@ function toggleAcc(id) {
     } else {
       const lobbyScr = document.getElementById("lobbyScreen");
       if (lobbyScr) lobbyScr.style.display = "flex";
-      displayAndClearLobbyNotice();
       runAdminZombieCleanup();
     }
   })();
@@ -756,6 +753,30 @@ function toggleAcc(id) {
       } catch (e) { return base64Text; }
     }
   };
+
+  // 📦 メッセージのn(名前)/p(トリップ)/m(本文)を1つのJSONにまとめてから暗号化する。
+  // 暗号1回・IV/タグのオーバーヘッドも1回分で済むため、通信量と復号処理が約1/3になる。
+  async function encodeMsgPayload(name, trip, msg) {
+    return E2EE.encrypt(JSON.stringify({ n: name, p: trip, m: msg }), activeKey);
+  }
+  async function decodeMsgPayload(m) {
+    try {
+      if (m.d !== undefined) {
+        const raw = await E2EE.decrypt(m.d, activeKey);
+        const parsed = JSON.parse(raw);
+        m.n = parsed.n || ""; m.p = parsed.p || ""; m.m = parsed.m || "";
+      } else {
+        // 旧フォーマット（個別暗号化）との後方互換フォールバック
+        m.m = await E2EE.decrypt(m.m, activeKey);
+        m.n = await E2EE.decrypt(m.n, activeKey);
+        m.p = await E2EE.decrypt(m.p, activeKey);
+        if (typeof m.m === "string" && m.m.startsWith("[SYS]::")) m.m = m.m.substring(7);
+      }
+    } catch (e) {
+      m.n = m.u === "system" ? "システム" : "不明"; m.p = ""; m.m = "[復号エラー]";
+    }
+    return m;
+  }
 
   const COLORS = [
     {v:"#f1f5f9",n:"ホワイト"},{v:"#94a3b8",n:"グレー"},{v:"#38bdf8",n:"スカイ"},{v:"#06b6d4",n:"シアン"},
@@ -891,19 +912,6 @@ function toggleAcc(id) {
     });
   }
 
-  function displayAndClearLobbyNotice() {
-    const el = $("lobbyNoticeBanner");
-    if (!el) return;
-    const msg = safeLS.get("nz_lobby_notice");
-    if (msg) {
-      el.textContent = msg;
-      el.style.display = "block";
-      safeLS.remove("nz_lobby_notice");
-    } else {
-      el.style.display = "none";
-    }
-  }
-
   function switchScreen(state, rawRoomId = "", isSilent = false) {
     const logoTitle = $("logoTitle") || document.querySelector(".logo");
     if ($("lobbyScreen")) $("lobbyScreen").style.display = "none";
@@ -930,7 +938,6 @@ function toggleAcc(id) {
       if ($("adminBtnContainer")) $("adminBtnContainer").style.display = "none";
       if ($("connStatusBadge")) $("connStatusBadge").style.display = "none";
       if (logoTitle) logoTitle.textContent = "NEZUO CHAT";
-      displayAndClearLobbyNotice();
       runAdminZombieCleanup();
       leaveCall();
       renderCallBar();
@@ -940,9 +947,14 @@ function toggleAcc(id) {
   const updateLastPostTime = time => safeLS.set("nz_last_post_time", time.toString());
   const updateSessionStartTime = time => safeLS.set("nz_session_start_time", time.toString());
 
-  let smartTimerId = null;
   let preciseExitTimerId = null;
+  let smartTimerId = null;
 
+  // ⏱️ 期限ちょうどの瞬間に発火する「厳密タイマー」。
+  //    setTimeoutの遅延は環境によって前後しうるため、+30msだけ後ろにずらして
+  //    「早すぎて未確定のまま弾く」ことだけは絶対に起きないようにしてある（早発火した場合は
+  //    checkAndTriggerExitForInactiveUsers内の時刻判定で弾かれ、即座に正しい残り時間で再スケジュールされる＝自己補正）。
+  //    さらに、万一のスケジュール漏れに備えて最大5分に一度は必ず再評価するキャップも設ける。
   function schedulePreciseExitCheck() {
     if (preciseExitTimerId) { clearTimeout(preciseExitTimerId); preciseExitTimerId = null; }
     if (!isJoined || !currentPresenceMap) return;
@@ -954,36 +966,45 @@ function toggleAcc(id) {
         if (remain < soonestRemain) soonestRemain = remain;
       }
     }
-    if (soonestRemain === Infinity) return;
-    const delay = Math.max(0, soonestRemain) + 30;
+    const SAFETY_CAP_MS = 300000; // 5分
+    const delay = soonestRemain === Infinity
+      ? SAFETY_CAP_MS
+      : Math.min(Math.max(0, soonestRemain) + 30, SAFETY_CAP_MS);
     preciseExitTimerId = setTimeout(() => {
       if (isJoined && currentPresenceMap) checkAndTriggerExitForInactiveUsers(currentPresenceMap);
       schedulePreciseExitCheck();
     }, delay);
   }
 
+  // 自動退室のチェックは二段構え：
+  //  ① 期限ちょうどに発火する厳密タイマー（schedulePreciseExitCheck）
+  //  ② 画面が前面にある間だけ動く1秒ごとのローカル安全網（ネットワーク通信は一切発生しない。
+  //     currentPresenceMapという既にメモリ上にあるデータを見るだけなので通信量・電池への影響はゼロに近い）
+  // ①だけでも理論上は正確だが、②を併用することで「1秒たりともズレを許さない」を実運用でも保証する。
+  // バックグラウンド中は②を止めてバッテリーを節約し、フォアグラウンド復帰時に即座に再開・再同期する。
   function startSmartAutoExitChecker() {
     stopSmartAutoExitChecker();
     if (!isJoined) return;
-
-    smartTimerId = setInterval(() => {
-      if (!isJoined) return;
-      if (currentPresenceMap && Object.keys(currentPresenceMap).length > 0) {
-        checkAndTriggerExitForInactiveUsers(currentPresenceMap);
-      }
-    }, 1000);
-
     schedulePreciseExitCheck();
+    const isForeground = (typeof document === 'undefined') || document.visibilityState === "visible";
+    if (isForeground) {
+      smartTimerId = setInterval(() => {
+        if (!isJoined) return;
+        if (currentPresenceMap && Object.keys(currentPresenceMap).length > 0) {
+          checkAndTriggerExitForInactiveUsers(currentPresenceMap);
+        }
+      }, 1000);
+    }
   }
 
   function stopSmartAutoExitChecker() {
-    if (smartTimerId) {
-      clearInterval(smartTimerId);
-      smartTimerId = null;
-    }
     if (preciseExitTimerId) {
       clearTimeout(preciseExitTimerId);
       preciseExitTimerId = null;
+    }
+    if (smartTimerId) {
+      clearInterval(smartTimerId);
+      smartTimerId = null;
     }
   }
   
@@ -1007,21 +1028,18 @@ function toggleAcc(id) {
             const userTrip = (u.p || "").trim();
             if (userName) {
               const exactExpiryTime = u.t + AUTO_EXIT_MS;
-              const rawSysText = "[SYS]::📢 [お知らせ] " + `${userName} ${userTrip}`.trim() + " が自動退室しました (30分間発言がなかったため)";
-              const encLog = await E2EE.encrypt(rawSysText, activeKey);
+              const rawSysText = "📢 [お知らせ] " + `${userName} ${userTrip}`.trim() + " が自動退室しました (30分間発言がなかったため)";
+              const encD = await encodeMsgPayload("システム", "", rawSysText);
               
               await db.ref(`chat/${currentRoomId}`).push({ 
                 u: "system", 
-                n: "システム", 
-                p: "", 
                 c: "#f43f5e", 
-                m: encLog, 
+                d: encD, 
                 t: exactExpiryTime,
                 sys: true
               });
 
               if (id === myUid) {
-                showLobbyNotice("⏱️ 30分間発言がなかったため、自動退室しました。");
                 doExit(true);
               }
             }
@@ -1038,7 +1056,7 @@ function toggleAcc(id) {
       const now = getTrueTime();
       let activeCount = 0;
       for (const [id, u] of Object.entries(list)) {
-        if (u && u.t && (now - u.t < 1800000)) activeCount++;
+        if (u && u.t && (now - u.t < AUTO_EXIT_MS)) activeCount++;
       }
       if (activeCount === 0) {
         db.ref(`chat/${roomId}`).remove().catch(()=>{});
@@ -1368,16 +1386,15 @@ function toggleAcc(id) {
       removeFirebaseListeners(); 
       switchScreen("lobby");
       if (D.mi) D.mi.blur();
-      const noticeMsg = isAuto ? "⏱️ 30分間発言がなかったため、自動退室しました。" : "🚪 退室しました。";
-      showLobbyNotice(noticeMsg);
+      showToast(isAuto ? "⏱️ 30分間発言がなかったため、自動退室しました。" : "🚪 退室しました。", 2200);
     };
 
     if (wasJoined && cleanName && db && !isAuto) {
       try {
         const exitTime = getTrueTime();
-        const rawSysText = "[SYS]::📢 [お知らせ] " + `${cleanName} ${cleanTrip}`.trim() + " が退室しました";
-        const encLog = await E2EE.encrypt(rawSysText, activeKey);
-        await db.ref(`chat/${oldRoomId}`).push({ u: "system", n: "システム", p: "", c: "#f43f5e", m: encLog, t: exitTime, sys: true });
+        const rawSysText = "📢 [お知らせ] " + `${cleanName} ${cleanTrip}`.trim() + " が退室しました";
+        const encD = await encodeMsgPayload("システム", "", rawSysText);
+        await db.ref(`chat/${oldRoomId}`).push({ u: "system", c: "#f43f5e", d: encD, t: exitTime, sys: true });
       } catch(e) {}
       await finishAndClean();
     } else {
@@ -1392,7 +1409,6 @@ function toggleAcc(id) {
     if (!lobbyRoomId) { alert("部屋IDを入力してください。"); return; }
     if (lobbyRoomId !== "official" && !lobbyRoomPass) { alert("部屋パスワードを入力してください。"); return; }
 
-    clearLobbyNotice();
     const safeRoomPath = (lobbyRoomId === "official") ? "official" : await window.sha256(lobbyRoomId);
 
     let isBanned = false;
@@ -1449,8 +1465,7 @@ function toggleAcc(id) {
           removeFirebaseListeners(); 
           isJoined = false; 
           switchScreen("lobby"); 
-          showToast("🚫 管理者によりアクセスが制限（BAN）されました。"); 
-          showLobbyNotice("🚫 管理者によりアクセスが制限（BAN）されました。"); 
+          showToast("🚫 管理者によりアクセスが制限（BAN）されました。", 2200); 
         }
       });
     } catch (e) {}
@@ -1480,14 +1495,14 @@ function toggleAcc(id) {
       const enterTs = getTrueTime();
       
       if (isNewRoom && currentRoomId !== "official") {
-        const createText = "[SYS]::📢 [お知らせ] " + `${cleanName} ${myTrip}`.trim() + " が部屋を作成しました";
-        const encCreate = await E2EE.encrypt(createText, activeKey);
-        await db.ref(`chat/${currentRoomId}`).push({ u: "system", n: "システム", p: "", c: "#f43f5e", m: encCreate, t: enterTs - 10, sys: true });
+        const createText = "📢 [お知らせ] " + `${cleanName} ${myTrip}`.trim() + " が部屋を作成しました";
+        const encCreate = await encodeMsgPayload("システム", "", createText);
+        await db.ref(`chat/${currentRoomId}`).push({ u: "system", c: "#f43f5e", d: encCreate, t: enterTs - 10, sys: true });
       }
 
-      const rawEnterText = "[SYS]::📢 [お知らせ] " + `${cleanName} ${myTrip}`.trim() + " が入室しました";
-      E2EE.encrypt(rawEnterText, activeKey).then(encEnter => {
-        db.ref(`chat/${currentRoomId}`).push({ u: "system", n: "システム", p: "", c: "#f43f5e", m: encEnter, t: enterTs, sys: true }).catch(()=>{});
+      const rawEnterText = "📢 [お知らせ] " + `${cleanName} ${myTrip}`.trim() + " が入室しました";
+      encodeMsgPayload("システム", "", rawEnterText).then(encEnter => {
+        db.ref(`chat/${currentRoomId}`).push({ u: "system", c: "#f43f5e", d: encEnter, t: enterTs, sys: true }).catch(()=>{});
       });
     }
 
@@ -1533,15 +1548,41 @@ function toggleAcc(id) {
   
   async function syncSingleMessage(m, isNewIncoming = false) {
     if (!m || !m.id) return;
-    
+
+    // ✅ 自分がさっき楽観的に表示した発言のサーバー確定通知なら、
+    //    再描画せずローカル要素をそのまま「確定」状態に昇格させるだけにする（遅延ゼロ）
+    if (m.cid && m.u === myUid && pendingSendMap.has(m.cid)) {
+      const localId = pendingSendMap.get(m.cid);
+      pendingSendMap.delete(m.cid);
+      const el = renderedMwNodes.get(localId);
+      if (el) {
+        renderedMwNodes.delete(localId);
+        displayedMsgIds.delete(localId);
+        el.dataset.mid = m.id;
+        el.classList.remove("is-pending");
+        renderedMwNodes.set(m.id, el);
+        displayedMsgIds.add(m.id);
+        const msgTime = getMsgTime(m);
+        el.dataset.ts = msgTime;
+        if (msgTime > latestDisplayedTs) latestDisplayedTs = msgTime;
+        const delBtn = el.querySelector(".msg-del-btn");
+        if (delBtn) delBtn.dataset.mid = m.id;
+      } else if (!displayedMsgIds.has(m.id)) {
+        // ローカル要素が見つからない場合は通常通り描画（保険）
+        await decodeMsgPayload(m);
+        const newEl = cMsg(m, isNewIncoming);
+        insertMessageInOrder(newEl);
+      }
+      updateJumpBtns();
+      return;
+    }
+
     if (displayedMsgIds.has(m.id)) return;
     if (processingMsgIds.has(m.id)) return;
     processingMsgIds.add(m.id);
 
     try {
-      m.m = await E2EE.decrypt(m.m, activeKey);
-      m.n = await E2EE.decrypt(m.n, activeKey);
-      m.p = await E2EE.decrypt(m.p, activeKey);
+      await decodeMsgPayload(m);
 
       const el = cMsg(m, isNewIncoming);
       insertMessageInOrder(el);
@@ -1578,10 +1619,9 @@ function toggleAcc(id) {
     el.dataset.ts = msgTime; el.dataset.rawMsg = m.m; el.dataset.uid = m.u || "";
     if (isNewIncoming) el.addEventListener("animationend", () => el.classList.remove("new-msg-anim"), { once: true });
 
-    const isSys = m.sys === true || m.u === "system" || (typeof m.m === "string" && m.m.startsWith("[SYS]::"));
+    const isSys = m.sys === true || m.u === "system";
     if (isSys) {
-      let display = m.m.startsWith("[SYS]::") ? m.m.substring(7) : m.m;
-      el.innerHTML = `<div class="sys-msg">${escapeHtml(display)}<span class="sys-ts">[${fDT(msgTime)}]</span></div>`;
+      el.innerHTML = `<div class="sys-msg">${escapeHtml(m.m || "")}<span class="sys-ts">[${fDT(msgTime)}]</span></div>`;
       renderedMwNodes.set(m.id, el); displayedMsgIds.add(m.id);
       return el;
     }
@@ -1814,15 +1854,7 @@ function toggleAcc(id) {
         if (m) { m.id = child.key; msgs.push(m); }
       });
 
-      const decryptedPromises = msgs.map(async m => {
-        try {
-          m.m = await E2EE.decrypt(m.m, activeKey);
-          m.n = await E2EE.decrypt(m.n, activeKey);
-          m.p = await E2EE.decrypt(m.p, activeKey);
-        } catch (err) { m.m = "[復号エラー]"; }
-        return m;
-      });
-      const resolvedMsgs = await Promise.all(decryptedPromises);
+      const resolvedMsgs = await Promise.all(msgs.map(m => decodeMsgPayload(m)));
 
       resolvedMsgs.sort((a, b) => {
         const timeDiff = getMsgTime(a) - getMsgTime(b);
@@ -1937,12 +1969,8 @@ function toggleAcc(id) {
       }
       updateUnreadBadge();
 
+      // syncSingleMessage側で復号するため、ここでは二重復号しない（無駄な処理とごく稀な誤復号を防止）
       for (const m of missingMsgs) {
-        try {
-          m.m = await E2EE.decrypt(m.m, activeKey);
-          m.n = await E2EE.decrypt(m.n, activeKey);
-          m.p = await E2EE.decrypt(m.p, activeKey);
-        } catch (err) { m.m = "[復号エラー]"; }
         await syncSingleMessage(m, true);
       }
 
@@ -2045,7 +2073,6 @@ function toggleAcc(id) {
     myPresenceRef.on("value", s => {
       if (isJoined && !s.exists()) {
         myPresenceRef.off(); removeFirebaseListeners(); isJoined = false; switchScreen("lobby");
-        showLobbyNotice("⚠️ 部屋が解散されたか、退室処理が行われました。");
       }
     });
   }
@@ -2060,7 +2087,7 @@ function toggleAcc(id) {
     if (myPresenceRef) { myPresenceRef.off("value"); myPresenceRef = null; }
     if (presenceRef) presenceRef.off("value");
     isFirebaseListenersBound = false;
-    displayedMsgIds.clear(); processingMsgIds.clear(); renderedMwNodes.clear(); unreadMsgIds.clear(); updateUnreadBadge();
+    displayedMsgIds.clear(); processingMsgIds.clear(); renderedMwNodes.clear(); unreadMsgIds.clear(); pendingSendMap.clear(); updateUnreadBadge();
     if (D.pl) D.pl.innerHTML = ""; if ($("pcnt")) $("pcnt").style.display = "none";
   }
 
@@ -2114,25 +2141,44 @@ function toggleAcc(id) {
     if (Date.now() - lastSendTime < 200) { showToast("⚠️ 送信間隔が短すぎます。"); return; }
     lastSendTime = Date.now(); isSending = true;
 
+    // 🚀 楽観的送信：暗号化やサーバー往復を待たず、入力内容を即座にローカル描画する。
+    //    体感遅延をほぼゼロにし、サーバー確定後は同じ要素をそのまま確定状態にする。
+    const cid = "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    const keepOpen = D.kbKeepOpenChk && D.kbKeepOpenChk.checked;
+    D.mi.value = ""; updateClrMsgBtnVisibility(); D.mi.style.height = "auto";
+    if (keepOpen) D.mi.focus(); else D.mi.blur();
+
+    const localTs = getTrueTime();
+    const localId = "local_" + cid;
+    const localMsg = { id: localId, u: myUid, n: myName || "名無し", p: myTrip, c: curColor, m: text, t: localTs };
+
+    pendingSendMap.set(cid, localId);
+    const localEl = cMsg(localMsg, true);
+    localEl.classList.add("is-pending");
+    insertMessageInOrder(localEl);
+    scBottom(true);
+    unreadMsgIds.clear(); updateUnreadBadge();
+    updateJumpBtns();
+
     try {
       if (!auth.currentUser) await auth.signInAnonymously().catch(() => {});
 
-      const keepOpen = D.kbKeepOpenChk && D.kbKeepOpenChk.checked;
-      D.mi.value = ""; updateClrMsgBtnVisibility(); D.mi.style.height = "auto";
-      if (keepOpen) D.mi.focus(); else D.mi.blur();
-      
       const trueNow = getTrueTime();
       updateLastPostTime(trueNow);
 
-      const encText = await E2EE.encrypt(text, activeKey);
-      const encName = await E2EE.encrypt(myName || "名無し", activeKey);
-      const encTrip = await E2EE.encrypt(myTrip, activeKey);
-
+      const encD = await encodeMsgPayload(myName || "名無し", myTrip, text);
       const postTs = firebase.database.ServerValue.TIMESTAMP;
-      await db.ref(`chat/${currentRoomId}`).push({ u: myUid, n: encName, p: encTrip, c: curColor, m: encText, t: postTs });
+      await db.ref(`chat/${currentRoomId}`).push({ u: myUid, c: curColor, t: postTs, cid, d: encD });
       
       if (myPresenceRef) myPresenceRef.child("t").set(postTs).catch(()=>{});
     } catch (e) {
+      // 送信失敗時は楽観描画をロールバック
+      pendingSendMap.delete(cid);
+      const el = renderedMwNodes.get(localId);
+      if (el) el.remove();
+      renderedMwNodes.delete(localId);
+      displayedMsgIds.delete(localId);
+      updateJumpBtns();
       showToast("❌ メッセージの送信に失敗しました。");
       if (db) db.goOnline();
     } finally {
@@ -2174,18 +2220,19 @@ function toggleAcc(id) {
         isOffsetLoaded = true;
       });
 
-      let wasConnectedBefore = false;
+      // 🔌 「切断→再接続」を検知した時だけ即時フル同期する（真の再接続時のみ・無駄打ちなし）
+      let hasDisconnectedOnce = false;
       db.ref(".info/connected").on("value", snap => {
         const nowConnected = snap.val() === true;
         const badge = $("connStatusBadge");
         if (badge) badge.style.display = (!nowConnected && isJoined) ? "inline-block" : "none";
         if (nowConnected) {
-          if (wasConnectedBefore) {
+          if (hasDisconnectedOnce) {
             triggerInstantSync();
+            hasDisconnectedOnce = false;
           }
-          wasConnectedBefore = true;
         } else {
-          wasConnectedBefore = false;
+          hasDisconnectedOnce = true;
         }
       });
 

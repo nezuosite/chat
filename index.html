@@ -2015,19 +2015,22 @@ function toggleAcc(id) {
 
     let presenceRafId = null;
     presenceRef.on("value", s => {
+      // ⚠️ 重要なバグ修正：判定ロジック（自動退室チェック等）をrequestAnimationFrame任せにしていると、
+      //    タブ/アプリがバックグラウンドの間はrAFが完全に止まり、presenceの更新もチェックも一切走らなくなる
+      //    （＝自動退室が確実に成功しない最大の原因）。ロジックは常に即時実行し、
+      //    画面への反映（renderPresence）だけを次フレームにまとめて間引く。
+      const list = s.val() || {}, members = {};
+      for (const [id, u] of Object.entries(list)) {
+        if (u && u.n && typeof u.t === "number") members[id] = { id, ...u };
+      }
+      currentPresenceMap = members;
+
+      if (Object.keys(members).length === 0) checkRoomSelfDestruct(currentRoomId);
+      checkAndTriggerExitForInactiveUsers(members);
+      schedulePreciseExitCheck();
+
       if (presenceRafId) cancelAnimationFrame(presenceRafId);
-      presenceRafId = requestAnimationFrame(() => {
-        const list = s.val() || {}, members = {};
-        for (const [id, u] of Object.entries(list)) {
-          if (u && u.n && typeof u.t === "number") members[id] = { id, ...u };
-        }
-        currentPresenceMap = members; 
-        renderPresence(members);
-        
-        if (Object.keys(members).length === 0) checkRoomSelfDestruct(currentRoomId);
-        checkAndTriggerExitForInactiveUsers(members);
-        schedulePreciseExitCheck();
-      });
+      presenceRafId = requestAnimationFrame(() => { renderPresence(currentPresenceMap); });
     });
 
     settingsRef.on("value", snap => {

@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#090d16">
-<title>NEZUO CHAT</title>
+<title>NEZUO CHAT - LIVE STREAM</title>
 <link rel="preconnect" href="https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app" crossorigin>
 <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
@@ -589,9 +589,6 @@ function toggleAcc(id) {
     if (isSyncingNow) return;
     isSyncingNow = true;
     try {
-      // db.goOnline()を最優先・同期的に呼び、再接続そのものを1ミリ秒でも早く始動させる。
-      // serverTimeOffsetは常時ONの ".info/serverTimeOffset" リスナーが裏で更新し続けているため、
-      // ここで毎回await syncServerOffset()すると往復を1回無駄に増やすだけ→撤去。
       db.goOnline();
       await reconcileRoomData();
     } finally {
@@ -599,15 +596,14 @@ function toggleAcc(id) {
     }
   };
 
-  // 🔄 バックグラウンド復帰・タブ切替・オンライン復帰時に即時同期＋自動退室チェッカーを再起動する
-  // （データの再取得は復帰時のみに限定し、リアルタイムリスナーに任せることで通信量とバッテリー消費を最小化）
+  // 復帰・再接続イベント全般で即時同期。取りこぼし対策として、操作時に同期が古ければその場でも同期する。
+  const STALE_THRESHOLD_MS = 2000;
   if (typeof document !== 'undefined') {
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
         triggerInstantSync();
         startSmartAutoExitChecker();
       } else if (smartTimerId) {
-        // バックグラウンド中は1秒間隔のローカル安全網だけ止めて電池を節約（厳密タイマーは維持）
         clearInterval(smartTimerId);
         smartTimerId = null;
       }
@@ -615,6 +611,12 @@ function toggleAcc(id) {
     window.addEventListener("pageshow", triggerInstantSync);
     window.addEventListener("focus", triggerInstantSync);
     window.addEventListener("online", triggerInstantSync);
+
+    const checkStaleOnInteraction = () => {
+      if (isJoined && getTrueTime() - lastSyncAt > STALE_THRESHOLD_MS) triggerInstantSync();
+    };
+    document.addEventListener("pointerdown", checkStaleOnInteraction, { passive: true });
+    document.addEventListener("touchstart", checkStaleOnInteraction, { passive: true });
   }
 
   (async function initInitialScreenState() {
@@ -705,8 +707,7 @@ function toggleAcc(id) {
     });
   }
 
-  // ⚡ TextEncoder/TextDecoderはステートレスだが生成コストはゼロではないため、使い回して
-  //    ライブチャットのような高頻度送受信でも余計なアロケーションを増やさない。
+  // TextEncoder/TextDecoderは使い回して余分なアロケーションを避ける
   const _txtEnc = (typeof TextEncoder !== 'undefined') ? new TextEncoder() : null;
   const _txtDec = (typeof TextDecoder !== 'undefined') ? new TextDecoder() : null;
 
@@ -720,7 +721,7 @@ function toggleAcc(id) {
       try {
         const passData = _txtEnc.encode(cacheKey.normalize('NFKC'));
         const hash = await crypto.subtle.digest("SHA-256", passData);
-        // AES-256-GCM：安全性は据え置きのまま、ブラウザ内で実質最速の認証付き暗号（多くの端末でAES-NIによるハード支援あり）
+        // AES-256-GCM
         const key = await crypto.subtle.importKey("raw", hash, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
         this.keyCache.set(cacheKey, key);
         return key;
@@ -734,8 +735,6 @@ function toggleAcc(id) {
         const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, _txtEnc.encode(text));
         const combined = new Uint8Array(12 + encrypted.byteLength);
         combined.set(iv); combined.set(new Uint8Array(encrypted), 12);
-        // 文字列を1バイトずつ連結するより、spread + String.fromCharCodeの方が高速
-        // （チャット1通分のサイズなら呼び出しスタック上限にも余裕で収まる）
         return btoa(String.fromCharCode.apply(null, combined));
       } catch (e) { return "[PLAIN]::" + text; }
     },
@@ -759,8 +758,7 @@ function toggleAcc(id) {
     }
   };
 
-  // 📦 メッセージのn(名前)/p(トリップ)/m(本文)を1つのJSONにまとめてから暗号化する。
-  // 暗号1回・IV/タグのオーバーヘッドも1回分で済むため、通信量と復号処理が約1/3になる。
+  // n(名前)/p(トリップ)/m(本文)をまとめて1回で暗号化する
   async function encodeMsgPayload(name, trip, msg) {
     return E2EE.encrypt(JSON.stringify({ n: name, p: trip, m: msg }), activeKey);
   }
@@ -954,11 +952,7 @@ function toggleAcc(id) {
   let preciseExitTimerId = null;
   let smartTimerId = null;
 
-  // ⏱️ 期限ちょうどの瞬間に発火する「厳密タイマー」。
-  //    setTimeoutの遅延は環境によって前後しうるため、+30msだけ後ろにずらして
-  //    「早すぎて未確定のまま弾く」ことだけは絶対に起きないようにしてある（早発火した場合は
-  //    checkAndTriggerExitForInactiveUsers内の時刻判定で弾かれ、即座に正しい残り時間で再スケジュールされる＝自己補正）。
-  //    さらに、万一のスケジュール漏れに備えて最大5分に一度は必ず再評価するキャップも設ける。
+  // 期限ちょうどに発火するタイマー。早発火してもチェック側の時刻判定で弾かれ、正しい残り時間で再スケジュールされる。
   function schedulePreciseExitCheck() {
     if (preciseExitTimerId) { clearTimeout(preciseExitTimerId); preciseExitTimerId = null; }
     if (!isJoined || !currentPresenceMap) return;
@@ -980,12 +974,7 @@ function toggleAcc(id) {
     }, delay);
   }
 
-  // 自動退室のチェックは二段構え：
-  //  ① 期限ちょうどに発火する厳密タイマー（schedulePreciseExitCheck）
-  //  ② 画面が前面にある間だけ動く1秒ごとのローカル安全網（ネットワーク通信は一切発生しない。
-  //     currentPresenceMapという既にメモリ上にあるデータを見るだけなので通信量・電池への影響はゼロに近い）
-  // ①だけでも理論上は正確だが、②を併用することで「1秒たりともズレを許さない」を実運用でも保証する。
-  // バックグラウンド中は②を止めてバッテリーを節約し、フォアグラウンド復帰時に即座に再開・再同期する。
+  // 期限ちょうどの厳密タイマーに加え、前面表示中は1秒間隔のローカルチェックも併用してズレを防ぐ
   function startSmartAutoExitChecker() {
     stopSmartAutoExitChecker();
     if (!isJoined) return;
@@ -1094,8 +1083,6 @@ function toggleAcc(id) {
   };
 
   const callPairKey = (a, b) => [a, b].sort().join("_");
-  // 🌐 通話に必要なブラウザAPI（WebRTC / マイク取得）が使える環境かどうか。
-  //    非対応の端末・ブラウザでは通話ボタン自体を出さず、押しても失敗する体験を避ける。
   const isCallSupported = () => !!(typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia && typeof window !== 'undefined' && window.RTCPeerConnection);
 
   function renderCallBar() {
@@ -1557,8 +1544,7 @@ function toggleAcc(id) {
   async function syncSingleMessage(m, isNewIncoming = false) {
     if (!m || !m.id) return;
 
-    // ✅ 自分がさっき楽観的に表示した発言のサーバー確定通知なら、
-    //    再描画せずローカル要素をそのまま「確定」状態に昇格させるだけにする（遅延ゼロ）
+    // 楽観送信の確定通知なら再描画せずローカル要素を確定状態に昇格させるだけにする
     if (m.cid && m.u === myUid && pendingSendMap.has(m.cid)) {
       const localId = pendingSendMap.get(m.cid);
       pendingSendMap.delete(m.cid);
@@ -1924,40 +1910,12 @@ function toggleAcc(id) {
     }
   }
 
-  async function reconcileRoomData() {
-    if (!db || !isJoined || !currentRoomId) return;
-    try {
-      // 🚀 チャットは「まだ見ていない分」だけを狙い撃ちで取得する（limitToLast(100)の全件再取得はやめた）。
-      //    数秒〜数分ブラウザを切り替えていた程度なら差分は数件で済むため、往復データ量が激減し体感がはっきり速くなる。
-      //    削除の追いつきは常設の child_removed リスナー（Firebase側の自動再同期）に任せる。
-      const [chatSnap, presSnap, settingsSnap, banSnap] = await Promise.all([
-        db.ref(`chat/${currentRoomId}`).orderByChild("t").startAt(latestDisplayedTs + 1).once("value"),
-        db.ref(`presence/${currentRoomId}`).once("value"),
-        db.ref(`settings/${currentRoomId}`).once("value"),
-        db.ref(`banlist/${currentRoomId}`).once("value")
-      ]);
+  function reconcileRoomData() {
+    if (!db || !isJoined || !currentRoomId) return Promise.resolve();
+    const roomId = currentRoomId;
 
-      const val = settingsSnap.val() || {};
-      roomSettings.newEntriesDisabled = val.newEntriesDisabled || false;
-      roomSettings.passcode = val.passcode || "";
-      roomSettings.approvedTrips = val.approvedTrips || {};
-      roomSettings.creatorUid = val.creatorUid || "";
-      applyRoomSettingsUI();
-      const isGlobalAdminNow = checkIsGlobalAdmin();
-      if ($("adminBtnContainer")) {
-        $("adminBtnContainer").style.display = (currentRoomId === "official" ? isGlobalAdminNow : (myUid === roomSettings.creatorUid)) ? "inline-flex" : "none";
-      }
-      renderBanList(banSnap.val() || {});
-
-      const list = presSnap.val() || {}, members = {};
-      for (const [id, u] of Object.entries(list)) {
-        if (u && u.n && typeof u.t === "number") members[id] = { id, ...u };
-      }
-      currentPresenceMap = members;
-      renderPresence(members);
-      checkAndTriggerExitForInactiveUsers(members);
-      schedulePreciseExitCheck();
-
+    // 未取得分のみ取得。削除の反映は常設のchild_removedリスナーに任せる。4系統は互いを待たず届いた順に反映する。
+    const chatP = db.ref(`chat/${roomId}`).orderByChild("t").startAt(latestDisplayedTs + 1).once("value").then(async chatSnap => {
       const missingMsgs = [];
       chatSnap.forEach(child => {
         if (!displayedMsgIds.has(child.key) && !processingMsgIds.has(child.key)) {
@@ -1965,15 +1923,39 @@ function toggleAcc(id) {
           if (m) { m.id = child.key; missingMsgs.push(m); }
         }
       });
-
-      // syncSingleMessage側で復号するため、ここでは二重復号しない（無駄な処理とごく稀な誤復号を防止）
-      for (const m of missingMsgs) {
-        await syncSingleMessage(m, true);
-      }
-
+      for (const m of missingMsgs) await syncSingleMessage(m, true);
       updateJumpBtns();
-      lastSyncAt = getTrueTime();
-    } catch (e) {}
+    }).catch(()=>{});
+
+    const presP = db.ref(`presence/${roomId}`).once("value").then(presSnap => {
+      const list = presSnap.val() || {}, members = {};
+      for (const [id, u] of Object.entries(list)) {
+        if (u && u.n && typeof u.t === "number") members[id] = { id, ...u };
+      }
+      currentPresenceMap = members;
+      renderPresence(members);
+      if (Object.keys(members).length === 0) checkRoomSelfDestruct(roomId);
+      checkAndTriggerExitForInactiveUsers(members);
+      schedulePreciseExitCheck();
+    }).catch(()=>{});
+
+    const settingsP = db.ref(`settings/${roomId}`).once("value").then(settingsSnap => {
+      const val = settingsSnap.val() || {};
+      roomSettings.newEntriesDisabled = val.newEntriesDisabled || false;
+      roomSettings.passcode = val.passcode || "";
+      roomSettings.approvedTrips = val.approvedTrips || {};
+      roomSettings.creatorUid = val.creatorUid || "";
+      applyRoomSettingsUI();
+      const isAdmin = roomId === "official" ? checkIsGlobalAdmin() : (myUid === roomSettings.creatorUid);
+      if ($("adminBtnContainer")) $("adminBtnContainer").style.display = isAdmin ? "inline-flex" : "none";
+    }).catch(()=>{});
+
+    const banP = db.ref(`banlist/${roomId}`).once("value").then(banSnap => {
+      renderBanList(banSnap.val() || {});
+    }).catch(()=>{});
+
+    lastSyncAt = getTrueTime();
+    return Promise.all([chatP, presP, settingsP, banP]);
   }
 
   function renderBanList(bans) {
@@ -2015,10 +1997,8 @@ function toggleAcc(id) {
 
     let presenceRafId = null;
     presenceRef.on("value", s => {
-      // ⚠️ 重要なバグ修正：判定ロジック（自動退室チェック等）をrequestAnimationFrame任せにしていると、
-      //    タブ/アプリがバックグラウンドの間はrAFが完全に止まり、presenceの更新もチェックも一切走らなくなる
-      //    （＝自動退室が確実に成功しない最大の原因）。ロジックは常に即時実行し、
-      //    画面への反映（renderPresence）だけを次フレームにまとめて間引く。
+      // 判定ロジックは即時実行し、描画（renderPresence）だけをrAFで間引く
+      // （rAFはバックグラウンドで停止するため、ロジックまでそこに乗せると自動退室判定も止まってしまう）
       const list = s.val() || {}, members = {};
       for (const [id, u] of Object.entries(list)) {
         if (u && u.n && typeof u.t === "number") members[id] = { id, ...u };
@@ -2139,8 +2119,7 @@ function toggleAcc(id) {
     const text = D.mi.value.trim();
     if (!text) return;
 
-    // 🚀 楽観的送信：暗号化やサーバー往復を一切待たず、入力内容を即座にローカル描画してすぐ次の入力へ戻す。
-    //    連打・連続送信もLINEのようにブロックしない（各送信は独立して裏で処理される）。
+    // 送信は即座にローカル描画し、暗号化・送信はバックグラウンドで行う（連続送信もブロックしない）
     const cid = "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
     const keepOpen = D.kbKeepOpenChk && D.kbKeepOpenChk.checked;
     D.mi.value = ""; updateClrMsgBtnVisibility(); D.mi.style.height = "auto";
@@ -2158,9 +2137,6 @@ function toggleAcc(id) {
     unreadMsgIds.clear(); updateUnreadBadge();
     updateJumpBtns();
 
-    // ここから先はバックグラウンドで完結させ、他の送信や画面操作を一切ブロックしない。
-    // 通信状況が悪くても「送信中」の見た目のまま静かに待ち、失敗した時だけロールバックする
-    // （＝ユーザーには「常につながっている」ように見える）。
     (async () => {
       try {
         if (!auth.currentUser) await auth.signInAnonymously().catch(() => {});
@@ -2174,7 +2150,6 @@ function toggleAcc(id) {
 
         if (myPresenceRef) myPresenceRef.child("t").set(postTs).catch(()=>{});
       } catch (e) {
-        // 送信失敗時のみ楽観描画をロールバック
         pendingSendMap.delete(cid);
         const el = renderedMwNodes.get(localId);
         if (el) el.remove();
@@ -2220,8 +2195,7 @@ function toggleAcc(id) {
         isOffsetLoaded = true;
       });
 
-      // 🔌 接続状態はUIには一切出さない（退室・自動退室するまでは常に「つながっている」ように見せる）。
-      //    裏側では「切断→再接続」を検知した瞬間だけ静かにフル同期し、体感上のズレを解消する。
+      // 切断→再接続を検知したときだけ同期する（UIに接続状態は出さない）
       let hasDisconnectedOnce = false;
       db.ref(".info/connected").on("value", snap => {
         const nowConnected = snap.val() === true;

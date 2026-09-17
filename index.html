@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#090d16">
-<title>NEZUO CHAT - LIVE STREAM</title>
+<title>NEZUO CHAT</title>
 <link rel="preconnect" href="https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app" crossorigin>
 <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
@@ -90,7 +90,6 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .call-chip.is-listen{border-color:rgba(148,163,184,0.4);color:#94a3b8;background:rgba(148,163,184,0.06);}
 .call-chip.is-muted{opacity:0.65;}
 
-/* 📞 通話バーのスタイル調整（中央揃え・均等配置） */
 #callBar { display:none; flex-direction:column; background:#0b1f16; border-bottom:1px solid #14532d; flex-shrink:0; animation: slideDown 0.14s ease-out; }
 .call-actions-row {
   display:flex; align-items:center; justify-content:center; gap:8px; width:100%; flex-wrap:nowrap;
@@ -104,7 +103,6 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 #playerContent{ width:100%;max-width:480px;background:#000;display:flex;justify-content:center;align-items:center;position:relative;margin:0 auto;overflow:hidden; }
 #playerCloseBtn{background:rgba(244, 63, 94, 0.15) !important;border:1px solid rgba(244, 63, 94, 0.4) !important;color: #fda4af !important;font-weight: 900 !important;padding: 4px 10px !important;font-size: 12px !important;border-radius: 5px;}
 
-/* コメントストリーム */
 #tl{flex:1;min-height:0;overflow-y:auto;overflow-anchor:auto;padding:8px 12px;background-color:#070a10;-webkit-overflow-scrolling:touch;}
 #tl-inner{display:flex;flex-direction:column;justify-content:flex-start;gap:6px;width:100%;max-width:800px;margin:0 auto;min-height:100%}
 
@@ -370,7 +368,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
         </div>
       </div>
 
-      <!-- 📞 通話コントロールバー（シンプル＆中央揃え） -->
+      <!-- 📞 通話コントロールバー -->
       <div id="callBar">
         <div style="display:flex; flex-direction:column; padding:6px 12px; gap:6px;">
           <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
@@ -380,7 +378,6 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
             </div>
           </div>
 
-          <!-- 通話操作ボタングループ（中央配置・均等レイアウト） -->
           <div class="call-actions-row">
             <button id="callSwitchModeBtn" class="call-action-btn" style="background:#334155; border:1px solid #475569; color:#f1f5f9;">🔈 聴くだけ</button>
             <button id="callMuteBtn" class="call-action-btn" style="display:none; background:#166534; border:1px solid #22c55e; color:#fff;">🎤 ミュート</button>
@@ -500,13 +497,7 @@ function toggleAcc(id) {
 
 (function() {
  try {
-  // 👑 全体管理者トリップ（◆VEgOTO / ◆ZJBSxz）
   const ADMIN_TRIPS = ["◆VEgOTO", "◆ZJBSxz", "VEgOTO", "ZJBSxz"];
-
-  let myUid = safeLS_get("nz_permanent_uid") || ("user_" + Math.random().toString(36).substring(2, 11));
-  if (!safeLS_get("nz_permanent_uid")) {
-    safeLS_set("nz_permanent_uid", myUid);
-  }
 
   function safeLS_get(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
   function safeLS_set(key, val) { try { localStorage.setItem(key, val); } catch (e) {} }
@@ -527,6 +518,31 @@ function toggleAcc(id) {
   const db = firebase.database();
   const auth = firebase.auth();
 
+  // 🔑 Firebase Auth の UID を直接 myUid として保持
+  let myUid = auth.currentUser ? auth.currentUser.uid : "";
+
+  async function ensureAuth() {
+    if (auth.currentUser) {
+      myUid = auth.currentUser.uid;
+      return auth.currentUser;
+    }
+    return new Promise((resolve) => {
+      const unsub = auth.onAuthStateChanged((user) => {
+        if (user) {
+          unsub();
+          myUid = user.uid;
+          resolve(user);
+        } else {
+          auth.signInAnonymously().then(cred => {
+            unsub();
+            myUid = cred.user.uid;
+            resolve(cred.user);
+          }).catch(() => resolve(null));
+        }
+      });
+    });
+  }
+
   const $ = id => document.getElementById(id);
   let D = {};
   let myPresenceRef = null;
@@ -542,7 +558,7 @@ function toggleAcc(id) {
   
   const displayedMsgIds = new Set();
   const processingMsgIds = new Set();
-  const pendingSendMap = new Map(); // cid -> local element id（送信直後の自分の発言を即時反映するための対応表）
+  const pendingSendMap = new Map();
 
   let isFirstLoad = true, isFirebaseListenersBound = false;
   let scale = 1, panX = 0, panY = 0;
@@ -550,7 +566,7 @@ function toggleAcc(id) {
   let lastSyncAt = 0;
   let roomSettings = { passcode: "", newEntriesDisabled: false, approvedTrips: {}, creatorUid: "" };
   let localLastClearedTime = 0;
-  const AUTO_EXIT_MS = 1800000; // 30分
+  const AUTO_EXIT_MS = 1800000;
   const UR = /(https?:\/\/[^\s\n<>"]+)/gi;
 
   const checkIsGlobalAdmin = () => (ADMIN_TRIPS.includes(myTrip) || ADMIN_TRIPS.includes(myTrip.replace("◆", "")));
@@ -596,7 +612,6 @@ function toggleAcc(id) {
     }
   };
 
-  // 復帰・再接続イベント全般で即時同期。取りこぼし対策として、操作時に同期が古ければその場でも同期する。
   const STALE_THRESHOLD_MS = 2000;
   if (typeof document !== 'undefined') {
     document.addEventListener("visibilitychange", () => {
@@ -620,6 +635,9 @@ function toggleAcc(id) {
   }
 
   (async function initInitialScreenState() {
+    await ensureAuth();
+    await syncProfileValues();
+
     const wasJoined = safeLS.get("nz_is_joined") === "true";
     const lastRoomId = safeLS.get("nz_last_room_id");
     const lastRoomPass = safeLS.get("nz_last_room_pass");
@@ -637,11 +655,7 @@ function toggleAcc(id) {
       const logoTitle = document.getElementById("logoTitle");
       if (logoTitle) logoTitle.innerHTML = `NEZUO CHAT<span class="sub-room">${lastRoomId === "official" ? "常設公式部屋" : lastRoomId}</span>`;
 
-      Promise.all([
-        syncServerOffset(),
-        auth.currentUser ? Promise.resolve() : auth.signInAnonymously().catch(()=>{})
-      ]).catch(()=>{});
-
+      await syncServerOffset();
       joinRoom({ roomId: lastRoomId, roomPass: lastRoomPass, silent: true });
     } else {
       const lobbyScr = document.getElementById("lobbyScreen");
@@ -707,7 +721,6 @@ function toggleAcc(id) {
     });
   }
 
-  // TextEncoder/TextDecoderは使い回して余分なアロケーションを避ける
   const _txtEnc = (typeof TextEncoder !== 'undefined') ? new TextEncoder() : null;
   const _txtDec = (typeof TextDecoder !== 'undefined') ? new TextDecoder() : null;
 
@@ -721,7 +734,6 @@ function toggleAcc(id) {
       try {
         const passData = _txtEnc.encode(cacheKey.normalize('NFKC'));
         const hash = await crypto.subtle.digest("SHA-256", passData);
-        // AES-256-GCM
         const key = await crypto.subtle.importKey("raw", hash, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
         this.keyCache.set(cacheKey, key);
         return key;
@@ -758,7 +770,6 @@ function toggleAcc(id) {
     }
   };
 
-  // n(名前)/p(トリップ)/m(本文)をまとめて1回で暗号化する
   async function encodeMsgPayload(name, trip, msg) {
     return E2EE.encrypt(JSON.stringify({ n: name, p: trip, m: msg }), activeKey);
   }
@@ -769,7 +780,6 @@ function toggleAcc(id) {
         const parsed = JSON.parse(raw);
         m.n = parsed.n || ""; m.p = parsed.p || ""; m.m = parsed.m || "";
       } else {
-        // 旧フォーマット（個別暗号化）との後方互換フォールバック
         m.m = await E2EE.decrypt(m.m, activeKey);
         m.n = await E2EE.decrypt(m.n, activeKey);
         m.p = await E2EE.decrypt(m.p, activeKey);
@@ -894,7 +904,7 @@ function toggleAcc(id) {
       if ($("btnCopyTrip")) $("btnCopyTrip").style.display = "inline-flex";
     } else {
       myTrip = "";
-      if ($("lobbyTripPrev")) $("lobbyTripPrev").textContent = `プレビュー: 名前を入力して識別ID生成`;
+      if ($("lobbyTripPrev")) $("lobbyTripPrev").textContent = `プレビュー: 認証準備中...`;
       if ($("btnCopyTrip")) $("btnCopyTrip").style.display = "none";
     }
     validateLobbyInputs();
@@ -952,7 +962,6 @@ function toggleAcc(id) {
   let preciseExitTimerId = null;
   let smartTimerId = null;
 
-  // 期限ちょうどに発火するタイマー。早発火してもチェック側の時刻判定で弾かれ、正しい残り時間で再スケジュールされる。
   function schedulePreciseExitCheck() {
     if (preciseExitTimerId) { clearTimeout(preciseExitTimerId); preciseExitTimerId = null; }
     if (!isJoined || !currentPresenceMap) return;
@@ -964,7 +973,7 @@ function toggleAcc(id) {
         if (remain < soonestRemain) soonestRemain = remain;
       }
     }
-    const SAFETY_CAP_MS = 300000; // 5分
+    const SAFETY_CAP_MS = 300000;
     const delay = soonestRemain === Infinity
       ? SAFETY_CAP_MS
       : Math.min(Math.max(0, soonestRemain) + 30, SAFETY_CAP_MS);
@@ -974,7 +983,6 @@ function toggleAcc(id) {
     }, delay);
   }
 
-  // 期限ちょうどの厳密タイマーに加え、前面表示中は1秒間隔のローカルチェックも併用してズレを防ぐ
   function startSmartAutoExitChecker() {
     stopSmartAutoExitChecker();
     if (!isJoined) return;
@@ -1061,9 +1069,7 @@ function toggleAcc(id) {
     });
   }
 
-  // ============================================================
-  // 📞 通話機能（軽量・シンプル・低遅延 WebRTC）
-  // ============================================================
+  // 通話機能
   const CALL_ICE_SERVERS = [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" }
@@ -1075,10 +1081,10 @@ function toggleAcc(id) {
 
   let callState = {
     active: false,
-    mode: null,          // 'both' | 'listen'
+    mode: null,
     localStream: null,
     muted: false,
-    peers: {},            // otherUid -> { pc, audioEl, refs:[...] }
+    peers: {},
     participantsRef: null
   };
 
@@ -1107,7 +1113,6 @@ function toggleAcc(id) {
         }
       }
 
-      // ミュートボタン（双方向時に中央配置）
       const muteBtn = $("callMuteBtn");
       if (muteBtn) {
         muteBtn.style.display = callState.mode === "both" ? "inline-flex" : "none";
@@ -1272,7 +1277,6 @@ function toggleAcc(id) {
     if (!callState.active || !isJoined || !currentRoomId || !db) return;
 
     if (callState.mode === "both") {
-      // 双方向 ➡ 聴くだけ（マイク停止）
       if (callState.localStream) {
         callState.localStream.getTracks().forEach(t => t.stop());
         callState.localStream = null;
@@ -1295,7 +1299,6 @@ function toggleAcc(id) {
       showToast("🔈 「聴くだけ」に切り替えました（マイク停止）");
 
     } else {
-      // 聴くだけ ➡ 双方向（マイク開始）
       try {
         const newStream = await navigator.mediaDevices.getUserMedia(CALL_AUDIO_CONSTRAINTS);
         callState.localStream = newStream;
@@ -1398,6 +1401,7 @@ function toggleAcc(id) {
   }
 
   async function joinRoom(options = {}) {
+    await ensureAuth();
     if (!db) { alert("データベースが準備できていません。"); return; }
     let lobbyRoomId = options.roomId || $("lobbyRoomId").value.trim();
     let lobbyRoomPass = options.roomPass || $("lobbyRoomPass").value;
@@ -1544,7 +1548,6 @@ function toggleAcc(id) {
   async function syncSingleMessage(m, isNewIncoming = false) {
     if (!m || !m.id) return;
 
-    // 楽観送信の確定通知なら再描画せずローカル要素を確定状態に昇格させるだけにする
     if (m.cid && m.u === myUid && pendingSendMap.has(m.cid)) {
       const localId = pendingSendMap.get(m.cid);
       pendingSendMap.delete(m.cid);
@@ -1562,7 +1565,6 @@ function toggleAcc(id) {
         const delBtn = el.querySelector(".msg-del-btn");
         if (delBtn) delBtn.dataset.mid = m.id;
       } else if (!displayedMsgIds.has(m.id)) {
-        // ローカル要素が見つからない場合は通常通り描画（保険）
         await decodeMsgPayload(m);
         const newEl = cMsg(m, isNewIncoming);
         insertMessageInOrder(newEl);
@@ -1914,7 +1916,6 @@ function toggleAcc(id) {
     if (!db || !isJoined || !currentRoomId) return Promise.resolve();
     const roomId = currentRoomId;
 
-    // 未取得分のみ取得。削除の反映は常設のchild_removedリスナーに任せる。4系統は互いを待たず届いた順に反映する。
     const chatP = db.ref(`chat/${roomId}`).orderByChild("t").startAt(latestDisplayedTs + 1).once("value").then(async chatSnap => {
       const missingMsgs = [];
       chatSnap.forEach(child => {
@@ -1997,8 +1998,6 @@ function toggleAcc(id) {
 
     let presenceRafId = null;
     presenceRef.on("value", s => {
-      // 判定ロジックは即時実行し、描画（renderPresence）だけをrAFで間引く
-      // （rAFはバックグラウンドで停止するため、ロジックまでそこに乗せると自動退室判定も止まってしまう）
       const list = s.val() || {}, members = {};
       for (const [id, u] of Object.entries(list)) {
         if (u && u.n && typeof u.t === "number") members[id] = { id, ...u };
@@ -2119,7 +2118,6 @@ function toggleAcc(id) {
     const text = D.mi.value.trim();
     if (!text) return;
 
-    // 送信は即座にローカル描画し、暗号化・送信はバックグラウンドで行う（連続送信もブロックしない）
     const cid = "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
     const keepOpen = D.kbKeepOpenChk && D.kbKeepOpenChk.checked;
     D.mi.value = ""; updateClrMsgBtnVisibility(); D.mi.style.height = "auto";
@@ -2139,7 +2137,7 @@ function toggleAcc(id) {
 
     (async () => {
       try {
-        if (!auth.currentUser) await auth.signInAnonymously().catch(() => {});
+        await ensureAuth();
 
         const trueNow = getTrueTime();
         updateLastPostTime(trueNow);
@@ -2163,28 +2161,12 @@ function toggleAcc(id) {
 
   const initDirectDatabaseProcess = async () => {
     try {
-      syncProfileValues();
+      await ensureAuth();
+      await syncProfileValues();
       if (db) db.goOnline();
 
-      const authPromise = auth.currentUser ? Promise.resolve() : auth.signInAnonymously().catch(() => {});
-      const offsetPromise = syncServerOffset().catch(() => {});
-
-      if (myUid) {
-        const wasJoined = safeLS.get("nz_is_joined") === "true";
-        const lastRoomId = safeLS.get("nz_last_room_id");
-        const lastRoomPass = safeLS.get("nz_last_room_pass");
-        const sessionStart = parseInt(safeLS.get("nz_session_start_time") || "0");
-        const lastPost = parseInt(safeLS.get("nz_last_post_time") || "0");
-        const baselineTime = Math.max(sessionStart, lastPost);
-        const nowTrue = Date.now();
-
-        if (!(wasJoined && lastRoomId && lastRoomPass && (nowTrue - baselineTime < AUTO_EXIT_MS))) {
-          switchScreen("lobby");
-        }
-        validateLobbyInputs();
-      }
-
-      await Promise.all([authPromise, offsetPromise]);
+      await syncServerOffset();
+      validateLobbyInputs();
     } catch (err) {
       switchScreen("lobby");
     }
@@ -2195,7 +2177,6 @@ function toggleAcc(id) {
         isOffsetLoaded = true;
       });
 
-      // 切断→再接続を検知したときだけ同期する（UIに接続状態は出さない）
       let hasDisconnectedOnce = false;
       db.ref(".info/connected").on("value", snap => {
         const nowConnected = snap.val() === true;
@@ -2253,7 +2234,6 @@ function toggleAcc(id) {
     if (D.exBtn) D.exBtn.addEventListener("click", (e) => { e.preventDefault(); customConfirm("退室確認", "本当にこの部屋から退室しますか？", "退室する", "キャンセル", true).then(ok => { if (ok) doExit(false); }); });
     if (D.sdBtn) D.sdBtn.addEventListener("click", (e) => { e.preventDefault(); sendMessage(); });
 
-    // 通話関連イベントリスナー
     if ($("callBtn")) $("callBtn").addEventListener("click", (e) => { e.preventDefault(); if ($("callModeMod")) $("callModeMod").classList.add("show"); });
     if ($("callModeCancelBtn")) $("callModeCancelBtn").addEventListener("click", (e) => { e.preventDefault(); if ($("callModeMod")) $("callModeMod").classList.remove("show"); });
     if ($("callJoinBothBtn")) $("callJoinBothBtn").addEventListener("click", (e) => { e.preventDefault(); if ($("callModeMod")) $("callModeMod").classList.remove("show"); startCall("both"); });

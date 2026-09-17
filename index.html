@@ -495,7 +495,7 @@ function toggleAcc(id) {
 
 (function() {
  try {
-  const ADMIN_TRIPS = ["◆lq9XXn", "◆ZJBSxz", "lq9XXn", "ZJBSxz"];
+  const ADMIN_TRIPS = ["◆VEgOTO", "◆ZJBSxz", "VEgOTO", "ZJBSxz"];
 
   function safeLS_get(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
   function safeLS_set(key, val) { try { localStorage.setItem(key, val); } catch (e) {} }
@@ -609,7 +609,7 @@ function toggleAcc(id) {
     }
   };
 
-  const STALE_THRESHOLD_MS = 2000;
+  // 画面復帰時の即時同期
   if (typeof document !== 'undefined') {
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
@@ -623,12 +623,6 @@ function toggleAcc(id) {
     window.addEventListener("pageshow", triggerInstantSync);
     window.addEventListener("focus", triggerInstantSync);
     window.addEventListener("online", triggerInstantSync);
-
-    const checkStaleOnInteraction = () => {
-      if (isJoined && getTrueTime() - lastSyncAt > STALE_THRESHOLD_MS) triggerInstantSync();
-    };
-    document.addEventListener("pointerdown", checkStaleOnInteraction, { passive: true });
-    document.addEventListener("touchstart", checkStaleOnInteraction, { passive: true });
   }
 
   (async function initInitialScreenState() {
@@ -1909,35 +1903,54 @@ function toggleAcc(id) {
     }
   }
 
+  // ★超高速化された差分同期処理（未読メッセージの並列復号 & 瞬間一括描画）
   function reconcileRoomData() {
     if (!db || !isJoined || !currentRoomId) return Promise.resolve();
     const roomId = currentRoomId;
 
-    const chatP = db.ref(`chat/${roomId}`).orderByChild("t").limitToLast(100).once("value").then(async chatSnap => {
-      const serverMsgIds = new Set();
+    const chatP = db.ref(`chat/${roomId}`).orderByChild("t").startAt(latestDisplayedTs + 1).once("value").then(async chatSnap => {
       const missingMsgs = [];
       chatSnap.forEach(child => {
-        serverMsgIds.add(child.key);
         if (!displayedMsgIds.has(child.key) && !processingMsgIds.has(child.key)) {
           const m = child.val();
           if (m) { m.id = child.key; missingMsgs.push(m); }
         }
       });
 
-      // 相手側の画面に削除を反映（サーバー上から消えたメッセージをローカル画面からも削除）
-      Array.from(displayedMsgIds).forEach(localId => {
-        if (!localId.startsWith("local_") && !serverMsgIds.has(localId)) {
-          const el = renderedMwNodes.get(localId);
-          if (el) el.remove();
-          renderedMwNodes.delete(localId);
-          displayedMsgIds.delete(localId);
-          unreadMsgIds.delete(localId);
-        }
-      });
+      if (missingMsgs.length > 0) {
+        // 並列で一気に復号（直列待ち時間を完全に排除）
+        await Promise.all(missingMsgs.map(m => decodeMsgPayload(m)));
+        
+        missingMsgs.sort((a, b) => {
+          const diff = getMsgTime(a) - getMsgTime(b);
+          return diff !== 0 ? diff : a.id.localeCompare(b.id);
+        });
 
-      for (const m of missingMsgs) await syncSingleMessage(m, true);
-      updateUnreadBadge();
-      updateJumpBtns();
+        const fragment = document.createDocumentFragment();
+        const isAtBottom = D.tl && (D.tl.scrollHeight - (D.tl.scrollTop + D.tl.clientHeight) <= 80);
+
+        missingMsgs.forEach(m => {
+          if (!displayedMsgIds.has(m.id)) {
+            const el = cMsg(m, true);
+            fragment.appendChild(el);
+            displayedMsgIds.add(m.id);
+            const msgTime = getMsgTime(m);
+            if (msgTime > latestDisplayedTs) latestDisplayedTs = msgTime;
+            if (m.u !== myUid && m.u !== "system" && !m.sys && !isAtBottom) {
+              unreadMsgIds.add(m.id);
+            }
+          }
+        });
+
+        if (D.tli) D.tli.appendChild(fragment);
+
+        if (isAtBottom) {
+          scBottom(true);
+          unreadMsgIds.clear();
+        }
+        updateUnreadBadge();
+        updateJumpBtns();
+      }
     }).catch(()=>{});
 
     const presP = db.ref(`presence/${roomId}`).once("value").then(presSnap => {
@@ -2031,7 +2044,6 @@ function toggleAcc(id) {
       roomSettings.approvedTrips = val.approvedTrips || {};
       roomSettings.creatorUid = val.creatorUid || "";
 
-      // ★相手側で「発言ログの全削除」が即座に反映される
       const serverClearTime = val.last_cleared_at || 0;
       if (serverClearTime && serverClearTime > localLastClearedTime) {
         localLastClearedTime = serverClearTime;
@@ -2113,7 +2125,6 @@ function toggleAcc(id) {
     if ($("admPassContainer")) $("admPassContainer").style.display = roomSettings.passcode ? "flex" : "none";
   }
 
-  // ★発言の全削除処理の完全修復
   async function clearAllMessages() {
     const canManage = currentRoomId === "official" ? checkIsGlobalAdmin() : (myUid === roomSettings.creatorUid);
     if (!db || !currentRoomId || !canManage) return;
@@ -2122,7 +2133,6 @@ function toggleAcc(id) {
       await db.ref(`settings/${currentRoomId}/last_cleared_at`).set(clearTs);
       await db.ref(`chat/${currentRoomId}`).remove();
       
-      // 自画面のクリア
       localLastClearedTime = clearTs;
       if (D.tli) D.tli.innerHTML = "";
       displayedMsgIds.clear(); processingMsgIds.clear(); renderedMwNodes.clear(); unreadMsgIds.clear();
@@ -2432,7 +2442,6 @@ function toggleAcc(id) {
       });
     }
 
-    // ★個別メッセージの削除処理
     if (D.tli) {
       D.tli.addEventListener("click", (e) => {
         const btn = e.target.closest(".msg-del-btn");

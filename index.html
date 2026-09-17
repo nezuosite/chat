@@ -315,7 +315,6 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
     <!-- チャット画面 -->
     <div id="chatScreen" class="is-loading" style="display: none; flex-direction: column; flex: 1; min-height: 0; overflow: hidden;">
 
-      <!-- ⚙️ 管理パネル -->
       <div id="adminAccordion">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--bd); padding-bottom: 4px;">
           <span id="adminAccordionTitle" style="font-size: 12px; font-weight: bold; color: var(--tx);">⚙️ 管理設定パネル</span>
@@ -368,7 +367,6 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
         </div>
       </div>
 
-      <!-- 📞 通話コントロールバー -->
       <div id="callBar">
         <div style="display:flex; flex-direction:column; padding:6px 12px; gap:6px;">
           <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
@@ -497,7 +495,7 @@ function toggleAcc(id) {
 
 (function() {
  try {
-  const ADMIN_TRIPS = ["◆lq9XXn", "◆ZJBSxz", "lq9XXn", "ZJBSxz"];
+  const ADMIN_TRIPS = ["◆VEgOTO", "◆ZJBSxz", "VEgOTO", "ZJBSxz"];
 
   function safeLS_get(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
   function safeLS_set(key, val) { try { localStorage.setItem(key, val); } catch (e) {} }
@@ -518,7 +516,6 @@ function toggleAcc(id) {
   const db = firebase.database();
   const auth = firebase.auth();
 
-  // 🔑 Firebase Auth の UID を直接 myUid として保持
   let myUid = auth.currentUser ? auth.currentUser.uid : "";
 
   async function ensureAuth() {
@@ -1916,15 +1913,30 @@ function toggleAcc(id) {
     if (!db || !isJoined || !currentRoomId) return Promise.resolve();
     const roomId = currentRoomId;
 
-    const chatP = db.ref(`chat/${roomId}`).orderByChild("t").startAt(latestDisplayedTs + 1).once("value").then(async chatSnap => {
+    const chatP = db.ref(`chat/${roomId}`).orderByChild("t").limitToLast(100).once("value").then(async chatSnap => {
+      const serverMsgIds = new Set();
       const missingMsgs = [];
       chatSnap.forEach(child => {
+        serverMsgIds.add(child.key);
         if (!displayedMsgIds.has(child.key) && !processingMsgIds.has(child.key)) {
           const m = child.val();
           if (m) { m.id = child.key; missingMsgs.push(m); }
         }
       });
+
+      // 相手側の画面に削除を反映（サーバー上から消えたメッセージをローカル画面からも削除）
+      Array.from(displayedMsgIds).forEach(localId => {
+        if (!localId.startsWith("local_") && !serverMsgIds.has(localId)) {
+          const el = renderedMwNodes.get(localId);
+          if (el) el.remove();
+          renderedMwNodes.delete(localId);
+          displayedMsgIds.delete(localId);
+          unreadMsgIds.delete(localId);
+        }
+      });
+
       for (const m of missingMsgs) await syncSingleMessage(m, true);
+      updateUnreadBadge();
       updateJumpBtns();
     }).catch(()=>{});
 
@@ -2019,6 +2031,7 @@ function toggleAcc(id) {
       roomSettings.approvedTrips = val.approvedTrips || {};
       roomSettings.creatorUid = val.creatorUid || "";
 
+      // ★相手側で「発言ログの全削除」が即座に反映される
       const serverClearTime = val.last_cleared_at || 0;
       if (serverClearTime && serverClearTime > localLastClearedTime) {
         localLastClearedTime = serverClearTime;
@@ -2100,15 +2113,24 @@ function toggleAcc(id) {
     if ($("admPassContainer")) $("admPassContainer").style.display = roomSettings.passcode ? "flex" : "none";
   }
 
+  // ★発言の全削除処理の完全修復
   async function clearAllMessages() {
     const canManage = currentRoomId === "official" ? checkIsGlobalAdmin() : (myUid === roomSettings.creatorUid);
     if (!db || !currentRoomId || !canManage) return;
     try {
-      const clearTs = firebase.database.ServerValue.TIMESTAMP;
+      const clearTs = getTrueTime();
       await db.ref(`settings/${currentRoomId}/last_cleared_at`).set(clearTs);
       await db.ref(`chat/${currentRoomId}`).remove();
+      
+      // 自画面のクリア
+      localLastClearedTime = clearTs;
+      if (D.tli) D.tli.innerHTML = "";
+      displayedMsgIds.clear(); processingMsgIds.clear(); renderedMwNodes.clear(); unreadMsgIds.clear();
+      updateUnreadBadge(); updateJumpBtns();
+
       showToast("🗑️ すべての発言を削除しました。");
     } catch (e) {
+      console.error(e);
       showToast("⚠️ 発言の全削除に失敗しました。");
     }
   }
@@ -2410,6 +2432,7 @@ function toggleAcc(id) {
       });
     }
 
+    // ★個別メッセージの削除処理
     if (D.tli) {
       D.tli.addEventListener("click", (e) => {
         const btn = e.target.closest(".msg-del-btn");
@@ -2424,7 +2447,10 @@ function toggleAcc(id) {
         if (!isMineMsg && !isAdminForRoom) { showToast("⚠️ この発言を削除する権限がありません。"); return; }
         customConfirm("発言の削除", "この発言を削除しますか？この操作は取り消せません。", "削除する", "キャンセル", true).then(ok => {
           if (!ok) return;
-          db.ref(`chat/${currentRoomId}/${mid}`).remove().catch(() => { showToast("⚠️ 削除に失敗しました。"); });
+          db.ref(`chat/${currentRoomId}/${mid}`).remove().catch((err) => { 
+            console.error(err);
+            showToast("⚠️ 削除に失敗しました。"); 
+          });
         });
       });
     }

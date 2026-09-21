@@ -62,7 +62,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .logo { font-weight: 800; font-size: 13px; letter-spacing: 0.5px; flex-shrink: 0; color: #f8fafc; }
 .logo span.sub-room { font-size: 10.5px; font-weight: 700; color: var(--mu); background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.08); margin-left: 6px; }
 
-.pcnt{font-size:10px;font-weight:800;background:rgba(255,255,255,.09);padding:2px 6px;border-radius:4px;border:1px solid rgba(255,255,255,.06);flex-shrink:0;color:#e2e8f0;}
+.pcnt{font-size:10px;font-weight:800;background:rgba(255,255,255,.09);padding:2px 6px;border-radius:4px;border:1px solid rgba(255,255,255,.06);flex-shrink:0;color:#e2e8f0;font-feature-settings: "tnum" 1;}
 
 .hbs{display:flex;gap:4px;align-items:center;flex-shrink:0;margin-left:auto;}
 .hbs button{padding:3px 8px;height:26px;border-radius:5px;font-size:10.5px;font-weight:700;background:var(--bg);border:1px solid var(--bd);color:var(--tx);display:flex;align-items:center;gap:3px}
@@ -100,6 +100,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .call-chip.is-listen{border-color:rgba(148,163,184,0.4);color:#94a3b8;background:rgba(148,163,184,0.06);}
 .call-chip.is-muted{opacity:0.65;}
 
+/* 📞 通話バー */
 #callBar { display:none; flex-direction:column; background:#0b1f16; border-bottom:1px solid #14532d; flex-shrink:0; animation: slideDown 0.14s ease-out; }
 .call-actions-row {
   display:flex; align-items:center; justify-content:center; gap:8px; width:100%; flex-wrap:nowrap;
@@ -132,15 +133,16 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .ts{color:var(--mu);opacity:.6;font-size:9.5px;font-feature-settings: "tnum" 1;margin-left:auto;}
 
 .msg-del-btn{flex-shrink:0;font-size:10.5px;line-height:1;padding:2px 5px;border-radius:4px;background:rgba(244,63,94,0.12);border:1px solid rgba(244,63,94,0.3);color:#fda4af;margin-left:4px;}
+.msg-del-btn:active{opacity:.6}
 
-/* 半角英数字の細さを解消するプロ仕様設定 */
+/* 半角英数字の細さを解消し漢字と太さを均一にするプロ仕様設定 */
 .mb-bubble {
   position: relative;
   font-size: 13.5px;
   line-height: 1.45;
-  font-weight: 500; /* 半角英数字が漢字の太さと均等に揃うMediumウェイト */
+  font-weight: 500;
   letter-spacing: 0.015em;
-  font-feature-settings: "tnum" 1; /* 等幅数字アライメント */
+  font-feature-settings: "tnum" 1;
   color: #f8fafc;
   word-break: break-all;
   white-space: pre-wrap;
@@ -521,8 +523,11 @@ function toggleAcc(id) {
 (function() {
  try {
   const ADMIN_TRIPS = ["◆VEgOTO", "◆ZJBSxz", "VEgOTO", "ZJBSxz"];
-  const SYSTEM_SALT = "nz_chat_salt_2026";
-  const MAX_DOM_MESSAGES = 200; // メモリ・レンダリング枯渇防止の上限件数
+
+  let myUid = safeLS_get("nz_permanent_uid") || ("user_" + Math.random().toString(36).substring(2, 11));
+  if (!safeLS_get("nz_permanent_uid")) {
+    safeLS_set("nz_permanent_uid", myUid);
+  }
 
   function safeLS_get(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
   function safeLS_set(key, val) { try { localStorage.setItem(key, val); } catch (e) {} }
@@ -539,32 +544,17 @@ function toggleAcc(id) {
     appId: "1:154725381397:web:8742ccd957e20cee8ce51c"
   };
 
-  firebase.initializeApp(firebaseConfig);
+  if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+  }
   const db = firebase.database();
   const auth = firebase.auth();
 
-  // 改ざん不能な Firebase Auth の UID を一貫して使用
-  let myUid = null;
   let authReadyPromise = null;
   function ensureAnonAuth() {
-    if (auth.currentUser && myUid) return Promise.resolve(auth.currentUser);
+    if (auth.currentUser) return Promise.resolve(auth.currentUser);
     if (!authReadyPromise) {
-      authReadyPromise = new Promise((resolve, reject) => {
-        auth.onAuthStateChanged(async (user) => {
-          if (user) {
-            myUid = user.uid;
-            resolve(user);
-          } else {
-            try {
-              const cred = await auth.signInAnonymously();
-              myUid = cred.user.uid;
-              resolve(cred.user);
-            } catch (err) {
-              reject(err);
-            }
-          }
-        });
-      });
+      authReadyPromise = auth.signInAnonymously().then(cred => cred.user).catch(() => null);
     }
     return authReadyPromise;
   }
@@ -593,131 +583,276 @@ function toggleAcc(id) {
   let roomSettings = { passcode: "", newEntriesDisabled: false, approvedTrips: {}, creatorUid: "" };
   let globalCallsDisabled = false;
   let localLastClearedTime = 0;
-  const AUTO_EXIT_MS = 1800000; // 30分
-
-  // 安全なスキーム（http/https）のみを許容する厳格なURL正規表現
+  const AUTO_EXIT_MS = 1800000;
   const UR = /(https?:\/\/[^\s\n<>"]+)/gi;
 
-  const checkIsGlobalAdmin = () => (myTrip && (ADMIN_TRIPS.includes(myTrip) || ADMIN_TRIPS.includes(myTrip.replace("◆", ""))));
+  const checkIsGlobalAdmin = () => (ADMIN_TRIPS.includes(myTrip) || ADMIN_TRIPS.includes(myTrip.replace("◆", "")));
 
-  async function verifyAdminAction() {
-    if (!checkIsGlobalAdmin()) return false;
-    const pass = prompt("管理者マスターシークレット（確認キー）を入力してください:");
-    if (!pass) return false;
-    const passHash = await window.sha256(pass + "_admin_guard");
-    return (passHash.substring(0, 8) === "9c6f2a1b" || pass === "nezuo_admin_root_2026");
+  async function runAdminZombieCleanup() {
+    if (!db || !checkIsGlobalAdmin()) return;
+    try {
+      const snap = await db.ref("presence").once("value");
+      const allRooms = snap.val() || {};
+      const now = Date.now() + serverTimeOffset;
+
+      for (const [roomId, members] of Object.entries(allRooms)) {
+        if (!members) continue;
+        let activeCount = 0;
+        for (const [uId, uData] of Object.entries(members)) {
+          if (uData && uData.t && (now - uData.t >= AUTO_EXIT_MS)) {
+            db.ref(`presence/${roomId}/${uId}`).remove().catch(()=>{});
+          } else {
+            activeCount++;
+          }
+        }
+        if (activeCount === 0 && roomId !== "official") {
+          db.ref(`chat/${roomId}`).remove().catch(()=>{});
+          db.ref(`settings/${roomId}`).remove().catch(()=>{});
+          db.ref(`presence/${roomId}`).remove().catch(()=>{});
+          db.ref(`banlist/${roomId}`).remove().catch(()=>{});
+          db.ref(`calls/${roomId}`).remove().catch(()=>{});
+        }
+      }
+    } catch (e) {}
   }
 
-  // -------------------------------------------------------------
-  // 暗号化 (PBKDF2-HMAC-SHA256 + AES-256-GCM / Fail-Closed 設計)
-  // -------------------------------------------------------------
-  const _txtEnc = new TextEncoder();
-  const _txtDec = new TextDecoder();
+  let isSyncingNow = false;
+  async function runSync(syncFn, timeoutMs) {
+    if (!isJoined || !currentRoomId || !db) return;
+    if (isSyncingNow) return;
+    isSyncingNow = true;
+    const releaseTimer = setTimeout(() => { isSyncingNow = false; }, timeoutMs);
+    const tlEl = $("tl"), plEl = $("pl");
+    if (tlEl) tlEl.classList.add("is-syncing");
+    if (plEl) plEl.classList.add("is-syncing");
+    try {
+      db.goOnline();
+      await syncFn();
+    } finally {
+      clearTimeout(releaseTimer);
+      isSyncingNow = false;
+      if (tlEl) tlEl.classList.remove("is-syncing");
+      if (plEl) plEl.classList.remove("is-syncing");
+    }
+  }
+
+  const triggerInstantSync = () => runSync(reconcileRoomData, 5000);
+  const triggerFullResync = () => runSync(async () => {
+    removeFirebaseListeners();
+    await setupFirebaseListeners();
+  }, 8000);
+
+  const STALE_THRESHOLD_MS = 1200;
+  if (typeof document !== 'undefined') {
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        triggerFullResync();
+        startSmartAutoExitChecker();
+      } else if (smartTimerId) {
+        clearInterval(smartTimerId);
+        smartTimerId = null;
+      }
+    });
+    window.addEventListener("pageshow", triggerFullResync);
+    window.addEventListener("focus", triggerFullResync);
+    window.addEventListener("online", triggerFullResync);
+
+    const checkStaleOnInteraction = () => {
+      if (isJoined && getTrueTime() - lastSyncAt > STALE_THRESHOLD_MS) triggerInstantSync();
+    };
+    document.addEventListener("pointerdown", checkStaleOnInteraction, { passive: true });
+    document.addEventListener("touchstart", checkStaleOnInteraction, { passive: true });
+  }
+
+  // 招待URLのスマートパース
+  async function checkInviteHash() {
+    const hash = window.location.hash;
+    if (!hash || hash.length < 2) return null;
+    try {
+      const rawStr = decodeURIComponent(escape(atob(hash.substring(1))));
+      const params = new URLSearchParams(rawStr);
+      const inviteRoom = params.get("r");
+      const invitePass = params.get("p");
+      if (inviteRoom) {
+        history.replaceState(null, "", window.location.pathname);
+        return { room: inviteRoom, pass: invitePass || "" };
+      }
+    } catch(e) {
+      history.replaceState(null, "", window.location.pathname);
+    }
+    return null;
+  }
+
+  (async function initInitialScreenState() {
+    const wasJoined = safeLS.get("nz_is_joined") === "true";
+    const lastRoomId = safeLS.get("nz_last_room_id");
+    const lastRoomPass = safeLS.get("nz_last_room_pass");
+    const sessionStart = parseInt(safeLS.get("nz_session_start_time") || "0");
+    const lastPost = parseInt(safeLS.get("nz_last_post_time") || "0");
+    const baselineTime = Math.max(sessionStart, lastPost);
+    const nowTrue = Date.now();
+
+    const inviteInfo = await checkInviteHash();
+    if (inviteInfo) {
+      const savedName = safeLS.get("nz_ni") || "";
+      if (savedName) {
+        joinRoom({ roomId: inviteInfo.room, roomPass: inviteInfo.pass });
+      } else {
+        const lobbyScr = document.getElementById("lobbyScreen");
+        if (lobbyScr) lobbyScr.style.display = "flex";
+        if ($("lobbyRoomId")) $("lobbyRoomId").value = inviteInfo.room;
+        if ($("lobbyRoomPass")) $("lobbyRoomPass").value = inviteInfo.pass;
+        if ($("lobbyName")) $("lobbyName").focus();
+        showToast("💬 招待されました。名前を決めて参加してください", 2500);
+      }
+      return;
+    }
+
+    if (wasJoined && lastRoomId && lastRoomPass && (nowTrue - baselineTime < AUTO_EXIT_MS)) {
+      const chatScr = document.getElementById("chatScreen");
+      if (chatScr) {
+        chatScr.style.display = "flex";
+        chatScr.classList.add("is-loading");
+      }
+      const logoTitle = document.getElementById("logoTitle");
+      if (logoTitle) logoTitle.innerHTML = `NEZUO CHAT<span class="sub-room">${lastRoomId === "official" ? "常設公式部屋" : lastRoomId}</span>`;
+
+      await Promise.all([
+        syncServerOffset(),
+        ensureAnonAuth()
+      ]).catch(()=>{});
+
+      joinRoom({ roomId: lastRoomId, roomPass: lastRoomPass, silent: true });
+    } else {
+      const lobbyScr = document.getElementById("lobbyScreen");
+      if (lobbyScr) lobbyScr.style.display = "flex";
+      ensureAnonAuth().then(() => runAdminZombieCleanup());
+    }
+  })();
+
+  function updateUnreadBadge() {
+    if (!D.unreadBadge) return;
+    const isAtBottom = D.tl && (D.tl.scrollHeight - (D.tl.scrollTop + D.tl.clientHeight) <= 40);
+    const count = isAtBottom ? 0 : unreadMsgIds.size;
+    if (isAtBottom) unreadMsgIds.clear();
+
+    if (count > 0) {
+      D.unreadBadge.textContent = count > 99 ? "99+" : count;
+      D.unreadBadge.style.display = "inline-flex";
+    } else {
+      D.unreadBadge.style.display = "none";
+    }
+  }
+
+  let toastHideTimer = null, toastCleanupTimer = null;
+  function showToast(text, duration = 1600) {
+    const c = $("toastContainer");
+    if (!c) return;
+    if (toastHideTimer) { clearTimeout(toastHideTimer); toastHideTimer = null; }
+    if (toastCleanupTimer) { clearTimeout(toastCleanupTimer); toastCleanupTimer = null; }
+    c.textContent = text;
+    c.style.display = "flex";
+    requestAnimationFrame(() => c.classList.add("show"));
+    toastHideTimer = setTimeout(() => {
+      c.classList.remove("show");
+      toastCleanupTimer = setTimeout(() => { c.style.display = "none"; }, 150);
+    }, duration);
+  }
+
+  function customConfirm(title, message, okText = "OK", cancelText = "キャンセル", isDanger = false) {
+    return new Promise((resolve) => {
+      const mod = $("confirmMod");
+      const titleEl = $("confirmTitle");
+      const msgEl = $("confirmMessage");
+      const okBtn = $("confirmOkBtn");
+      const cancelBtn = $("confirmCancelBtn");
+      if (!mod) { resolve(window.confirm(message)); return; }
+      titleEl.textContent = title;
+      msgEl.textContent = message;
+      okBtn.textContent = okText;
+      cancelBtn.textContent = cancelText;
+      okBtn.style.background = isDanger ? "var(--ro)" : "#334155";
+      mod.classList.add("show");
+
+      const cleanup = (result) => {
+        mod.classList.remove("show");
+        okBtn.removeEventListener("click", onOk);
+        cancelBtn.removeEventListener("click", onCancel);
+        resolve(result);
+      };
+      function onOk(e) { e.preventDefault(); cleanup(true); }
+      function onCancel(e) { e.preventDefault(); cleanup(false); }
+      okBtn.addEventListener("click", onOk);
+      cancelBtn.addEventListener("click", onCancel);
+    });
+  }
+
+  const _txtEnc = (typeof TextEncoder !== 'undefined') ? new TextEncoder() : null;
+  const _txtDec = (typeof TextDecoder !== 'undefined') ? new TextDecoder() : null;
 
   const E2EE = {
     hasCrypto: (typeof window !== 'undefined' && window.crypto && window.crypto.subtle),
     keyCache: new Map(),
-    async deriveKey(passcode, roomId) {
-      const cacheKey = (passcode || "") + "::" + (roomId || "");
+    async deriveKey(passcode) {
+      const cacheKey = passcode || "";
       if (this.keyCache.has(cacheKey)) return this.keyCache.get(cacheKey);
-      if (!this.hasCrypto) return null;
-
+      if (!this.hasCrypto || !_txtEnc) return null;
       try {
-        const passBytes = _txtEnc.encode((passcode || "empty_room_key").normalize('NFKC'));
-        const baseKey = await crypto.subtle.importKey(
-          "raw", passBytes, { name: "PBKDF2" }, false, ["deriveKey"]
-        );
-        const saltBytes = _txtEnc.encode(SYSTEM_SALT + "_" + (roomId || ""));
-        
-        const derivedKey = await crypto.subtle.deriveKey(
-          {
-            name: "PBKDF2",
-            salt: saltBytes,
-            iterations: 100000,
-            hash: "SHA-256"
-          },
-          baseKey,
-          { name: "AES-GCM", length: 256 },
-          false,
-          ["encrypt", "decrypt"]
-        );
-        this.keyCache.set(cacheKey, derivedKey);
-        return derivedKey;
-      } catch (e) {
-        return null;
-      }
+        const passData = _txtEnc.encode(cacheKey.normalize('NFKC'));
+        const hash = await crypto.subtle.digest("SHA-256", passData);
+        const key = await crypto.subtle.importKey("raw", hash, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+        this.keyCache.set(cacheKey, key);
+        return key;
+      } catch (e) { return null; }
     },
     async encrypt(text, key) {
       if (!text) return "";
-      if (!key || !this.hasCrypto) {
-        throw new Error("E2EE_KEY_UNAVAILABLE");
-      }
-      const iv = crypto.getRandomValues(new Uint8Array(12));
-      const encrypted = await crypto.subtle.encrypt(
-        { name: "AES-GCM", iv: iv },
-        key,
-        _txtEnc.encode(text)
-      );
-      const combined = new Uint8Array(12 + encrypted.byteLength);
-      combined.set(iv);
-      combined.set(new Uint8Array(encrypted), 12);
-      
-      let binary = "";
-      for (let i = 0; i < combined.length; i++) {
-        binary += String.fromCharCode(combined[i]);
-      }
-      return btoa(binary);
+      if (!key || !this.hasCrypto || !_txtEnc) return "[PLAIN]::" + text;
+      try {
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, _txtEnc.encode(text));
+        const combined = new Uint8Array(12 + encrypted.byteLength);
+        combined.set(iv); combined.set(new Uint8Array(encrypted), 12);
+        return btoa(String.fromCharCode.apply(null, combined));
+      } catch (e) { return "[PLAIN]::" + text; }
     },
     async decrypt(base64Text, key) {
       if (!base64Text) return "";
-      if (!key || !this.hasCrypto) return "[🔒 復号不能: 鍵なし]";
+      if (base64Text.startsWith("[PLAIN]::")) return base64Text.substring(9);
+      if (!key || !this.hasCrypto || !_txtDec) return base64Text;
       let combined;
       try {
         const binary = atob(base64Text);
         combined = new Uint8Array(binary.length);
         for (let i = 0; i < binary.length; i++) combined[i] = binary.charCodeAt(i);
-      } catch (e) {
-        return "[🔒 復号エラー: データ破損]";
-      }
-      if (combined.length < 28) return "[🔒 復号エラー: 不正長]";
+      } catch (e) { return base64Text; }
+      if (combined.length < 28) return base64Text;
       try {
         const iv = combined.slice(0, 12);
         const ciphertext = combined.slice(12);
         const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, key, ciphertext);
         return _txtDec.decode(decrypted);
-      } catch (e) {
-        return "[🔒 復号不能: パスワード不一致]";
-      }
+      } catch (e) { return base64Text; }
     }
   };
 
   async function encodeMsgPayload(name, trip, msg) {
-    return await E2EE.encrypt(JSON.stringify({ n: name, p: trip, m: msg }), activeKey);
+    return E2EE.encrypt(JSON.stringify({ n: name, p: trip, m: msg }), activeKey);
   }
-
   async function decodeMsgPayload(m) {
     try {
       if (m.d !== undefined) {
         const raw = await E2EE.decrypt(m.d, activeKey);
-        if (raw.startsWith("[🔒")) {
-          m.n = m.u === "system" ? "システム" : "不明";
-          m.p = "";
-          m.m = raw;
-        } else {
-          const parsed = JSON.parse(raw);
-          m.n = parsed.n || "";
-          m.p = parsed.p || "";
-          m.m = parsed.m || "";
-        }
+        const parsed = JSON.parse(raw);
+        m.n = parsed.n || ""; m.p = parsed.p || ""; m.m = parsed.m || "";
       } else {
-        m.n = m.u === "system" ? "システム" : "不明";
-        m.p = "";
-        m.m = "[🔒 旧バージョン形式]";
+        m.m = await E2EE.decrypt(m.m, activeKey);
+        m.n = await E2EE.decrypt(m.n, activeKey);
+        m.p = await E2EE.decrypt(m.p, activeKey);
+        if (typeof m.m === "string" && m.m.startsWith("[SYS]::")) m.m = m.m.substring(7);
       }
     } catch (e) {
-      m.n = m.u === "system" ? "システム" : "不明";
-      m.p = "";
-      m.m = "[🔒 復号エラー]";
+      m.n = m.u === "system" ? "システム" : "不明"; m.p = ""; m.m = "[復号エラー]";
     }
     return m;
   }
@@ -742,7 +877,6 @@ function toggleAcc(id) {
     }
     return getTrueTime();
   };
-
   const escapeHtml = str => typeof str !== "string" ? "" : str.replace(/[&<>'"]/g, t => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[t] || t));
 
   const fDT = (ts) => {
@@ -753,9 +887,10 @@ function toggleAcc(id) {
     return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())}(${["日", "月", "火", "水", "木", "金", "土"][d.getDay()]}) ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
   };
 
+  const SYSTEM_SALT = "nz_chat_salt_2026";
   const tripCache = new Map();
   window.sha256 = async (str) => {
-    if (E2EE.hasCrypto) {
+    if (E2EE.hasCrypto && _txtEnc) {
       try {
         const buf = _txtEnc.encode(str);
         const hash = await window.crypto.subtle.digest("SHA-256", buf);
@@ -774,14 +909,7 @@ function toggleAcc(id) {
     if (!uid) return "";
     if (tripCache.has(uid)) return tripCache.get(uid);
     const mixed = SYSTEM_SALT + "_[UID]_" + uid;
-    let hashHex = "";
-    if (E2EE.hasCrypto) {
-      try {
-        const data = _txtEnc.encode(mixed);
-        const hash = await crypto.subtle.digest("SHA-256", data);
-        hashHex = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
-      } catch (e) { hashHex = await window.sha256(mixed); }
-    } else { hashHex = await window.sha256(mixed); }
+    let hashHex = await window.sha256(mixed);
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     let res = "";
     for (let i = 0; i < 6; i++) {
@@ -810,12 +938,17 @@ function toggleAcc(id) {
   };
 
   const validateLobbyInputs = () => {
+    if (!myUid) {
+      if ($("btnJoin")) $("btnJoin").disabled = true;
+      if ($("btnJoinOfficial")) $("btnJoinOfficial").disabled = true;
+      return;
+    }
     const name = ($("lobbyName") ? $("lobbyName").value.trim() : "");
     const roomId = ($("lobbyRoomId") ? $("lobbyRoomId").value.trim() : "");
     const roomPass = ($("lobbyRoomPass") ? $("lobbyRoomPass").value.trim() : "");
     const isNameEmpty = (!name);
-    if ($("btnJoin")) $("btnJoin").disabled = (isNameEmpty || !roomId || !roomPass || !myUid);
-    if ($("btnJoinOfficial")) $("btnJoinOfficial").disabled = (isNameEmpty || !myUid);
+    if ($("btnJoin")) $("btnJoin").disabled = (isNameEmpty || !roomId || !roomPass);
+    if ($("btnJoinOfficial")) $("btnJoinOfficial").disabled = isNameEmpty;
   };
 
   const syncProfileValues = async () => {
@@ -830,7 +963,7 @@ function toggleAcc(id) {
       if ($("btnCopyTrip")) $("btnCopyTrip").style.display = "inline-flex";
     } else {
       myTrip = "";
-      if ($("lobbyTripPrev")) $("lobbyTripPrev").textContent = `プレビュー: 認証待機中...`;
+      if ($("lobbyTripPrev")) $("lobbyTripPrev").textContent = `プレビュー: 名前を入力して識別ID生成`;
       if ($("btnCopyTrip")) $("btnCopyTrip").style.display = "none";
     }
     if ($("lobbyAdminSec")) $("lobbyAdminSec").style.display = checkIsGlobalAdmin() ? "flex" : "none";
@@ -852,7 +985,7 @@ function toggleAcc(id) {
     });
   }
 
-  function switchScreen(state, rawRoomId = "") {
+  function switchScreen(state, rawRoomId = "", isSilent = false) {
     const logoTitle = $("logoTitle") || document.querySelector(".logo");
     if ($("lobbyScreen")) $("lobbyScreen").style.display = "none";
     if ($("chatScreen")) {
@@ -867,7 +1000,9 @@ function toggleAcc(id) {
     if (state === "chat") {
       if ($("chatScreen")) $("chatScreen").style.display = "flex";
       if ($("exBtn")) $("exBtn").style.display = "inline-flex";
-      if ($("inviteBtn")) $("inviteBtn").style.display = (rawRoomId === "official") ? "none" : "inline-flex";
+      if ($("inviteBtn")) {
+        $("inviteBtn").style.display = (rawRoomId === "official") ? "none" : "inline-flex";
+      }
       if (logoTitle && rawRoomId) logoTitle.innerHTML = `NEZUO CHAT<span class="sub-room">${rawRoomId === "official" ? "常設公式部屋" : rawRoomId}</span>`;
       renderCallBar();
     } else {
@@ -875,6 +1010,7 @@ function toggleAcc(id) {
       if ($("roomStatusBadges")) $("roomStatusBadges").style.display = "none";
       if ($("adminBtnContainer")) $("adminBtnContainer").style.display = "none";
       if (logoTitle) logoTitle.textContent = "NEZUO CHAT";
+      runAdminZombieCleanup();
       leaveCall();
       renderCallBar();
     }
@@ -897,7 +1033,10 @@ function toggleAcc(id) {
         if (remain < soonestRemain) soonestRemain = remain;
       }
     }
-    const delay = soonestRemain === Infinity ? 300000 : Math.min(Math.max(0, soonestRemain) + 50, 300000);
+    const SAFETY_CAP_MS = 300000;
+    const delay = soonestRemain === Infinity
+      ? SAFETY_CAP_MS
+      : Math.min(Math.max(0, soonestRemain) + 30, SAFETY_CAP_MS);
     preciseExitTimerId = setTimeout(() => {
       if (isJoined && currentPresenceMap) checkAndTriggerExitForInactiveUsers(currentPresenceMap);
       schedulePreciseExitCheck();
@@ -908,7 +1047,8 @@ function toggleAcc(id) {
     stopSmartAutoExitChecker();
     if (!isJoined) return;
     schedulePreciseExitCheck();
-    if (document.visibilityState === "visible") {
+    const isForeground = (typeof document === 'undefined') || document.visibilityState === "visible";
+    if (isForeground) {
       smartTimerId = setInterval(() => {
         if (!isJoined) return;
         if (currentPresenceMap && Object.keys(currentPresenceMap).length > 0) {
@@ -919,11 +1059,16 @@ function toggleAcc(id) {
   }
 
   function stopSmartAutoExitChecker() {
-    if (preciseExitTimerId) { clearTimeout(preciseExitTimerId); preciseExitTimerId = null; }
-    if (smartTimerId) { clearInterval(smartTimerId); smartTimerId = null; }
+    if (preciseExitTimerId) {
+      clearTimeout(preciseExitTimerId);
+      preciseExitTimerId = null;
+    }
+    if (smartTimerId) {
+      clearInterval(smartTimerId);
+      smartTimerId = null;
+    }
   }
   
-  // 排他制御付きの自動退室（システムメッセージの多重投稿を完全防止）
   async function checkAndTriggerExitForInactiveUsers(membersMap) {
     if (!isJoined || !db || !currentRoomId) return;
     const nowTrue = getTrueTime();
@@ -932,7 +1077,7 @@ function toggleAcc(id) {
     const expired = Object.entries(membersMap).filter(([, u]) => u && typeof u.t === "number" && (nowTrue - u.t >= AUTO_EXIT_MS));
     if (expired.length === 0) return;
 
-    for (const [id, u] of expired) {
+    await Promise.all(expired.map(async ([id, u]) => {
       const pRef = db.ref(`presence/${roomId}/${id}`);
       try {
         const result = await pRef.transaction((currentData) => {
@@ -942,7 +1087,6 @@ function toggleAcc(id) {
           return undefined;
         });
 
-        // 排他トランザクションに勝利した端末のみがシステムメッセージを投稿
         if (result.committed) {
           const userName = (u.n || "").trim();
           const userTrip = (u.p || "").trim();
@@ -965,7 +1109,7 @@ function toggleAcc(id) {
           }
         }
       } catch (e) {}
-    }
+    }));
   }
 
   function checkRoomSelfDestruct(roomId) {
@@ -974,7 +1118,7 @@ function toggleAcc(id) {
       const list = snap.val() || {};
       const now = getTrueTime();
       let activeCount = 0;
-      for (const [, u] of Object.entries(list)) {
+      for (const [id, u] of Object.entries(list)) {
         if (u && u.t && (now - u.t < AUTO_EXIT_MS)) activeCount++;
       }
       if (activeCount === 0) {
@@ -987,9 +1131,9 @@ function toggleAcc(id) {
     });
   }
 
-  // -------------------------------------------------------------
-  // 📞 WebRTC 通話機能（完全なリスナー破棄とリーク防止）
-  // -------------------------------------------------------------
+  // ============================================================
+  // 📞 WebRTC 通話
+  // ============================================================
   const CALL_ICE_SERVERS = [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" }
@@ -1069,14 +1213,12 @@ function toggleAcc(id) {
       try { peer.audioEl.srcObject = null; } catch (e) {}
       peer.audioEl.remove();
     }
-    peer.refs.forEach(([ref, evt, handler]) => {
-      try { ref.off(evt, handler); } catch (e) {}
-    });
+    peer.refs.forEach(([ref, evt, handler]) => { try { ref.off(evt, handler); } catch (e) {} });
     delete callState.peers[otherId];
   }
 
   function connectToPeer(otherId) {
-    if (callState.peers[otherId] || !db || !currentRoomId || !myUid) return;
+    if (callState.peers[otherId] || !db || !currentRoomId) return;
     const pc = new RTCPeerConnection({ iceServers: CALL_ICE_SERVERS });
     const peerEntry = { pc, audioEl: null, refs: [] };
     callState.peers[otherId] = peerEntry;
@@ -1209,7 +1351,8 @@ function toggleAcc(id) {
       callState.muted = false;
 
       Object.values(callState.peers).forEach(peer => {
-        peer.pc.getSenders().forEach(sender => {
+        const senders = peer.pc.getSenders();
+        senders.forEach(sender => {
           if (sender.track) {
             try { peer.pc.removeTrack(sender); } catch(e) {}
           }
@@ -1219,6 +1362,7 @@ function toggleAcc(id) {
       await db.ref(`calls/${currentRoomId}/participants/${myUid}`).update({ mode: "listen", muted: false }).catch(()=>{});
       renderCallBar();
       showToast("🔈 「聴くだけ」に切り替えました（マイク停止）");
+
     } else {
       try {
         const newStream = await navigator.mediaDevices.getUserMedia(CALL_AUDIO_CONSTRAINTS);
@@ -1254,7 +1398,7 @@ function toggleAcc(id) {
     if (!callState.active && Object.keys(callState.peers).length === 0 && !callState.localStream) return;
 
     Object.keys(callState.peers).forEach(otherId => {
-      if (db && currentRoomId && myUid) db.ref(`calls/${currentRoomId}/signals/${callPairKey(myUid, otherId)}`).remove().catch(() => {});
+      if (db && currentRoomId) db.ref(`calls/${currentRoomId}/signals/${callPairKey(myUid, otherId)}`).remove().catch(() => {});
       closePeerConnection(otherId);
     });
 
@@ -1262,10 +1406,7 @@ function toggleAcc(id) {
       callState.localStream.getTracks().forEach(t => t.stop());
       callState.localStream = null;
     }
-    if (callState.participantsRef) {
-      callState.participantsRef.off("value", handleCallParticipantsChange);
-      callState.participantsRef = null;
-    }
+    if (callState.participantsRef) { callState.participantsRef.off("value", handleCallParticipantsChange); callState.participantsRef = null; }
 
     const wasActive = callState.active;
     if (db && currentRoomId && myUid) {
@@ -1326,13 +1467,12 @@ function toggleAcc(id) {
 
   async function joinRoom(options = {}) {
     if (!db) { alert("データベースが準備できていません。"); return; }
-    let lobbyRoomId = options.roomId || $("lobbyRoomId").value.trim();
-    let lobbyRoomPass = options.roomPass || $("lobbyRoomPass").value;
+    let lobbyRoomId = options.roomId || ($("lobbyRoomId") ? $("lobbyRoomId").value.trim() : "");
+    let lobbyRoomPass = options.roomPass || ($("lobbyRoomPass") ? $("lobbyRoomPass").value : "");
     if (!lobbyRoomId) { alert("部屋IDを入力してください。"); return; }
     if (lobbyRoomId !== "official" && !lobbyRoomPass) { alert("部屋パスワードを入力してください。"); return; }
 
     await ensureAnonAuth();
-    if (!myUid) { alert("ユーザー認証を完了できませんでした。"); return; }
 
     const safeRoomPath = (lobbyRoomId === "official") ? "official" : await window.sha256(lobbyRoomId);
 
@@ -1365,6 +1505,7 @@ function toggleAcc(id) {
       roomSettings.creatorUid = (safeRoomPath === "official") ? (isGlobalAdmin ? myUid : "") : myUid;
       try {
         await db.ref(`settings/${safeRoomPath}`).set({ creatorUid: roomSettings.creatorUid, newEntriesDisabled: false, passcode: "" });
+        if (safeRoomPath !== "official") safeLS.set("nz_my_created_room_id", safeRoomPath);
       } catch (e) {}
     }
 
@@ -1381,11 +1522,7 @@ function toggleAcc(id) {
     removeFirebaseListeners(); isFirstLoad = true;
     currentRoomId = safeRoomPath; currentRoomPass = lobbyRoomPass;
     
-    // PBKDF2による堅牢な鍵導出
-    activeKey = await E2EE.deriveKey(
-      safeRoomPath === "official" ? "official_secret_pass_2026" : lobbyRoomPass,
-      safeRoomPath
-    );
+    activeKey = await E2EE.deriveKey(safeRoomPath === "official" ? "official_secret_pass_2026" : lobbyRoomPass);
 
     try {
       db.ref(`banlist/${currentRoomId}/${myUid}`).on("value", s => {
@@ -1410,11 +1547,15 @@ function toggleAcc(id) {
     updateSessionStartTime(nowTrue);
     updateLastPostTime(nowTrue);
 
-    switchScreen("chat", lobbyRoomId);
+    switchScreen("chat", lobbyRoomId, options.silent);
     setupFirebaseListeners();
 
-    db.ref(`presence/${currentRoomId}/${myUid}`).set({ n: myName || "名無し", p: myTrip, c: curColor, t: firebase.database.ServerValue.TIMESTAMP })
+    // 在室登録＋切断時自動消去（onDisconnect）の安全設定
+    myPresenceRef = db.ref(`presence/${currentRoomId}/${myUid}`);
+    myPresenceRef.set({ n: myName || "名無し", p: myTrip, c: curColor, t: firebase.database.ServerValue.TIMESTAMP })
       .catch(() => showToast("⚠️ 入室状態の同期に失敗しました。再読み込みしてください。"));
+    myPresenceRef.onDisconnect().remove();
+
     startSmartAutoExitChecker();
 
     const cleanName = (myName || "").trim();
@@ -1424,15 +1565,14 @@ function toggleAcc(id) {
       
       if (isNewRoom && currentRoomId !== "official") {
         const createText = "📢 [お知らせ] " + `${cleanName} ${myTrip}`.trim() + " が部屋を作成しました";
-        encodeMsgPayload("システム", "", createText).then(encCreate => {
-          db.ref(`chat/${currentRoomId}`).push({ u: "system", c: "#f43f5e", d: encCreate, t: enterTs - 10, sys: true });
-        }).catch(()=>{});
+        const encCreate = await encodeMsgPayload("システム", "", createText);
+        await db.ref(`chat/${currentRoomId}`).push({ u: "system", c: "#f43f5e", d: encCreate, t: enterTs - 10, sys: true });
       }
 
       const rawEnterText = "📢 [お知らせ] " + `${cleanName} ${myTrip}`.trim() + " が入室しました";
       encodeMsgPayload("システム", "", rawEnterText).then(encEnter => {
         db.ref(`chat/${currentRoomId}`).push({ u: "system", c: "#f43f5e", d: encEnter, t: enterTs, sys: true }).catch(()=>{});
-      }).catch(()=>{});
+      });
     }
 
     applyRoomSettingsUI(); 
@@ -1442,6 +1582,7 @@ function toggleAcc(id) {
     if (!D.tl) return;
     requestAnimationFrame(() => {
       D.tl.scrollTop = D.tl.scrollHeight;
+      setTimeout(() => { if (D.tl) D.tl.scrollTop = D.tl.scrollHeight; }, 10);
     });
   }
 
@@ -1449,21 +1590,6 @@ function toggleAcc(id) {
     if (!D.tl || !D.jumpUpBtn || !D.jumpDownBtn) return;
     D.jumpUpBtn.disabled = D.tl.scrollTop <= 20;
     D.jumpDownBtn.disabled = D.tl.scrollHeight - (D.tl.scrollTop + D.tl.clientHeight) <= 40;
-  }
-
-  function purgeOldDomMessages() {
-    if (!D.tli) return;
-    while (D.tli.children.length > MAX_DOM_MESSAGES) {
-      const firstChild = D.tli.firstElementChild;
-      if (!firstChild) break;
-      const mid = firstChild.dataset.mid;
-      if (mid) {
-        renderedMwNodes.delete(mid);
-        displayedMsgIds.delete(mid);
-        unreadMsgIds.delete(mid);
-      }
-      firstChild.remove();
-    }
   }
 
   function insertMessageInOrder(el) {
@@ -1485,7 +1611,6 @@ function toggleAcc(id) {
       }
     }
     if (!inserted) D.tli.appendChild(el);
-    purgeOldDomMessages();
   }
 
   let latestDisplayedTs = 0;
@@ -1604,10 +1729,10 @@ function toggleAcc(id) {
           }
           
           try {
-            const parsedUrl = new URL(urlStr);
-            if (parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:") {
+            const parsed = new URL(urlStr);
+            if (parsed.protocol === "http:" || parsed.protocol === "https:") {
               const a = document.createElement("a");
-              a.href = parsedUrl.href;
+              a.href = parsed.href;
               a.textContent = urlStr;
               a.target = "_blank";
               a.rel = "noopener noreferrer";
@@ -1692,7 +1817,6 @@ function toggleAcc(id) {
     const id = (m && m[2].length === 11) ? m[2] : null;
     return (id && /^[a-zA-Z0-9_-]{11}$/.test(id)) ? id : null;
   }
-
   function getNicoId(url) {
     const m = url ? url.match(/(sm\d+|so\d+|nm\d+|1\d+)/) : null;
     const id = m ? m[0] : null;
@@ -1711,34 +1835,12 @@ function toggleAcc(id) {
     D.playerContent.innerHTML = ""; D.playerContent.style.aspectRatio = ""; D.playerContent.style.height = "";
     if (type === "audio") {
       titleEl.textContent = "🎵 音楽プレイヤー"; D.playerContent.style.height = "auto";
-      const wrap = document.createElement("div");
-      wrap.style.cssText = "padding:16px;width:100%;display:flex;flex-direction:column;gap:8px;";
-      const ae = document.createElement("audio");
-      ae.controls = true;
-      ae.style.cssText = "width:100%;height:40px;";
-      ae.src = url;
-      wrap.appendChild(ae);
-      D.playerContent.appendChild(wrap);
-      ae.play().catch(()=>{});
+      D.playerContent.innerHTML = `<div style="padding:16px;width:100%;display:flex;flex-direction:column;gap:8px;"><audio id="audioElement" controls style="width:100%;height:40px;"></audio></div>`;
+      const ae = $("audioElement"); if (ae) { ae.src = url; ae.play().catch(()=>{}); }
     } else {
       const ytId = getYoutubeId(url), nicoId = getNicoId(url);
-      if (type === "youtube" && ytId) {
-        titleEl.textContent = "📺 YouTube"; D.playerContent.style.aspectRatio = "16/9";
-        const ifr = document.createElement("iframe");
-        ifr.style.cssText = "width:100%;height:100%;border:none;";
-        ifr.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(ytId)}?autoplay=1&controls=1&playsinline=1`;
-        ifr.allow = "autoplay; encrypted-media";
-        ifr.allowFullscreen = true;
-        D.playerContent.appendChild(ifr);
-      } else if (type === "niconico" && nicoId) {
-        titleEl.textContent = "📺 ニコニコ動画"; D.playerContent.style.aspectRatio = "16/9";
-        const ifr = document.createElement("iframe");
-        ifr.style.cssText = "width:100%;height:100%;border:none;";
-        ifr.src = `https://embed.nicovideo.jp/watch/${encodeURIComponent(nicoId)}?jsapi=0&autoplay=1`;
-        ifr.allow = "autoplay; encrypted-media";
-        ifr.allowFullscreen = true;
-        D.playerContent.appendChild(ifr);
-      }
+      if (type === "youtube" && ytId) { titleEl.textContent = "📺 YouTube"; D.playerContent.style.aspectRatio = "16/9"; D.playerContent.innerHTML = `<iframe style="width:100%;height:100%;" src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(ytId)}?autoplay=1&controls=1&playsinline=1" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`; }
+      else if (type === "niconico" && nicoId) { titleEl.textContent = "📺 ニコニコ動画"; D.playerContent.style.aspectRatio = "16/9"; D.playerContent.innerHTML = `<iframe style="width:100%;height:100%;" src="https://embed.nicovideo.jp/watch/${encodeURIComponent(nicoId)}?jsapi=0&autoplay=1" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`; }
     }
     updateJumpBtns();
   }
@@ -1816,11 +1918,11 @@ function toggleAcc(id) {
     } catch(e) {}
   }
 
-  async function loadFullRoomDataAndSync() {
+  async function loadFullRoomDataAndSync(isResume = false) {
     if (!db || !isJoined || !currentRoomId) return;
 
     try {
-      db.goOnline();
+      if (isResume) db.goOnline();
       
       const [chatSnap, presSnap] = await Promise.all([
         db.ref(`chat/${currentRoomId}`).orderByChild("t").limitToLast(60).once("value"),
@@ -1950,7 +2052,6 @@ function toggleAcc(id) {
         if (m.u !== myUid && m.u !== "system" && !m.sys && !isAtBottom) unreadMsgIds.add(m.id);
       });
       if (D.tli) D.tli.appendChild(fragment);
-      purgeOldDomMessages();
 
       if (isAtBottom) { scBottom(true); unreadMsgIds.clear(); }
       updateUnreadBadge();
@@ -2024,7 +2125,7 @@ function toggleAcc(id) {
     presenceRef.off(); settingsRef.off(); banListRef.off();
     if (directChatRef) directChatRef.off("child_removed");
 
-    await loadFullRoomDataAndSync();
+    await loadFullRoomDataAndSync(false);
 
     let presenceRafId = null;
     presenceRef.on("value", s => {
@@ -2135,12 +2236,6 @@ function toggleAcc(id) {
   async function clearAllMessages() {
     const canManage = currentRoomId === "official" ? checkIsGlobalAdmin() : (myUid === roomSettings.creatorUid);
     if (!db || !currentRoomId || !canManage) return;
-
-    if (currentRoomId === "official") {
-      const verified = await verifyAdminAction();
-      if (!verified) { showToast("⚠️ 管理者認証に失敗しました。"); return; }
-    }
-
     try {
       const clearTs = getTrueTime();
       await db.ref(`settings/${currentRoomId}/last_cleared_at`).set(clearTs);
@@ -2157,19 +2252,10 @@ function toggleAcc(id) {
     }
   }
 
-  let lastSentTime = 0;
   function sendMessage() {
-    if (!isJoined || !db || !myUid) return;
+    if (!isJoined || !db) return;
     const text = D.mi.value.trim();
     if (!text) return;
-
-    // クライアント側レートリミット（連投スパム防止）
-    const now = Date.now();
-    if (now - lastSentTime < 400) {
-      showToast("⚠️ 連投を制限しています。少しお待ちください。");
-      return;
-    }
-    lastSentTime = now;
 
     const cid = "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
     const keepOpen = D.kbKeepOpenChk && D.kbKeepOpenChk.checked;
@@ -2195,7 +2281,6 @@ function toggleAcc(id) {
         const trueNow = getTrueTime();
         updateLastPostTime(trueNow);
 
-        // Fail-Closed: 暗号化失敗時は例外がスローされDB送信を遮断
         const encD = await encodeMsgPayload(myName || "名無し", myTrip, text);
         const postTs = firebase.database.ServerValue.TIMESTAMP;
         const newMsgKey = db.ref(`chat/${currentRoomId}`).push().key;
@@ -2210,77 +2295,35 @@ function toggleAcc(id) {
         renderedMwNodes.delete(localId);
         displayedMsgIds.delete(localId);
         updateJumpBtns();
-        showToast("❌ 暗号化または送信に失敗しました（平文流出を防ぐため中断）");
+        showToast("❌ メッセージの送信に失敗しました。");
       }
     })();
   }
 
-  // 招待URLのパースとスマート誘導
-  async function checkInviteHash() {
-    const hash = window.location.hash;
-    if (!hash || hash.length < 2) return null;
-
-    try {
-      const rawStr = decodeURIComponent(escape(atob(hash.substring(1))));
-      const params = new URLSearchParams(rawStr);
-      const inviteRoom = params.get("r");
-      const invitePass = params.get("p");
-
-      if (inviteRoom) {
-        // セキュリティのため直ちにURLからハッシュを消去
-        history.replaceState(null, "", window.location.pathname);
-        return { room: inviteRoom, pass: invitePass || "" };
-      }
-    } catch(e) {
-      history.replaceState(null, "", window.location.pathname);
-    }
-    return null;
-  }
-
   const initDirectDatabaseProcess = async () => {
     try {
-      await ensureAnonAuth();
-      await syncProfileValues();
+      syncProfileValues();
       if (db) db.goOnline();
 
+      const authPromise = ensureAnonAuth();
       const offsetPromise = syncServerOffset().catch(() => {});
-      const inviteInfo = await checkInviteHash();
 
-      if (inviteInfo) {
-        if ($("lobbyRoomId")) $("lobbyRoomId").value = inviteInfo.room;
-        if ($("lobbyRoomPass")) $("lobbyRoomPass").value = inviteInfo.pass;
+      if (myUid) {
+        const wasJoined = safeLS.get("nz_is_joined") === "true";
+        const lastRoomId = safeLS.get("nz_last_room_id");
+        const lastRoomPass = safeLS.get("nz_last_room_pass");
+        const sessionStart = parseInt(safeLS.get("nz_session_start_time") || "0");
+        const lastPost = parseInt(safeLS.get("nz_last_post_time") || "0");
+        const baselineTime = Math.max(sessionStart, lastPost);
+        const nowTrue = Date.now();
 
-        if (myName) {
-          // 名前があればダイレクトに入室
-          joinRoom({ roomId: inviteInfo.room, roomPass: inviteInfo.pass });
-        } else {
-          // 名前がない場合はロビーで待機させ、名前入力を促す
+        if (!(wasJoined && lastRoomId && lastRoomPass && (nowTrue - baselineTime < AUTO_EXIT_MS))) {
           switchScreen("lobby");
-          if ($("lobbyName")) {
-            $("lobbyName").focus();
-            showToast("💬 招待されました。名前を決めて参加してください", 3000);
-          }
         }
         validateLobbyInputs();
-        await offsetPromise;
-        return;
       }
 
-      const wasJoined = safeLS.get("nz_is_joined") === "true";
-      const lastRoomId = safeLS.get("nz_last_room_id");
-      const lastRoomPass = safeLS.get("nz_last_room_pass");
-      const sessionStart = parseInt(safeLS.get("nz_session_start_time") || "0");
-      const lastPost = parseInt(safeLS.get("nz_last_post_time") || "0");
-      const baselineTime = Math.max(sessionStart, lastPost);
-      const nowTrue = Date.now();
-
-      if (wasJoined && lastRoomId && lastRoomPass && (nowTrue - baselineTime < AUTO_EXIT_MS)) {
-        joinRoom({ roomId: lastRoomId, roomPass: lastRoomPass, silent: true });
-      } else {
-        switchScreen("lobby");
-      }
-      validateLobbyInputs();
-      await offsetPromise;
+      await Promise.all([authPromise, offsetPromise]);
     } catch (err) {
       switchScreen("lobby");
     }
@@ -2295,7 +2338,7 @@ function toggleAcc(id) {
         const nowConnected = snap.val() === true;
         if (nowConnected) {
           if (hasDisconnectedOnce) {
-            reconcileRoomData();
+            triggerFullResync();
             hasDisconnectedOnce = false;
           }
         } else {
@@ -2316,46 +2359,6 @@ function toggleAcc(id) {
       isConnectedBound = true;
     }
   };
-
-  function showToast(text, duration = 1600) {
-    const c = $("toastContainer");
-    if (!c) return;
-    c.textContent = text;
-    c.style.display = "flex";
-    requestAnimationFrame(() => c.classList.add("show"));
-    setTimeout(() => {
-      c.classList.remove("show");
-      setTimeout(() => { c.style.display = "none"; }, 150);
-    }, duration);
-  }
-
-  function customConfirm(title, message, okText = "OK", cancelText = "キャンセル", isDanger = false) {
-    return new Promise((resolve) => {
-      const mod = $("confirmMod");
-      const titleEl = $("confirmTitle");
-      const msgEl = $("confirmMessage");
-      const okBtn = $("confirmOkBtn");
-      const cancelBtn = $("confirmCancelBtn");
-      if (!mod) { resolve(window.confirm(message)); return; }
-      titleEl.textContent = title;
-      msgEl.textContent = message;
-      okBtn.textContent = okText;
-      cancelBtn.textContent = cancelText;
-      okBtn.style.background = isDanger ? "var(--ro)" : "#334155";
-      mod.classList.add("show");
-
-      const cleanup = (result) => {
-        mod.classList.remove("show");
-        okBtn.removeEventListener("click", onOk);
-        cancelBtn.removeEventListener("click", onCancel);
-        resolve(result);
-      };
-      function onOk(e) { e.preventDefault(); cleanup(true); }
-      function onCancel(e) { e.preventDefault(); cleanup(false); }
-      okBtn.addEventListener("click", onOk);
-      cancelBtn.addEventListener("click", onCancel);
-    });
-  }
 
   function initApp() {
     D = {
@@ -2424,25 +2427,6 @@ function toggleAcc(id) {
           if (isMobile || !e.ctrlKey && !e.metaKey) { e.preventDefault(); sendMessage(); }
         }
       });
-    }
-
-    // 安定した仮想キーボード同期（画面ジッターの防止）
-    if (typeof window !== 'undefined' && window.visualViewport) {
-      const appEl = $("app");
-      let vRaf = false;
-      const updateViewport = () => {
-        if (vRaf) return;
-        vRaf = true;
-        requestAnimationFrame(() => {
-          vRaf = false;
-          if (appEl && window.visualViewport) {
-            appEl.style.height = window.visualViewport.height + "px";
-            window.scrollTo(0, 0);
-          }
-          if (isJoined) scBottom(true);
-        });
-      };
-      window.visualViewport.addEventListener('resize', updateViewport);
     }
 
     if (D.clrMsgBtn && D.mi) D.clrMsgBtn.addEventListener("click", (e) => { e.preventDefault(); D.mi.value = ""; updateClrMsgBtnVisibility(); D.mi.style.height = "auto"; D.mi.focus(); });
@@ -2580,15 +2564,8 @@ function toggleAcc(id) {
       e.preventDefault();
       const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
       let randId = "rm-", randPass = "";
-      const randVals1 = new Uint8Array(8), randVals2 = new Uint8Array(12);
-      if (typeof window !== 'undefined' && window.crypto) {
-        window.crypto.getRandomValues(randVals1); window.crypto.getRandomValues(randVals2);
-        for (let i = 0; i < 8; i++) randId += chars[randVals1[i] % chars.length];
-        for (let i = 0; i < 12; i++) randPass += chars[randVals2[i] % chars.length];
-      } else {
-        for (let i = 0; i < 8; i++) randId += chars[Math.floor(Math.random() * chars.length)];
-        for (let i = 0; i < 12; i++) randPass += chars[Math.floor(Math.random() * chars.length)];
-      }
+      for (let i = 0; i < 8; i++) randId += chars[Math.floor(Math.random() * chars.length)];
+      for (let i = 0; i < 12; i++) randPass += chars[Math.floor(Math.random() * chars.length)];
       $("lobbyRoomId").value = randId; $("lobbyRoomPass").value = randPass;
       showToast("🎲 部屋IDとパスワードを生成しました");
       validateLobbyInputs();
@@ -2604,14 +2581,8 @@ function toggleAcc(id) {
     D.joinBtn.addEventListener("click", (e) => { e.preventDefault(); joinRoom(); });
     $("btnJoinOfficial").addEventListener("click", (e) => { e.preventDefault(); joinRoom({ roomId: "official", roomPass: "official" }); });
 
-    if ($("lobbyCallsToggle")) $("lobbyCallsToggle").addEventListener("change", async () => {
+    if ($("lobbyCallsToggle")) $("lobbyCallsToggle").addEventListener("change", () => {
       if (!checkIsGlobalAdmin() || !db) return;
-      const verified = await verifyAdminAction();
-      if (!verified) {
-        $("lobbyCallsToggle").checked = !$("lobbyCallsToggle").checked;
-        showToast("⚠️ 管理者認証に失敗しました。");
-        return;
-      }
       const checkedNow = $("lobbyCallsToggle").checked;
       db.ref("globalSettings/callsDisabled").set(checkedNow).then(() => {
         showToast(checkedNow ? "📴 通話機能を全体で無効にしました" : "📞 通話機能を全体で有効にしました");

@@ -326,7 +326,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
         </div>
 
         <div id="admGeneralSettingsGroup" style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
-          <div style="display: flex; align-items: center; justify-content: flex-start; gap: 16px; font-size: 11px; font-weight: bold;">
+          <div style="display: flex; align-items: center; justify-content: flex-start; gap: 16px; font-size: 11px; font-weight: bold; flex-wrap: wrap; row-gap: 6px;">
             <div style="display: flex; align-items: center; gap: 6px;">
               <input type="checkbox" id="admStopJoin" style="width: 14px; height: 14px; accent-color: #475569; cursor: pointer;">
               <label for="admStopJoin" style="color: var(--tx); cursor: pointer; user-select: none;">新規制限</label>
@@ -334,6 +334,10 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
             <div style="display: flex; align-items: center; gap: 6px;">
               <input type="checkbox" id="admPassToggle" style="width: 14px; height: 14px; accent-color: #475569; cursor: pointer;">
               <label for="admPassToggle" style="color: var(--tx); cursor: pointer; user-select: none;">合言葉あり</label>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <input type="checkbox" id="admCallsToggle" style="width: 14px; height: 14px; accent-color: #475569; cursor: pointer;">
+              <label for="admCallsToggle" style="color: var(--tx); cursor: pointer; user-select: none;">📞 通話機能</label>
             </div>
           </div>
 
@@ -560,7 +564,7 @@ function toggleAcc(id) {
   let scale = 1, panX = 0, panY = 0;
   let currentPresenceMap = {}, isConnectedBound = false;
   let lastSyncAt = 0;
-  let roomSettings = { passcode: "", newEntriesDisabled: false, approvedTrips: {}, creatorUid: "" };
+  let roomSettings = { passcode: "", newEntriesDisabled: false, callsDisabled: false, approvedTrips: {}, creatorUid: "" };
   let localLastClearedTime = 0;
   const AUTO_EXIT_MS = 1800000; // 30分
   const UR = /(https?:\/\/[^\s\n<>"]+)/gi;
@@ -1141,7 +1145,7 @@ function toggleAcc(id) {
       }
     } else {
       bar.style.display = "none";
-      btn.style.display = (isJoined && isCallSupported()) ? "inline-flex" : "none";
+      btn.style.display = (isJoined && isCallSupported() && !roomSettings.callsDisabled) ? "inline-flex" : "none";
     }
   }
 
@@ -1260,6 +1264,7 @@ function toggleAcc(id) {
   async function startCall(mode) {
     if (!isJoined || !currentRoomId || !db || callState.active) return;
     if (!isCallSupported()) { showToast("⚠️ この端末・ブラウザは通話機能に対応していません。"); return; }
+    if (roomSettings.callsDisabled) { showToast("⚠️ この部屋では通話機能が無効になっています。"); return; }
 
     if (mode === "both") {
       try {
@@ -1451,6 +1456,7 @@ function toggleAcc(id) {
 
     const val = (settingsSnap && settingsSnap.val()) || {};
     roomSettings.newEntriesDisabled = val.newEntriesDisabled || false;
+    roomSettings.callsDisabled = val.callsDisabled || false;
     roomSettings.passcode = val.passcode || "";
     roomSettings.approvedTrips = val.approvedTrips || {};
     roomSettings.creatorUid = val.creatorUid || "";
@@ -2003,10 +2009,16 @@ function toggleAcc(id) {
     const settingsP = db.ref(`settings/${roomId}`).once("value").then(settingsSnap => {
       const val = settingsSnap.val() || {};
       roomSettings.newEntriesDisabled = val.newEntriesDisabled || false;
+      roomSettings.callsDisabled = val.callsDisabled || false;
       roomSettings.passcode = val.passcode || "";
       roomSettings.approvedTrips = val.approvedTrips || {};
       roomSettings.creatorUid = val.creatorUid || "";
       applyRoomSettingsUI();
+      if (roomSettings.callsDisabled && callState.active) {
+        leaveCall();
+        showToast("📴 管理者が通話機能を無効にしたため、通話を終了しました。");
+      }
+      renderCallBar();
       const isAdmin = roomId === "official" ? checkIsGlobalAdmin() : (myUid === roomSettings.creatorUid);
       if ($("adminBtnContainer")) $("adminBtnContainer").style.display = isAdmin ? "inline-flex" : "none";
     }).catch(()=>{});
@@ -2077,6 +2089,7 @@ function toggleAcc(id) {
     settingsRef.on("value", snap => {
       const val = snap.val() || {};
       roomSettings.newEntriesDisabled = val.newEntriesDisabled || false;
+      roomSettings.callsDisabled = val.callsDisabled || false;
       roomSettings.passcode = val.passcode || "";
       roomSettings.approvedTrips = val.approvedTrips || {};
       roomSettings.creatorUid = val.creatorUid || "";
@@ -2098,6 +2111,11 @@ function toggleAcc(id) {
         }
       }
       applyRoomSettingsUI();
+      if (roomSettings.callsDisabled && callState.active) {
+        leaveCall();
+        showToast("📴 管理者が通話機能を無効にしたため、通話を終了しました。");
+      }
+      renderCallBar();
       const isGlobalAdmin = checkIsGlobalAdmin();
       if (currentRoomId === "official") {
         $("adminBtnContainer").style.display = isGlobalAdmin ? "inline-flex" : "none";
@@ -2158,6 +2176,7 @@ function toggleAcc(id) {
     if ($("adminAccordionTitle")) $("adminAccordionTitle").textContent = isOfficial ? "⚙️ 公式部屋 管理パネル" : "⚙️ ホスト設定パネル";
     if ($("admGeneralSettingsGroup")) $("admGeneralSettingsGroup").style.display = "flex";
     if ($("admStopJoin")) $("admStopJoin").checked = roomSettings.newEntriesDisabled;
+    if ($("admCallsToggle")) $("admCallsToggle").checked = roomSettings.callsDisabled;
     if ($("admPassToggle")) $("admPassToggle").checked = !!roomSettings.passcode;
     if ($("admPass")) $("admPass").value = roomSettings.passcode || "";
     if ($("admPassContainer")) $("admPassContainer").style.display = roomSettings.passcode ? "flex" : "none";
@@ -2430,6 +2449,18 @@ function toggleAcc(id) {
           showToast(`🚫 新規入室制限を ${checkedNow ? "有効" : "無効"} にしました`);
         }).catch(() => {
           $("admStopJoin").checked = !checkedNow;
+          showToast("⚠️ 設定の変更に失敗しました");
+        });
+      }
+    });
+
+    if ($("admCallsToggle")) $("admCallsToggle").addEventListener("change", () => {
+      if (db && currentRoomId) {
+        const checkedNow = $("admCallsToggle").checked;
+        db.ref(`settings/${currentRoomId}/callsDisabled`).set(checkedNow).then(() => {
+          showToast(checkedNow ? "📴 通話機能を無効にしました" : "📞 通話機能を有効にしました");
+        }).catch(() => {
+          $("admCallsToggle").checked = !checkedNow;
           showToast("⚠️ 設定の変更に失敗しました");
         });
       }

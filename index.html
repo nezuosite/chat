@@ -335,10 +335,6 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
               <input type="checkbox" id="admPassToggle" style="width: 14px; height: 14px; accent-color: #475569; cursor: pointer;">
               <label for="admPassToggle" style="color: var(--tx); cursor: pointer; user-select: none;">合言葉あり</label>
             </div>
-            <div style="display: flex; align-items: center; gap: 6px;">
-              <input type="checkbox" id="admCallsToggle" style="width: 14px; height: 14px; accent-color: #475569; cursor: pointer;">
-              <label for="admCallsToggle" style="color: var(--tx); cursor: pointer; user-select: none;">📞 通話機能</label>
-            </div>
           </div>
 
           <div id="admPassContainer" style="display: none; align-items: center; gap: 6px; width: 100%; max-width: 320px;">
@@ -492,6 +488,14 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
         <h2 style="color: #cbd5e1; font-size: 11px;">🏢 常設公式部屋</h2>
         <button class="btn" id="btnJoinOfficial" style="background: linear-gradient(135deg, #475569, #334155); color: #fff; font-size: 13px; font-weight: 900; height: 38px; width: 100%; border-radius: 6px;" disabled>🏢 常設公式部屋に入る</button>
       </div>
+
+      <div class="lobby-sec" id="lobbyAdminSec" style="display: none; border-color: #f43f5e;">
+        <h2 style="color: #fda4af; font-size: 11px;">👑 全体管理（公式管理者のみ）</h2>
+        <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: bold;">
+          <input type="checkbox" id="lobbyCallsToggle" style="width: 14px; height: 14px; accent-color: #f43f5e; cursor: pointer;">
+          <label for="lobbyCallsToggle" style="color: var(--tx); cursor: pointer; user-select: none;">📞 通話機能（全部屋共通）</label>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -564,7 +568,8 @@ function toggleAcc(id) {
   let scale = 1, panX = 0, panY = 0;
   let currentPresenceMap = {}, isConnectedBound = false;
   let lastSyncAt = 0;
-  let roomSettings = { passcode: "", newEntriesDisabled: false, callsDisabled: false, approvedTrips: {}, creatorUid: "" };
+  let roomSettings = { passcode: "", newEntriesDisabled: false, approvedTrips: {}, creatorUid: "" };
+  let globalCallsDisabled = false;
   let localLastClearedTime = 0;
   const AUTO_EXIT_MS = 1800000; // 30分
   const UR = /(https?:\/\/[^\s\n<>"]+)/gi;
@@ -600,42 +605,50 @@ function toggleAcc(id) {
   }
 
   let isSyncingNow = false;
-  const triggerInstantSync = async () => {
+  async function runSync(syncFn, timeoutMs) {
     if (!isJoined || !currentRoomId || !db) return;
     if (isSyncingNow) return;
     isSyncingNow = true;
-    const releaseTimer = setTimeout(() => { isSyncingNow = false; }, 5000);
+    const releaseTimer = setTimeout(() => { isSyncingNow = false; }, timeoutMs);
     const tlEl = $("tl"), plEl = $("pl");
     if (tlEl) tlEl.classList.add("is-syncing");
     if (plEl) plEl.classList.add("is-syncing");
     try {
       db.goOnline();
-      await reconcileRoomData();
+      await syncFn();
     } finally {
       clearTimeout(releaseTimer);
       isSyncingNow = false;
       if (tlEl) tlEl.classList.remove("is-syncing");
       if (plEl) plEl.classList.remove("is-syncing");
     }
-  };
+  }
+
+  // 操作時の取りこぼしチェック用の軽量差分同期
+  const triggerInstantSync = () => runSync(reconcileRoomData, 5000);
+  // 復帰・再接続イベント用：リスナーを丸ごと張り直して確実に最新化する（初回入室と同じ経路を通るため信頼性が高い）
+  const triggerFullResync = () => runSync(async () => {
+    removeFirebaseListeners();
+    await setupFirebaseListeners();
+  }, 8000);
 
   // 復帰・再接続イベント全般で即時同期。取りこぼし対策として、操作時に同期が古ければその場でも同期する。
   const STALE_THRESHOLD_MS = 1200;
   if (typeof document !== 'undefined') {
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
-        triggerInstantSync();
+        triggerFullResync();
         startSmartAutoExitChecker();
       } else if (smartTimerId) {
         clearInterval(smartTimerId);
         smartTimerId = null;
       }
     });
-    window.addEventListener("pageshow", triggerInstantSync);
-    window.addEventListener("focus", triggerInstantSync);
-    window.addEventListener("online", triggerInstantSync);
+    window.addEventListener("pageshow", triggerFullResync);
+    window.addEventListener("focus", triggerFullResync);
+    window.addEventListener("online", triggerFullResync);
     if (navigator.connection && navigator.connection.addEventListener) {
-      navigator.connection.addEventListener("change", triggerInstantSync);
+      navigator.connection.addEventListener("change", triggerFullResync);
     }
 
     const checkStaleOnInteraction = () => {
@@ -923,6 +936,7 @@ function toggleAcc(id) {
       if ($("lobbyTripPrev")) $("lobbyTripPrev").textContent = `プレビュー: 名前を入力して識別ID生成`;
       if ($("btnCopyTrip")) $("btnCopyTrip").style.display = "none";
     }
+    if ($("lobbyAdminSec")) $("lobbyAdminSec").style.display = checkIsGlobalAdmin() ? "flex" : "none";
     validateLobbyInputs();
   };
 
@@ -1145,7 +1159,7 @@ function toggleAcc(id) {
       }
     } else {
       bar.style.display = "none";
-      btn.style.display = (isJoined && isCallSupported() && !roomSettings.callsDisabled) ? "inline-flex" : "none";
+      btn.style.display = (isJoined && isCallSupported() && !globalCallsDisabled) ? "inline-flex" : "none";
     }
   }
 
@@ -1264,7 +1278,7 @@ function toggleAcc(id) {
   async function startCall(mode) {
     if (!isJoined || !currentRoomId || !db || callState.active) return;
     if (!isCallSupported()) { showToast("⚠️ この端末・ブラウザは通話機能に対応していません。"); return; }
-    if (roomSettings.callsDisabled) { showToast("⚠️ この部屋では通話機能が無効になっています。"); return; }
+    if (globalCallsDisabled) { showToast("⚠️ 現在、通話機能は無効化されています。"); return; }
 
     if (mode === "both") {
       try {
@@ -1456,7 +1470,6 @@ function toggleAcc(id) {
 
     const val = (settingsSnap && settingsSnap.val()) || {};
     roomSettings.newEntriesDisabled = val.newEntriesDisabled || false;
-    roomSettings.callsDisabled = val.callsDisabled || false;
     roomSettings.passcode = val.passcode || "";
     roomSettings.approvedTrips = val.approvedTrips || {};
     roomSettings.creatorUid = val.creatorUid || "";
@@ -2009,15 +2022,10 @@ function toggleAcc(id) {
     const settingsP = db.ref(`settings/${roomId}`).once("value").then(settingsSnap => {
       const val = settingsSnap.val() || {};
       roomSettings.newEntriesDisabled = val.newEntriesDisabled || false;
-      roomSettings.callsDisabled = val.callsDisabled || false;
       roomSettings.passcode = val.passcode || "";
       roomSettings.approvedTrips = val.approvedTrips || {};
       roomSettings.creatorUid = val.creatorUid || "";
       applyRoomSettingsUI();
-      if (roomSettings.callsDisabled && callState.active) {
-        leaveCall();
-        showToast("📴 管理者が通話機能を無効にしたため、通話を終了しました。");
-      }
       renderCallBar();
       const isAdmin = roomId === "official" ? checkIsGlobalAdmin() : (myUid === roomSettings.creatorUid);
       if ($("adminBtnContainer")) $("adminBtnContainer").style.display = isAdmin ? "inline-flex" : "none";
@@ -2089,7 +2097,6 @@ function toggleAcc(id) {
     settingsRef.on("value", snap => {
       const val = snap.val() || {};
       roomSettings.newEntriesDisabled = val.newEntriesDisabled || false;
-      roomSettings.callsDisabled = val.callsDisabled || false;
       roomSettings.passcode = val.passcode || "";
       roomSettings.approvedTrips = val.approvedTrips || {};
       roomSettings.creatorUid = val.creatorUid || "";
@@ -2111,10 +2118,6 @@ function toggleAcc(id) {
         }
       }
       applyRoomSettingsUI();
-      if (roomSettings.callsDisabled && callState.active) {
-        leaveCall();
-        showToast("📴 管理者が通話機能を無効にしたため、通話を終了しました。");
-      }
       renderCallBar();
       const isGlobalAdmin = checkIsGlobalAdmin();
       if (currentRoomId === "official") {
@@ -2176,7 +2179,6 @@ function toggleAcc(id) {
     if ($("adminAccordionTitle")) $("adminAccordionTitle").textContent = isOfficial ? "⚙️ 公式部屋 管理パネル" : "⚙️ ホスト設定パネル";
     if ($("admGeneralSettingsGroup")) $("admGeneralSettingsGroup").style.display = "flex";
     if ($("admStopJoin")) $("admStopJoin").checked = roomSettings.newEntriesDisabled;
-    if ($("admCallsToggle")) $("admCallsToggle").checked = roomSettings.callsDisabled;
     if ($("admPassToggle")) $("admPassToggle").checked = !!roomSettings.passcode;
     if ($("admPass")) $("admPass").value = roomSettings.passcode || "";
     if ($("admPassContainer")) $("admPassContainer").style.display = roomSettings.passcode ? "flex" : "none";
@@ -2290,12 +2292,22 @@ function toggleAcc(id) {
         const nowConnected = snap.val() === true;
         if (nowConnected) {
           if (hasDisconnectedOnce) {
-            triggerInstantSync();
+            triggerFullResync();
             hasDisconnectedOnce = false;
           }
         } else {
           hasDisconnectedOnce = true;
         }
+      });
+
+      db.ref("globalSettings/callsDisabled").on("value", snap => {
+        globalCallsDisabled = snap.val() === true;
+        if (globalCallsDisabled && callState.active) {
+          leaveCall();
+          showToast("📴 通話機能が管理者により無効化されたため、通話を終了しました。");
+        }
+        renderCallBar();
+        if ($("lobbyCallsToggle")) $("lobbyCallsToggle").checked = globalCallsDisabled;
       });
 
       isConnectedBound = true;
@@ -2454,18 +2466,6 @@ function toggleAcc(id) {
       }
     });
 
-    if ($("admCallsToggle")) $("admCallsToggle").addEventListener("change", () => {
-      if (db && currentRoomId) {
-        const checkedNow = $("admCallsToggle").checked;
-        db.ref(`settings/${currentRoomId}/callsDisabled`).set(checkedNow).then(() => {
-          showToast(checkedNow ? "📴 通話機能を無効にしました" : "📞 通話機能を有効にしました");
-        }).catch(() => {
-          $("admCallsToggle").checked = !checkedNow;
-          showToast("⚠️ 設定の変更に失敗しました");
-        });
-      }
-    });
-
     const admPassToggle = $("admPassToggle"), admPassContainer = $("admPassContainer");
     if (admPassToggle && admPassContainer) {
       admPassToggle.addEventListener("change", () => {
@@ -2583,6 +2583,17 @@ function toggleAcc(id) {
 
     D.joinBtn.addEventListener("click", (e) => { e.preventDefault(); joinRoom(); });
     $("btnJoinOfficial").addEventListener("click", (e) => { e.preventDefault(); joinRoom({ roomId: "official", roomPass: "official" }); });
+
+    if ($("lobbyCallsToggle")) $("lobbyCallsToggle").addEventListener("change", () => {
+      if (!checkIsGlobalAdmin() || !db) return;
+      const checkedNow = $("lobbyCallsToggle").checked;
+      db.ref("globalSettings/callsDisabled").set(checkedNow).then(() => {
+        showToast(checkedNow ? "📴 通話機能を全体で無効にしました" : "📞 通話機能を全体で有効にしました");
+      }).catch(() => {
+        $("lobbyCallsToggle").checked = !checkedNow;
+        showToast("⚠️ 設定の変更に失敗しました");
+      });
+    });
 
     $("lobbyName").addEventListener("input", () => {
       let cleanVal = $("lobbyName").value.replace(/◆/g, "");

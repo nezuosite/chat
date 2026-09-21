@@ -529,6 +529,16 @@ function toggleAcc(id) {
   const db = firebase.database();
   const auth = firebase.auth();
 
+  // 匿名認証が済むまでDBアクセスを待たせるための共有Promise（多重サインインを防ぐ）
+  let authReadyPromise = null;
+  function ensureAnonAuth() {
+    if (auth.currentUser) return Promise.resolve(auth.currentUser);
+    if (!authReadyPromise) {
+      authReadyPromise = auth.signInAnonymously().then(cred => cred.user).catch(() => null);
+    }
+    return authReadyPromise;
+  }
+
   const $ = id => document.getElementById(id);
   let D = {};
   let myPresenceRef = null;
@@ -649,16 +659,16 @@ function toggleAcc(id) {
       const logoTitle = document.getElementById("logoTitle");
       if (logoTitle) logoTitle.innerHTML = `NEZUO CHAT<span class="sub-room">${lastRoomId === "official" ? "常設公式部屋" : lastRoomId}</span>`;
 
-      Promise.all([
+      await Promise.all([
         syncServerOffset(),
-        auth.currentUser ? Promise.resolve() : auth.signInAnonymously().catch(()=>{})
+        ensureAnonAuth()
       ]).catch(()=>{});
 
       joinRoom({ roomId: lastRoomId, roomPass: lastRoomPass, silent: true });
     } else {
       const lobbyScr = document.getElementById("lobbyScreen");
       if (lobbyScr) lobbyScr.style.display = "flex";
-      runAdminZombieCleanup();
+      ensureAnonAuth().then(() => runAdminZombieCleanup());
     }
   })();
 
@@ -1418,6 +1428,8 @@ function toggleAcc(id) {
     if (!lobbyRoomId) { alert("部屋IDを入力してください。"); return; }
     if (lobbyRoomId !== "official" && !lobbyRoomPass) { alert("部屋パスワードを入力してください。"); return; }
 
+    await ensureAnonAuth();
+
     const safeRoomPath = (lobbyRoomId === "official") ? "official" : await window.sha256(lobbyRoomId);
 
     let isBanned = false;
@@ -1842,7 +1854,7 @@ function toggleAcc(id) {
       if (isResume) db.goOnline();
       
       const [chatSnap, presSnap] = await Promise.all([
-        db.ref(`chat/${currentRoomId}`).orderByChild("t").limitToLast(100).once("value"),
+        db.ref(`chat/${currentRoomId}`).orderByChild("t").limitToLast(60).once("value"),
         db.ref(`presence/${currentRoomId}`).once("value"),
         syncServerOffset()
       ]);
@@ -2195,16 +2207,18 @@ function toggleAcc(id) {
 
     (async () => {
       try {
-        if (!auth.currentUser) await auth.signInAnonymously().catch(() => {});
+        await ensureAnonAuth();
 
         const trueNow = getTrueTime();
         updateLastPostTime(trueNow);
 
         const encD = await encodeMsgPayload(myName || "名無し", myTrip, text);
         const postTs = firebase.database.ServerValue.TIMESTAMP;
-        await db.ref(`chat/${currentRoomId}`).push({ u: myUid, c: curColor, t: postTs, cid, d: encD });
-
-        if (myPresenceRef) myPresenceRef.child("t").set(postTs).catch(()=>{});
+        const newMsgKey = db.ref(`chat/${currentRoomId}`).push().key;
+        const updates = {};
+        updates[`chat/${currentRoomId}/${newMsgKey}`] = { u: myUid, c: curColor, t: postTs, cid, d: encD };
+        if (myPresenceRef) updates[`presence/${currentRoomId}/${myUid}/t`] = postTs;
+        await db.ref().update(updates);
       } catch (e) {
         pendingSendMap.delete(cid);
         const el = renderedMwNodes.get(localId);
@@ -2222,7 +2236,7 @@ function toggleAcc(id) {
       syncProfileValues();
       if (db) db.goOnline();
 
-      const authPromise = auth.currentUser ? Promise.resolve() : auth.signInAnonymously().catch(() => {});
+      const authPromise = ensureAnonAuth();
       const offsetPromise = syncServerOffset().catch(() => {});
 
       if (myUid) {

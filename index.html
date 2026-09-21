@@ -10,11 +10,12 @@
 <link rel="preconnect" href="https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app" crossorigin>
 <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://www.gstatic.com">
 
 <!-- Firebase SDK v10 Compat -->
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -492,7 +493,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
   </div>
 </div>
 
-<script>
+<script defer>
 function toggleAcc(id) {
   const el = document.getElementById(id);
   const isShow = el.classList.toggle('show');
@@ -619,6 +620,9 @@ function toggleAcc(id) {
     window.addEventListener("pageshow", triggerInstantSync);
     window.addEventListener("focus", triggerInstantSync);
     window.addEventListener("online", triggerInstantSync);
+    if (navigator.connection && navigator.connection.addEventListener) {
+      navigator.connection.addEventListener("change", triggerInstantSync);
+    }
 
     const checkStaleOnInteraction = () => {
       if (isJoined && getTrueTime() - lastSyncAt > STALE_THRESHOLD_MS) triggerInstantSync();

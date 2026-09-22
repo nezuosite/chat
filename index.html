@@ -605,32 +605,37 @@ function toggleAcc(id) {
   }
 
   let isSyncingNow = false;
-  async function runSync(syncFn, timeoutMs) {
+  async function runSync(syncFn, timeoutMs, fullVisual) {
     if (!isJoined || !currentRoomId || !db) return;
     if (isSyncingNow) return;
     isSyncingNow = true;
     const releaseTimer = setTimeout(() => { isSyncingNow = false; }, timeoutMs);
-    const tlEl = $("tl"), plEl = $("pl");
-    if (tlEl) tlEl.classList.add("is-syncing");
-    if (plEl) plEl.classList.add("is-syncing");
+    const tlEl = $("tl"), plEl = $("pl"), chatScr = $("chatScreen");
+    if (fullVisual) {
+      if (chatScr) chatScr.classList.add("is-loading");
+    } else {
+      if (tlEl) tlEl.classList.add("is-syncing");
+      if (plEl) plEl.classList.add("is-syncing");
+    }
     try {
       db.goOnline();
       await syncFn();
     } finally {
       clearTimeout(releaseTimer);
       isSyncingNow = false;
+      if (chatScr) chatScr.classList.remove("is-loading");
       if (tlEl) tlEl.classList.remove("is-syncing");
       if (plEl) plEl.classList.remove("is-syncing");
     }
   }
 
   // 操作時の取りこぼしチェック用の軽量差分同期
-  const triggerInstantSync = () => runSync(reconcileRoomData, 5000);
-  // 復帰・再接続イベント用：リスナーを丸ごと張り直して確実に最新化する（初回入室と同じ経路を通るため信頼性が高い）
+  const triggerInstantSync = () => runSync(reconcileRoomData, 5000, false);
+  // 復帰・再接続イベント用：初回入室と全く同じ経路・同じ見た目（読み込み中表示→完了で表示）で最新化する
   const triggerFullResync = () => runSync(async () => {
     removeFirebaseListeners();
     await setupFirebaseListeners();
-  }, 8000);
+  }, 8000, true);
 
   // 復帰・再接続イベント全般で即時同期。取りこぼし対策として、操作時に同期が古ければその場でも同期する。
   const STALE_THRESHOLD_MS = 1200;

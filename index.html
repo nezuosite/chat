@@ -91,7 +91,6 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .call-chip.is-listen{border-color:rgba(148,163,184,0.4);color:#94a3b8;background:rgba(148,163,184,0.06);}
 .call-chip.is-muted{opacity:0.65;}
 
-/* 📞 通話バーのスタイル調整（中央揃え・均等配置） */
 #callBar { display:none; flex-direction:column; background:#0b1f16; border-bottom:1px solid #14532d; flex-shrink:0; animation: slideDown 0.14s ease-out; }
 .call-actions-row {
   display:flex; align-items:center; justify-content:center; gap:8px; width:100%; flex-wrap:nowrap;
@@ -105,17 +104,15 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 #playerContent{ width:100%;max-width:480px;background:#000;display:flex;justify-content:center;align-items:center;position:relative;margin:0 auto;overflow:hidden; }
 #playerCloseBtn{background:rgba(244, 63, 94, 0.15) !important;border:1px solid rgba(244, 63, 94, 0.4) !important;color: #fda4af !important;font-weight: 900 !important;padding: 4px 10px !important;font-size: 12px !important;border-radius: 5px;}
 
-/* コメントストリーム */
-#tl{flex:1;min-height:0;overflow-y:auto;overflow-anchor:auto;padding:8px 12px;background-color:#070a10;-webkit-overflow-scrolling:touch;transition:opacity .12s ease;}
-#tl.is-syncing,#pl.is-syncing{opacity:.35;}
+/* コメントストリーム：チラつきを起こす不透明度アニメーションは全廃 */
+#tl{flex:1;min-height:0;overflow-y:auto;overflow-anchor:auto;padding:8px 12px;background-color:#070a10;-webkit-overflow-scrolling:touch;}
 #tl-inner{display:flex;flex-direction:column;justify-content:flex-start;gap:6px;width:100%;max-width:800px;margin:0 auto;min-height:100%}
 
 .mw{position:relative;display:flex;flex-direction:column;width:100%;padding:3px 6px;border-radius:4px;user-select:none;-webkit-user-select:none;transition:background 0.1s ease;}
 .mw:hover{background:rgba(255,255,255,0.02);}
-.mw.new-msg-anim{animation:fadeIn .22s cubic-bezier(0.16,1,0.3,1) forwards}
-@keyframes fadeIn { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
-.mw .mb-bubble, .mw .ts, .mw .mm { transition: opacity .2s ease; }
-.mw.is-pending .mb-bubble, .mw.is-pending .ts, .mw.is-pending .mm { opacity: .55; }
+.mw.new-msg-anim{animation:fadeIn .18s cubic-bezier(0.16,1,0.3,1) forwards}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+.mw.is-pending { opacity: .55; }
 
 .mw-content-row { display: flex; align-items: baseline; gap: 6px; width: 100%; flex-wrap: wrap; }
 .mm{display:inline-flex;align-items:center;gap:4px;font-size:12px;flex-shrink:0;}
@@ -372,7 +369,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
         </div>
       </div>
 
-      <!-- 📞 通話コントロールバー（シンプル＆中央揃え） -->
+      <!-- 📞 通話コントロールバー -->
       <div id="callBar">
         <div style="display:flex; flex-direction:column; padding:6px 12px; gap:6px;">
           <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
@@ -382,7 +379,6 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
             </div>
           </div>
 
-          <!-- 通話操作ボタングループ（中央配置・均等レイアウト） -->
           <div class="call-actions-row">
             <button id="callSwitchModeBtn" class="call-action-btn" style="background:#334155; border:1px solid #475569; color:#f1f5f9;">🔈 聴くだけ</button>
             <button id="callMuteBtn" class="call-action-btn" style="display:none; background:#166534; border:1px solid #22c55e; color:#fff;">🎤 ミュート</button>
@@ -510,18 +506,17 @@ function toggleAcc(id) {
 
 (function() {
  try {
-  // 👑 全体管理者トリップ（◆VEgOTO / ◆ZJBSxz）
   const ADMIN_TRIPS = ["◆VEgOTO", "◆ZJBSxz", "VEgOTO", "ZJBSxz"];
-
-  let myUid = safeLS_get("nz_permanent_uid") || ("user_" + Math.random().toString(36).substring(2, 11));
-  if (!safeLS_get("nz_permanent_uid")) {
-    safeLS_set("nz_permanent_uid", myUid);
-  }
 
   function safeLS_get(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
   function safeLS_set(key, val) { try { localStorage.setItem(key, val); } catch (e) {} }
   function safeLS_remove(key) { try { localStorage.removeItem(key); } catch (e) {} }
   const safeLS = { get: safeLS_get, set: safeLS_set, remove: safeLS_remove };
+
+  let myUid = safeLS.get("nz_permanent_uid") || ("user_" + Math.random().toString(36).substring(2, 11));
+  if (!safeLS.get("nz_permanent_uid")) {
+    safeLS.set("nz_permanent_uid", myUid);
+  }
 
   const firebaseConfig = {
     apiKey: "AIzaSyCsRidc0smUQDaBwq-oki5NzxSHx6-ljiw",
@@ -537,7 +532,6 @@ function toggleAcc(id) {
   const db = firebase.database();
   const auth = firebase.auth();
 
-  // 匿名認証が済むまでDBアクセスを待たせるための共有Promise（多重サインインを防ぐ）
   let authReadyPromise = null;
   function ensureAnonAuth() {
     if (auth.currentUser) return Promise.resolve(auth.currentUser);
@@ -562,7 +556,7 @@ function toggleAcc(id) {
   
   const displayedMsgIds = new Set();
   const processingMsgIds = new Set();
-  const pendingSendMap = new Map(); // cid -> local element id（送信直後の自分の発言を即時反映するための対応表）
+  const pendingSendMap = new Map();
 
   let isFirstLoad = true, isFirebaseListenersBound = false;
   let scale = 1, panX = 0, panY = 0;
@@ -571,186 +565,12 @@ function toggleAcc(id) {
   let roomSettings = { passcode: "", newEntriesDisabled: false, approvedTrips: {}, creatorUid: "" };
   let globalCallsDisabled = false;
   let localLastClearedTime = 0;
+  let latestDisplayedTs = 0;
   const AUTO_EXIT_MS = 1800000; // 30分
   const UR = /(https?:\/\/[^\s\n<>"]+)/gi;
 
   const checkIsGlobalAdmin = () => (ADMIN_TRIPS.includes(myTrip) || ADMIN_TRIPS.includes(myTrip.replace("◆", "")));
 
-  async function runAdminZombieCleanup() {
-    if (!db || !checkIsGlobalAdmin()) return;
-    try {
-      const snap = await db.ref("presence").once("value");
-      const allRooms = snap.val() || {};
-      const now = Date.now() + serverTimeOffset;
-
-      for (const [roomId, members] of Object.entries(allRooms)) {
-        if (!members) continue;
-        let activeCount = 0;
-        for (const [uId, uData] of Object.entries(members)) {
-          if (uData && uData.t && (now - uData.t >= AUTO_EXIT_MS)) {
-            db.ref(`presence/${roomId}/${uId}`).remove().catch(()=>{});
-          } else {
-            activeCount++;
-          }
-        }
-        if (activeCount === 0 && roomId !== "official") {
-          db.ref(`chat/${roomId}`).remove().catch(()=>{});
-          db.ref(`settings/${roomId}`).remove().catch(()=>{});
-          db.ref(`presence/${roomId}`).remove().catch(()=>{});
-          db.ref(`banlist/${roomId}`).remove().catch(()=>{});
-          db.ref(`calls/${roomId}`).remove().catch(()=>{});
-        }
-      }
-    } catch (e) {}
-  }
-
-  let isSyncingNow = false;
-  async function runSync(syncFn, timeoutMs) {
-    if (!isJoined || !currentRoomId || !db) return;
-    if (isSyncingNow) return;
-    isSyncingNow = true;
-    const releaseTimer = setTimeout(() => { isSyncingNow = false; }, timeoutMs);
-    const tlEl = $("tl"), plEl = $("pl");
-    // 速く終わる同期ではダイム表示を一切見せない（点滅防止）。150ms以上かかった時だけ薄く表示する。
-    const dimTimer = setTimeout(() => {
-      if (tlEl) tlEl.classList.add("is-syncing");
-      if (plEl) plEl.classList.add("is-syncing");
-    }, 150);
-    try {
-      db.goOnline();
-      await syncFn();
-    } finally {
-      clearTimeout(releaseTimer);
-      clearTimeout(dimTimer);
-      isSyncingNow = false;
-      if (tlEl) tlEl.classList.remove("is-syncing");
-      if (plEl) plEl.classList.remove("is-syncing");
-    }
-  }
-
-  // 操作時の取りこぼしチェック用の軽量差分同期
-  const triggerInstantSync = () => runSync(reconcileRoomData, 5000);
-  // 復帰・再接続イベント用：初回入室と全く同じ経路で最新化する（見た目は真っ暗にせず、薄く表示したまま裏で更新）
-  const triggerFullResync = () => runSync(async () => {
-    removeFirebaseListeners();
-    await setupFirebaseListeners();
-  }, 8000);
-
-  // 復帰・再接続イベント全般で即時同期。取りこぼし対策として、操作時に同期が古ければその場でも同期する。
-  const STALE_THRESHOLD_MS = 1200;
-  if (typeof document !== 'undefined') {
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") {
-        triggerFullResync();
-        startSmartAutoExitChecker();
-      } else if (smartTimerId) {
-        clearInterval(smartTimerId);
-        smartTimerId = null;
-      }
-    });
-    window.addEventListener("pageshow", triggerInstantSync);
-    window.addEventListener("focus", triggerInstantSync);
-    window.addEventListener("online", triggerFullResync);
-    if (navigator.connection && navigator.connection.addEventListener) {
-      navigator.connection.addEventListener("change", triggerInstantSync);
-    }
-
-    const checkStaleOnInteraction = () => {
-      if (isJoined && getTrueTime() - lastSyncAt > STALE_THRESHOLD_MS) triggerInstantSync();
-    };
-    document.addEventListener("pointerdown", checkStaleOnInteraction, { passive: true });
-    document.addEventListener("touchstart", checkStaleOnInteraction, { passive: true });
-  }
-
-  (async function initInitialScreenState() {
-    const wasJoined = safeLS.get("nz_is_joined") === "true";
-    const lastRoomId = safeLS.get("nz_last_room_id");
-    const lastRoomPass = safeLS.get("nz_last_room_pass");
-    const sessionStart = parseInt(safeLS.get("nz_session_start_time") || "0");
-    const lastPost = parseInt(safeLS.get("nz_last_post_time") || "0");
-    const baselineTime = Math.max(sessionStart, lastPost);
-    const nowTrue = Date.now();
-
-    if (wasJoined && lastRoomId && lastRoomPass && (nowTrue - baselineTime < AUTO_EXIT_MS)) {
-      const chatScr = document.getElementById("chatScreen");
-      if (chatScr) {
-        chatScr.style.display = "flex";
-        chatScr.classList.add("is-loading");
-      }
-      const logoTitle = document.getElementById("logoTitle");
-      if (logoTitle) logoTitle.innerHTML = `NEZUO CHAT<span class="sub-room">${lastRoomId === "official" ? "常設公式部屋" : lastRoomId}</span>`;
-
-      await Promise.all([
-        syncServerOffset(),
-        ensureAnonAuth()
-      ]).catch(()=>{});
-
-      joinRoom({ roomId: lastRoomId, roomPass: lastRoomPass, silent: true });
-    } else {
-      const lobbyScr = document.getElementById("lobbyScreen");
-      if (lobbyScr) lobbyScr.style.display = "flex";
-      ensureAnonAuth().then(() => runAdminZombieCleanup());
-    }
-  })();
-
-  function updateUnreadBadge() {
-    if (!D.unreadBadge) return;
-    const isAtBottom = D.tl && (D.tl.scrollHeight - (D.tl.scrollTop + D.tl.clientHeight) <= 40);
-    const count = isAtBottom ? 0 : unreadMsgIds.size;
-    if (isAtBottom) unreadMsgIds.clear();
-
-    if (count > 0) {
-      D.unreadBadge.textContent = count > 99 ? "99+" : count;
-      D.unreadBadge.style.display = "inline-flex";
-    } else {
-      D.unreadBadge.style.display = "none";
-    }
-  }
-
-  let toastHideTimer = null, toastCleanupTimer = null;
-  function showToast(text, duration = 1600) {
-    const c = $("toastContainer");
-    if (!c) return;
-    if (toastHideTimer) { clearTimeout(toastHideTimer); toastHideTimer = null; }
-    if (toastCleanupTimer) { clearTimeout(toastCleanupTimer); toastCleanupTimer = null; }
-    c.textContent = text;
-    c.style.display = "flex";
-    requestAnimationFrame(() => c.classList.add("show"));
-    toastHideTimer = setTimeout(() => {
-      c.classList.remove("show");
-      toastCleanupTimer = setTimeout(() => { c.style.display = "none"; }, 150);
-    }, duration);
-  }
-
-  function customConfirm(title, message, okText = "OK", cancelText = "キャンセル", isDanger = false) {
-    return new Promise((resolve) => {
-      const mod = $("confirmMod");
-      const titleEl = $("confirmTitle");
-      const msgEl = $("confirmMessage");
-      const okBtn = $("confirmOkBtn");
-      const cancelBtn = $("confirmCancelBtn");
-      if (!mod) { resolve(window.confirm(message)); return; }
-      titleEl.textContent = title;
-      msgEl.textContent = message;
-      okBtn.textContent = okText;
-      cancelBtn.textContent = cancelText;
-      okBtn.style.background = isDanger ? "var(--ro)" : "#334155";
-      mod.classList.add("show");
-
-      const cleanup = (result) => {
-        mod.classList.remove("show");
-        okBtn.removeEventListener("click", onOk);
-        cancelBtn.removeEventListener("click", onCancel);
-        resolve(result);
-      };
-      function onOk(e) { e.preventDefault(); cleanup(true); }
-      function onCancel(e) { e.preventDefault(); cleanup(false); }
-      okBtn.addEventListener("click", onOk);
-      cancelBtn.addEventListener("click", onCancel);
-    });
-  }
-
-  // TextEncoder/TextDecoderは使い回して余分なアロケーションを避ける
   const _txtEnc = (typeof TextEncoder !== 'undefined') ? new TextEncoder() : null;
   const _txtDec = (typeof TextDecoder !== 'undefined') ? new TextDecoder() : null;
 
@@ -764,7 +584,6 @@ function toggleAcc(id) {
       try {
         const passData = _txtEnc.encode(cacheKey.normalize('NFKC'));
         const hash = await crypto.subtle.digest("SHA-256", passData);
-        // AES-256-GCM
         const key = await crypto.subtle.importKey("raw", hash, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
         this.keyCache.set(cacheKey, key);
         return key;
@@ -801,7 +620,6 @@ function toggleAcc(id) {
     }
   };
 
-  // n(名前)/p(トリップ)/m(本文)をまとめて1回で暗号化する
   async function encodeMsgPayload(name, trip, msg) {
     return E2EE.encrypt(JSON.stringify({ n: name, p: trip, m: msg }), activeKey);
   }
@@ -812,7 +630,6 @@ function toggleAcc(id) {
         const parsed = JSON.parse(raw);
         m.n = parsed.n || ""; m.p = parsed.p || ""; m.m = parsed.m || "";
       } else {
-        // 旧フォーマット（個別暗号化）との後方互換フォールバック
         m.m = await E2EE.decrypt(m.m, activeKey);
         m.n = await E2EE.decrypt(m.n, activeKey);
         m.p = await E2EE.decrypt(m.p, activeKey);
@@ -893,6 +710,192 @@ function toggleAcc(id) {
     tripCache.set(uid, trip);
     return trip;
   };
+
+  /* ==========================================================================
+     リアルタイム爆速同期コア（DOM破棄・チラつき・待機時間を完全ゼロ化）
+     ========================================================================== */
+  let isDiffSyncing = false;
+
+  // 画面復帰・再接続時は「画面を一切消さず」に最新差分だけを高速取得・マージする
+  async function syncIncrementalDiff() {
+    if (!isJoined || !currentRoomId || !db || isDiffSyncing) return;
+    isDiffSyncing = true;
+    try {
+      db.goOnline();
+      const roomId = currentRoomId;
+
+      // 1. 直前の全削除時刻と設定を検証
+      const settingsSnap = await db.ref(`settings/${roomId}`).once("value");
+      const sVal = settingsSnap.val() || {};
+      const serverClearTime = sVal.last_cleared_at || 0;
+      
+      // もし不在中に部屋の全削除が実行されていた場合のみ、古いログを安全にパージする
+      if (serverClearTime > localLastClearedTime) {
+        localLastClearedTime = serverClearTime;
+        clearChatUIOnly();
+        latestDisplayedTs = serverClearTime;
+      }
+
+      // 2. 最後に画面に表示した時刻以降の新着発言のみを差分取得
+      const chatSnap = await db.ref(`chat/${roomId}`)
+        .orderByChild("t")
+        .startAt(latestDisplayedTs + 1)
+        .once("value");
+
+      const rawCandidates = [];
+      chatSnap.forEach(child => {
+        if (!displayedMsgIds.has(child.key) && !processingMsgIds.has(child.key)) {
+          const m = child.val();
+          if (m) { m.id = child.key; rawCandidates.push(m); }
+        }
+      });
+
+      if (rawCandidates.length > 0) {
+        rawCandidates.forEach(m => processingMsgIds.add(m.id));
+        await Promise.all(rawCandidates.map(m => decodeMsgPayload(m)));
+        rawCandidates.sort((a, b) => {
+          const diff = getMsgTime(a) - getMsgTime(b);
+          return diff !== 0 ? diff : a.id.localeCompare(b.id);
+        });
+
+        const isAtBottom = D.tl && (D.tl.scrollHeight - (D.tl.scrollTop + D.tl.clientHeight) <= 80);
+        const fragment = document.createDocumentFragment();
+
+        rawCandidates.forEach(m => {
+          processingMsgIds.delete(m.id);
+          if (displayedMsgIds.has(m.id)) return;
+          // 復帰時の過去差分はアニメーションなしで静止表示（チラつきゼロ）
+          const el = cMsg(m, false);
+          fragment.appendChild(el);
+          const msgTime = getMsgTime(m);
+          if (msgTime > latestDisplayedTs) latestDisplayedTs = msgTime;
+          if (m.u !== myUid && m.u !== "system" && !m.sys && !isAtBottom) {
+            unreadMsgIds.add(m.id);
+          }
+        });
+
+        if (D.tli) D.tli.appendChild(fragment);
+        if (isAtBottom) { scBottom(true); unreadMsgIds.clear(); }
+        updateUnreadBadge();
+        updateJumpBtns();
+      }
+
+      // 3. 在室者リストはサーバー確定データから直接最新化（ゴースト防止）
+      const presSnap = await db.ref(`presence/${roomId}`).once("value");
+      handlePresenceUpdate(presSnap.val() || {});
+
+      lastSyncAt = getTrueTime();
+    } catch (e) {
+    } finally {
+      isDiffSyncing = false;
+    }
+  }
+
+  // 画面復帰イベント全般で差分同期を即時トリガー
+  if (typeof document !== 'undefined') {
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        syncIncrementalDiff();
+        startSmartAutoExitChecker();
+      } else if (smartTimerId) {
+        clearInterval(smartTimerId);
+        smartTimerId = null;
+      }
+    });
+    window.addEventListener("pageshow", syncIncrementalDiff);
+    window.addEventListener("focus", syncIncrementalDiff);
+    window.addEventListener("online", syncIncrementalDiff);
+
+    // ユーザー操作時の取りこぼしガード
+    const checkStale = () => {
+      if (isJoined && getTrueTime() - lastSyncAt > 2000) syncIncrementalDiff();
+    };
+    document.addEventListener("pointerdown", checkStale, { passive: true });
+  }
+
+  (async function initInitialScreenState() {
+    const wasJoined = safeLS.get("nz_is_joined") === "true";
+    const lastRoomId = safeLS.get("nz_last_room_id");
+    const lastRoomPass = safeLS.get("nz_last_room_pass");
+    const sessionStart = parseInt(safeLS.get("nz_session_start_time") || "0");
+    const lastPost = parseInt(safeLS.get("nz_last_post_time") || "0");
+    const baselineTime = Math.max(sessionStart, lastPost);
+    const nowTrue = Date.now();
+
+    if (wasJoined && lastRoomId && lastRoomPass && (nowTrue - baselineTime < AUTO_EXIT_MS)) {
+      const chatScr = document.getElementById("chatScreen");
+      if (chatScr) {
+        chatScr.style.display = "flex";
+        chatScr.classList.add("is-loading");
+      }
+      const logoTitle = document.getElementById("logoTitle");
+      if (logoTitle) logoTitle.innerHTML = `NEZUO CHAT<span class="sub-room">${lastRoomId === "official" ? "常設公式部屋" : lastRoomId}</span>`;
+
+      await Promise.all([syncServerOffset(), ensureAnonAuth()]).catch(()=>{});
+      joinRoom({ roomId: lastRoomId, roomPass: lastRoomPass, silent: true });
+    } else {
+      const lobbyScr = document.getElementById("lobbyScreen");
+      if (lobbyScr) lobbyScr.style.display = "flex";
+      ensureAnonAuth().then(() => runAdminZombieCleanup());
+    }
+  })();
+
+  function updateUnreadBadge() {
+    if (!D.unreadBadge) return;
+    const isAtBottom = D.tl && (D.tl.scrollHeight - (D.tl.scrollTop + D.tl.clientHeight) <= 40);
+    const count = isAtBottom ? 0 : unreadMsgIds.size;
+    if (isAtBottom) unreadMsgIds.clear();
+
+    if (count > 0) {
+      D.unreadBadge.textContent = count > 99 ? "99+" : count;
+      D.unreadBadge.style.display = "inline-flex";
+    } else {
+      D.unreadBadge.style.display = "none";
+    }
+  }
+
+  let toastHideTimer = null, toastCleanupTimer = null;
+  function showToast(text, duration = 1600) {
+    const c = $("toastContainer");
+    if (!c) return;
+    if (toastHideTimer) { clearTimeout(toastHideTimer); toastHideTimer = null; }
+    if (toastCleanupTimer) { clearTimeout(toastCleanupTimer); toastCleanupTimer = null; }
+    c.textContent = text;
+    c.style.display = "flex";
+    requestAnimationFrame(() => c.classList.add("show"));
+    toastHideTimer = setTimeout(() => {
+      c.classList.remove("show");
+      toastCleanupTimer = setTimeout(() => { c.style.display = "none"; }, 150);
+    }, duration);
+  }
+
+  function customConfirm(title, message, okText = "OK", cancelText = "キャンセル", isDanger = false) {
+    return new Promise((resolve) => {
+      const mod = $("confirmMod");
+      const titleEl = $("confirmTitle");
+      const msgEl = $("confirmMessage");
+      const okBtn = $("confirmOkBtn");
+      const cancelBtn = $("confirmCancelBtn");
+      if (!mod) { resolve(window.confirm(message)); return; }
+      titleEl.textContent = title;
+      msgEl.textContent = message;
+      okBtn.textContent = okText;
+      cancelBtn.textContent = cancelText;
+      okBtn.style.background = isDanger ? "var(--ro)" : "#334155";
+      mod.classList.add("show");
+
+      const cleanup = (result) => {
+        mod.classList.remove("show");
+        okBtn.removeEventListener("click", onOk);
+        cancelBtn.removeEventListener("click", onCancel);
+        resolve(result);
+      };
+      function onOk(e) { e.preventDefault(); cleanup(true); }
+      function onCancel(e) { e.preventDefault(); cleanup(false); }
+      okBtn.addEventListener("click", onOk);
+      cancelBtn.addEventListener("click", onCancel);
+    });
+  }
 
   const updateModalColorPreview = (color) => {
     if (D.clrPrev) {
@@ -1003,7 +1006,6 @@ function toggleAcc(id) {
   let preciseExitTimerId = null;
   let smartTimerId = null;
 
-  // 期限ちょうどに発火するタイマー。早発火してもチェック側の時刻判定で弾かれ、正しい残り時間で再スケジュールされる。
   function schedulePreciseExitCheck() {
     if (preciseExitTimerId) { clearTimeout(preciseExitTimerId); preciseExitTimerId = null; }
     if (!isJoined || !currentPresenceMap) return;
@@ -1015,7 +1017,7 @@ function toggleAcc(id) {
         if (remain < soonestRemain) soonestRemain = remain;
       }
     }
-    const SAFETY_CAP_MS = 300000; // 5分
+    const SAFETY_CAP_MS = 300000;
     const delay = soonestRemain === Infinity
       ? SAFETY_CAP_MS
       : Math.min(Math.max(0, soonestRemain) + 30, SAFETY_CAP_MS);
@@ -1025,7 +1027,6 @@ function toggleAcc(id) {
     }, delay);
   }
 
-  // 期限ちょうどの厳密タイマーに加え、前面表示中は1秒間隔のローカルチェックも併用してズレを防ぐ
   function startSmartAutoExitChecker() {
     stopSmartAutoExitChecker();
     if (!isJoined) return;
@@ -1042,14 +1043,8 @@ function toggleAcc(id) {
   }
 
   function stopSmartAutoExitChecker() {
-    if (preciseExitTimerId) {
-      clearTimeout(preciseExitTimerId);
-      preciseExitTimerId = null;
-    }
-    if (smartTimerId) {
-      clearInterval(smartTimerId);
-      smartTimerId = null;
-    }
+    if (preciseExitTimerId) { clearTimeout(preciseExitTimerId); preciseExitTimerId = null; }
+    if (smartTimerId) { clearInterval(smartTimerId); smartTimerId = null; }
   }
   
   async function checkAndTriggerExitForInactiveUsers(membersMap) {
@@ -1114,9 +1109,9 @@ function toggleAcc(id) {
     });
   }
 
-  // ============================================================
-  // 📞 通話機能（軽量・シンプル・低遅延 WebRTC）
-  // ============================================================
+  /* ==========================================================================
+     WebRTC 通話機能
+     ========================================================================== */
   const CALL_ICE_SERVERS = [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" }
@@ -1128,10 +1123,10 @@ function toggleAcc(id) {
 
   let callState = {
     active: false,
-    mode: null,          // 'both' | 'listen'
+    mode: null,
     localStream: null,
     muted: false,
-    peers: {},            // otherUid -> { pc, audioEl, refs:[...] }
+    peers: {},
     participantsRef: null
   };
 
@@ -1160,7 +1155,6 @@ function toggleAcc(id) {
         }
       }
 
-      // ミュートボタン（双方向時に中央配置）
       const muteBtn = $("callMuteBtn");
       if (muteBtn) {
         muteBtn.style.display = callState.mode === "both" ? "inline-flex" : "none";
@@ -1326,12 +1320,10 @@ function toggleAcc(id) {
     if (!callState.active || !isJoined || !currentRoomId || !db) return;
 
     if (callState.mode === "both") {
-      // 双方向 ➡ 聴くだけ（マイク停止）
       if (callState.localStream) {
         callState.localStream.getTracks().forEach(t => t.stop());
         callState.localStream = null;
       }
-
       callState.mode = "listen";
       callState.muted = false;
 
@@ -1349,7 +1341,6 @@ function toggleAcc(id) {
       showToast("🔈 「聴くだけ」に切り替えました（マイク停止）");
 
     } else {
-      // 聴くだけ ➡ 双方向（マイク開始）
       try {
         const newStream = await navigator.mediaDevices.getUserMedia(CALL_AUDIO_CONSTRAINTS);
         callState.localStream = newStream;
@@ -1417,6 +1408,21 @@ function toggleAcc(id) {
     showToast(callState.muted ? "🔇 マイクをミュートにしました" : "🎤 マイクのミュートを解除しました");
   }
 
+  /* ==========================================================================
+     チャット退室・初期化
+     ========================================================================== */
+  function clearChatUIOnly() {
+    displayedMsgIds.clear();
+    processingMsgIds.clear();
+    renderedMwNodes.clear();
+    unreadMsgIds.clear();
+    pendingSendMap.clear();
+    if (D.tli) D.tli.innerHTML = "";
+    if (D.pl) D.pl.innerHTML = "";
+    if ($("pcnt")) $("pcnt").style.display = "none";
+    updateUnreadBadge();
+  }
+
   async function doExit(isAuto = false) {
     await leaveCall();
     const cleanUid = myUid, cleanName = (myName || "").trim(), cleanTrip = myTrip || "", oldRoomId = currentRoomId, wasJoined = isJoined;
@@ -1432,7 +1438,8 @@ function toggleAcc(id) {
         await db.ref(`presence/${oldRoomId}/${cleanUid}`).remove().catch(()=>{});
         checkRoomSelfDestruct(oldRoomId);
       }
-      removeFirebaseListeners(); 
+      detachFirebaseListeners(); 
+      clearChatUIOnly();
       switchScreen("lobby");
       if (D.mi) D.mi.blur();
       showToast(isAuto ? "⏱️ 30分間発言がなかったため、自動退室しました。" : "🚪 退室しました。", 2200);
@@ -1484,6 +1491,7 @@ function toggleAcc(id) {
     roomSettings.passcode = val.passcode || "";
     roomSettings.approvedTrips = val.approvedTrips || {};
     roomSettings.creatorUid = val.creatorUid || "";
+    localLastClearedTime = val.last_cleared_at || 0;
 
     if (!settingsSnap.exists() || !roomSettings.creatorUid) {
       isNewRoom = true;
@@ -1505,7 +1513,10 @@ function toggleAcc(id) {
       if (userPass !== roomSettings.passcode) { alert("合言葉が一致しません。"); return; }
     }
 
-    removeFirebaseListeners(); isFirstLoad = true;
+    // 別部屋からの入室時はクリーンアップ
+    detachFirebaseListeners();
+    clearChatUIOnly();
+    isFirstLoad = true;
     currentRoomId = safeRoomPath; currentRoomPass = lobbyRoomPass;
     
     activeKey = await E2EE.deriveKey(safeRoomPath === "official" ? "official_secret_pass_2026" : lobbyRoomPass);
@@ -1513,7 +1524,8 @@ function toggleAcc(id) {
     try {
       db.ref(`banlist/${currentRoomId}/${myUid}`).on("value", s => {
         if (s.val() && isJoined) { 
-          removeFirebaseListeners(); 
+          detachFirebaseListeners(); 
+          clearChatUIOnly();
           isJoined = false; 
           switchScreen("lobby"); 
           showToast("🚫 管理者によりアクセスが制限（BAN）されました。", 2200); 
@@ -1537,7 +1549,7 @@ function toggleAcc(id) {
     setupFirebaseListeners();
 
     db.ref(`presence/${currentRoomId}/${myUid}`).set({ n: myName || "名無し", p: myTrip, c: curColor, t: firebase.database.ServerValue.TIMESTAMP })
-      .catch(() => showToast("⚠️ 入室状態の同期に失敗しました。再読み込みしてください。"));
+      .catch(() => showToast("⚠️ 入室状態の同期に失敗しました。"));
     startSmartAutoExitChecker();
 
     const cleanName = (myName || "").trim();
@@ -1581,26 +1593,30 @@ function toggleAcc(id) {
     const children = D.tli.children;
     let inserted = false;
 
-    for (let i = 0; i < children.length; i++) {
+    for (let i = children.length - 1; i >= 0; i--) {
       const child = children[i];
       const childTs = parseInt(child.dataset.ts || "0", 10);
       const childMid = child.dataset.mid || "";
 
-      if (ts < childTs || (ts === childTs && mid.localeCompare(childMid) < 0)) {
-        D.tli.insertBefore(el, child);
+      if (childTs < ts || (childTs === ts && childMid.localeCompare(mid) <= 0)) {
+        D.tli.insertBefore(el, child.nextSibling);
         inserted = true;
         break;
       }
     }
-    if (!inserted) D.tli.appendChild(el);
+    if (!inserted) {
+      if (children.length > 0 && parseInt(children[0].dataset.ts || "0", 10) > ts) {
+        D.tli.insertBefore(el, children[0]);
+      } else {
+        D.tli.appendChild(el);
+      }
+    }
   }
 
-  let latestDisplayedTs = 0;
-  
   async function syncSingleMessage(m, isNewIncoming = false) {
     if (!m || !m.id) return;
 
-    // 楽観送信の確定通知なら再描画せずローカル要素を確定状態に昇格させるだけにする
+    // 楽観送信の確定通知：再描画なしで確定状態に昇格
     if (m.cid && m.u === myUid && pendingSendMap.has(m.cid)) {
       const localId = pendingSendMap.get(m.cid);
       pendingSendMap.delete(m.cid);
@@ -1618,7 +1634,6 @@ function toggleAcc(id) {
         const delBtn = el.querySelector(".msg-del-btn");
         if (delBtn) delBtn.dataset.mid = m.id;
       } else if (!displayedMsgIds.has(m.id)) {
-        // ローカル要素が見つからない場合は通常通り描画（保険）
         await decodeMsgPayload(m);
         const newEl = cMsg(m, isNewIncoming);
         insertMessageInOrder(newEl);
@@ -1803,16 +1818,33 @@ function toggleAcc(id) {
     updateJumpBtns();
   }
 
+  /* 在室者（Presence）：ゴースト表示ゼロ化（キャッシュ不使用・サーバー確定時に描画） */
+  function handlePresenceUpdate(rawList) {
+    const now = getTrueTime();
+    const members = {};
+    for (const [id, u] of Object.entries(rawList || {})) {
+      // 描画前に30分超過の期限切れを即座に除外
+      if (u && u.n && typeof u.t === "number" && (now - u.t < AUTO_EXIT_MS)) {
+        members[id] = { id, ...u };
+      }
+    }
+    currentPresenceMap = members;
+    renderPresence(members);
+    if (Object.keys(members).length === 0) checkRoomSelfDestruct(currentRoomId);
+    checkAndTriggerExitForInactiveUsers(members);
+    schedulePreciseExitCheck();
+  }
+
   function renderPresence(serverListMap) {
     if (!D.pl) return;
     const sorted = Object.values(serverListMap).filter(m => m && m.n).sort((a, b) => a.id.localeCompare(b.id));
     
-    D.pl.style.display = "flex";
+    D.pl.style.display = sorted.length > 0 ? "flex" : "none";
     if ($("pcnt")) {
       const countStr = `${sorted.length}人`;
       if ($("pcnt").textContent !== countStr) {
         $("pcnt").textContent = countStr;
-        $("pcnt").style.display = "inline-block";
+        $("pcnt").style.display = sorted.length > 0 ? "inline-block" : "none";
       }
     }
 
@@ -1877,26 +1909,18 @@ function toggleAcc(id) {
     } catch(e) {}
   }
 
-  async function loadFullRoomDataAndSync(isResume = false) {
+  /* 初回のみ実行するフルローディング（初期表示完了後はDOMを破棄しない） */
+  async function loadInitialRoomData() {
     if (!db || !isJoined || !currentRoomId) return;
 
     try {
-      if (isResume) db.goOnline();
-      
       const [chatSnap, presSnap] = await Promise.all([
         db.ref(`chat/${currentRoomId}`).orderByChild("t").limitToLast(60).once("value"),
         db.ref(`presence/${currentRoomId}`).once("value"),
         syncServerOffset()
       ]);
       
-      const list = presSnap.val() || {}, members = {};
-      for (const [id, u] of Object.entries(list)) {
-        if (u && u.n && typeof u.t === "number") members[id] = { id, ...u };
-      }
-      currentPresenceMap = members;
-      renderPresence(members);
-      checkAndTriggerExitForInactiveUsers(members);
-      schedulePreciseExitCheck();
+      handlePresenceUpdate(presSnap.val() || {});
 
       const msgs = [];
       chatSnap.forEach(child => {
@@ -1905,17 +1929,13 @@ function toggleAcc(id) {
       });
 
       const resolvedMsgs = await Promise.all(msgs.map(m => decodeMsgPayload(m)));
-
       resolvedMsgs.sort((a, b) => {
         const timeDiff = getMsgTime(a) - getMsgTime(b);
         if (timeDiff !== 0) return timeDiff;
         return a.id.localeCompare(b.id);
       });
 
-      displayedMsgIds.clear();
-      processingMsgIds.clear();
-      renderedMwNodes.clear();
-      if (D.tli) D.tli.innerHTML = "";
+      clearChatUIOnly();
 
       const fragment = document.createDocumentFragment();
       resolvedMsgs.forEach(m => {
@@ -1936,15 +1956,15 @@ function toggleAcc(id) {
       const chatScr = $("chatScreen");
       if (chatScr) chatScr.classList.remove("is-loading");
 
+      // 新着発言をリアルタイム監視（常に最新のタイムスタンプ以降のみ購読）
       if (chatQuery) chatQuery.off("child_added");
-      if (directChatRef) directChatRef.off("child_removed");
-
       chatQuery = db.ref(`chat/${currentRoomId}`).orderByChild("t").startAt(latestDisplayedTs + 1);
       chatQuery.on("child_added", async child => {
         const m = child.val();
         if (m) { m.id = child.key; await syncSingleMessage(m, true); }
       });
 
+      if (directChatRef) directChatRef.off("child_removed");
       directChatRef = db.ref(`chat/${currentRoomId}`);
       directChatRef.on("child_removed", child => {
         const el = renderedMwNodes.get(child.key);
@@ -1961,93 +1981,10 @@ function toggleAcc(id) {
 
       lastSyncAt = getTrueTime();
     } catch (e) {
-      if (D.tli) D.tli.innerHTML = "";
-      if (D.pl) D.pl.innerHTML = "";
       const chatScr = $("chatScreen");
       if (chatScr) chatScr.classList.remove("is-loading");
       showToast("⚠️ 読み込みに失敗しました。再度お試しください。");
     }
-  }
-
-  function reconcileRoomData() {
-    if (!db || !isJoined || !currentRoomId) return Promise.resolve();
-    const roomId = currentRoomId;
-
-    // 未取得分のみ取得。削除の反映は常設のchild_removedリスナーに任せる。4系統は互いを待たず届いた順に反映する。
-    const chatP = db.ref(`chat/${roomId}`).orderByChild("t").startAt(latestDisplayedTs + 1).once("value").then(async chatSnap => {
-      const candidates = [];
-      chatSnap.forEach(child => {
-        if (!displayedMsgIds.has(child.key) && !processingMsgIds.has(child.key)) {
-          const m = child.val();
-          if (m) { m.id = child.key; candidates.push(m); }
-        }
-      });
-      if (candidates.length === 0) return;
-
-      const freshMsgs = [];
-      for (const m of candidates) {
-        if (m.cid && m.u === myUid && pendingSendMap.has(m.cid)) {
-          await syncSingleMessage(m, true);
-        } else {
-          freshMsgs.push(m);
-        }
-      }
-      if (freshMsgs.length === 0) { updateJumpBtns(); return; }
-
-      freshMsgs.forEach(m => processingMsgIds.add(m.id));
-      await Promise.all(freshMsgs.map(m => decodeMsgPayload(m)));
-      freshMsgs.sort((a, b) => {
-        const diff = getMsgTime(a) - getMsgTime(b);
-        return diff !== 0 ? diff : a.id.localeCompare(b.id);
-      });
-
-      const isAtBottom = D.tl && (D.tl.scrollHeight - (D.tl.scrollTop + D.tl.clientHeight) <= 80);
-      const fragment = document.createDocumentFragment();
-      freshMsgs.forEach(m => {
-        processingMsgIds.delete(m.id);
-        if (displayedMsgIds.has(m.id)) return;
-        fragment.appendChild(cMsg(m, true));
-        const msgTime = getMsgTime(m);
-        if (msgTime > latestDisplayedTs) latestDisplayedTs = msgTime;
-        if (m.u !== myUid && m.u !== "system" && !m.sys && !isAtBottom) unreadMsgIds.add(m.id);
-      });
-      if (D.tli) D.tli.appendChild(fragment);
-
-      if (isAtBottom) { scBottom(true); unreadMsgIds.clear(); }
-      updateUnreadBadge();
-      updateJumpBtns();
-    }).catch(()=>{});
-
-    const presP = db.ref(`presence/${roomId}`).once("value").then(presSnap => {
-      const list = presSnap.val() || {}, members = {};
-      for (const [id, u] of Object.entries(list)) {
-        if (u && u.n && typeof u.t === "number") members[id] = { id, ...u };
-      }
-      currentPresenceMap = members;
-      renderPresence(members);
-      if (Object.keys(members).length === 0) checkRoomSelfDestruct(roomId);
-      checkAndTriggerExitForInactiveUsers(members);
-      schedulePreciseExitCheck();
-    }).catch(()=>{});
-
-    const settingsP = db.ref(`settings/${roomId}`).once("value").then(settingsSnap => {
-      const val = settingsSnap.val() || {};
-      roomSettings.newEntriesDisabled = val.newEntriesDisabled || false;
-      roomSettings.passcode = val.passcode || "";
-      roomSettings.approvedTrips = val.approvedTrips || {};
-      roomSettings.creatorUid = val.creatorUid || "";
-      applyRoomSettingsUI();
-      renderCallBar();
-      const isAdmin = roomId === "official" ? checkIsGlobalAdmin() : (myUid === roomSettings.creatorUid);
-      if ($("adminBtnContainer")) $("adminBtnContainer").style.display = isAdmin ? "inline-flex" : "none";
-    }).catch(()=>{});
-
-    const banP = db.ref(`banlist/${roomId}`).once("value").then(banSnap => {
-      renderBanList(banSnap.val() || {});
-    }).catch(()=>{});
-
-    lastSyncAt = getTrueTime();
-    return Promise.all([chatP, presP, settingsP, banP]);
   }
 
   function renderBanList(bans) {
@@ -2083,26 +2020,11 @@ function toggleAcc(id) {
     settingsRef = db.ref(`settings/${currentRoomId}`);
     banListRef = db.ref(`banlist/${currentRoomId}`);
     presenceRef.off(); settingsRef.off(); banListRef.off();
-    if (directChatRef) directChatRef.off("child_removed");
 
-    await loadFullRoomDataAndSync(false);
+    await loadInitialRoomData();
 
-    let presenceRafId = null;
     presenceRef.on("value", s => {
-      // 判定ロジックは即時実行し、描画（renderPresence）だけをrAFで間引く
-      // （rAFはバックグラウンドで停止するため、ロジックまでそこに乗せると自動退室判定も止まってしまう）
-      const list = s.val() || {}, members = {};
-      for (const [id, u] of Object.entries(list)) {
-        if (u && u.n && typeof u.t === "number") members[id] = { id, ...u };
-      }
-      currentPresenceMap = members;
-
-      if (Object.keys(members).length === 0) checkRoomSelfDestruct(currentRoomId);
-      checkAndTriggerExitForInactiveUsers(members);
-      schedulePreciseExitCheck();
-
-      if (presenceRafId) cancelAnimationFrame(presenceRafId);
-      presenceRafId = requestAnimationFrame(() => { renderPresence(currentPresenceMap); });
+      handlePresenceUpdate(s.val() || {});
     });
 
     settingsRef.on("value", snap => {
@@ -2115,17 +2037,12 @@ function toggleAcc(id) {
       const serverClearTime = val.last_cleared_at || 0;
       if (serverClearTime && serverClearTime > localLastClearedTime) {
         localLastClearedTime = serverClearTime;
-        if (D.tli) D.tli.innerHTML = "";
-        displayedMsgIds.clear(); processingMsgIds.clear(); renderedMwNodes.clear(); unreadMsgIds.clear(); latestDisplayedTs = serverClearTime; updateUnreadBadge();
+        clearChatUIOnly();
+        latestDisplayedTs = serverClearTime;
         if (chatQuery) {
-          chatQuery.off(); if (directChatRef) directChatRef.off("child_removed");
+          chatQuery.off();
           chatQuery = db.ref(`chat/${currentRoomId}`).orderByChild("t").startAt(serverClearTime);
           chatQuery.on("child_added", async child => { const m = child.val(); if (m) { m.id = child.key; await syncSingleMessage(m, true); } });
-          directChatRef = db.ref(`chat/${currentRoomId}`);
-          directChatRef.on("child_removed", child => {
-            const el = renderedMwNodes.get(child.key);
-            if (el) { el.remove(); renderedMwNodes.delete(child.key); displayedMsgIds.delete(child.key); processingMsgIds.delete(child.key); unreadMsgIds.delete(child.key); updateUnreadBadge(); updateJumpBtns(); }
-          });
         }
       }
       applyRoomSettingsUI();
@@ -2145,24 +2062,25 @@ function toggleAcc(id) {
     myPresenceRef = db.ref(`presence/${currentRoomId}/${myUid}`);
     myPresenceRef.on("value", s => {
       if (isJoined && !s.exists()) {
-        myPresenceRef.off(); removeFirebaseListeners(); isJoined = false; switchScreen("lobby");
+        detachFirebaseListeners();
+        clearChatUIOnly();
+        isJoined = false;
+        switchScreen("lobby");
       }
     });
   }
 
-  function removeFirebaseListeners() {
-    if (chatQuery) chatQuery.off("child_added");
-    if (directChatRef) directChatRef.off("child_removed");
+  // リスナーだけを安全に解除する（DOMは消さない）
+  function detachFirebaseListeners() {
+    if (chatQuery) { chatQuery.off(); chatQuery = null; }
+    if (directChatRef) { directChatRef.off(); directChatRef = null; }
     if (db && currentRoomId) {
       db.ref(`settings/${currentRoomId}`).off("value");
       db.ref(`banlist/${currentRoomId}`).off("value");
     }
     if (myPresenceRef) { myPresenceRef.off("value"); myPresenceRef = null; }
-    if (presenceRef) presenceRef.off("value");
+    if (presenceRef) { presenceRef.off("value"); presenceRef = null; }
     isFirebaseListenersBound = false;
-    displayedMsgIds.clear(); processingMsgIds.clear(); renderedMwNodes.clear(); unreadMsgIds.clear(); pendingSendMap.clear(); updateUnreadBadge();
-    if (D.pl) D.pl.innerHTML = ""; if ($("pcnt")) $("pcnt").style.display = "none";
-    if (D.tli) D.tli.innerHTML = "";
   }
 
   function applyRoomSettingsUI() {
@@ -2202,24 +2120,20 @@ function toggleAcc(id) {
       const clearTs = getTrueTime();
       await db.ref(`settings/${currentRoomId}/last_cleared_at`).set(clearTs);
       await db.ref(`chat/${currentRoomId}`).remove();
-
       localLastClearedTime = clearTs;
-      if (D.tli) D.tli.innerHTML = "";
-      displayedMsgIds.clear(); processingMsgIds.clear(); renderedMwNodes.clear(); unreadMsgIds.clear();
-      updateUnreadBadge(); updateJumpBtns();
-
+      clearChatUIOnly();
       showToast("🗑️ すべての発言を削除しました。");
     } catch (e) {
       showToast("⚠️ 発言の全削除に失敗しました。");
     }
   }
 
+  /* 送信：楽観的UI更新（Optimistic UI）により遅延ゼロで即時反映 */
   function sendMessage() {
     if (!isJoined || !db) return;
     const text = D.mi.value.trim();
     if (!text) return;
 
-    // 送信は即座にローカル描画し、暗号化・送信はバックグラウンドで行う（連続送信もブロックしない）
     const cid = "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
     const keepOpen = D.kbKeepOpenChk && D.kbKeepOpenChk.checked;
     D.mi.value = ""; updateClrMsgBtnVisibility(); D.mi.style.height = "auto";
@@ -2240,7 +2154,6 @@ function toggleAcc(id) {
     (async () => {
       try {
         await ensureAnonAuth();
-
         const trueNow = getTrueTime();
         updateLastPostTime(trueNow);
 
@@ -2297,13 +2210,12 @@ function toggleAcc(id) {
         isOffsetLoaded = true;
       });
 
-      // 切断→再接続を検知したときだけ同期する（UIに接続状態は出さない）
       let hasDisconnectedOnce = false;
       db.ref(".info/connected").on("value", snap => {
         const nowConnected = snap.val() === true;
         if (nowConnected) {
           if (hasDisconnectedOnce) {
-            triggerFullResync();
+            syncIncrementalDiff();
             hasDisconnectedOnce = false;
           }
         } else {
@@ -2324,6 +2236,34 @@ function toggleAcc(id) {
       isConnectedBound = true;
     }
   };
+
+  async function runAdminZombieCleanup() {
+    if (!db || !checkIsGlobalAdmin()) return;
+    try {
+      const snap = await db.ref("presence").once("value");
+      const allRooms = snap.val() || {};
+      const now = Date.now() + serverTimeOffset;
+
+      for (const [roomId, members] of Object.entries(allRooms)) {
+        if (!members) continue;
+        let activeCount = 0;
+        for (const [uId, uData] of Object.entries(members)) {
+          if (uData && uData.t && (now - uData.t >= AUTO_EXIT_MS)) {
+            db.ref(`presence/${roomId}/${uId}`).remove().catch(()=>{});
+          } else {
+            activeCount++;
+          }
+        }
+        if (activeCount === 0 && roomId !== "official") {
+          db.ref(`chat/${roomId}`).remove().catch(()=>{});
+          db.ref(`settings/${roomId}`).remove().catch(()=>{});
+          db.ref(`presence/${roomId}`).remove().catch(()=>{});
+          db.ref(`banlist/${roomId}`).remove().catch(()=>{});
+          db.ref(`calls/${roomId}`).remove().catch(()=>{});
+        }
+      }
+    } catch (e) {}
+  }
 
   function initApp() {
     D = {
@@ -2365,7 +2305,6 @@ function toggleAcc(id) {
     if (D.exBtn) D.exBtn.addEventListener("click", (e) => { e.preventDefault(); customConfirm("退室確認", "本当にこの部屋から退室しますか？", "退室する", "キャンセル", true).then(ok => { if (ok) doExit(false); }); });
     if (D.sdBtn) D.sdBtn.addEventListener("click", (e) => { e.preventDefault(); sendMessage(); });
 
-    // 通話関連イベントリスナー
     if ($("callBtn")) $("callBtn").addEventListener("click", (e) => { e.preventDefault(); if ($("callModeMod")) $("callModeMod").classList.add("show"); });
     if ($("callModeCancelBtn")) $("callModeCancelBtn").addEventListener("click", (e) => { e.preventDefault(); if ($("callModeMod")) $("callModeMod").classList.remove("show"); });
     if ($("callJoinBothBtn")) $("callJoinBothBtn").addEventListener("click", (e) => { e.preventDefault(); if ($("callModeMod")) $("callModeMod").classList.remove("show"); startCall("both"); });
@@ -2387,12 +2326,10 @@ function toggleAcc(id) {
 
     if (D.mi) {
       D.mi.addEventListener("input", () => { updateClrMsgBtnVisibility(); D.mi.style.height = "auto"; D.mi.style.height = Math.min(D.mi.scrollHeight, 120) + "px"; });
-      
       D.mi.addEventListener("focus", () => {
         setTimeout(() => scBottom(true), 50);
         setTimeout(() => scBottom(true), 200);
       });
-
       D.mi.addEventListener("keydown", (e) => {
         if (e.key === "Enter" && !e.shiftKey) {
           const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -2404,7 +2341,6 @@ function toggleAcc(id) {
     if (typeof window !== 'undefined') {
       const appEl = $("app");
       let lastHeight = window.innerHeight;
-
       let rafPending = false;
       function syncViewportToKeyboard() {
         if (rafPending) return;
@@ -2556,7 +2492,6 @@ function toggleAcc(id) {
         if (!isMineMsg && !isAdminForRoom) { showToast("⚠️ この発言を削除する権限がありません。"); return; }
         customConfirm("発言の削除", "この発言を削除しますか？この操作は取り消せません。", "削除する", "キャンセル", true).then(ok => {
           if (!ok) return;
-          // 体感遅延ゼロ：確定を待たず即座にローカルから消し、失敗時だけ再同期して復元する
           if (el) {
             el.remove();
             renderedMwNodes.delete(mid);
@@ -2567,7 +2502,7 @@ function toggleAcc(id) {
           }
           db.ref(`chat/${currentRoomId}/${mid}`).remove().catch(() => {
             showToast("⚠️ 削除に失敗しました。");
-            triggerFullResync();
+            syncIncrementalDiff();
           });
         });
       });

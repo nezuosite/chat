@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#090d16">
-<title>NEZUO CHAT - LIVE STREAM</title>
+<title>NEZUO CHAT</title>
 <link rel="preconnect" href="https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app" crossorigin>
 <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
@@ -121,7 +121,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .mm{display:inline-flex;align-items:center;gap:4px;font-size:12px;flex-shrink:0;}
 .mm-name{font-weight:800;overflow:hidden;text-overflow:ellipsis;color:var(--usr-color)}
 .mm-trip{font-size:10px;color:var(--mu);opacity:0.8}
-.ts{color:var(--mu);opacity:.5;font-size:9px;font-family:monospace;margin-left:auto;}
+.ts{color:var(--mu);opacity:.5;font-size:9px;margin-left:auto;}
 
 .msg-del-btn{flex-shrink:0;font-size:10.5px;line-height:1;padding:2px 5px;border-radius:4px;background:rgba(244,63,94,0.12);border:1px solid rgba(244,63,94,0.3);color:#fda4af;margin-left:4px;}
 .msg-del-btn:active{opacity:.6}
@@ -143,7 +143,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 }
 
 .sys-msg{position:relative;text-align:center;font-size:11px;font-weight:bold;color:var(--mu);margin:4px auto;background:rgba(255,255,255,.04);padding:3px 10px;border-radius:8px;max-width:90%;word-break:break-all;line-height:1.4}
-.sys-ts{display:inline-block;font-size:9px;color:var(--mu);opacity:.75;font-family:monospace;margin-left:4px}
+.sys-ts{display:inline-block;font-size:9px;color:var(--mu);opacity:.75;margin-left:4px}
 
 #ib{display:flex;flex-direction:column;padding:6px calc(8px + env(safe-area-inset-right,0px)) calc(6px + var(--safe)) calc(8px + env(safe-area-inset-left,0px));background:var(--sf);border-top:1px solid var(--bd);gap:4px;flex-shrink:0;}
 #ibToolbar{width:100%;align-items:flex-end;display:flex;gap:8px}
@@ -363,7 +363,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
               <button id="admTripClearBtn" style="position: absolute; left: 115px; top: 3px; background: none; border: none; color: var(--mu); font-size: 13px; font-weight: bold; cursor: pointer; padding: 2px 4px;" title="クリア">×</button>
               <button class="btn" id="admTripAddBtn" style="background: #334155; color: #fff; font-size: 10px; height: 26px; width: 44px; font-weight: bold; border-radius: 4px;">追加</button>
             </div>
-            <div id="admTripList" style="background:var(--s2); border:1px solid var(--bd); border-radius:5px; max-height:45px; overflow-y:auto; padding:3px; font-size:10px; display:flex; flex-direction:column; gap:2px; font-family: monospace; margin-top: 2px;"></div>
+            <div id="admTripList" style="background:var(--s2); border:1px solid var(--bd); border-radius:5px; max-height:45px; overflow-y:auto; padding:3px; font-size:10px; display:flex; flex-direction:column; gap:2px; margin-top: 2px;"></div>
           </div>
           <div>
             <label style="font-size:9.5px; font-weight:bold; color: var(--mu); display:block; margin-bottom:2px;">🚫 追放（BAN）リスト</label>
@@ -644,11 +644,11 @@ function toggleAcc(id) {
         smartTimerId = null;
       }
     });
-    window.addEventListener("pageshow", triggerFullResync);
-    window.addEventListener("focus", triggerFullResync);
+    window.addEventListener("pageshow", triggerInstantSync);
+    window.addEventListener("focus", triggerInstantSync);
     window.addEventListener("online", triggerFullResync);
     if (navigator.connection && navigator.connection.addEventListener) {
-      navigator.connection.addEventListener("change", triggerFullResync);
+      navigator.connection.addEventListener("change", triggerInstantSync);
     }
 
     const checkStaleOnInteraction = () => {
@@ -936,7 +936,14 @@ function toggleAcc(id) {
       if ($("lobbyTripPrev")) $("lobbyTripPrev").textContent = `プレビュー: 名前を入力して識別ID生成`;
       if ($("btnCopyTrip")) $("btnCopyTrip").style.display = "none";
     }
-    if ($("lobbyAdminSec")) $("lobbyAdminSec").style.display = checkIsGlobalAdmin() ? "flex" : "none";
+    const isGlobalAdminNow = checkIsGlobalAdmin();
+    if ($("lobbyAdminSec")) $("lobbyAdminSec").style.display = isGlobalAdminNow ? "flex" : "none";
+    if (isGlobalAdminNow && db) {
+      db.ref("globalSettings/callsDisabled").once("value").then(snap => {
+        globalCallsDisabled = snap.val() === true;
+        if ($("lobbyCallsToggle")) $("lobbyCallsToggle").checked = globalCallsDisabled;
+      }).catch(() => {});
+    }
     validateLobbyInputs();
   };
 
@@ -2584,14 +2591,15 @@ function toggleAcc(id) {
     D.joinBtn.addEventListener("click", (e) => { e.preventDefault(); joinRoom(); });
     $("btnJoinOfficial").addEventListener("click", (e) => { e.preventDefault(); joinRoom({ roomId: "official", roomPass: "official" }); });
 
-    if ($("lobbyCallsToggle")) $("lobbyCallsToggle").addEventListener("change", () => {
+    if ($("lobbyCallsToggle")) $("lobbyCallsToggle").addEventListener("change", async () => {
       if (!checkIsGlobalAdmin() || !db) return;
       const checkedNow = $("lobbyCallsToggle").checked;
+      await ensureAnonAuth();
       db.ref("globalSettings/callsDisabled").set(checkedNow).then(() => {
         showToast(checkedNow ? "📴 通話機能を全体で無効にしました" : "📞 通話機能を全体で有効にしました");
-      }).catch(() => {
+      }).catch((err) => {
         $("lobbyCallsToggle").checked = !checkedNow;
-        showToast("⚠️ 設定の変更に失敗しました");
+        showToast(`⚠️ 設定の変更に失敗しました: ${err && err.message ? err.message : err}`, 4000);
       });
     });
 

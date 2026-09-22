@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#090d16">
-<title>NEZUO CHAT</title>
+<title>NEZUO CHAT - LIVE STREAM</title>
 <link rel="preconnect" href="https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app" crossorigin>
 <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
@@ -605,37 +605,36 @@ function toggleAcc(id) {
   }
 
   let isSyncingNow = false;
-  async function runSync(syncFn, timeoutMs, fullVisual) {
+  async function runSync(syncFn, timeoutMs) {
     if (!isJoined || !currentRoomId || !db) return;
     if (isSyncingNow) return;
     isSyncingNow = true;
     const releaseTimer = setTimeout(() => { isSyncingNow = false; }, timeoutMs);
-    const tlEl = $("tl"), plEl = $("pl"), chatScr = $("chatScreen");
-    if (fullVisual) {
-      if (chatScr) chatScr.classList.add("is-loading");
-    } else {
+    const tlEl = $("tl"), plEl = $("pl");
+    // 速く終わる同期ではダイム表示を一切見せない（点滅防止）。150ms以上かかった時だけ薄く表示する。
+    const dimTimer = setTimeout(() => {
       if (tlEl) tlEl.classList.add("is-syncing");
       if (plEl) plEl.classList.add("is-syncing");
-    }
+    }, 150);
     try {
       db.goOnline();
       await syncFn();
     } finally {
       clearTimeout(releaseTimer);
+      clearTimeout(dimTimer);
       isSyncingNow = false;
-      if (chatScr) chatScr.classList.remove("is-loading");
       if (tlEl) tlEl.classList.remove("is-syncing");
       if (plEl) plEl.classList.remove("is-syncing");
     }
   }
 
   // 操作時の取りこぼしチェック用の軽量差分同期
-  const triggerInstantSync = () => runSync(reconcileRoomData, 5000, false);
-  // 復帰・再接続イベント用：初回入室と全く同じ経路・同じ見た目（読み込み中表示→完了で表示）で最新化する
+  const triggerInstantSync = () => runSync(reconcileRoomData, 5000);
+  // 復帰・再接続イベント用：初回入室と全く同じ経路で最新化する（見た目は真っ暗にせず、薄く表示したまま裏で更新）
   const triggerFullResync = () => runSync(async () => {
     removeFirebaseListeners();
     await setupFirebaseListeners();
-  }, 8000, true);
+  }, 8000);
 
   // 復帰・再接続イベント全般で即時同期。取りこぼし対策として、操作時に同期が古ければその場でも同期する。
   const STALE_THRESHOLD_MS = 1200;
@@ -2557,7 +2556,19 @@ function toggleAcc(id) {
         if (!isMineMsg && !isAdminForRoom) { showToast("⚠️ この発言を削除する権限がありません。"); return; }
         customConfirm("発言の削除", "この発言を削除しますか？この操作は取り消せません。", "削除する", "キャンセル", true).then(ok => {
           if (!ok) return;
-          db.ref(`chat/${currentRoomId}/${mid}`).remove().catch(() => { showToast("⚠️ 削除に失敗しました。"); });
+          // 体感遅延ゼロ：確定を待たず即座にローカルから消し、失敗時だけ再同期して復元する
+          if (el) {
+            el.remove();
+            renderedMwNodes.delete(mid);
+            displayedMsgIds.delete(mid);
+            unreadMsgIds.delete(mid);
+            updateUnreadBadge();
+            updateJumpBtns();
+          }
+          db.ref(`chat/${currentRoomId}/${mid}`).remove().catch(() => {
+            showToast("⚠️ 削除に失敗しました。");
+            triggerFullResync();
+          });
         });
       });
     }

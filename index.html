@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#090d16">
-<title>NEZUO CHAT - LIVE STREAM</title>
+<title>NEZUO CHAT</title>
 <link rel="preconnect" href="https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app" crossorigin>
 <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
@@ -72,7 +72,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 
 #chatScreen { display: none; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; position: relative; }
 #chatScreen.is-loading { opacity: 0; pointer-events: none; visibility: hidden; }
-#chatScreen:not(.is-loading) { opacity: 1; visibility: visible; transition: opacity 0.15s ease-out; }
+#chatScreen:not(.is-loading) { opacity: 1; visibility: visible; transition: opacity 0.12s ease-out; }
 
 #adminAccordion {
   display: none; flex-direction: column; background: var(--sf); border-bottom: 1px solid var(--bd);
@@ -92,25 +92,21 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .call-chip.is-muted{opacity:0.65;}
 
 #callBar { display:none; flex-direction:column; background:#0b1f16; border-bottom:1px solid #14532d; flex-shrink:0; animation: slideDown 0.14s ease-out; }
-.call-actions-row {
-  display:flex; align-items:center; justify-content:center; gap:8px; width:100%; flex-wrap:nowrap;
-}
-.call-action-btn {
-  font-size:11px; font-weight:bold; height:28px; padding:0 12px; border-radius:5px; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; gap:4px;
-}
+.call-actions-row { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; flex-wrap:nowrap; }
+.call-action-btn { font-size:11px; font-weight:bold; height:28px; padding:0 12px; border-radius:5px; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; gap:4px; }
 
 #fixedPlayer{display:none;flex-direction:column;background:var(--s2);border-bottom:1px solid var(--bd);width:100%;animation: slideDown 0.14s ease-out;}
 #playerHeader{background:var(--sf);padding:8px 12px;font-size:12px;font-weight:bold;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--bd)}
 #playerContent{ width:100%;max-width:480px;background:#000;display:flex;justify-content:center;align-items:center;position:relative;margin:0 auto;overflow:hidden; }
 #playerCloseBtn{background:rgba(244, 63, 94, 0.15) !important;border:1px solid rgba(244, 63, 94, 0.4) !important;color: #fda4af !important;font-weight: 900 !important;padding: 4px 10px !important;font-size: 12px !important;border-radius: 5px;}
 
-/* コメントストリーム：チラつきを起こす不透明度アニメーションは全廃 */
+/* ログ領域：高速レンダリング */
 #tl{flex:1;min-height:0;overflow-y:auto;overflow-anchor:auto;padding:8px 12px;background-color:#070a10;-webkit-overflow-scrolling:touch;}
 #tl-inner{display:flex;flex-direction:column;justify-content:flex-start;gap:6px;width:100%;max-width:800px;margin:0 auto;min-height:100%}
 
 .mw{position:relative;display:flex;flex-direction:column;width:100%;padding:3px 6px;border-radius:4px;user-select:none;-webkit-user-select:none;transition:background 0.1s ease;}
 .mw:hover{background:rgba(255,255,255,0.02);}
-.mw.new-msg-anim{animation:fadeIn .18s cubic-bezier(0.16,1,0.3,1) forwards}
+.mw.new-msg-anim{animation:fadeIn .14s cubic-bezier(0.16,1,0.3,1) forwards}
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 .mw.is-pending { opacity: .55; }
 
@@ -316,7 +312,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
     <!-- チャット画面 -->
     <div id="chatScreen" class="is-loading" style="display: none; flex-direction: column; flex: 1; min-height: 0; overflow: hidden;">
 
-      <!-- ⚙️ 管理パネル -->
+      <!-- ⚙️ 管理設定パネル -->
       <div id="adminAccordion">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--bd); padding-bottom: 4px;">
           <span id="adminAccordionTitle" style="font-size: 12px; font-weight: bold; color: var(--tx);">⚙️ 管理設定パネル</span>
@@ -557,6 +553,7 @@ function toggleAcc(id) {
   const displayedMsgIds = new Set();
   const processingMsgIds = new Set();
   const pendingSendMap = new Map();
+  const decodedPayloadCache = new Map(); // 高速化：復号結果のLRUメモリキャッシュ
 
   let isFirstLoad = true, isFirebaseListenersBound = false;
   let scale = 1, panX = 0, panY = 0;
@@ -566,7 +563,7 @@ function toggleAcc(id) {
   let globalCallsDisabled = false;
   let localLastClearedTime = 0;
   let latestDisplayedTs = 0;
-  const AUTO_EXIT_MS = 1800000; // 30分
+  const AUTO_EXIT_MS = 1800000; // 厳密な30分（1,800,000ms）
   const UR = /(https?:\/\/[^\s\n<>"]+)/gi;
 
   const checkIsGlobalAdmin = () => (ADMIN_TRIPS.includes(myTrip) || ADMIN_TRIPS.includes(myTrip.replace("◆", "")));
@@ -623,20 +620,31 @@ function toggleAcc(id) {
   async function encodeMsgPayload(name, trip, msg) {
     return E2EE.encrypt(JSON.stringify({ n: name, p: trip, m: msg }), activeKey);
   }
+
   async function decodeMsgPayload(m) {
-    try {
-      if (m.d !== undefined) {
+    if (m.d !== undefined) {
+      if (decodedPayloadCache.has(m.d)) {
+        const p = decodedPayloadCache.get(m.d);
+        m.n = p.n; m.p = p.p; m.m = p.m;
+        return m;
+      }
+      try {
         const raw = await E2EE.decrypt(m.d, activeKey);
         const parsed = JSON.parse(raw);
         m.n = parsed.n || ""; m.p = parsed.p || ""; m.m = parsed.m || "";
-      } else {
+        decodedPayloadCache.set(m.d, { n: m.n, p: m.p, m: m.m });
+      } catch (e) {
+        m.n = m.u === "system" ? "システム" : "不明"; m.p = ""; m.m = "[復号エラー]";
+      }
+    } else {
+      try {
         m.m = await E2EE.decrypt(m.m, activeKey);
         m.n = await E2EE.decrypt(m.n, activeKey);
         m.p = await E2EE.decrypt(m.p, activeKey);
         if (typeof m.m === "string" && m.m.startsWith("[SYS]::")) m.m = m.m.substring(7);
+      } catch (e) {
+        m.n = m.u === "system" ? "システム" : "不明"; m.p = ""; m.m = "[復号エラー]";
       }
-    } catch (e) {
-      m.n = m.u === "system" ? "システム" : "不明"; m.p = ""; m.m = "[復号エラー]";
     }
     return m;
   }
@@ -712,11 +720,152 @@ function toggleAcc(id) {
   };
 
   /* ==========================================================================
+     高精度・絶対ズレない自動退室エンジン（1秒の狂いも許さない）
+     ========================================================================== */
+  let preciseExitTimerId = null;
+  let highResCheckIntervalId = null;
+  const exitingUsersLock = new Set();
+
+  function schedulePreciseExitCheck() {
+    if (preciseExitTimerId) { clearTimeout(preciseExitTimerId); preciseExitTimerId = null; }
+    if (!isJoined || !currentPresenceMap) return;
+
+    const now = getTrueTime();
+    let soonestRemain = Infinity;
+
+    for (const [id, u] of Object.entries(currentPresenceMap)) {
+      if (u && typeof u.t === "number" && !exitingUsersLock.has(id)) {
+        const remain = (u.t + AUTO_EXIT_MS) - now;
+        if (remain < soonestRemain) soonestRemain = remain;
+      }
+    }
+
+    if (soonestRemain === Infinity) return;
+
+    // 満了時刻を過ぎている場合は即座に実行
+    if (soonestRemain <= 0) {
+      checkAndTriggerExitForInactiveUsers();
+      return;
+    }
+
+    // 残り1秒を切ったらミリ秒判定の高精度インターバル（100ms周期）に切り替えて秒ズレを完全撲滅
+    if (soonestRemain <= 1200) {
+      startHighResMonitor();
+    } else {
+      // 満了の約1秒前まで大まかにタイマー待機
+      preciseExitTimerId = setTimeout(() => {
+        startHighResMonitor();
+      }, soonestRemain - 1000);
+    }
+  }
+
+  function startHighResMonitor() {
+    if (highResCheckIntervalId) return;
+    highResCheckIntervalId = setInterval(() => {
+      const now = getTrueTime();
+      let hasPending = false;
+      let shouldTrigger = false;
+
+      for (const [id, u] of Object.entries(currentPresenceMap)) {
+        if (u && typeof u.t === "number" && !exitingUsersLock.has(id)) {
+          hasPending = true;
+          if (now >= u.t + AUTO_EXIT_MS) {
+            shouldTrigger = true;
+            break;
+          }
+        }
+      }
+
+      if (shouldTrigger) {
+        stopHighResMonitor();
+        checkAndTriggerExitForInactiveUsers();
+      } else if (!hasPending) {
+        stopHighResMonitor();
+      }
+    }, 80); // 80msインターバルで1秒以内のズレを完全にシャットアウト
+  }
+
+  function stopHighResMonitor() {
+    if (highResCheckIntervalId) {
+      clearInterval(highResCheckIntervalId);
+      highResCheckIntervalId = null;
+    }
+  }
+
+  function startSmartAutoExitChecker() {
+    stopSmartAutoExitChecker();
+    if (!isJoined) return;
+    schedulePreciseExitCheck();
+  }
+
+  function stopSmartAutoExitChecker() {
+    if (preciseExitTimerId) { clearTimeout(preciseExitTimerId); preciseExitTimerId = null; }
+    stopHighResMonitor();
+    exitingUsersLock.clear();
+  }
+
+  async function checkAndTriggerExitForInactiveUsers() {
+    if (!isJoined || !db || !currentRoomId) return;
+    const nowTrue = getTrueTime();
+    const roomId = currentRoomId;
+
+    const expiredList = Object.entries(currentPresenceMap).filter(([id, u]) => {
+      return u && typeof u.t === "number" && (nowTrue >= u.t + AUTO_EXIT_MS) && !exitingUsersLock.has(id);
+    });
+
+    if (expiredList.length === 0) {
+      schedulePreciseExitCheck();
+      return;
+    }
+
+    expiredList.forEach(([id]) => exitingUsersLock.add(id));
+
+    await Promise.all(expiredList.map(async ([id, u]) => {
+      const pRef = db.ref(`presence/${roomId}/${id}`);
+      try {
+        const result = await pRef.transaction((currentData) => {
+          if (currentData !== null && (getTrueTime() >= currentData.t + AUTO_EXIT_MS)) {
+            return null; // DB上でアトミックに削除
+          }
+          return undefined;
+        });
+
+        if (result.committed) {
+          const userName = (u.n || "").trim();
+          const userTrip = (u.p || "").trim();
+          if (userName) {
+            // 1秒もズレない確定満了時刻をタイムスタンプに厳密設定
+            const exactExpiryTime = u.t + AUTO_EXIT_MS;
+            const rawSysText = "📢 [お知らせ] " + `${userName} ${userTrip}`.trim() + " が自動退室しました (30分間発言がなかったため)";
+            const encD = await encodeMsgPayload("システム", "", rawSysText);
+
+            await db.ref(`chat/${roomId}`).push({
+              u: "system",
+              c: "#f43f5e",
+              d: encD,
+              t: exactExpiryTime,
+              sys: true
+            });
+
+            if (id === myUid) {
+              doExit(true);
+            }
+          }
+        }
+      } catch (e) {
+      } finally {
+        exitingUsersLock.delete(id);
+      }
+    }));
+
+    schedulePreciseExitCheck();
+  }
+
+  /* ==========================================================================
      リアルタイム爆速同期コア（DOM破棄・チラつき・待機時間を完全ゼロ化）
      ========================================================================== */
   let isDiffSyncing = false;
 
-  // 画面復帰・再接続時は「画面を一切消さず」に最新差分だけを高速取得・マージする
   async function syncIncrementalDiff() {
     if (!isJoined || !currentRoomId || !db || isDiffSyncing) return;
     isDiffSyncing = true;
@@ -724,19 +873,23 @@ function toggleAcc(id) {
       db.goOnline();
       const roomId = currentRoomId;
 
-      // 1. 直前の全削除時刻と設定を検証
-      const settingsSnap = await db.ref(`settings/${roomId}`).once("value");
+      const [settingsSnap, presSnap] = await Promise.all([
+        db.ref(`settings/${roomId}`).once("value"),
+        db.ref(`presence/${roomId}`).once("value"),
+        syncServerOffset()
+      ]);
+
       const sVal = settingsSnap.val() || {};
       const serverClearTime = sVal.last_cleared_at || 0;
       
-      // もし不在中に部屋の全削除が実行されていた場合のみ、古いログを安全にパージする
       if (serverClearTime > localLastClearedTime) {
         localLastClearedTime = serverClearTime;
         clearChatUIOnly();
         latestDisplayedTs = serverClearTime;
       }
 
-      // 2. 最後に画面に表示した時刻以降の新着発言のみを差分取得
+      handlePresenceUpdate(presSnap.val() || {});
+
       const chatSnap = await db.ref(`chat/${roomId}`)
         .orderByChild("t")
         .startAt(latestDisplayedTs + 1)
@@ -764,7 +917,6 @@ function toggleAcc(id) {
         rawCandidates.forEach(m => {
           processingMsgIds.delete(m.id);
           if (displayedMsgIds.has(m.id)) return;
-          // 復帰時の過去差分はアニメーションなしで静止表示（チラつきゼロ）
           const el = cMsg(m, false);
           fragment.appendChild(el);
           const msgTime = getMsgTime(m);
@@ -780,10 +932,6 @@ function toggleAcc(id) {
         updateJumpBtns();
       }
 
-      // 3. 在室者リストはサーバー確定データから直接最新化（ゴースト防止）
-      const presSnap = await db.ref(`presence/${roomId}`).once("value");
-      handlePresenceUpdate(presSnap.val() || {});
-
       lastSyncAt = getTrueTime();
     } catch (e) {
     } finally {
@@ -791,22 +939,19 @@ function toggleAcc(id) {
     }
   }
 
-  // 画面復帰イベント全般で差分同期を即時トリガー
   if (typeof document !== 'undefined') {
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
         syncIncrementalDiff();
         startSmartAutoExitChecker();
-      } else if (smartTimerId) {
-        clearInterval(smartTimerId);
-        smartTimerId = null;
+      } else {
+        stopSmartAutoExitChecker();
       }
     });
     window.addEventListener("pageshow", syncIncrementalDiff);
     window.addEventListener("focus", syncIncrementalDiff);
     window.addEventListener("online", syncIncrementalDiff);
 
-    // ユーザー操作時の取りこぼしガード
     const checkStale = () => {
       if (isJoined && getTrueTime() - lastSyncAt > 2000) syncIncrementalDiff();
     };
@@ -1002,93 +1147,6 @@ function toggleAcc(id) {
 
   const updateLastPostTime = time => safeLS.set("nz_last_post_time", time.toString());
   const updateSessionStartTime = time => safeLS.set("nz_session_start_time", time.toString());
-
-  let preciseExitTimerId = null;
-  let smartTimerId = null;
-
-  function schedulePreciseExitCheck() {
-    if (preciseExitTimerId) { clearTimeout(preciseExitTimerId); preciseExitTimerId = null; }
-    if (!isJoined || !currentPresenceMap) return;
-    const now = getTrueTime();
-    let soonestRemain = Infinity;
-    for (const u of Object.values(currentPresenceMap)) {
-      if (u && typeof u.t === "number") {
-        const remain = (u.t + AUTO_EXIT_MS) - now;
-        if (remain < soonestRemain) soonestRemain = remain;
-      }
-    }
-    const SAFETY_CAP_MS = 300000;
-    const delay = soonestRemain === Infinity
-      ? SAFETY_CAP_MS
-      : Math.min(Math.max(0, soonestRemain) + 30, SAFETY_CAP_MS);
-    preciseExitTimerId = setTimeout(() => {
-      if (isJoined && currentPresenceMap) checkAndTriggerExitForInactiveUsers(currentPresenceMap);
-      schedulePreciseExitCheck();
-    }, delay);
-  }
-
-  function startSmartAutoExitChecker() {
-    stopSmartAutoExitChecker();
-    if (!isJoined) return;
-    schedulePreciseExitCheck();
-    const isForeground = (typeof document === 'undefined') || document.visibilityState === "visible";
-    if (isForeground) {
-      smartTimerId = setInterval(() => {
-        if (!isJoined) return;
-        if (currentPresenceMap && Object.keys(currentPresenceMap).length > 0) {
-          checkAndTriggerExitForInactiveUsers(currentPresenceMap);
-        }
-      }, 1000);
-    }
-  }
-
-  function stopSmartAutoExitChecker() {
-    if (preciseExitTimerId) { clearTimeout(preciseExitTimerId); preciseExitTimerId = null; }
-    if (smartTimerId) { clearInterval(smartTimerId); smartTimerId = null; }
-  }
-  
-  async function checkAndTriggerExitForInactiveUsers(membersMap) {
-    if (!isJoined || !db || !currentRoomId) return;
-    const nowTrue = getTrueTime();
-    const roomId = currentRoomId;
-
-    const expired = Object.entries(membersMap).filter(([, u]) => u && typeof u.t === "number" && (nowTrue - u.t >= AUTO_EXIT_MS));
-    if (expired.length === 0) return;
-
-    await Promise.all(expired.map(async ([id, u]) => {
-      const pRef = db.ref(`presence/${roomId}/${id}`);
-      try {
-        const result = await pRef.transaction((currentData) => {
-          if (currentData !== null && (nowTrue - currentData.t >= AUTO_EXIT_MS)) {
-            return null;
-          }
-          return undefined;
-        });
-
-        if (result.committed) {
-          const userName = (u.n || "").trim();
-          const userTrip = (u.p || "").trim();
-          if (userName) {
-            const exactExpiryTime = u.t + AUTO_EXIT_MS;
-            const rawSysText = "📢 [お知らせ] " + `${userName} ${userTrip}`.trim() + " が自動退室しました (30分間発言がなかったため)";
-            const encD = await encodeMsgPayload("システム", "", rawSysText);
-
-            await db.ref(`chat/${roomId}`).push({
-              u: "system",
-              c: "#f43f5e",
-              d: encD,
-              t: exactExpiryTime,
-              sys: true
-            });
-
-            if (id === myUid) {
-              doExit(true);
-            }
-          }
-        }
-      } catch (e) {}
-    }));
-  }
 
   function checkRoomSelfDestruct(roomId) {
     if (!db || !roomId || roomId === "official") return;
@@ -1417,6 +1475,7 @@ function toggleAcc(id) {
     renderedMwNodes.clear();
     unreadMsgIds.clear();
     pendingSendMap.clear();
+    decodedPayloadCache.clear();
     if (D.tli) D.tli.innerHTML = "";
     if (D.pl) D.pl.innerHTML = "";
     if ($("pcnt")) $("pcnt").style.display = "none";
@@ -1513,7 +1572,6 @@ function toggleAcc(id) {
       if (userPass !== roomSettings.passcode) { alert("合言葉が一致しません。"); return; }
     }
 
-    // 別部屋からの入室時はクリーンアップ
     detachFirebaseListeners();
     clearChatUIOnly();
     isFirstLoad = true;
@@ -1576,7 +1634,6 @@ function toggleAcc(id) {
     if (!D.tl) return;
     requestAnimationFrame(() => {
       D.tl.scrollTop = D.tl.scrollHeight;
-      setTimeout(() => { if (D.tl) D.tl.scrollTop = D.tl.scrollHeight; }, 10);
     });
   }
 
@@ -1616,7 +1673,6 @@ function toggleAcc(id) {
   async function syncSingleMessage(m, isNewIncoming = false) {
     if (!m || !m.id) return;
 
-    // 楽観送信の確定通知：再描画なしで確定状態に昇格
     if (m.cid && m.u === myUid && pendingSendMap.has(m.cid)) {
       const localId = pendingSendMap.get(m.cid);
       pendingSendMap.delete(m.cid);
@@ -1818,12 +1874,10 @@ function toggleAcc(id) {
     updateJumpBtns();
   }
 
-  /* 在室者（Presence）：ゴースト表示ゼロ化（キャッシュ不使用・サーバー確定時に描画） */
   function handlePresenceUpdate(rawList) {
     const now = getTrueTime();
     const members = {};
     for (const [id, u] of Object.entries(rawList || {})) {
-      // 描画前に30分超過の期限切れを即座に除外
       if (u && u.n && typeof u.t === "number" && (now - u.t < AUTO_EXIT_MS)) {
         members[id] = { id, ...u };
       }
@@ -1831,7 +1885,6 @@ function toggleAcc(id) {
     currentPresenceMap = members;
     renderPresence(members);
     if (Object.keys(members).length === 0) checkRoomSelfDestruct(currentRoomId);
-    checkAndTriggerExitForInactiveUsers(members);
     schedulePreciseExitCheck();
   }
 
@@ -1909,7 +1962,6 @@ function toggleAcc(id) {
     } catch(e) {}
   }
 
-  /* 初回のみ実行するフルローディング（初期表示完了後はDOMを破棄しない） */
   async function loadInitialRoomData() {
     if (!db || !isJoined || !currentRoomId) return;
 
@@ -1956,7 +2008,6 @@ function toggleAcc(id) {
       const chatScr = $("chatScreen");
       if (chatScr) chatScr.classList.remove("is-loading");
 
-      // 新着発言をリアルタイム監視（常に最新のタイムスタンプ以降のみ購読）
       if (chatQuery) chatQuery.off("child_added");
       chatQuery = db.ref(`chat/${currentRoomId}`).orderByChild("t").startAt(latestDisplayedTs + 1);
       chatQuery.on("child_added", async child => {
@@ -2070,7 +2121,6 @@ function toggleAcc(id) {
     });
   }
 
-  // リスナーだけを安全に解除する（DOMは消さない）
   function detachFirebaseListeners() {
     if (chatQuery) { chatQuery.off(); chatQuery = null; }
     if (directChatRef) { directChatRef.off(); directChatRef = null; }
@@ -2128,7 +2178,7 @@ function toggleAcc(id) {
     }
   }
 
-  /* 送信：楽観的UI更新（Optimistic UI）により遅延ゼロで即時反映 */
+  /* 送信：ゼロ・レイテンシー（Optimistic UI） */
   function sendMessage() {
     if (!isJoined || !db) return;
     const text = D.mi.value.trim();
@@ -2328,7 +2378,6 @@ function toggleAcc(id) {
       D.mi.addEventListener("input", () => { updateClrMsgBtnVisibility(); D.mi.style.height = "auto"; D.mi.style.height = Math.min(D.mi.scrollHeight, 120) + "px"; });
       D.mi.addEventListener("focus", () => {
         setTimeout(() => scBottom(true), 50);
-        setTimeout(() => scBottom(true), 200);
       });
       D.mi.addEventListener("keydown", (e) => {
         if (e.key === "Enter" && !e.shiftKey) {

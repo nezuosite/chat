@@ -6,7 +6,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#070a10">
-<title>NEZUO CHAT - LIVE STREAM</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23070a10'/%3E%3Ctext x='50' y='68' font-size='60' text-anchor='middle' fill='%23f1f5f9'%3E💬%3C/text%3E%3C/svg%3E">
+<title>NEZUO CHAT</title>
 <link rel="preconnect" href="https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app" crossorigin>
 <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
@@ -282,7 +283,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 </div>
 
 <div id="imgViewMod" class="mod-overlay">
-  <button class="modal-top-close" id="imgViewCloseBtn">✕</button>
+  <button class="modal-top-close" id="imgViewCloseBtn" aria-label="閉じる">✕</button>
   <div id="zoomViewport">
     <img id="imgViewSrc" src="" alt="拡大画像">
   </div>
@@ -511,6 +512,18 @@ function toggleAcc(id) {
 
   let myUid = safeLS.get("nz_permanent_uid") || ("user_" + Math.random().toString(36).substring(2, 11));
   if (!safeLS.get("nz_permanent_uid")) safeLS.set("nz_permanent_uid", myUid);
+
+  let inviteRoomId = "", inviteRoomPass = "";
+  (function parseInviteHash() {
+    try {
+      const hash = window.location.hash ? window.location.hash.substring(1) : "";
+      if (!hash) return;
+      const decoded = decodeURIComponent(escape(atob(hash)));
+      const params = new URLSearchParams(decoded);
+      const r = params.get("r"), p = params.get("p");
+      if (r && p) { inviteRoomId = r; inviteRoomPass = p; }
+    } catch (e) {}
+  })();
 
   const firebaseConfig = {
     apiKey: "AIzaSyCsRidc0smUQDaBwq-oki5NzxSHx6-ljiw",
@@ -976,7 +989,7 @@ function toggleAcc(id) {
 
   // ⚡ 起動時に真っ暗になる時間を0にする（即座にキャッシュ画面を復元）
   (async function initInitialScreenState() {
-    const wasJoined = safeLS.get("nz_is_joined") === "true";
+    const wasJoined = !inviteRoomId && safeLS.get("nz_is_joined") === "true";
     const lastRoomId = safeLS.get("nz_last_room_id");
     const lastRoomPass = safeLS.get("nz_last_room_pass");
     const sessionStart = parseInt(safeLS.get("nz_session_start_time") || "0");
@@ -1289,6 +1302,21 @@ function toggleAcc(id) {
         peerEntry.audioEl = audioEl;
       }
       audioEl.srcObject = event.streams[0];
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      const st = pc.iceConnectionState;
+      if (st === "failed" || st === "disconnected") {
+        setTimeout(() => {
+          const stillThere = callState.peers[otherId];
+          if (!callState.active || !stillThere || stillThere.pc !== pc) return;
+          const cur = pc.iceConnectionState;
+          if (cur !== "connected" && cur !== "completed") {
+            closePeerConnection(otherId);
+            connectToPeer(otherId);
+          }
+        }, 3000);
+      }
     };
 
     const pKey = callPairKey(myUid, otherId);
@@ -1876,7 +1904,7 @@ function toggleAcc(id) {
     }
     currentPresenceMap = members;
     renderPresence(members);
-    if (Object.keys(members).length === 0) checkRoomSelfDestruct(currentRoomId);
+    if (Object.keys(members).length === 0 && !isFirstLoad) checkRoomSelfDestruct(currentRoomId);
     schedulePreciseExitCheck();
   }
 
@@ -2022,6 +2050,39 @@ function toggleAcc(id) {
     }
   }
 
+  function renderApprovedTripsList(trips) {
+    const el = $("admTripList");
+    if (!el) return;
+    el.innerHTML = "";
+    const entries = Object.entries(trips || {});
+    if (entries.length === 0) {
+      el.innerHTML = `<span style="color:var(--mu); font-size:9.5px; padding:2px;">事前承認トリップはありません</span>`;
+      return;
+    }
+    entries.forEach(([key, trip]) => {
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.03); padding:3px 6px; border-radius:4px;";
+      const info = document.createElement("span");
+      info.style.cssText = "overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px;";
+      info.textContent = trip;
+      const rmBtn = document.createElement("button");
+      rmBtn.className = "btn";
+      rmBtn.style.cssText = "background:#334155; color:#fff; font-size:9px; height:20px; padding:0 6px; border-radius:3px; font-weight:bold;";
+      rmBtn.textContent = "削除";
+      rmBtn.addEventListener("click", () => removeApprovedTrip(key, trip));
+      row.appendChild(info); row.appendChild(rmBtn);
+      el.appendChild(row);
+    });
+  }
+
+  function removeApprovedTrip(key, tripLabel) {
+    const canManage = currentRoomId === "official" ? checkIsGlobalAdmin() : (myUid === roomSettings.creatorUid);
+    if (!db || !currentRoomId || !canManage) return;
+    db.ref(`settings/${currentRoomId}/approvedTrips/${key}`).remove().then(() => {
+      showToast(`📋 トリップ「${tripLabel}」の事前承認を解除しました`);
+    }).catch(() => showToast("⚠️ 削除に失敗しました"));
+  }
+
   function renderBanList(bans) {
     const banListEl = $("admBanList");
     if (!banListEl) return;
@@ -2068,6 +2129,7 @@ function toggleAcc(id) {
       roomSettings.passcode = val.passcode || "";
       roomSettings.approvedTrips = val.approvedTrips || {};
       roomSettings.creatorUid = val.creatorUid || "";
+      renderApprovedTripsList(roomSettings.approvedTrips);
 
       const serverClearTime = val.last_cleared_at || 0;
       if (serverClearTime && serverClearTime > localLastClearedTime) {
@@ -2139,6 +2201,7 @@ function toggleAcc(id) {
     if ($("admPassToggle")) $("admPassToggle").checked = !!roomSettings.passcode;
     if ($("admPass")) $("admPass").value = roomSettings.passcode || "";
     if ($("admPassContainer")) $("admPassContainer").style.display = roomSettings.passcode ? "flex" : "none";
+    renderApprovedTripsList(roomSettings.approvedTrips);
   }
 
   async function clearAllMessages() {
@@ -2157,10 +2220,14 @@ function toggleAcc(id) {
   }
 
   /* ⚡ 送信：Optimistic UI（遅延ゼロ秒・即座に吹き出し表示） */
+  let lastSendAt = 0;
   function sendMessage() {
     if (!isJoined || !db) return;
     const text = D.mi.value.trim();
     if (!text) return;
+    const nowClick = Date.now();
+    if (nowClick - lastSendAt < 350) return;
+    lastSendAt = nowClick;
 
     const cid = "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
     const keepOpen = D.kbKeepOpenChk && D.kbKeepOpenChk.checked;
@@ -2213,7 +2280,7 @@ function toggleAcc(id) {
       const offsetPromise = syncServerOffset().catch(() => {});
 
       if (myUid) {
-        const wasJoined = safeLS.get("nz_is_joined") === "true";
+        const wasJoined = !inviteRoomId && safeLS.get("nz_is_joined") === "true";
         const lastRoomId = safeLS.get("nz_last_room_id");
         const lastRoomPass = safeLS.get("nz_last_room_pass");
         const sessionStart = parseInt(safeLS.get("nz_session_start_time") || "0");
@@ -2497,6 +2564,12 @@ function toggleAcc(id) {
       $("admTripAddBtn").addEventListener("click", (e) => {
         e.preventDefault(); const tripVal = $("admTripInput").value.trim();
         if (!tripVal || !db || !currentRoomId) return;
+        if (tripVal.length !== 7 || !tripVal.startsWith("◆")) {
+          showToast("⚠️ 「◆」+6文字（合計7文字）で入力してください"); return;
+        }
+        if (Object.values(roomSettings.approvedTrips || {}).includes(tripVal)) {
+          showToast("⚠️ すでに登録されています"); return;
+        }
         const newKey = db.ref(`settings/${currentRoomId}/approvedTrips`).push().key;
         db.ref(`settings/${currentRoomId}/approvedTrips/${newKey}`).set(tripVal).then(() => {
           $("admTripInput").value = "";
@@ -2585,6 +2658,15 @@ function toggleAcc(id) {
     $("lobbyRoomPass").addEventListener("input", validateLobbyInputs);
     if ($("lobbyName")) $("lobbyName").value = safeLS.get("nz_ni") || "";
     syncProfileValues();
+
+    if (inviteRoomId) {
+      if ($("lobbyRoomId")) $("lobbyRoomId").value = inviteRoomId;
+      if ($("lobbyRoomPass")) $("lobbyRoomPass").value = inviteRoomPass;
+      history.replaceState(null, "", window.location.pathname + window.location.search);
+      validateLobbyInputs();
+      showToast("🔗 招待リンクを検出しました。名前を入力して入室してください。", 2600);
+    }
+
     initDirectDatabaseProcess();
   }
 

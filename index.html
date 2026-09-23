@@ -887,22 +887,44 @@ function toggleAcc(id) {
     }, 150);
   }
 
+  let isReconciling = false;
+  async function reconcileDeletedMessages(roomId) {
+    if (isReconciling || roomId !== currentRoomId || !db) return;
+    isReconciling = true;
+    try {
+      const chatSnap = await db.ref(`chat/${roomId}`).orderByChild("t").limitToLast(60).once("value");
+      const serverKeys = new Set();
+      chatSnap.forEach(child => serverKeys.add(child.key));
+      for (const localId of Array.from(displayedMsgIds)) {
+        if (!localId.startsWith("local_") && !serverKeys.has(localId)) {
+          removeMessageElementWithAnim(localId);
+        }
+      }
+    } catch (e) {
+    } finally {
+      isReconciling = false;
+    }
+  }
+
   async function syncIncrementalDiff() {
     if (!isJoined || !currentRoomId || !db || isDiffSyncing) return;
     isDiffSyncing = true;
     try {
       db.goOnline();
       const roomId = currentRoomId;
+      const sinceTs = latestDisplayedTs;
 
-      const [settingsSnap, presSnap] = await Promise.all([
+      // ⚡ 設定・入室者・新着ログを1回の並列往復で同時取得（体感速度を左右する最重要経路）
+      const [settingsSnap, presSnap, deltaSnap] = await Promise.all([
         db.ref(`settings/${roomId}`).once("value"),
         db.ref(`presence/${roomId}`).once("value"),
+        db.ref(`chat/${roomId}`).orderByChild("t").startAt(sinceTs).limitToLast(80).once("value"),
         syncServerOffset()
       ]);
 
       const sVal = settingsSnap.val() || {};
       const serverClearTime = sVal.last_cleared_at || 0;
-      
+
       if (serverClearTime > localLastClearedTime) {
         localLastClearedTime = serverClearTime;
         clearChatUIOnly();
@@ -911,25 +933,13 @@ function toggleAcc(id) {
 
       handlePresenceUpdate(presSnap.val() || {});
 
-      // 直近ログの同期 & 「不在中に相手が削除した発言」の完全検知
-      const chatSnap = await db.ref(`chat/${roomId}`).orderByChild("t").limitToLast(60).once("value");
-      const serverKeys = new Set();
       const rawCandidates = [];
-
-      chatSnap.forEach(child => {
-        serverKeys.add(child.key);
+      deltaSnap.forEach(child => {
         if (!displayedMsgIds.has(child.key) && !processingMsgIds.has(child.key)) {
           const m = child.val();
           if (m) { m.id = child.key; rawCandidates.push(m); }
         }
       });
-
-      // 🔍 サーバーに存在しないIDをローカルから消去（相手の削除を100%反映）
-      for (const localId of Array.from(displayedMsgIds)) {
-        if (!localId.startsWith("local_") && !serverKeys.has(localId)) {
-          removeMessageElementWithAnim(localId);
-        }
-      }
 
       // 新着差分のマージ
       if (rawCandidates.length > 0) {
@@ -962,6 +972,9 @@ function toggleAcc(id) {
       }
 
       lastSyncAt = getTrueTime();
+
+      // 🔍 「不在中に相手が削除した発言」の検知は表示をブロックせず裏で実施
+      reconcileDeletedMessages(roomId);
     } catch (e) {
     } finally {
       isDiffSyncing = false;
@@ -980,6 +993,10 @@ function toggleAcc(id) {
     window.addEventListener("pageshow", syncIncrementalDiff);
     window.addEventListener("focus", syncIncrementalDiff);
     window.addEventListener("online", syncIncrementalDiff);
+    document.addEventListener("resume", syncIncrementalDiff);
+    if (typeof navigator !== 'undefined' && navigator.connection && navigator.connection.addEventListener) {
+      navigator.connection.addEventListener("change", syncIncrementalDiff);
+    }
 
     const checkStale = () => {
       if (isJoined && getTrueTime() - lastSyncAt > 2000) syncIncrementalDiff();

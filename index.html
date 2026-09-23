@@ -571,6 +571,7 @@ function toggleAcc(id) {
   let currentPresenceMap = {}, isConnectedBound = false;
   let lastSyncAt = 0;
   let roomSettings = { passcode: "", newEntriesDisabled: false, approvedTrips: {}, creatorUid: "" };
+  let pendingPrefetch = null;
   let globalCallsDisabled = false;
   let localLastClearedTime = 0;
   let latestDisplayedTs = 0;
@@ -1565,22 +1566,31 @@ function toggleAcc(id) {
 
     const safeRoomPath = (lobbyRoomId === "official") ? "official" : await window.sha256(lobbyRoomId);
 
+    // ⚡ 判定クエリと同時に初期データを先読み開始（往復を直列化しない）
+    pendingPrefetch = {
+      roomId: safeRoomPath,
+      chat: db.ref(`chat/${safeRoomPath}`).orderByChild("t").limitToLast(60).once("value").catch(() => null),
+      pres: db.ref(`presence/${safeRoomPath}`).once("value").catch(() => null)
+    };
+
     let isBanned = false;
-    try {
-      const banSnap = await db.ref(`banlist/${safeRoomPath}/${myUid}`).once("value");
-      if (banSnap.exists() && banSnap.val()) isBanned = true;
-    } catch (e) {}
-
-    if (isBanned) { alert("この部屋の管理者により、アクセスが制限されています。"); return; }
-
     let settingsSnap = null;
-    let isNewRoom = false;
     try {
-      settingsSnap = await db.ref(`settings/${safeRoomPath}`).once("value");
+      const [banSnap, sSnap] = await Promise.all([
+        db.ref(`banlist/${safeRoomPath}/${myUid}`).once("value").catch(() => null),
+        db.ref(`settings/${safeRoomPath}`).once("value")
+      ]);
+      if (banSnap && banSnap.exists() && banSnap.val()) isBanned = true;
+      settingsSnap = sSnap;
     } catch (e) {
+      pendingPrefetch = null;
       alert("データベース接続、または権限エラーです。");
       return;
     }
+
+    if (isBanned) { pendingPrefetch = null; alert("この部屋の管理者により、アクセスが制限されています。"); return; }
+
+    let isNewRoom = false;
 
     const val = (settingsSnap && settingsSnap.val()) || {};
     roomSettings.newEntriesDisabled = val.newEntriesDisabled || false;
@@ -1603,10 +1613,10 @@ function toggleAcc(id) {
     const isGlobalAdmin = checkIsGlobalAdmin();
     const isHostOrAdmin = (safeRoomPath === "official" ? isGlobalAdmin : (myUid === roomSettings.creatorUid));
 
-    if (!options.silent && roomSettings.newEntriesDisabled && !hasApprovedTrip && !isHostOrAdmin) { alert("現在、新規の入室が制限されています。"); return; }
+    if (!options.silent && roomSettings.newEntriesDisabled && !hasApprovedTrip && !isHostOrAdmin) { pendingPrefetch = null; alert("現在、新規の入室が制限されています。"); return; }
     if (!options.silent && roomSettings.passcode && !hasApprovedTrip && !isHostOrAdmin) {
       const userPass = prompt("部屋の合言葉を入力してください：");
-      if (userPass !== roomSettings.passcode) { alert("合言葉が一致しません。"); return; }
+      if (userPass !== roomSettings.passcode) { pendingPrefetch = null; alert("合言葉が一致しません。"); return; }
     }
 
     detachFirebaseListeners();
@@ -2003,11 +2013,24 @@ function toggleAcc(id) {
     if (!db || !isJoined || !currentRoomId) return;
 
     try {
-      const [chatSnap, presSnap] = await Promise.all([
-        db.ref(`chat/${currentRoomId}`).orderByChild("t").limitToLast(60).once("value"),
-        db.ref(`presence/${currentRoomId}`).once("value"),
-        syncServerOffset()
-      ]);
+      let chatSnap, presSnap;
+      if (pendingPrefetch && pendingPrefetch.roomId === currentRoomId) {
+        const pf = pendingPrefetch;
+        pendingPrefetch = null;
+        [chatSnap, presSnap] = await Promise.all([pf.chat, pf.pres, syncServerOffset()]);
+        if (!chatSnap || !presSnap) {
+          [chatSnap, presSnap] = await Promise.all([
+            db.ref(`chat/${currentRoomId}`).orderByChild("t").limitToLast(60).once("value"),
+            db.ref(`presence/${currentRoomId}`).once("value")
+          ]);
+        }
+      } else {
+        [chatSnap, presSnap] = await Promise.all([
+          db.ref(`chat/${currentRoomId}`).orderByChild("t").limitToLast(60).once("value"),
+          db.ref(`presence/${currentRoomId}`).once("value"),
+          syncServerOffset()
+        ]);
+      }
       
       handlePresenceUpdate(presSnap.val() || {});
 

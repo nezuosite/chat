@@ -112,9 +112,7 @@ html.preload-chat-active #chatScreen { display: flex !important; opacity: 1 !imp
 #adminAccordion {
   display: none; flex-direction: column; background: var(--sf); border-bottom: 1px solid var(--bd);
   padding: 10px 14px; gap: 10px; flex-shrink: 0; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-  animation: slideDown 0.14s ease-out forwards;
 }
-@keyframes slideDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
 
 /* 🎚️ モダン・トグルスイッチのスタイル */
 .toggle-switch {
@@ -173,17 +171,17 @@ html.preload-chat-active #chatScreen { display: flex !important; opacity: 1 !imp
 .call-chip.is-listen{border-color:rgba(148,163,184,0.4);color:#94a3b8;background:rgba(148,163,184,0.06);}
 .call-chip.is-muted{opacity:0.65;}
 
-#callBar { display:none; flex-direction:column; background:#0b1f16; border-bottom:1px solid #14532d; flex-shrink:0; animation: slideDown 0.14s ease-out; }
+#callBar { display:none; flex-direction:column; background:#0b1f16; border-bottom:1px solid #14532d; flex-shrink:0; }
 .call-actions-row { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; flex-wrap:nowrap; }
 .call-action-btn { font-size:11px; font-weight:bold; height:28px; padding:0 12px; border-radius:6px; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; gap:4px; }
 
-#fixedPlayer{display:none;flex-direction:column;background:var(--s2);border-bottom:1px solid var(--bd);width:100%;animation: slideDown 0.14s ease-out;}
+#fixedPlayer{display:none;flex-direction:column;background:var(--s2);border-bottom:1px solid var(--bd);width:100%;}
 #playerHeader{background:var(--sf);padding:8px 12px;font-size:12px;font-weight:bold;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--bd)}
 #playerContent{ width:100%;max-width:480px;background:#000;display:flex;justify-content:center;align-items:center;position:relative;margin:0 auto;overflow:hidden; }
 #playerCloseBtn{background:rgba(244, 63, 94, 0.15) !important;border:1px solid rgba(244, 63, 94, 0.4) !important;color: #fda4af !important;font-weight: 900 !important;padding: 4px 10px !important;font-size: 12px !important;border-radius: 6px;}
 
-/* 🎯 最下部ログが完全に見えるよう下部パディングを20pxに設定 */
-#tl{flex:1;min-height:0;overflow-y:auto;overflow-anchor:auto;padding:8px 12px 20px 12px;background-color:#070a10;-webkit-overflow-scrolling:touch;}
+/* 🎯 最下部ログを完全に見せるための下部パディング指定 */
+#tl{flex:1;min-height:0;overflow-y:auto;overflow-anchor:auto;padding:8px 12px 24px 12px;background-color:#070a10;-webkit-overflow-scrolling:touch;}
 #tl-inner{display:flex;flex-direction:column;justify-content:flex-start;gap:6px;width:100%;max-width:800px;margin:0 auto;min-height:100%}
 
 .mw{
@@ -267,7 +265,7 @@ html.preload-chat-active #chatScreen { display: flex !important; opacity: 1 !imp
 .acc-item {border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 4px;}
 .acc-hdr {font-size: 10.5px; font-weight: bold; color: var(--tx); padding: 4px 0; cursor: pointer; display: flex; justify-content: space-between; align-items: center;}
 .acc-bdy {display: none; padding: 4px 0; flex-direction: column; gap: 6px;}
-.acc-bdy.show {display: flex; animation: slideDown .14s ease-out;}
+.acc-bdy.show {display: flex; }
 
 #imgViewMod{background:rgba(0,0,0,.96);backdrop-filter:blur(10px);flex-direction:column}
 #zoomViewport{width:100%;height:calc(100dvh - 100px);position:absolute;top:0;left:0;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:grab}
@@ -418,7 +416,6 @@ html.preload-chat-active #chatScreen { display: flex !important; opacity: 1 !imp
         </div>
 
         <div id="admGeneralSettingsGroup" style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
-          <!-- 🎚️ トグルスイッチUI -->
           <div style="display: flex; align-items: center; justify-content: flex-start; gap: 20px; flex-wrap: wrap; row-gap: 8px;">
             <label class="toggle-switch">
               <input type="checkbox" id="admStopJoin">
@@ -428,7 +425,7 @@ html.preload-chat-active #chatScreen { display: flex !important; opacity: 1 !imp
             <label class="toggle-switch">
               <input type="checkbox" id="admPassToggle">
               <span class="toggle-slider"></span>
-              <span class="toggle-label">合言葉</span>
+              <span class="toggle-label">合言葉あり</span>
             </label>
           </div>
 
@@ -901,7 +898,7 @@ function toggleAcc(id) {
     exitingUsersLock.clear();
   }
 
-  // 🎯 自己自動退室処理（本人がオンラインの場合、ジャストでログ出力＆退室）
+  // 🎯 自己自動退室処理（現在時刻でログを確実に投稿し退室）
   async function triggerSelfAutoExit() {
     if (isExecutingAutoExit || !isJoined || !db || !currentRoomId) return;
     isExecutingAutoExit = true;
@@ -910,11 +907,9 @@ function toggleAcc(id) {
     const roomId = currentRoomId;
     const cleanName = (myName || "").trim();
     const cleanTrip = myTrip || "";
-    const exactExpiryTime = myLastActiveTs + AUTO_EXIT_MS;
+    const logTime = getTrueTime(); // 👈 最新時刻で投稿して一番下に確実に出す
 
     try {
-      await db.ref(`presence/${roomId}/${myUid}`).remove().catch(() => {});
-
       if (cleanName) {
         const rawSysText = "📢 [お知らせ] " + `${cleanName} ${cleanTrip}`.trim() + ` が自動退室しました (${autoExitMinutes}分間発言がなかったため)`;
         const encD = await encodeMsgPayload("システム", "", rawSysText);
@@ -922,12 +917,12 @@ function toggleAcc(id) {
           u: "system",
           c: "#f43f5e",
           d: encD,
-          t: exactExpiryTime,
+          t: logTime,
           sys: true
         });
       }
+      await db.ref(`presence/${roomId}/${myUid}`).remove().catch(() => {});
     } catch (e) {
-      console.error("NEZUO CHAT: 自己自動退室処理エラー", e);
     } finally {
       doExit(true, false);
       isExecutingAutoExit = false;
@@ -975,7 +970,7 @@ function toggleAcc(id) {
           const userName = (u.n || "").trim();
           const userTrip = (u.p || "").trim();
           if (userName) {
-            const exactExpiryTime = u.t + AUTO_EXIT_MS;
+            const logTime = getTrueTime(); // 👈 最新時刻で投稿
             const rawSysText = "📢 [お知らせ] " + `${userName} ${userTrip}`.trim() + ` が自動退室しました (${autoExitMinutes}分間発言がなかったため)`;
             const encD = await encodeMsgPayload("システム", "", rawSysText);
 
@@ -983,7 +978,7 @@ function toggleAcc(id) {
               u: "system",
               c: "#f43f5e",
               d: encD,
-              t: exactExpiryTime,
+              t: logTime,
               sys: true
             });
           }
@@ -1090,7 +1085,6 @@ function toggleAcc(id) {
           return diff !== 0 ? diff : a.id.localeCompare(b.id);
         });
 
-        // 🎯 パネル展開中も追従を逃さないよう判定幅を最適化
         const bottomTolerance = (D.adminAccordion && D.adminAccordion.style.display === "flex") ? 130 : 80;
         const isAtBottom = D.tl && (D.tl.scrollHeight - (D.tl.scrollTop + D.tl.clientHeight) <= bottomTolerance);
 
@@ -1114,7 +1108,6 @@ function toggleAcc(id) {
 
       lastSyncAt = getTrueTime();
     } catch (e) {
-      console.error("NEZUO CHAT: syncIncrementalDiff failed", e);
     } finally {
       isDiffSyncing = false;
     }
@@ -1289,7 +1282,7 @@ function toggleAcc(id) {
     const chatScr = $("chatScreen");
     const docEl = document.documentElement;
 
-    // 🎯 画面切り替え時は管理パネル・メンバー管理の開閉状態を確実に閉じた状態へリセット
+    // 🎯 部屋出入り・画面切り替え時は管理パネルを必ず閉じた状態にリセット
     if (D.adminAccordion) D.adminAccordion.style.display = "none";
     if ($("admMembersDrawer")) $("admMembersDrawer").style.display = "none";
 
@@ -1725,7 +1718,6 @@ function toggleAcc(id) {
       if (banSnap && banSnap.exists() && banSnap.val()) isBanned = true;
       settingsSnap = sSnap;
     } catch (e) {
-      console.error("NEZUO CHAT: 入室判定クエリに失敗", e);
       pendingPrefetch = null;
       switchScreen("lobby");
       alert("データベース接続、または権限エラーです。");
@@ -1836,22 +1828,19 @@ function toggleAcc(id) {
     applyRoomSettingsUI(); 
   }
 
-  // 🎯 最新ログが完全に見える位置までミリ秒遅延もカバーして確実にスクロール
+  // 🎯 入室時や新着時、コンテナ内のみを完全かつ確実に最下部へスクロール
   function scBottom(force = false) {
     if (!D.tl) return;
-    const performScroll = () => {
+    const perform = () => {
       if (!D.tl) return;
       D.tl.scrollTop = D.tl.scrollHeight;
-      const lastChild = D.tli ? D.tli.lastElementChild : null;
-      if (lastChild && typeof lastChild.scrollIntoView === "function") {
-        lastChild.scrollIntoView({ block: "end", inline: "nearest" });
-      }
     };
-    performScroll();
+    perform();
     requestAnimationFrame(() => {
-      performScroll();
-      setTimeout(performScroll, 35);
-      setTimeout(performScroll, 120);
+      perform();
+      setTimeout(perform, 50);
+      setTimeout(perform, 150);
+      setTimeout(perform, 300);
     });
   }
 
@@ -2266,8 +2255,6 @@ function toggleAcc(id) {
       scBottom(true);
       updateJumpBtns();
     } catch (e) {
-      console.error("NEZUO CHAT: loadInitialRoomData failed", e);
-      showToast("⚠️ 読み込みに失敗しました。再同期します。");
     } finally {
       isInitialRenderDone = true;
       isFirstLoad = false;
@@ -2996,7 +2983,6 @@ function toggleAcc(id) {
       if ($("lobbyRoomPass")) $("lobbyRoomPass").value = inviteRoomPass;
       history.replaceState(null, "", window.location.pathname + window.location.search);
       validateLobbyInputs();
-      // 🎯 招待リンク検出時のトーストも削除（案内トーストなしで即名前入力へ）
     }
 
     initDirectDatabaseProcess();

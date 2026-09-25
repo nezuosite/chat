@@ -13,7 +13,6 @@
 <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://www.gstatic.com">
 
-<!--  1 -->
 <script>
 (function() {
   try {
@@ -36,13 +35,11 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@skyway-sdk/room/dist/skyway_room-latest.js"></script>
 
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-:root{
-  --bg:#070a10;--sf:#0f172a;--s2:#0b1120;--bd:#1e293b;--tx:#f8fafc;--mu:#94a3b8;--m2:#475569;
-  --in:#334155;--ro:#f43f5e;--usr-color:#f1f5f9;--safe:env(safe-area-inset-bottom,0px);
-}
+:root{--bg:#070a10;--sf:#0f172a;--s2:#0b1120;--bd:#1e293b;--tx:#f8fafc;--mu:#94a3b8;--m2:#475569;--in:#334155;--ro:#f43f5e;--usr-color:#f1f5f9;--safe:env(safe-area-inset-bottom,0px)}
 html,body{position:fixed;top:0;left:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none}
 input,textarea,select{font-family:inherit;font-size:16px!important;color:#f8fafc!important;-webkit-text-fill-color:#f8fafc!important;caret-color:#38bdf8!important;opacity:1!important}
 input::placeholder,textarea::placeholder{color:#64748b!important;-webkit-text-fill-color:#64748b!important;opacity:1!important}
@@ -230,7 +227,6 @@ html.preload-chat-active #chatScreen{display:flex!important;opacity:1!important}
       </div>
     </div>
 
-    <!--  -->
     <div id="chatScreen">
       <div id="adminAccordion">
         <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--bd);padding-bottom:4px;">
@@ -347,7 +343,6 @@ html.preload-chat-active #chatScreen{display:flex!important;opacity:1!important}
       </div>
     </div>
 
-    <!--  -->
     <div id="lobbyScreen">
       <div class="lobby-sec">
         <h2>  ()</h2>
@@ -420,7 +415,10 @@ function toggleAcc(id) {
 
 (function() {
  try {
-  const ADMIN_TRIPS = ["VEgOTO", "ZJBSxz", "VEgOTO", "ZJBSxz"];
+  /* ==========================================================================
+      
+     ========================================================================== */
+  const AUTH_WORKER_URL = "https://lucky-leaf-1efc.nezuo.workers.dev";
   const MAX_CHAT_LOGS = 100;
 
   function safeLS_get(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
@@ -480,6 +478,7 @@ function toggleAcc(id) {
   let hasEnteredLogged = false;
 
   let myName = safeLS.get("nz_ni") || "", myTrip = "";
+  let isMyTripAdmin = false; //  Cloudflare Worker
   let curColor = safeLS.get("nz_color") || "#f1f5f9";
   let tmpColor = curColor;
   let currentRoomId = "", currentRoomPass = "", isJoined = false;
@@ -510,7 +509,9 @@ function toggleAcc(id) {
   let isExecutingAutoExit = false;
 
   const UR = /(https?:\/\/[^\s\n<>"]+)/gi;
-  const checkIsGlobalAdmin = () => (ADMIN_TRIPS.includes(myTrip) || ADMIN_TRIPS.includes(myTrip.replace("", "")));
+
+  //  
+  const checkIsGlobalAdmin = () => isMyTripAdmin;
 
   const _txtEnc = (typeof TextEncoder !== 'undefined') ? new TextEncoder() : null;
   const _txtDec = (typeof TextDecoder !== 'undefined') ? new TextDecoder() : null;
@@ -624,8 +625,6 @@ function toggleAcc(id) {
     return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())}(${["", "", "", "", "", "", ""][d.getDay()]}) ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
   };
 
-  const SYSTEM_SALT = "nz_chat_salt_2026";
-  const tripCache = new Map();
   window.sha256 = async (str) => {
     if (E2EE.hasCrypto) {
       try {
@@ -642,30 +641,32 @@ function toggleAcc(id) {
     return (h1 >>> 0).toString(16).padStart(8, '0') + (h2 >>> 0).toString(16).padStart(8, '0');
   };
 
+  //  Cloudflare Worker
+  const tripCache = new Map();
   window.makeTripFromUid = async (uid) => {
     if (!uid) return "";
     if (tripCache.has(uid)) return tripCache.get(uid);
-    const mixed = SYSTEM_SALT + "_[UID]_" + uid;
-    let hashHex = "";
-    if (E2EE.hasCrypto) {
-      try {
-        const data = _txtEnc.encode(mixed);
-        const hash = await crypto.subtle.digest("SHA-256", data);
-        hashHex = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
-      } catch (e) { hashHex = await window.sha256(mixed); }
-    } else { hashHex = await window.sha256(mixed); }
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    let res = "";
-    for (let i = 0; i < 6; i++) {
-      res += chars[parseInt(hashHex.substring(i * 6, i * 6 + 6), 16) % 62];
+    try {
+      const res = await fetch(`${AUTH_WORKER_URL}/trip`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid })
+      });
+      const data = await res.json();
+      if (data && data.trip) {
+        tripCache.set(uid, data.trip);
+        isMyTripAdmin = !!data.isAdmin; //  
+        return data.trip;
+      }
+    } catch (e) {
+      console.error("Trip fetch error:", e);
     }
-    const trip = "" + res;
-    tripCache.set(uid, trip);
-    return trip;
+    const fallback = "" + Math.random().toString(36).substring(2, 8);
+    return fallback;
   };
 
   /* ==========================================================================
-      1  
+      1
      ========================================================================== */
   let exitWorker = null;
   const exitingUsersLock = new Set();
@@ -705,7 +706,6 @@ function toggleAcc(id) {
     exitingUsersLock.clear();
   }
 
-  //  1
   async function triggerSelfAutoExit() {
     if (isExecutingAutoExit || !isJoined || !db || !currentRoomId) return;
     isExecutingAutoExit = true;
@@ -714,7 +714,6 @@ function toggleAcc(id) {
     const roomId = currentRoomId;
     const cleanName = (myName || "").trim();
     const cleanTrip = myTrip || "";
-    //  1myLastActiveTs
     const exactExpiryTime = myLastActiveTs + AUTO_EXIT_MS;
 
     try {
@@ -733,19 +732,16 @@ function toggleAcc(id) {
     }
   }
 
-  //  1
   async function checkAndTriggerExactAutoExit() {
     if (!isJoined || !db || !currentRoomId || isExecutingAutoExit) return;
     const nowTrue = getTrueTime();
     const roomId = currentRoomId;
 
-    //  
     if (myLastActiveTs > 0 && (nowTrue >= myLastActiveTs + AUTO_EXIT_MS)) {
       await triggerSelfAutoExit();
       return;
     }
 
-    //  
     const isMeActive = (myLastActiveTs > 0 && (nowTrue < myLastActiveTs + AUTO_EXIT_MS));
     if (!isMeActive) return;
 
@@ -762,17 +758,15 @@ function toggleAcc(id) {
       try {
         const result = await pRef.transaction((currentData) => {
           if (currentData !== null && (getTrueTime() >= currentData.t + AUTO_EXIT_MS)) {
-            return null; // 
+            return null;
           }
           return undefined;
         });
 
-        // 
         if (result.committed && result.snapshot.val() === null) {
           const userName = (u.n || "").trim();
           const userTrip = (u.p || "").trim();
           if (userName) {
-            //  u.t1
             const exactExpiryTime = u.t + AUTO_EXIT_MS;
             const rawSysText = " [] " + `${userName} ${userTrip}`.trim() + `  (${autoExitMinutes})`;
             const encD = await encodeMsgPayload("", "", rawSysText);
@@ -910,7 +904,6 @@ function toggleAcc(id) {
     }
   }
 
-  //  
   if (typeof document !== 'undefined') {
     const triggerSyncAndCheck = () => {
       const savedScreen = safeLS.get("nz_current_screen") || "lobby";
@@ -1130,23 +1123,21 @@ function toggleAcc(id) {
   }
 
   /* ==========================================================================
-     WebRTC 
+      SkyWay SFU 
      ========================================================================== */
-  const CALL_ICE_SERVERS = [
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun1.l.google.com:19302" }
-  ];
   const CALL_AUDIO_CONSTRAINTS = {
     audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
     video: false
   };
 
-  let callState = {
-    active: false, mode: null, localStream: null, muted: false, peers: {}, participantsRef: null
-  };
+  let skywayContext = null;
+  let skywayRoomInstance = null;
+  let skywayMe = null;
+  let localAudioStream = null;
+  let localPublication = null;
 
-  const callPairKey = (a, b) => [a, b].sort().join("_");
-  const isCallSupported = () => !!(typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia && typeof window !== 'undefined' && window.RTCPeerConnection);
+  let callState = { active: false, mode: null, muted: false };
+  const isCallSupported = () => !!(typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
 
   function renderCallBar() {
     const bar = $("callBar"), btn = $("callBtn");
@@ -1198,209 +1189,173 @@ function toggleAcc(id) {
     });
   }
 
-  function closePeerConnection(otherId) {
-    const peer = callState.peers[otherId];
-    if (!peer) return;
-    try { peer.pc.close(); } catch (e) {}
-    if (peer.audioEl) {
-      try { peer.audioEl.srcObject = null; } catch (e) {}
-      peer.audioEl.remove();
-    }
-    peer.refs.forEach(([ref, evt, handler]) => { try { ref.off(evt, handler); } catch (e) {} });
-    delete callState.peers[otherId];
-  }
-
-  function connectToPeer(otherId) {
-    if (callState.peers[otherId] || !db || !currentRoomId) return;
-    const pc = new RTCPeerConnection({ iceServers: CALL_ICE_SERVERS });
-    const peerEntry = { pc, audioEl: null, refs: [] };
-    callState.peers[otherId] = peerEntry;
-
-    if (callState.localStream) {
-      callState.localStream.getAudioTracks().forEach(track => pc.addTrack(track, callState.localStream));
-    } else {
-      try { pc.addTransceiver("audio", { direction: "recvonly" }); } catch (e) {}
-    }
-
-    pc.ontrack = (event) => {
-      let audioEl = peerEntry.audioEl;
-      if (!audioEl) {
-        audioEl = document.createElement("audio");
-        audioEl.autoplay = true;
-        audioEl.playsInline = true;
-        audioEl.dataset.callUid = otherId;
-        document.body.appendChild(audioEl);
-        peerEntry.audioEl = audioEl;
-      }
-      audioEl.srcObject = event.streams[0];
-    };
-
-    pc.oniceconnectionstatechange = () => {
-      const st = pc.iceConnectionState;
-      if (st === "failed" || st === "disconnected") {
-        setTimeout(() => {
-          const stillThere = callState.peers[otherId];
-          if (!callState.active || !stillThere || stillThere.pc !== pc) return;
-          const cur = pc.iceConnectionState;
-          if (cur !== "connected" && cur !== "completed") {
-            closePeerConnection(otherId);
-            connectToPeer(otherId);
-          }
-        }, 3000);
-      }
-    };
-
-    const pKey = callPairKey(myUid, otherId);
-    const sigBase = db.ref(`calls/${currentRoomId}/signals/${pKey}`);
-    const myCandRef = sigBase.child(`candidates/${myUid}`);
-    const otherCandRef = sigBase.child(`candidates/${otherId}`);
-    const offerRef = sigBase.child("offer");
-    const answerRef = sigBase.child("answer");
-
-    pc.onicecandidate = (event) => {
-      if (event.candidate) myCandRef.push(event.candidate.toJSON()).catch(() => {});
-    };
-
-    const otherCandHandler = (snap) => {
-      const cand = snap.val();
-      if (cand) pc.addIceCandidate(new RTCIceCandidate(cand)).catch(() => {});
-    };
-    otherCandRef.on("child_added", otherCandHandler);
-    peerEntry.refs.push([otherCandRef, "child_added", otherCandHandler]);
-
-    const iAmInitiator = myUid < otherId;
-
-    if (iAmInitiator) {
-      pc.createOffer()
-        .then(offer => pc.setLocalDescription(offer))
-        .then(() => offerRef.set({ sdp: pc.localDescription.sdp, type: pc.localDescription.type, from: myUid }))
-        .catch(() => {});
-
-      const answerHandler = async (snap) => {
-        const ans = snap.val();
-        if (ans && ans.from === otherId && pc.signalingState !== "closed" && !pc.currentRemoteDescription) {
-          try { await pc.setRemoteDescription(new RTCSessionDescription(ans)); } catch (e) {}
-        }
-      };
-      answerRef.on("value", answerHandler);
-      peerEntry.refs.push([answerRef, "value", answerHandler]);
-    } else {
-      const offerHandler = async (snap) => {
-        const off = snap.val();
-        if (off && off.from === otherId && pc.signalingState !== "closed" && !pc.currentRemoteDescription) {
-          try {
-            await pc.setRemoteDescription(new RTCSessionDescription(off));
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-            await answerRef.set({ sdp: pc.localDescription.sdp, type: pc.localDescription.type, from: myUid });
-          } catch (e) {}
-        }
-      };
-      offerRef.on("value", offerHandler);
-      peerEntry.refs.push([offerRef, "value", offerHandler]);
-    }
-  }
-
-  function handleCallParticipantsChange(snap) {
-    const list = snap.val() || {};
+  function updateSkyWayParticipantsUI() {
+    if (!skywayRoomInstance) return;
+    const list = {};
+    skywayRoomInstance.members.forEach(m => {
+      let meta = {};
+      try { meta = JSON.parse(m.metadata || "{}"); } catch(e){}
+      list[m.id] = { n: m.name, p: meta.trip || "", c: meta.color || "#fff", mode: meta.mode || "both", muted: meta.muted || false };
+    });
     renderCallParticipants(list);
-    const otherIds = Object.keys(list).filter(id => id !== myUid);
-    otherIds.forEach(otherId => { if (!callState.peers[otherId]) connectToPeer(otherId); });
-    Object.keys(callState.peers).forEach(id => { if (!list[id]) closePeerConnection(id); });
   }
 
   async function startCall(mode) {
-    if (!isJoined || !currentRoomId || !db || callState.active) return;
-    if (!isCallSupported() || globalCallsDisabled) return;
-
-    if (mode === "both") {
-      try {
-        callState.localStream = await navigator.mediaDevices.getUserMedia(CALL_AUDIO_CONSTRAINTS);
-      } catch (e) { return; }
-    } else {
-      callState.localStream = null;
+    if (!isJoined || !currentRoomId || callState.active || globalCallsDisabled) return;
+    if (!isCallSupported()) {
+      alert("");
+      return;
     }
 
-    callState.active = true;
-    callState.mode = mode;
-    callState.muted = false;
-    renderCallBar();
-
     try {
-      const myCallRef = db.ref(`calls/${currentRoomId}/participants/${myUid}`);
-      await myCallRef.set({ n: myName || "", p: myTrip, c: curColor, mode, muted: false, t: firebase.database.ServerValue.TIMESTAMP });
-      myCallRef.onDisconnect().remove();
+      const res = await fetch(`${AUTH_WORKER_URL}/token`);
+      if (!res.ok) throw new Error("");
+      const { token } = await res.json();
 
-      callState.participantsRef = db.ref(`calls/${currentRoomId}/participants`);
-      callState.participantsRef.on("value", handleCallParticipantsChange);
-    } catch (e) {
+      const roomLib = (typeof skyway_room !== "undefined") ? skyway_room : null;
+      if (!roomLib) throw new Error("SkyWay Room SDK");
+
+      skywayContext = await roomLib.SkyWayContext.Create(token);
+      skywayRoomInstance = await roomLib.SkyWayRoom.FindOrCreate(skywayContext, {
+        type: "sfu",
+        name: currentRoomId
+      });
+
+      skywayMe = await skywayRoomInstance.join({
+        name: myName || "",
+        metadata: JSON.stringify({ uid: myUid, trip: myTrip, color: curColor, mode, muted: false })
+      });
+
+      callState.active = true;
+      callState.mode = mode;
+      callState.muted = false;
+      renderCallBar();
+
+      if (mode === "both") {
+        localAudioStream = await roomLib.SkyWayStreamFactory.createMicrophoneAudioStream(CALL_AUDIO_CONSTRAINTS.audio);
+        localPublication = await skywayMe.publish(localAudioStream);
+      }
+
+      const subscribeAndPlay = async (publication) => {
+        if (!skywayMe || publication.publisher.id === skywayMe.id) return;
+        if (publication.contentType !== "audio") return;
+
+        const { stream } = await skywayMe.subscribe(publication.id);
+        let audioEl = document.querySelector(`audio[data-publisher-id="${publication.publisher.id}"]`);
+        if (!audioEl) {
+          audioEl = document.createElement("audio");
+          audioEl.autoplay = true;
+          audioEl.playsInline = true;
+          audioEl.dataset.publisherId = publication.publisher.id;
+          document.body.appendChild(audioEl);
+        }
+        stream.attach(audioEl);
+      };
+
+      skywayRoomInstance.publications.forEach(subscribeAndPlay);
+      skywayRoomInstance.onStreamPublished.add((e) => subscribeAndPlay(e.publication));
+
+      skywayRoomInstance.onMemberLeft.add((e) => {
+        document.querySelectorAll(`audio[data-publisher-id="${e.member.id}"]`).forEach(el => el.remove());
+        updateSkyWayParticipantsUI();
+      });
+
+      skywayRoomInstance.onMemberJoined.add(() => updateSkyWayParticipantsUI());
+      updateSkyWayParticipantsUI();
+
+      if (db && currentRoomId && myUid) {
+        const myCallRef = db.ref(`calls/${currentRoomId}/participants/${myUid}`);
+        await myCallRef.set({ n: myName || "", p: myTrip, c: curColor, mode, muted: false });
+        myCallRef.onDisconnect().remove();
+      }
+    } catch (err) {
+      console.error("SkyWay SFU:", err);
+      alert(": " + (err.message || err));
       await leaveCall();
     }
   }
 
   async function switchCallMode() {
-    if (!callState.active || !isJoined || !currentRoomId || !db) return;
+    if (!callState.active || !skywayMe || !skywayRoomInstance) return;
+    const roomLib = (typeof skyway_room !== "undefined") ? skyway_room : null;
+
     if (callState.mode === "both") {
-      if (callState.localStream) {
-        callState.localStream.getTracks().forEach(t => t.stop());
-        callState.localStream = null;
+      if (localPublication) {
+        await skywayMe.unpublish(localPublication.id).catch(()=>{});
+        localPublication = null;
+      }
+      if (localAudioStream) {
+        if (localAudioStream.track) localAudioStream.track.stop();
+        localAudioStream = null;
       }
       callState.mode = "listen";
       callState.muted = false;
-      Object.values(callState.peers).forEach(peer => {
-        peer.pc.getSenders().forEach(sender => { if (sender.track) { try { peer.pc.removeTrack(sender); } catch(e) {} } });
-      });
-      await db.ref(`calls/${currentRoomId}/participants/${myUid}`).update({ mode: "listen", muted: false }).catch(()=>{});
-      renderCallBar();
     } else {
       try {
-        const newStream = await navigator.mediaDevices.getUserMedia(CALL_AUDIO_CONSTRAINTS);
-        callState.localStream = newStream;
+        if (roomLib) {
+          localAudioStream = await roomLib.SkyWayStreamFactory.createMicrophoneAudioStream(CALL_AUDIO_CONSTRAINTS.audio);
+          localPublication = await skywayMe.publish(localAudioStream);
+        }
         callState.mode = "both";
         callState.muted = false;
-        const audioTrack = newStream.getAudioTracks()[0];
-        for (const [otherId, peer] of Object.entries(callState.peers)) {
-          try {
-            peer.pc.addTrack(audioTrack, newStream);
-            const offer = await peer.pc.createOffer();
-            await peer.pc.setLocalDescription(offer);
-            const pKey = callPairKey(myUid, otherId);
-            await db.ref(`calls/${currentRoomId}/signals/${pKey}/offer`).set({
-              sdp: peer.pc.localDescription.sdp, type: peer.pc.localDescription.type, from: myUid
-            });
-          } catch(e) {}
-        }
-        await db.ref(`calls/${currentRoomId}/participants/${myUid}`).update({ mode: "both", muted: false }).catch(()=>{});
-        renderCallBar();
-      } catch (err) {}
+      } catch (err) {
+        alert("");
+        return;
+      }
     }
-  }
 
-  async function leaveCall() {
-    if (!callState.active && Object.keys(callState.peers).length === 0 && !callState.localStream) return;
-    Object.keys(callState.peers).forEach(otherId => {
-      if (db && currentRoomId) db.ref(`calls/${currentRoomId}/signals/${callPairKey(myUid, otherId)}`).remove().catch(() => {});
-      closePeerConnection(otherId);
-    });
-    if (callState.localStream) {
-      callState.localStream.getTracks().forEach(t => t.stop());
-      callState.localStream = null;
-    }
-    if (callState.participantsRef) { callState.participantsRef.off("value", handleCallParticipantsChange); callState.participantsRef = null; }
+    await skywayMe.updateMetadata(JSON.stringify({ uid: myUid, trip: myTrip, color: curColor, mode: callState.mode, muted: false })).catch(()=>{});
     if (db && currentRoomId && myUid) {
-      try { await db.ref(`calls/${currentRoomId}/participants/${myUid}`).remove(); } catch (e) {}
+      await db.ref(`calls/${currentRoomId}/participants/${myUid}`).update({ mode: callState.mode, muted: false }).catch(()=>{});
     }
-    callState.active = false; callState.mode = null; callState.muted = false;
     renderCallBar();
+    updateSkyWayParticipantsUI();
   }
 
   function toggleMute() {
-    if (!callState.active || callState.mode !== "both" || !callState.localStream) return;
+    if (!callState.active || callState.mode !== "both" || !localAudioStream || !skywayMe) return;
     callState.muted = !callState.muted;
-    callState.localStream.getAudioTracks().forEach(t => { t.enabled = !callState.muted; });
+    if (localAudioStream.track) {
+      localAudioStream.track.enabled = !callState.muted;
+    }
+    skywayMe.updateMetadata(JSON.stringify({ uid: myUid, trip: myTrip, color: curColor, mode: callState.mode, muted: callState.muted })).catch(()=>{});
     if (db && currentRoomId && myUid) {
       db.ref(`calls/${currentRoomId}/participants/${myUid}/muted`).set(callState.muted).catch(() => {});
     }
+    renderCallBar();
+    updateSkyWayParticipantsUI();
+  }
+
+  async function leaveCall() {
+    if (!callState.active && !skywayRoomInstance) return;
+
+    document.querySelectorAll("audio[data-publisher-id]").forEach(el => el.remove());
+
+    if (localPublication && skywayMe) {
+      try { await skywayMe.unpublish(localPublication.id); } catch(e){}
+      localPublication = null;
+    }
+    if (localAudioStream) {
+      try { if (localAudioStream.track) localAudioStream.track.stop(); } catch(e){}
+      localAudioStream = null;
+    }
+    if (skywayRoomInstance && skywayMe) {
+      try { await skywayRoomInstance.leave(skywayMe); } catch(e){}
+      skywayRoomInstance = null;
+      skywayMe = null;
+    }
+    if (skywayContext) {
+      try { await skywayContext.dispose(); } catch(e){}
+      skywayContext = null;
+    }
+
+    if (db && currentRoomId && myUid) {
+      try { await db.ref(`calls/${currentRoomId}/participants/${myUid}`).remove(); } catch (e) {}
+    }
+
+    callState.active = false;
+    callState.mode = null;
+    callState.muted = false;
     renderCallBar();
   }
 
@@ -1495,7 +1450,6 @@ function toggleAcc(id) {
       return;
     }
 
-    //  
     if ((options.silent || options.isCrossTab) && presenceSnap && !presenceSnap.exists()) {
       switchScreen("lobby");
       doExit(true, true);
@@ -1545,7 +1499,18 @@ function toggleAcc(id) {
     isFirstLoad = true;
     currentRoomId = safeRoomPath; currentRoomPass = lobbyRoomPass;
     
-    activeKey = await E2EE.deriveKey(safeRoomPath === "official" ? "official_secret_pass_2026" : lobbyRoomPass);
+    //  
+    let targetPass = lobbyRoomPass;
+    if (safeRoomPath === "official") {
+      try {
+        const pRes = await fetch(`${AUTH_WORKER_URL}/official-pass`);
+        const pData = await pRes.json();
+        targetPass = pData.pass || "official_secret_pass_2026";
+      } catch (e) {
+        targetPass = "official_secret_pass_2026";
+      }
+    }
+    activeKey = await E2EE.deriveKey(targetPass);
 
     try {
       db.ref(`banlist/${currentRoomId}/${myUid}`).on("value", s => {
@@ -1613,7 +1578,6 @@ function toggleAcc(id) {
     applyRoomSettingsUI(); 
   }
 
-  //  
   function scBottom(force = false) {
     if (!D.tl) return;
     const perform = () => {
@@ -1962,7 +1926,6 @@ function toggleAcc(id) {
     } catch(e) {}
   }
 
-  //  
   async function loadInitialRoomData() {
     if (!db || !isJoined || !currentRoomId) return;
     const roomId = currentRoomId;
@@ -2158,7 +2121,6 @@ function toggleAcc(id) {
         doExit(true, false);
         return;
       }
-      //  1
       const val = s.val();
       if (val && typeof val.t === "number") {
         myLastActiveTs = val.t;
@@ -2346,7 +2308,6 @@ function toggleAcc(id) {
     }
   };
 
-  //  
   async function runAdminZombieCleanup() {
     if (!db) return;
     const isGlobal = checkIsGlobalAdmin();
@@ -2403,7 +2364,6 @@ function toggleAcc(id) {
     } catch (e) {}
   }
 
-  //  
   function handleCrossTabSync(data) {
     if (!data || data.senderTabId === tabSyncId) return;
 
@@ -2603,7 +2563,6 @@ function toggleAcc(id) {
 
     if (D.imgViewCloseBtn && D.imgViewMod) D.imgViewCloseBtn.addEventListener("click", (e) => { e.preventDefault(); D.imgViewMod.classList.remove("show"); });
 
-    //  
     if (D.admBtn && D.adminAccordion) {
       D.admBtn.addEventListener("click", (e) => {
         e.preventDefault();
@@ -2669,7 +2628,6 @@ function toggleAcc(id) {
       });
     }
 
-    //  
     if ($("admMembersToggleBtn") && $("admMembersDrawer")) {
       $("admMembersToggleBtn").addEventListener("click", (e) => {
         e.preventDefault();

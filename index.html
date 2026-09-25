@@ -700,7 +700,7 @@ function toggleAcc(id) {
   };
 
   /* ==========================================================================
-     ⏱️ 自動退室エンジン（高精度自己判定 ＆ 代理クリーンアップ）
+     ⏱️ 自動退室エンジン（満了時刻計算ログ ＆ 代理クリーンアップ）
      ========================================================================== */
   let exitWorker = null;
   const exitingUsersLock = new Set();
@@ -740,6 +740,7 @@ function toggleAcc(id) {
     exitingUsersLock.clear();
   }
 
+  // 🎯 自己自動退室処理（計算された満了時刻でログを記録・投稿）
   async function triggerSelfAutoExit() {
     if (isExecutingAutoExit || !isJoined || !db || !currentRoomId) return;
     isExecutingAutoExit = true;
@@ -748,14 +749,15 @@ function toggleAcc(id) {
     const roomId = currentRoomId;
     const cleanName = (myName || "").trim();
     const cleanTrip = myTrip || "";
-    const logTime = getTrueTime();
+    // 🎯 満了時刻（入室・発言時間から計算した時刻）をタイムスタンプに設定
+    const exactExpiryTime = myLastActiveTs + AUTO_EXIT_MS;
 
     try {
       if (cleanName) {
         const rawSysText = "📢 [お知らせ] " + `${cleanName} ${cleanTrip}`.trim() + ` が自動退室しました (${autoExitMinutes}分間発言がなかったため)`;
         const encD = await encodeMsgPayload("システム", "", rawSysText);
         await db.ref(`chat/${roomId}`).push({
-          u: "system", c: "#f43f5e", d: encD, t: logTime, sys: true
+          u: "system", c: "#f43f5e", d: encD, t: exactExpiryTime, sys: true
         });
       }
       await db.ref(`presence/${roomId}/${myUid}`).remove().catch(() => {});
@@ -766,6 +768,7 @@ function toggleAcc(id) {
     }
   }
 
+  // 🎯 周期監視：代理退室時も「入室・発言時間から計算した満了時刻」でログ投稿
   async function checkAndTriggerExactAutoExit() {
     if (!isJoined || !db || !currentRoomId || isExecutingAutoExit) return;
     const nowTrue = getTrueTime();
@@ -804,11 +807,12 @@ function toggleAcc(id) {
           const userName = (u.n || "").trim();
           const userTrip = (u.p || "").trim();
           if (userName) {
-            const logTime = getTrueTime();
+            // 🎯 後から発見しても、入室・発言時間から計算した満了時刻を設定！
+            const exactExpiryTime = u.t + AUTO_EXIT_MS;
             const rawSysText = "📢 [お知らせ] " + `${userName} ${userTrip}`.trim() + ` が自動退室しました (${autoExitMinutes}分間発言がなかったため)`;
             const encD = await encodeMsgPayload("システム", "", rawSysText);
             await db.ref(`chat/${roomId}`).push({
-              u: "system", c: "#f43f5e", d: encD, t: logTime, sys: true
+              u: "system", c: "#f43f5e", d: encD, t: exactExpiryTime, sys: true
             });
           }
         }
@@ -1998,7 +2002,6 @@ function toggleAcc(id) {
     let isInitialRenderDone = false;
 
     if (directChatQuery) directChatQuery.off();
-    // 確実に最新件数を取得する安定クエリ
     directChatQuery = db.ref(`chat/${roomId}`).limitToLast(MAX_CHAT_LOGS);
 
     directChatQuery.on("child_added", async child => {
@@ -2660,6 +2663,7 @@ function toggleAcc(id) {
       });
     }
 
+    // 🎯 メンバー管理ドロワー開閉時もスクロール位置をキープ
     if ($("admMembersToggleBtn") && $("admMembersDrawer")) {
       $("admMembersToggleBtn").addEventListener("click", (e) => {
         e.preventDefault();

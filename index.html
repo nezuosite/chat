@@ -11,7 +11,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23070a10'/%3E%3Ctext x='50' y='68' font-size='60' text-anchor='middle' fill='%23f1f5f9'%3E💬%3C/text%3E%3C/svg%3E">
 <title>NEZUO CHAT</title>
 
-<!-- 🔒 ローカル起動の即時完全遮断（一瞬のちらつきも物理的にゼロにする） -->
+<!-- 🔒 ローカル起動のゼロ秒完全遮断（チラつき・真っ黒化を物理的に完全防止） -->
 <script>
 (function() {
   var host = window.location.hostname;
@@ -26,37 +26,9 @@
 
   if (isLocal) {
     window.__IS_BLOCKED__ = true;
-    if (window.stop) window.stop();
-    document.write(`
-      <!DOCTYPE html>
-      <html lang="ja">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>アクセス制限</title>
-        <style>
-          html, body {
-            margin: 0; padding: 0; width: 100%; height: 100%;
-            background-color: #05070a !important; color: #f8fafc !important;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            display: flex; align-items: center; justify-content: center;
-          }
-          .box { text-align: center; padding: 24px; max-width: 420px; }
-        </style>
-      </head>
-      <body>
-        <div class="box">
-          <div style="font-size: 52px; margin-bottom: 16px;">🚫</div>
-          <div style="font-size: 19px; font-weight: 900; margin-bottom: 8px; color: #f8fafc;">この環境ではご利用いただけません</div>
-          <div style="font-size: 13px; color: #94a3b8; line-height: 1.6;">
-            ローカル環境（localhost / ファイル直開き）からのアクセスは禁止されています。<br>正規のWebサイトからアクセスしてください。
-          </div>
-        </div>
-      </body>
-      </html>
-    `);
-    document.close();
-    throw new Error("Access Denied: Local environment detected");
+    var s = document.createElement("style");
+    s.textContent = "html,body{background:#05070a!important;overflow:hidden!important;}#app,.mod-overlay,#toastContainer{display:none!important;}#localBlockOverlay{display:flex!important;}";
+    document.head.appendChild(s);
   }
 })();
 </script>
@@ -97,7 +69,7 @@
 :root{--bg:#070a10;--sf:#0f172a;--s2:#0b1120;--bd:#1e293b;--tx:#f8fafc;--mu:#94a3b8;--m2:#475569;--in:#334155;--ro:#f43f5e;--usr-color:#f1f5f9;--safe:env(safe-area-inset-bottom,0px)}
 html,body{position:fixed;top:0;left:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none;color-scheme:dark}
 
-/* ⚡ 文字の完全不透明化 */
+/* ⚡ 文字透明化バグの根絶（確実な不透明色強制・GPUバグ防止） */
 input,textarea,select{
   font-family:inherit;font-size:16px!important;
   color:#f8fafc!important;-webkit-text-fill-color:#f8fafc!important;
@@ -236,6 +208,13 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 <body>
 <noscript><div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;background:#05070a;color:#f1f5f9;font-family:sans-serif;text-align:center;line-height:1.6;">JavaScriptを有効にしてください。</div></noscript>
 <div id="toastContainer"></div>
+
+<!-- 🚫 ローカル遮断用オーバーレイ（即座に描画・チラつきゼロ） -->
+<div id="localBlockOverlay" style="display:none;position:fixed;inset:0;background:#05070a;color:#f8fafc;z-index:9999999;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
+  <div style="font-size:52px;margin-bottom:16px;">🚫</div>
+  <div style="font-size:19px;font-weight:900;margin-bottom:8px;color:#f8fafc;">この環境ではご利用いただけません</div>
+  <div style="font-size:13px;color:#94a3b8;max-width:420px;line-height:1.6;">ローカル環境（localhost / ファイル直開き）からのアクセスは禁止されています。<br>正規のWebサイトからアクセスしてください。</div>
+</div>
 
 <div id="clrmod" class="mod-overlay">
   <div class="gc" style="max-width:320px;">
@@ -380,7 +359,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
         </div>
 
         <div style="display:flex;gap:6px;align-items:center;margin-top:4px;width:100%;">
-          <div id="lobbyTripPrev">プレビュー: 準備中...</div>
+          <div id="lobbyTripPrev">プレビュー: 識別ID取得中...</div>
           <button class="btn" id="btnCopyTrip" style="background:#334155;color:#fff;font-size:11px;height:28px;width:80px;font-weight:bold;flex-shrink:0;display:none;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">📋 コピー</button>
         </div>
       </div>
@@ -443,7 +422,7 @@ function toggleAcc(id) {
   function safeLS_remove(key) { try { localStorage.removeItem(key); } catch (e) {} }
   const safeLS = { get: safeLS_get, set: safeLS_set, remove: safeLS_remove };
 
-  // 🔒 端末固有ID（ブラウザで一度生成されたら絶対に不変＝トリップ固定の鍵）
+  // 🔒 端末固有ID
   let myUid = safeLS.get("nz_permanent_uid");
   if (!myUid) {
     myUid = "usr_" + Math.random().toString(36).substring(2, 10) + Date.now().toString(36).substring(4);
@@ -484,12 +463,12 @@ function toggleAcc(id) {
   const db = firebase.database();
   const auth = firebase.auth();
 
-  // ⚡ 匿名認証（非同期完了を保証）
+  // ⚡ 匿名認証（非同期待機を保証）
   let authReadyPromise = null;
   function ensureAnonAuth() {
     if (auth.currentUser) return Promise.resolve(auth.currentUser);
     if (!authReadyPromise) {
-      authReadyPromise = auth.signInAnonymously().then(cred => cred.user).catch(() => {
+      authReadyPromise = auth.signInAnonymously().then(cred => cred.user).catch((e) => {
         authReadyPromise = null;
         return null;
       });
@@ -665,35 +644,35 @@ function toggleAcc(id) {
     return (h1 >>> 0).toString(16).padStart(8, '0') + (h2 >>> 0).toString(16).padStart(8, '0');
   };
 
-  // 🔒 トリップ生成（Worker通信＋ローカル確定計算フォールバックで◆000000を完全防止）
+  // 🔒 トリップ生成（必ずWorkerと通信して取得。画面側で勝手に捏造しない）
   window.makeTripFromUid = async (uid) => {
     if (!uid) return "";
-    const cached = safeLS.get("nz_cached_trip");
-    if (cached && cached !== "◆000000") {
-      myTrip = cached;
-      return cached;
-    }
-
     try {
       const res = await fetch(`${AUTH_WORKER_URL}/trip`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uid })
       });
-      const data = await res.json();
-      if (data && data.trip && data.trip !== "◆error") {
-        myTrip = data.trip;
-        safeLS.set("nz_cached_trip", myTrip);
-        isMyTripAdmin = !!data.isAdmin;
-        return data.trip;
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.trip && data.trip !== "◆error") {
+          myTrip = data.trip;
+          safeLS.set("nz_cached_trip", myTrip);
+          isMyTripAdmin = !!data.isAdmin;
+          return data.trip;
+        }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn("Worker trip fetch error:", e);
+    }
 
-    // 万が一Workerと通信できなくてもUIDから決定論的に固定トリップを導出
-    const localHash = await window.sha256(uid + ":NEZUO_FIXED_SALT_2026");
-    myTrip = "◆" + localHash.substring(0, 6);
-    safeLS.set("nz_cached_trip", myTrip);
-    return myTrip;
+    // Worker通信に失敗した場合は保存されたキャッシュがあればそれを使う
+    const cached = safeLS.get("nz_cached_trip");
+    if (cached) {
+      myTrip = cached;
+      return cached;
+    }
+    return "◆通信中...";
   };
 
   function injectAdminUIIfNeeded() {
@@ -1208,7 +1187,6 @@ function toggleAcc(id) {
     if ($("btnJoinOfficial")) $("btnJoinOfficial").disabled = isNameEmpty;
   };
 
-  // ⚡ 起動時にキャッシュから0秒で前回のトリップを表示
   const syncProfileValues = async () => {
     const nameVal = safeLS.get("nz_ni") || "";
     const colorVal = safeLS.get("nz_color") || "#f1f5f9";
@@ -1586,13 +1564,16 @@ function toggleAcc(id) {
     }
   }
 
-  // ⚡ フリールーム作成＆入室エンジン（自爆・誤退室バグ完全根絶版）
+  // ⚡ フリールーム作成＆入室エンジン（完全安定化版）
   async function joinRoom(options = {}) {
     if (!db) { alert("データベースが準備できていません。"); return; }
     let lobbyRoomId = options.roomId || ($("lobbyRoomId") ? $("lobbyRoomId").value.trim() : "");
     let lobbyRoomPass = options.roomPass || ($("lobbyRoomPass") ? $("lobbyRoomPass").value : "");
     if (!lobbyRoomId) { alert("部屋IDを入力してください。"); return; }
     if (lobbyRoomId !== "official" && !lobbyRoomPass) { alert("部屋パスワードを入力してください。"); return; }
+
+    const joinBtn = $("btnJoin");
+    if (joinBtn) { joinBtn.disabled = true; joinBtn.textContent = "接続中..."; }
 
     // 🔒 認証の完了を待機
     await ensureAnonAuth();
@@ -1609,12 +1590,14 @@ function toggleAcc(id) {
       if (banSnap && banSnap.exists() && banSnap.val()) isBanned = true;
       settingsSnap = sSnap;
     } catch (e) {
+      if (joinBtn) { joinBtn.disabled = false; joinBtn.textContent = "部屋に入る / 部屋を作る"; }
       switchScreen("lobby");
       alert("データベース接続、または権限エラーです。");
       return;
     }
 
     if (isBanned) {
+      if (joinBtn) { joinBtn.disabled = false; joinBtn.textContent = "部屋に入る / 部屋を作る"; }
       switchScreen("lobby");
       alert("この部屋の管理者により、アクセスが制限されています。");
       return;
@@ -1628,7 +1611,7 @@ function toggleAcc(id) {
     roomSettings.creatorUid = val.creatorUid || "";
     localLastClearedTime = val.last_cleared_at || 0;
 
-    // フリールーム新規作成（存在しない場合のみ書き込み・完了を確実に待つ）
+    // フリールーム新規作成（存在しない場合のみ書き込み・完了を待機）
     if (!settingsSnap || !settingsSnap.exists() || !roomSettings.creatorUid) {
       isNewRoom = true;
       const isGlobalAdmin = checkIsGlobalAdmin();
@@ -1650,6 +1633,7 @@ function toggleAcc(id) {
     const isHostOrAdmin = (safeRoomPath === "official" ? isGlobalAdmin : (myUid === roomSettings.creatorUid));
 
     if (!options.silent && roomSettings.newEntriesDisabled && !hasApprovedTrip && !isHostOrAdmin) {
+      if (joinBtn) { joinBtn.disabled = false; joinBtn.textContent = "部屋に入る / 部屋を作る"; }
       switchScreen("lobby");
       alert("現在、新規の入室が制限されています。");
       return;
@@ -1657,6 +1641,7 @@ function toggleAcc(id) {
     if (!options.silent && roomSettings.passcode && !hasApprovedTrip && !isHostOrAdmin) {
       const userPass = prompt("部屋の合言葉を入力してください：");
       if (userPass !== roomSettings.passcode) {
+        if (joinBtn) { joinBtn.disabled = false; joinBtn.textContent = "部屋に入る / 部屋を作る"; }
         switchScreen("lobby");
         alert("合言葉が一致しません。");
         return;
@@ -1724,6 +1709,8 @@ function toggleAcc(id) {
 
     setupFirebaseListeners();
     startSmartAutoExitChecker();
+
+    if (joinBtn) { joinBtn.disabled = false; joinBtn.textContent = "部屋に入る / 部屋を作る"; }
 
     const cleanName = (myName || "").trim();
     if (!options.silent && !options.isCrossTab && cleanName && !hasEnteredLogged) {
@@ -2249,13 +2236,11 @@ function toggleAcc(id) {
       handlePresenceUpdate(s.val() || {});
     });
 
-    // 🔒 部屋消滅による誤退出を防ぐ厳格ガード
     let hasRoomEverConfirmed = false;
     settingsRef.on("value", snap => {
       if (snap.exists()) {
         hasRoomEverConfirmed = true;
       } else if (hasRoomEverConfirmed && isJoined && currentRoomId !== "official") {
-        // 確実に存在していた部屋が「解散（削除）」された時のみ退出
         doExit(false, false);
         return;
       }
@@ -2352,13 +2337,14 @@ function toggleAcc(id) {
     } catch (e) {}
   }
 
+  // ⚡ 発言が即消去されるバグを完全解消（確実な送信・失敗時の再試行・ロールバック防止）
   let lastSendAt = 0;
   function sendMessage() {
     if (!isJoined || !db) return;
     const text = D.mi.value.trim();
     if (!text) return;
     const nowClick = Date.now();
-    if (nowClick - lastSendAt < 350) return;
+    if (nowClick - lastSendAt < 300) return;
     lastSendAt = nowClick;
 
     const cid = "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -2388,17 +2374,28 @@ function toggleAcc(id) {
         const encD = await encodeMsgPayload(myName || "名無し", myTrip, text);
         const postTs = firebase.database.ServerValue.TIMESTAMP;
         const newMsgKey = db.ref(`chat/${currentRoomId}`).push().key;
+        
+        // 🔒 メッセージ書き込み（安全なマルチパス、失敗時はフォールバック）
         const updates = {};
         updates[`chat/${currentRoomId}/${newMsgKey}`] = { u: myUid, c: curColor, t: postTs, cid, d: encD };
-        if (myPresenceRef) updates[`presence/${currentRoomId}/${myUid}/t`] = postTs;
-        await db.ref().update(updates);
+        updates[`presence/${currentRoomId}/${myUid}/t`] = postTs;
+
+        try {
+          await db.ref().update(updates);
+        } catch (upErr) {
+          // 単体セットで再試行
+          await db.ref(`chat/${currentRoomId}/${newMsgKey}`).set({ u: myUid, c: curColor, t: postTs, cid, d: encD });
+          db.ref(`presence/${currentRoomId}/${myUid}/t`).set(postTs).catch(()=>{});
+        }
       } catch (e) {
+        console.error("メッセージ送信エラー:", e);
         pendingSendMap.delete(cid);
         const el = renderedMwNodes.get(localId);
         if (el) el.remove();
         renderedMwNodes.delete(localId);
         displayedMsgIds.delete(localId);
         updateJumpBtns();
+        showToast("⚠️ 送信に失敗しました。再試行してください。");
       }
     })();
   }

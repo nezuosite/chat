@@ -7,6 +7,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#070a10">
 <meta name="color-scheme" content="dark">
+<!-- 🔒 Google APIキー制限を確実に通過させるためのリファラー送信保証 -->
+<meta name="referrer" content="no-referrer-when-downgrade">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23070a10'/%3E%3Ctext x='50' y='68' font-size='60' text-anchor='middle' fill='%23f1f5f9'%3E💬%3C/text%3E%3C/svg%3E">
 <title>NEZUO CHAT</title>
 
@@ -36,6 +38,27 @@
 <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://www.gstatic.com">
 
+<script>
+(function() {
+  if (window.__IS_BLOCKED__) return;
+  try {
+    var isJoined = localStorage.getItem("nz_is_joined") === "true";
+    var lastRoom = localStorage.getItem("nz_last_room_id");
+    var sessStart = parseInt(localStorage.getItem("nz_session_start_time") || "0", 10);
+    var lastPost = parseInt(localStorage.getItem("nz_last_post_time") || "0", 10);
+    var base = Math.max(sessStart, lastPost);
+    var savedMins = parseInt(localStorage.getItem("nz_auto_exit_minutes") || "30", 10);
+    var exitMs = (isNaN(savedMins) || savedMins <= 0 ? 30 : savedMins) * 60 * 1000;
+    var hasInvite = window.location.hash && window.location.hash.length > 1;
+    if (isJoined && lastRoom && !hasInvite && (Date.now() - base < exitMs)) {
+      document.documentElement.classList.add("preload-chat-active");
+      window.__PRELOAD_ROOM_ID__ = lastRoom;
+    }
+  } catch (e) {}
+})();
+</script>
+
+<!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
@@ -46,7 +69,7 @@
 :root{--bg:#070a10;--sf:#0f172a;--s2:#0b1120;--bd:#1e293b;--tx:#f8fafc;--mu:#94a3b8;--m2:#475569;--in:#334155;--ro:#f43f5e;--usr-color:#f1f5f9;--safe:env(safe-area-inset-bottom,0px)}
 html,body{position:fixed;top:0;left:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none;color-scheme:dark}
 
-/* ⚡ 文字透明化バグの根絶（全ブラウザ完全不透明保証） */
+/* ⚡ 文字透明化バグの根絶 */
 input,textarea,select{font-family:inherit;font-size:16px!important;color:#f8fafc!important;-webkit-text-fill-color:#f8fafc!important;background:var(--s2);caret-color:#38bdf8!important;opacity:1!important}
 input::placeholder,textarea::placeholder{color:#64748b!important;-webkit-text-fill-color:#64748b!important;opacity:1!important}
 
@@ -68,6 +91,8 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 #lobbyScreen{display:flex;flex:1;overflow-y:auto;padding:12px;background:#070a10;flex-direction:column;gap:10px;animation:screenFadeIn .14s ease-out}
 #chatScreen{display:none;flex-direction:column;flex:1;min-height:0;overflow:hidden;position:relative;opacity:1!important;animation:screenFadeIn .14s ease-out}
 @keyframes screenFadeIn{from{opacity:0;transform:translateY(2px)}to{opacity:1;transform:translateY(0)}}
+html.preload-chat-active #lobbyScreen{display:none!important}
+html.preload-chat-active #chatScreen{display:flex!important;opacity:1!important}
 .lobby-sec{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;box-shadow:0 4px 12px rgba(0,0,0,0.25)}
 .lobby-sec h2{font-size:12px;font-weight:800;color:var(--tx)!important;-webkit-text-fill-color:var(--tx)!important;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:4px}
 .lobby-row{display:flex;flex-direction:column;gap:4px}
@@ -314,7 +339,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
         </div>
 
         <div style="display:flex;gap:6px;align-items:center;margin-top:4px;width:100%;">
-          <div id="lobbyTripPrev">プレビュー: 認証準備中...</div>
+          <div id="lobbyTripPrev">プレビュー: 認証待機中...</div>
           <button class="btn" id="btnCopyTrip" style="background:#334155;color:#fff;font-size:11px;height:28px;width:80px;font-weight:bold;flex-shrink:0;display:none;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">📋 コピー</button>
         </div>
       </div>
@@ -411,26 +436,45 @@ function toggleAcc(id) {
   const db = firebase.database();
   const auth = firebase.auth();
 
-  // 🔒 Firebase Auth UIDで完全統一
-  let myUid = "";
-  let authReadyPromise = null;
+  // 🔒 堅牢な認証ライフサイクル管理（Google制限下での認証待機停止を完全防止）
+  let myUid = safeLS.get("nz_auth_uid_cache") || "";
+  let isAuthReady = false;
+
+  auth.onAuthStateChanged(async (user) => {
+    if (user) {
+      myUid = user.uid;
+      safeLS.set("nz_auth_uid_cache", myUid);
+      isAuthReady = true;
+      await syncProfileValues();
+    } else {
+      auth.signInAnonymously().catch(err => {
+        console.error("Firebase Auth Error:", err);
+        // 万が一通信が遅延しても画面をフリーズさせない
+        setTimeout(() => {
+          if (!auth.currentUser) auth.signInAnonymously().catch(()=>{});
+        }, 1500);
+      });
+    }
+  });
+
   function ensureAnonAuth() {
     if (auth.currentUser) {
       myUid = auth.currentUser.uid;
       return Promise.resolve(auth.currentUser);
     }
-    if (!authReadyPromise) {
-      authReadyPromise = auth.signInAnonymously().then(cred => {
-        myUid = cred.user.uid;
-        return cred.user;
-      }).catch((e) => {
-        authReadyPromise = null;
-        return null;
+    return new Promise((resolve) => {
+      const unsubscribe = auth.onAuthStateChanged(user => {
+        if (user) {
+          myUid = user.uid;
+          unsubscribe();
+          resolve(user);
+        }
       });
-    }
-    return authReadyPromise;
+      setTimeout(() => {
+        if (!auth.currentUser) auth.signInAnonymously().catch(()=>{});
+      }, 500);
+    });
   }
-  ensureAnonAuth().then(() => syncProfileValues());
 
   const $ = id => document.getElementById(id);
   let D = {};
@@ -1547,7 +1591,7 @@ function toggleAcc(id) {
     if (!lobbyRoomId) { alert("部屋IDを入力してください。"); return; }
     if (lobbyRoomId !== "official" && !lobbyRoomPass) { alert("部屋パスワードを入力してください。"); return; }
 
-    // 🔒 認証UIDが確定するまで待機（フライング入室を完全防止）
+    // 🔒 認証UIDの確定を待機
     await ensureAnonAuth();
     if (!myUid) {
       alert("認証の初期化中です。1秒後に再試行してください。");
@@ -1585,7 +1629,7 @@ function toggleAcc(id) {
     roomSettings.creatorUid = val.creatorUid || "";
     localLastClearedTime = val.last_cleared_at || 0;
 
-    // フリールーム作成
+    // フリールーム新規作成
     if (!settingsSnap || !settingsSnap.exists() || !roomSettings.creatorUid) {
       isNewRoom = true;
       const isGlobalAdmin = checkIsGlobalAdmin();
@@ -2540,6 +2584,16 @@ function toggleAcc(id) {
       clrPick2: $("clrPick2"), clrPrev: $("clrPrev"), pcnt: $("pcnt"), pl: $("pl"),
       mi: $("mi"), kbKeepOpenChk: $("kbKeepOpenChk"), clrDot: $("clrDot")
     };
+
+    if (window.__PRELOAD_ROOM_ID__) {
+      const pRoom = window.__PRELOAD_ROOM_ID__;
+      const logoTitle = $("logoTitle") || document.querySelector(".logo");
+      if (logoTitle) {
+        logoTitle.innerHTML = `NEZUO CHAT<span class="sub-room">${pRoom === "official" ? "常設公式部屋" : escapeHtml(pRoom)}</span>`;
+      }
+      if ($("exBtn")) $("exBtn").style.display = "inline-flex";
+      if ($("inviteBtn")) $("inviteBtn").style.display = (pRoom === "official") ? "none" : "inline-flex";
+    }
 
     const autoExitSel = $("lobbyAutoExitSelect");
     if (autoExitSel) {

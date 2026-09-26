@@ -10,7 +10,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23070a10'/%3E%3Ctext x='50' y='68' font-size='60' text-anchor='middle' fill='%23f1f5f9'%3E💬%3C/text%3E%3C/svg%3E">
 <title>NEZUO CHAT</title>
 
-<!-- 🔒 ローカル起動の遮断 -->
+<!-- 🔒 ローカル環境の遮断 -->
 <script>
 (function() {
   var host = window.location.hostname;
@@ -36,26 +36,6 @@
 <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://www.gstatic.com">
 
-<script>
-(function() {
-  if (window.__IS_BLOCKED__) return;
-  try {
-    var isJoined = localStorage.getItem("nz_is_joined") === "true";
-    var lastRoom = localStorage.getItem("nz_last_room_id");
-    var sessStart = parseInt(localStorage.getItem("nz_session_start_time") || "0", 10);
-    var lastPost = parseInt(localStorage.getItem("nz_last_post_time") || "0", 10);
-    var base = Math.max(sessStart, lastPost);
-    var savedMins = parseInt(localStorage.getItem("nz_auto_exit_minutes") || "30", 10);
-    var exitMs = (isNaN(savedMins) || savedMins <= 0 ? 30 : savedMins) * 60 * 1000;
-    var hasInvite = window.location.hash && window.location.hash.length > 1;
-    if (isJoined && lastRoom && !hasInvite && (Date.now() - base < exitMs)) {
-      document.documentElement.classList.add("preload-chat-active");
-      window.__PRELOAD_ROOM_ID__ = lastRoom;
-    }
-  } catch (e) {}
-})();
-</script>
-
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
@@ -66,7 +46,7 @@
 :root{--bg:#070a10;--sf:#0f172a;--s2:#0b1120;--bd:#1e293b;--tx:#f8fafc;--mu:#94a3b8;--m2:#475569;--in:#334155;--ro:#f43f5e;--usr-color:#f1f5f9;--safe:env(safe-area-inset-bottom,0px)}
 html,body{position:fixed;top:0;left:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none;color-scheme:dark}
 
-/* ⚡ 文字透明化バグの根絶（Webkit完全対応） */
+/* ⚡ 文字の透明化を物理的に阻止（Webkit完全対応） */
 input,textarea,select{font-family:inherit;font-size:16px!important;color:#f8fafc!important;-webkit-text-fill-color:#f8fafc!important;background:var(--s2);caret-color:#38bdf8!important;opacity:1!important}
 input::placeholder,textarea::placeholder{color:#64748b!important;-webkit-text-fill-color:#64748b!important;opacity:1!important}
 
@@ -88,8 +68,6 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 #lobbyScreen{display:flex;flex:1;overflow-y:auto;padding:12px;background:#070a10;flex-direction:column;gap:10px;animation:screenFadeIn .14s ease-out}
 #chatScreen{display:none;flex-direction:column;flex:1;min-height:0;overflow:hidden;position:relative;opacity:1!important;animation:screenFadeIn .14s ease-out}
 @keyframes screenFadeIn{from{opacity:0;transform:translateY(2px)}to{opacity:1;transform:translateY(0)}}
-html.preload-chat-active #lobbyScreen{display:none!important}
-html.preload-chat-active #chatScreen{display:flex!important;opacity:1!important}
 .lobby-sec{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;box-shadow:0 4px 12px rgba(0,0,0,0.25)}
 .lobby-sec h2{font-size:12px;font-weight:800;color:var(--tx)!important;-webkit-text-fill-color:var(--tx)!important;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:4px}
 .lobby-row{display:flex;flex-direction:column;gap:4px}
@@ -125,7 +103,7 @@ html.preload-chat-active #chatScreen{display:flex!important;opacity:1!important}
 .mw.is-pending{opacity:.65!important}
 .mw.msg-deleting{opacity:0!important;transform:scale(0.92) translateY(-4px)!important;max-height:0!important;padding-top:0!important;padding-bottom:0!important;margin:0!important;overflow:hidden!important;pointer-events:none!important;transition:all 0.1s ease-out!important}
 
-/* チャット文字の完全不透明化 */
+/* チャット本文・名前の不透明化 */
 .mw-content-row{display:flex;align-items:baseline;gap:6px;width:100%;flex-wrap:wrap;color:#f8fafc!important;-webkit-text-fill-color:#f8fafc!important}
 .mm{display:inline-flex;align-items:center;gap:4px;font-size:12px;flex-shrink:0}
 .mm-name{font-weight:800;overflow:hidden;text-overflow:ellipsis}
@@ -364,7 +342,7 @@ html.preload-chat-active #chatScreen{display:flex!important;opacity:1!important}
 
       <div class="lobby-sec" style="border-color:#475569;">
         <h2 style="color:#cbd5e1;font-size:11px;">🏢 常設公式部屋</h2>
-        <button class="btn" id="btnJoinOfficial" style="background:linear-gradient(135deg,#475569,#334155);color:#fff;font-size:13px;font-weight:900;height:38px;width:100%;border-radius:6px;" disabled>🏢 常設公式部屋に入る</button>
+        <button class="btn" id="btnJoinOfficial" style="background:linear-gradient(135deg,#475569,#334155);color:#fff;font-size:13px;font-weight:900;height:38px;width:100%;border-radius:6px;" disabled>🏢 常設公式部屋に入る（パス不要・即入室）</button>
       </div>
 
       <div class="lobby-sec" id="lobbyAdminSec" style="display:none;border-color:#f43f5e;gap:10px;">
@@ -434,9 +412,8 @@ function toggleAcc(id) {
   const db = firebase.database();
   const auth = firebase.auth();
 
-  // 🔒 Firebase Authの暗号UIDをアプリ全体のUIDとして統一（改変サイトのなりすまし・不正削除をルールで遮断）
+  // 🔒 Firebase Auth UIDで完全統一（改変サイトのなりすまし・不正削除を物理遮断）
   let myUid = "";
-
   let authReadyPromise = null;
   function ensureAnonAuth() {
     if (auth.currentUser) {
@@ -498,18 +475,19 @@ function toggleAcc(id) {
   const _txtEnc = (typeof TextEncoder !== 'undefined') ? new TextEncoder() : null;
   const _txtDec = (typeof TextDecoder !== 'undefined') ? new TextDecoder() : null;
 
+  // E2EE 暗号化エンジン
   const E2EE = {
     hasCrypto: (typeof window !== 'undefined' && window.crypto && window.crypto.subtle),
     keyCache: new Map(),
     async deriveKey(passcode) {
-      const cacheKey = passcode || "";
-      if (this.keyCache.has(cacheKey)) return this.keyCache.get(cacheKey);
+      if (!passcode) return null; // 公式部屋はパスワードなし（平文）
+      if (this.keyCache.has(passcode)) return this.keyCache.get(passcode);
       if (!this.hasCrypto) return null;
       try {
-        const passData = _txtEnc.encode(cacheKey.normalize('NFKC'));
+        const passData = _txtEnc.encode(passcode.normalize('NFKC'));
         const hash = await crypto.subtle.digest("SHA-256", passData);
         const key = await crypto.subtle.importKey("raw", hash, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
-        this.keyCache.set(cacheKey, key);
+        this.keyCache.set(passcode, key);
         return key;
       } catch (e) { return null; }
     },
@@ -561,15 +539,6 @@ function toggleAcc(id) {
         const parsed = JSON.parse(raw);
         m.n = parsed.n || ""; m.p = parsed.p || ""; m.m = parsed.m || "";
         decodedPayloadCache.set(m.d, { n: m.n, p: m.p, m: m.m });
-      } catch (e) {
-        m.n = m.u === "system" ? "システム" : "不明"; m.p = ""; m.m = "[復号エラー]";
-      }
-    } else {
-      try {
-        m.m = await E2EE.decrypt(m.m, activeKey);
-        m.n = await E2EE.decrypt(m.n, activeKey);
-        m.p = await E2EE.decrypt(m.p, activeKey);
-        if (typeof m.m === "string" && m.m.startsWith("[SYS]::")) m.m = m.m.substring(7);
       } catch (e) {
         m.n = m.u === "system" ? "システム" : "不明"; m.p = ""; m.m = "[復号エラー]";
       }
@@ -882,7 +851,7 @@ function toggleAcc(id) {
     }
   }
 
-  // ⚡ 重複ログ防止：トランザクション成功者のみがアナウンスを書き込む
+  // 重複ログ防止
   async function checkAndTriggerExactAutoExit() {
     if (!isJoined || !db || !currentRoomId || isExecutingAutoExit) return;
     const nowTrue = getTrueTime();
@@ -1564,6 +1533,7 @@ function toggleAcc(id) {
     }
   }
 
+  // ⚡ 爆速入室（公式部屋は完全パスワード不要・平文即入室）
   async function joinRoom(options = {}) {
     if (!db) { alert("データベースが準備できていません。"); return; }
     let lobbyRoomId = options.roomId || ($("lobbyRoomId") ? $("lobbyRoomId").value.trim() : "");
@@ -1645,22 +1615,12 @@ function toggleAcc(id) {
     currentRoomId = safeRoomPath; 
     currentRoomPass = lobbyRoomPass;
 
-    let targetPass = lobbyRoomPass;
+    // ★ 公式部屋は鍵取得を廃止し即時入室（パスワードなし）。フリールームのみE2EE暗号化鍵を生成
     if (safeRoomPath === "official") {
-      try {
-        const pRes = await fetch(`${AUTH_WORKER_URL}/official-key`, {
-          headers: { "Content-Type": "application/json" }
-        });
-        if (!pRes.ok) throw new Error("Key fetch failed");
-        const pData = await pRes.json();
-        targetPass = pData.key || pData.pass;
-      } catch (e) {
-        switchScreen("lobby");
-        alert("公式部屋のセキュリティキー取得に失敗しました。再試行してください。");
-        return;
-      }
+      activeKey = null; // 平文チャット
+    } else {
+      activeKey = await E2EE.deriveKey(lobbyRoomPass);
     }
-    activeKey = await E2EE.deriveKey(targetPass);
 
     try {
       db.ref(`banlist/${currentRoomId}/${myUid}`).on("value", s => {
@@ -1866,7 +1826,7 @@ function toggleAcc(id) {
     el.innerHTML = `
       <div class="mw-content-row">
         <div class="mm">
-          <span class="mm-name" style="color:${color};">${escapeHtml(name)}</span>
+          <span class="mm-name" style="color:${color};-webkit-text-fill-color:${color};">${escapeHtml(name)}</span>
           <span class="mm-trip" style="display:${trip ? 'inline' : 'none'};">${escapeHtml(trip)}</span>
         </div>
         <div class="mb-bubble"></div>
@@ -2400,7 +2360,7 @@ function toggleAcc(id) {
       const baselineTime = Math.max(sessionStart, lastPost);
       const nowTrue = Date.now();
 
-      if (wasJoined && lastRoomId && lastRoomPass && (nowTrue - baselineTime < AUTO_EXIT_MS)) {
+      if (wasJoined && lastRoomId && (lastRoomId === "official" || lastRoomPass) && (nowTrue - baselineTime < AUTO_EXIT_MS)) {
         await Promise.all([authPromise, offsetPromise]);
         joinRoom({ roomId: lastRoomId, roomPass: lastRoomPass, silent: true, isCrossTab: true });
       } else {
@@ -2567,16 +2527,6 @@ function toggleAcc(id) {
       mi: $("mi"), kbKeepOpenChk: $("kbKeepOpenChk"), clrDot: $("clrDot")
     };
 
-    if (window.__PRELOAD_ROOM_ID__) {
-      const pRoom = window.__PRELOAD_ROOM_ID__;
-      const logoTitle = $("logoTitle") || document.querySelector(".logo");
-      if (logoTitle) {
-        logoTitle.innerHTML = `NEZUO CHAT<span class="sub-room">${pRoom === "official" ? "常設公式部屋" : escapeHtml(pRoom)}</span>`;
-      }
-      if ($("exBtn")) $("exBtn").style.display = "inline-flex";
-      if ($("inviteBtn")) $("inviteBtn").style.display = (pRoom === "official") ? "none" : "inline-flex";
-    }
-
     const autoExitSel = $("lobbyAutoExitSelect");
     if (autoExitSel) {
       autoExitSel.innerHTML = "";
@@ -2739,7 +2689,7 @@ function toggleAcc(id) {
     });
 
     D.joinBtn.addEventListener("click", (e) => { e.preventDefault(); joinRoom(); });
-    $("btnJoinOfficial").addEventListener("click", (e) => { e.preventDefault(); joinRoom({ roomId: "official", roomPass: "official" }); });
+    $("btnJoinOfficial").addEventListener("click", (e) => { e.preventDefault(); joinRoom({ roomId: "official", roomPass: "" }); });
 
     if ($("lobbyCallsToggle")) $("lobbyCallsToggle").addEventListener("change", async () => {
       if (!checkIsGlobalAdmin() || !db) return;

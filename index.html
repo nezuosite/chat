@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#070a10">
 <meta name="color-scheme" content="dark">
-<meta name="referrer" content="no-referrer-when-downgrade">
+<meta name="referrer" content="strict-origin-when-cross-origin">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23070a10'/%3E%3Ctext x='50' y='68' font-size='60' text-anchor='middle' fill='%23f1f5f9'%3E💬%3C/text%3E%3C/svg%3E">
 <title>NEZUO CHAT</title>
 
@@ -69,7 +69,7 @@
 :root{--bg:#070a10;--sf:#0f172a;--s2:#0b1120;--bd:#1e293b;--tx:#f8fafc;--mu:#94a3b8;--m2:#475569;--in:#334155;--ro:#f43f5e;--usr-color:#f1f5f9;--safe:env(safe-area-inset-bottom,0px)}
 html,body{position:fixed;top:0;left:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none;color-scheme:dark}
 
-/* ⚡ 文字の完全不透明化・入力欄バグ解消 */
+/* ⚡ 文字の完全不透明化・Safariテキスト透明化バグの根絶 */
 input,textarea,select{
   font-family:inherit;font-size:16px!important;
   color:#f8fafc!important;
@@ -441,8 +441,8 @@ function toggleAcc(id) {
   function safeLS_remove(key) { try { localStorage.removeItem(key); } catch (e) {} }
   const safeLS = { get: safeLS_get, set: safeLS_set, remove: safeLS_remove };
 
-  // 🔒 認証ID（Firebase正規本UIDと完全連動）
-  let myUid = safeLS.get("nz_permanent_uid") || "";
+  // 🔒 認証ID（Firebase正規本UIDと完全一本化・仮IDは完全抹消）
+  let myUid = "";
   let authReadyPromise = null;
 
   const tabSyncId = "tab_" + Math.random().toString(36).substring(2, 9);
@@ -482,30 +482,15 @@ function toggleAcc(id) {
   function ensureAnonAuth() {
     if (auth.currentUser && auth.currentUser.uid) {
       myUid = auth.currentUser.uid;
-      safeLS.set("nz_permanent_uid", myUid);
       return Promise.resolve(auth.currentUser);
     }
     if (!authReadyPromise) {
-      authReadyPromise = new Promise((resolve) => {
+      authReadyPromise = new Promise((resolve, reject) => {
         let isDone = false;
-
-        const timer = setTimeout(() => {
-          if (!isDone) {
-            isDone = true;
-            if (!myUid) {
-              myUid = "usr_" + Math.random().toString(36).substring(2, 10) + Date.now().toString(36).substring(4);
-              safeLS.set("nz_permanent_uid", myUid);
-            }
-            authReadyPromise = null;
-            resolve(auth.currentUser || null);
-          }
-        }, 2000);
 
         const unsubscribe = auth.onAuthStateChanged(user => {
           if (user && user.uid) {
-            clearTimeout(timer);
             myUid = user.uid;
-            safeLS.set("nz_permanent_uid", myUid);
             if (!isDone) {
               isDone = true;
               unsubscribe();
@@ -516,10 +501,8 @@ function toggleAcc(id) {
         });
 
         auth.signInAnonymously().then(cred => {
-          clearTimeout(timer);
           if (cred && cred.user) {
             myUid = cred.user.uid;
-            safeLS.set("nz_permanent_uid", myUid);
             if (!isDone) {
               isDone = true;
               unsubscribe();
@@ -528,17 +511,12 @@ function toggleAcc(id) {
             }
           }
         }).catch(err => {
-          clearTimeout(timer);
-          console.error("Firebase匿名認証ログ:", err.code);
+          console.error("Firebase本UID認証エラー:", err);
           if (!isDone) {
             isDone = true;
             unsubscribe();
             authReadyPromise = null;
-            if (!myUid) {
-              myUid = "usr_" + Math.random().toString(36).substring(2, 10) + Date.now().toString(36).substring(4);
-              safeLS.set("nz_permanent_uid", myUid);
-            }
-            resolve(null);
+            reject(err);
           }
         });
       });
@@ -714,7 +692,7 @@ function toggleAcc(id) {
     return (h1 >>> 0).toString(16).padStart(8, '0') + (h2 >>> 0).toString(16).padStart(8, '0');
   };
 
-  // 🔒 トリップ生成（正規UIDから確定計算）
+  // 🔒 トリップ生成（正規本UIDからのみ計算・ブレを完全防止）
   window.makeTripFromUid = async (uid) => {
     if (!uid) return "";
     const cacheKey = "nz_cached_trip_" + uid;
@@ -1240,7 +1218,7 @@ function toggleAcc(id) {
     D.clrMsgBtn.classList.toggle("show", D.mi.value.length > 0);
   };
 
-  // 🔒 トリップが出現するまで入室ボタンをロック
+  // 🔒 トリップが出現するまで入室ボタンを確実にロック
   const validateLobbyInputs = () => {
     const name = ($("lobbyName") ? $("lobbyName").value.trim() : "");
     const roomId = ($("lobbyRoomId") ? $("lobbyRoomId").value.trim() : "");
@@ -1266,12 +1244,10 @@ function toggleAcc(id) {
     }
 
     try {
-      await ensureAnonAuth();
-      if (!myUid) {
-        myUid = (auth.currentUser && auth.currentUser.uid) || safeLS.get("nz_permanent_uid") || ("usr_" + Math.random().toString(36).substring(2, 10));
-        safeLS.set("nz_permanent_uid", myUid);
-      }
+      const user = await ensureAnonAuth();
+      if (!user || !user.uid) throw new Error("本UID未取得");
 
+      myUid = user.uid;
       myTrip = await window.makeTripFromUid(myUid);
 
       if (tripPrevEl) {
@@ -1665,10 +1641,15 @@ function toggleAcc(id) {
     const joinBtn = $("btnJoin");
     if (joinBtn) { joinBtn.disabled = true; joinBtn.textContent = "接続中..."; }
 
-    await ensureAnonAuth().catch(()=>{});
-    if (!myUid) {
-      myUid = (auth.currentUser && auth.currentUser.uid) || safeLS.get("nz_permanent_uid") || ("usr_" + Math.random().toString(36).substring(2, 10));
-      safeLS.set("nz_permanent_uid", myUid);
+    let user = null;
+    try {
+      user = await ensureAnonAuth();
+    } catch(e){}
+
+    if (!user || !myUid) {
+      if (joinBtn) { joinBtn.disabled = false; joinBtn.textContent = "部屋に入る / 部屋を作る"; }
+      alert("Firebase認証に失敗しました。ページを再読み込みしてください。");
+      return;
     }
 
     const safeRoomPath = (lobbyRoomId === "official") ? "official" : await window.sha256(lobbyRoomId);
@@ -2426,7 +2407,7 @@ function toggleAcc(id) {
     } catch (e) {}
   }
 
-  // ⚡ メッセージ送信
+  // ⚡ メッセージ送信（本UID認証を確実に同期）
   let lastSendAt = 0;
   function sendMessage() {
     if (!isJoined || !db) return;
@@ -2456,10 +2437,14 @@ function toggleAcc(id) {
 
     (async () => {
       try {
-        await ensureAnonAuth().catch(()=>{});
-        if (!myUid) {
-          myUid = (auth.currentUser && auth.currentUser.uid) || safeLS.get("nz_permanent_uid");
+        let user = auth.currentUser;
+        if (!user) {
+          user = await ensureAnonAuth();
         }
+        if (!user || !user.uid) {
+          throw new Error("認証未完了");
+        }
+        myUid = user.uid;
 
         const trueNow = getTrueTime();
         updateLastPostTime(trueNow);

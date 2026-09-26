@@ -22,8 +22,8 @@
       document.body.innerHTML = `
         <div style="position:fixed;inset:0;background:#05070a;color:#f43f5e;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;font-family:sans-serif;line-height:1.6;">
           <div style="font-size:48px;margin-bottom:16px;">🚫</div>
-          <div style="font-size:18px;font-weight:900;margin-bottom:8px;color:#f8fafc;">この環境ではご利用いただけません</div>
-          <div style="font-size:13px;color:#94a3b8;max-width:400px;">ローカル環境からのアクセスは禁止されています。</div>
+          <div style="font-size:18px;font-weight:900;margin-bottom:8px;color:#f8fafc;-webkit-text-fill-color:#f8fafc;">この環境ではご利用いただけません</div>
+          <div style="font-size:13px;color:#94a3b8;-webkit-text-fill-color:#94a3b8;max-width:400px;">ローカル環境からのアクセスは禁止されています。</div>
         </div>
       `;
     });
@@ -57,7 +57,6 @@
 })();
 </script>
 
-<!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
@@ -68,7 +67,6 @@
 :root{--bg:#070a10;--sf:#0f172a;--s2:#0b1120;--bd:#1e293b;--tx:#f8fafc;--mu:#94a3b8;--m2:#475569;--in:#334155;--ro:#f43f5e;--usr-color:#f1f5f9;--safe:env(safe-area-inset-bottom,0px)}
 html,body{position:fixed;top:0;left:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none;color-scheme:dark}
 
-/* ⚡ 文字の完全不透明化スタイル */
 input,textarea,select{font-family:inherit;font-size:16px!important;color:#f8fafc!important;-webkit-text-fill-color:#f8fafc!important;background-color:var(--s2)!important;caret-color:#38bdf8!important;opacity:1!important;-webkit-appearance:none}
 input::placeholder,textarea::placeholder{color:#64748b!important;-webkit-text-fill-color:#64748b!important;opacity:1!important}
 
@@ -125,7 +123,6 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .mw.is-pending{opacity:.65!important}
 .mw.msg-deleting{opacity:0!important;transform:scale(0.92) translateY(-4px)!important;max-height:0!important;padding-top:0!important;padding-bottom:0!important;margin:0!important;overflow:hidden!important;pointer-events:none!important;transition:all 0.1s ease-out!important}
 
-/* チャット本文の表示（親要素での無理な一括指定を解除し確実に描画） */
 .mw-content-row{display:flex;align-items:baseline;gap:6px;width:100%;flex-wrap:wrap;color:#f8fafc!important}
 .mm{display:inline-flex;align-items:center;gap:4px;font-size:12px;flex-shrink:0}
 .mm-name{font-weight:800;overflow:hidden;text-overflow:ellipsis}
@@ -400,9 +397,12 @@ function toggleAcc(id) {
   function safeLS_remove(key) { try { localStorage.removeItem(key); } catch (e) {} }
   const safeLS = { get: safeLS_get, set: safeLS_set, remove: safeLS_remove };
 
-  // 永続UID（ブラウザで一意）
-  let myUid = safeLS.get("nz_permanent_uid") || ("user_" + Math.random().toString(36).substring(2, 11));
-  if (!safeLS.get("nz_permanent_uid")) safeLS.set("nz_permanent_uid", myUid);
+  // 🔒 端末固定UID（ブラウザ内で一度生成したら半永久的に不変＝トリップが二度と変わらない）
+  let myUid = safeLS.get("nz_device_uid");
+  if (!myUid) {
+    myUid = "dev_" + Math.random().toString(36).substring(2, 11) + Date.now().toString(36);
+    safeLS.set("nz_device_uid", myUid);
+  }
 
   const tabSyncId = "tab_" + Math.random().toString(36).substring(2, 9);
   const tabChannel = (typeof BroadcastChannel !== "undefined") ? new BroadcastChannel("nezuo_tab_sync") : null;
@@ -438,7 +438,7 @@ function toggleAcc(id) {
   const db = firebase.database();
   const auth = firebase.auth();
 
-  // ⚡ 匿名認証（非同期待機を保証）
+  // ⚡ 匿名認証（非同期完了を保証）
   let authReadyPromise = null;
   function ensureAnonAuth() {
     if (auth.currentUser) return Promise.resolve(auth.currentUser);
@@ -457,7 +457,7 @@ function toggleAcc(id) {
   let myPresenceRef = null;
   let hasEnteredLogged = false;
 
-  let myName = safeLS.get("nz_ni") || "", myTrip = "";
+  let myName = safeLS.get("nz_ni") || "", myTrip = safeLS.get("nz_cached_trip") || "";
   let isMyTripAdmin = false;
   let curColor = safeLS.get("nz_color") || "#f1f5f9";
   let tmpColor = curColor;
@@ -619,10 +619,11 @@ function toggleAcc(id) {
     return (h1 >>> 0).toString(16).padStart(8, '0') + (h2 >>> 0).toString(16).padStart(8, '0');
   };
 
-  const tripCache = new Map();
+  // 🔒 トリップ生成（永続UIDに基づいて生成し、キャッシュする）
   window.makeTripFromUid = async (uid) => {
     if (!uid) return "";
-    if (tripCache.has(uid)) return tripCache.get(uid);
+    const cached = safeLS.get("nz_cached_trip");
+    if (cached) myTrip = cached;
     try {
       const res = await fetch(`${AUTH_WORKER_URL}/trip`, {
         method: "POST",
@@ -631,13 +632,13 @@ function toggleAcc(id) {
       });
       const data = await res.json();
       if (data && data.trip) {
-        tripCache.set(uid, data.trip);
+        myTrip = data.trip;
+        safeLS.set("nz_cached_trip", myTrip);
         isMyTripAdmin = !!data.isAdmin;
         return data.trip;
       }
     } catch (e) {}
-    const fallback = "◆" + Math.random().toString(36).substring(2, 8);
-    return fallback;
+    return myTrip || "◆000000";
   };
 
   function injectAdminUIIfNeeded() {
@@ -878,6 +879,7 @@ function toggleAcc(id) {
     }
   }
 
+  // 重複ログ防止
   async function checkAndTriggerExactAutoExit() {
     if (!isJoined || !db || !currentRoomId || isExecutingAutoExit) return;
     const nowTrue = getTrueTime();
@@ -1229,7 +1231,6 @@ function toggleAcc(id) {
       if ($("roomStatusBadges")) $("roomStatusBadges").style.display = "none";
       injectAdminUIIfNeeded();
       if (logoTitle) logoTitle.textContent = "NEZUO CHAT";
-      runAdminZombieCleanup();
       leaveCall();
       renderCallBar();
     }
@@ -1243,25 +1244,6 @@ function toggleAcc(id) {
     myLastActiveTs = time;
     safeLS.set("nz_session_start_time", time.toString());
   };
-
-  function checkRoomSelfDestruct(roomId) {
-    if (!db || !roomId || roomId === "official") return;
-    db.ref(`presence/${roomId}`).once("value", snap => {
-      const list = snap.val() || {};
-      const now = getTrueTime();
-      let activeCount = 0;
-      for (const [id, u] of Object.entries(list)) {
-        if (u && u.t && (now - u.t < AUTO_EXIT_MS)) activeCount++;
-      }
-      if (activeCount === 0) {
-        db.ref(`chat/${roomId}`).remove().catch(()=>{});
-        db.ref(`settings/${roomId}`).remove().catch(()=>{});
-        db.ref(`presence/${roomId}`).remove().catch(()=>{});
-        db.ref(`banlist/${roomId}`).remove().catch(()=>{});
-        db.ref(`calls/${roomId}`).remove().catch(()=>{});
-      }
-    });
-  }
 
   const CALL_AUDIO_CONSTRAINTS = {
     audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
@@ -1529,7 +1511,6 @@ function toggleAcc(id) {
         if (cleanUid) db.ref(`banlist/${oldRoomId}/${cleanUid}`).off("value");
         db.ref(`settings/${oldRoomId}`).off("value");
         await db.ref(`presence/${oldRoomId}/${cleanUid}`).remove().catch(()=>{});
-        checkRoomSelfDestruct(oldRoomId);
       }
       detachFirebaseListeners(); 
       clearChatUIOnly();
@@ -1558,7 +1539,7 @@ function toggleAcc(id) {
     if (!lobbyRoomId) { alert("部屋IDを入力してください。"); return; }
     if (lobbyRoomId !== "official" && !lobbyRoomPass) { alert("部屋パスワードを入力してください。"); return; }
 
-    // 🔒 認証を確実に完了させてから通信
+    // 🔒 認証の完了を待機
     await ensureAnonAuth();
 
     const safeRoomPath = (lobbyRoomId === "official") ? "official" : await window.sha256(lobbyRoomId);
@@ -1625,6 +1606,7 @@ function toggleAcc(id) {
       }
     }
 
+    // 画面状態の切り替え
     safeLS.set("nz_current_screen", "chat");
     switchScreen("chat", lobbyRoomId, options.silent);
 
@@ -1980,7 +1962,6 @@ function toggleAcc(id) {
     }
     currentPresenceMap = members;
     renderPresence(members);
-    if (Object.keys(members).length === 0 && !isFirstLoad) checkRoomSelfDestruct(currentRoomId);
   }
 
   function renderPresence(serverListMap) {
@@ -2435,62 +2416,6 @@ function toggleAcc(id) {
       isConnectedBound = true;
     }
   };
-
-  async function runAdminZombieCleanup() {
-    if (!db) return;
-    const isGlobal = checkIsGlobalAdmin();
-    const myCreatedRoom = safeLS.get("nz_my_created_room_id");
-    const now = Date.now() + serverTimeOffset;
-
-    try {
-      if (isGlobal) {
-        const snap = await db.ref("presence").once("value");
-        const allRooms = snap.val() || {};
-
-        for (const [roomId, members] of Object.entries(allRooms)) {
-          if (!members) continue;
-          let activeCount = 0;
-          for (const [uId, uData] of Object.entries(members)) {
-            if (uData && uData.t && (now - uData.t >= AUTO_EXIT_MS)) {
-              db.ref(`presence/${roomId}/${uId}`).remove().catch(()=>{});
-            } else {
-              activeCount++;
-            }
-          }
-          if (activeCount === 0 && roomId !== "official") {
-            db.ref(`chat/${roomId}`).remove().catch(()=>{});
-            db.ref(`settings/${roomId}`).remove().catch(()=>{});
-            db.ref(`presence/${roomId}`).remove().catch(()=>{});
-            db.ref(`banlist/${roomId}`).remove().catch(()=>{});
-            db.ref(`calls/${roomId}`).remove().catch(()=>{});
-          }
-        }
-      } else if (myCreatedRoom && myCreatedRoom !== "official") {
-        const sSnap = await db.ref(`settings/${myCreatedRoom}`).once("value");
-        const sVal = sSnap.val();
-        if (sVal && sVal.creatorUid === myUid) {
-          const pSnap = await db.ref(`presence/${myCreatedRoom}`).once("value");
-          const members = pSnap.val() || {};
-          let activeCount = 0;
-          for (const [uId, uData] of Object.entries(members)) {
-            if (uData && uData.t && (now - uData.t >= AUTO_EXIT_MS)) {
-              db.ref(`presence/${myCreatedRoom}/${uId}`).remove().catch(()=>{});
-            } else {
-              activeCount++;
-            }
-          }
-          if (activeCount === 0) {
-            db.ref(`chat/${myCreatedRoom}`).remove().catch(()=>{});
-            db.ref(`settings/${myCreatedRoom}`).remove().catch(()=>{});
-            db.ref(`presence/${myCreatedRoom}`).remove().catch(()=>{});
-            db.ref(`banlist/${myCreatedRoom}`).remove().catch(()=>{});
-            db.ref(`calls/${myCreatedRoom}`).remove().catch(()=>{});
-            safeLS.remove("nz_my_created_room_id");
-          }
-        }
-      }
-    } catch (e) {}
-  }
 
   function handleCrossTabSync(data) {
     if (!data || data.senderTabId === tabSyncId) return;

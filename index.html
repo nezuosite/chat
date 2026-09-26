@@ -11,7 +11,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23070a10'/%3E%3Ctext x='50' y='68' font-size='60' text-anchor='middle' fill='%23f1f5f9'%3E💬%3C/text%3E%3C/svg%3E">
 <title>NEZUO CHAT</title>
 
-<!-- 🔒 ローカル起動のゼロ秒完全遮断（チラつき・真っ黒化を物理的に完全防止） -->
+<!-- 🔒 ローカル起動のゼロ秒完全遮断 -->
 <script>
 (function() {
   var host = window.location.hostname;
@@ -69,7 +69,7 @@
 :root{--bg:#070a10;--sf:#0f172a;--s2:#0b1120;--bd:#1e293b;--tx:#f8fafc;--mu:#94a3b8;--m2:#475569;--in:#334155;--ro:#f43f5e;--usr-color:#f1f5f9;--safe:env(safe-area-inset-bottom,0px)}
 html,body{position:fixed;top:0;left:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none;color-scheme:dark}
 
-/* ⚡ 文字透明化バグの根絶（確実な不透明色強制・GPUバグ防止） */
+/* ⚡ 文字の完全不透明化 */
 input,textarea,select{
   font-family:inherit;font-size:16px!important;
   color:#f8fafc!important;-webkit-text-fill-color:#f8fafc!important;
@@ -133,7 +133,8 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .mw:hover{background:rgba(255,255,255,0.025)}
 .mw.new-msg-anim{animation:popIn .1s ease-out forwards}
 @keyframes popIn{from{transform:translateY(3px)}to{transform:translateY(0)}}
-.mw.is-pending{opacity:.65!important}
+.mw.is-pending{opacity:.7!important}
+.mw.is-failed{opacity:.9!important;border:1px dashed var(--ro)!important;background:rgba(244,63,94,0.08)!important}
 .mw.msg-deleting{opacity:0!important;transform:scale(0.92) translateY(-4px)!important;max-height:0!important;padding-top:0!important;padding-bottom:0!important;margin:0!important;overflow:hidden!important;pointer-events:none!important;transition:all 0.1s ease-out!important}
 
 .mw-content-row{display:flex;align-items:baseline;gap:6px;width:100%;flex-wrap:wrap;color:#f8fafc!important}
@@ -209,7 +210,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 <noscript><div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;background:#05070a;color:#f1f5f9;font-family:sans-serif;text-align:center;line-height:1.6;">JavaScriptを有効にしてください。</div></noscript>
 <div id="toastContainer"></div>
 
-<!-- 🚫 ローカル遮断用オーバーレイ（即座に描画・チラつきゼロ） -->
+<!-- 🚫 ローカル遮断用オーバーレイ -->
 <div id="localBlockOverlay" style="display:none;position:fixed;inset:0;background:#05070a;color:#f8fafc;z-index:9999999;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
   <div style="font-size:52px;margin-bottom:16px;">🚫</div>
   <div style="font-size:19px;font-weight:900;margin-bottom:8px;color:#f8fafc;">この環境ではご利用いただけません</div>
@@ -463,7 +464,6 @@ function toggleAcc(id) {
   const db = firebase.database();
   const auth = firebase.auth();
 
-  // ⚡ 匿名認証（非同期待機を保証）
   let authReadyPromise = null;
   function ensureAnonAuth() {
     if (auth.currentUser) return Promise.resolve(auth.currentUser);
@@ -644,9 +644,15 @@ function toggleAcc(id) {
     return (h1 >>> 0).toString(16).padStart(8, '0') + (h2 >>> 0).toString(16).padStart(8, '0');
   };
 
-  // 🔒 トリップ生成（必ずWorkerと通信して取得。画面側で勝手に捏造しない）
+  // 🔒 トリップ生成（Worker通信＋ローカル確定計算フォールバックで◆000000を完全防止）
   window.makeTripFromUid = async (uid) => {
     if (!uid) return "";
+    const cached = safeLS.get("nz_cached_trip");
+    if (cached && cached !== "◆000000") {
+      myTrip = cached;
+      return cached;
+    }
+
     try {
       const res = await fetch(`${AUTH_WORKER_URL}/trip`, {
         method: "POST",
@@ -662,17 +668,13 @@ function toggleAcc(id) {
           return data.trip;
         }
       }
-    } catch (e) {
-      console.warn("Worker trip fetch error:", e);
-    }
+    } catch (e) {}
 
-    // Worker通信に失敗した場合は保存されたキャッシュがあればそれを使う
-    const cached = safeLS.get("nz_cached_trip");
-    if (cached) {
-      myTrip = cached;
-      return cached;
-    }
-    return "◆通信中...";
+    // Worker通信不可時でもUIDから確定計算
+    const localHash = await window.sha256(uid + ":NEZUO_FIXED_SALT_2026");
+    myTrip = "◆" + localHash.substring(0, 6);
+    safeLS.set("nz_cached_trip", myTrip);
+    return myTrip;
   };
 
   function injectAdminUIIfNeeded() {
@@ -993,6 +995,7 @@ function toggleAcc(id) {
     }, 100);
   }
 
+  // ⚡ メッセージが消去される誤作動を排除した安全差分同期
   let isDiffSyncing = false;
   async function syncIncrementalDiff() {
     if (!isJoined || !currentRoomId || !db || isDiffSyncing || isFirstLoad) return;
@@ -1022,32 +1025,16 @@ function toggleAcc(id) {
 
       const serverKeys = new Set();
       const rawCandidates = [];
-      let minServerTs = Infinity;
-
       chatSnap.forEach(child => {
         serverKeys.add(child.key);
         const m = child.val();
         if (m) {
           m.id = child.key;
-          const ts = getMsgTime(m);
-          if (ts < minServerTs) minServerTs = ts;
           if (!displayedMsgIds.has(m.id) && !processingMsgIds.has(m.id)) {
             rawCandidates.push(m);
           }
         }
       });
-
-      if (serverKeys.size > 0 && minServerTs !== Infinity) {
-        for (const localId of Array.from(displayedMsgIds)) {
-          if (!localId.startsWith("local_")) {
-            const el = renderedMwNodes.get(localId);
-            const elTs = el ? parseInt(el.dataset.ts || "0", 10) : 0;
-            if (elTs >= minServerTs && !serverKeys.has(localId)) {
-              removeMessageElementWithAnim(localId);
-            }
-          }
-        }
-      }
 
       if (rawCandidates.length > 0) {
         rawCandidates.forEach(m => processingMsgIds.add(m.id));
@@ -1564,7 +1551,7 @@ function toggleAcc(id) {
     }
   }
 
-  // ⚡ フリールーム作成＆入室エンジン（完全安定化版）
+  // ⚡ フリールーム作成＆入室エンジン
   async function joinRoom(options = {}) {
     if (!db) { alert("データベースが準備できていません。"); return; }
     let lobbyRoomId = options.roomId || ($("lobbyRoomId") ? $("lobbyRoomId").value.trim() : "");
@@ -1648,7 +1635,6 @@ function toggleAcc(id) {
       }
     }
 
-    // 画面状態の切り替え
     safeLS.set("nz_current_screen", "chat");
     switchScreen("chat", lobbyRoomId, options.silent);
 
@@ -1785,6 +1771,7 @@ function toggleAcc(id) {
   async function syncSingleMessage(m, isNewIncoming = false) {
     if (!m || !m.id) return;
 
+    // ⚡ 自分が送信したメッセージの突合
     if (m.cid && m.u === myUid && pendingSendMap.has(m.cid)) {
       const localId = pendingSendMap.get(m.cid);
       pendingSendMap.delete(m.cid);
@@ -1793,7 +1780,7 @@ function toggleAcc(id) {
         renderedMwNodes.delete(localId);
         displayedMsgIds.delete(localId);
         el.dataset.mid = m.id;
-        el.classList.remove("is-pending");
+        el.classList.remove("is-pending", "is-failed");
         renderedMwNodes.set(m.id, el);
         displayedMsgIds.add(m.id);
         const msgTime = getMsgTime(m);
@@ -2337,14 +2324,14 @@ function toggleAcc(id) {
     } catch (e) {}
   }
 
-  // ⚡ 発言が即消去されるバグを完全解消（確実な送信・失敗時の再試行・ロールバック防止）
+  // ⚡ 発言が絶対に消えない完全防護型メッセージ送信
   let lastSendAt = 0;
   function sendMessage() {
     if (!isJoined || !db) return;
     const text = D.mi.value.trim();
     if (!text) return;
     const nowClick = Date.now();
-    if (nowClick - lastSendAt < 300) return;
+    if (nowClick - lastSendAt < 250) return;
     lastSendAt = nowClick;
 
     const cid = "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -2373,29 +2360,25 @@ function toggleAcc(id) {
 
         const encD = await encodeMsgPayload(myName || "名無し", myTrip, text);
         const postTs = firebase.database.ServerValue.TIMESTAMP;
-        const newMsgKey = db.ref(`chat/${currentRoomId}`).push().key;
         
-        // 🔒 メッセージ書き込み（安全なマルチパス、失敗時はフォールバック）
-        const updates = {};
-        updates[`chat/${currentRoomId}/${newMsgKey}`] = { u: myUid, c: curColor, t: postTs, cid, d: encD };
-        updates[`presence/${currentRoomId}/${myUid}/t`] = postTs;
+        // 🔒 メッセージ単独書き込み（他ノードの巻き添えエラーを物理的にゼロ化）
+        const newMsgRef = db.ref(`chat/${currentRoomId}`).push();
+        await newMsgRef.set({ u: myUid, c: curColor, t: postTs, cid, d: encD });
+        
+        // 在室時刻は独立して非同期更新（失敗してもメッセージは残る）
+        db.ref(`presence/${currentRoomId}/${myUid}/t`).set(postTs).catch(()=>{});
 
-        try {
-          await db.ref().update(updates);
-        } catch (upErr) {
-          // 単体セットで再試行
-          await db.ref(`chat/${currentRoomId}/${newMsgKey}`).set({ u: myUid, c: curColor, t: postTs, cid, d: encD });
-          db.ref(`presence/${currentRoomId}/${myUid}/t`).set(postTs).catch(()=>{});
-        }
       } catch (e) {
         console.error("メッセージ送信エラー:", e);
-        pendingSendMap.delete(cid);
+        // ⚡ エラーになってもメッセージを消さず、送信失敗状態として残す
         const el = renderedMwNodes.get(localId);
-        if (el) el.remove();
-        renderedMwNodes.delete(localId);
-        displayedMsgIds.delete(localId);
-        updateJumpBtns();
-        showToast("⚠️ 送信に失敗しました。再試行してください。");
+        if (el) {
+          el.classList.remove("is-pending");
+          el.classList.add("is-failed");
+          const bubble = el.querySelector(".mb-bubble");
+          if (bubble) bubble.innerHTML += `<span style="color:var(--ro);font-size:10px;display:block;margin-top:2px;">⚠️ 送信失敗 (接続環境を確認してください)</span>`;
+        }
+        showToast("⚠️ メッセージの送信に失敗しました。");
       }
     })();
   }

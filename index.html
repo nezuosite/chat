@@ -9,23 +9,15 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23070a10'/%3E%3Ctext x='50' y='68' font-size='60' text-anchor='middle' fill='%23f1f5f9'%3E💬%3C/text%3E%3C/svg%3E">
 <title>NEZUO CHAT</title>
 
-<!-- 🔒 起動直後のドメイン・ローカル実行チェック -->
+<!-- 🔒 指定ドメイン（nezuochat.web.app等）以外・ローカル起動の即時遮断 -->
 <script>
 (function() {
-  var ALLOWED_HOSTNAMES = [
-    "nezuochat.web.app",
-    "nezuochat.firebaseapp.com"
-  ];
-
+  var ALLOWED_HOSTNAMES = ["nezuochat.web.app", "nezuochat.firebaseapp.com"];
   var currentHost = window.location.hostname;
   var isAllowed = false;
   for (var i = 0; i < ALLOWED_HOSTNAMES.length; i++) {
-    if (currentHost === ALLOWED_HOSTNAMES[i]) {
-      isAllowed = true;
-      break;
-    }
+    if (currentHost === ALLOWED_HOSTNAMES[i]) { isAllowed = true; break; }
   }
-
   if (!isAllowed) {
     window.__IS_BLOCKED__ = true;
     document.addEventListener("DOMContentLoaded", function() {
@@ -33,13 +25,11 @@
         <div style="position:fixed;inset:0;background:#05070a;color:#f43f5e;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;font-family:sans-serif;line-height:1.6;">
           <div style="font-size:48px;margin-bottom:16px;">🚫</div>
           <div style="font-size:18px;font-weight:900;margin-bottom:8px;color:#f8fafc;">この環境ではご利用いただけません</div>
-          <div style="font-size:13px;color:#94a3b8;max-width:400px;">
-            ローカル環境または指定された正規のURL以外からのアクセスはすべて遮断されています。
-          </div>
+          <div style="font-size:13px;color:#94a3b8;max-width:400px;">指定された正規のURL以外からのアクセスはすべて遮断されています。</div>
         </div>
       `;
     });
-    throw new Error("Access Denied: Unauthorized Domain/Host");
+    throw new Error("Access Denied: Unauthorized Host");
   }
 })();
 </script>
@@ -69,10 +59,10 @@
 })();
 </script>
 
+<!-- Firebase SDK（App Checkは削除済み） -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-check-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@skyway-sdk/room/dist/skyway_room-latest.js"></script>
 
 <style>
@@ -443,21 +433,10 @@ function toggleAcc(id) {
 
   firebase.initializeApp(firebaseConfig);
 
-  // 🔒 App Check (reCAPTCHA Enterprise)
-  try {
-    const appCheck = firebase.appCheck();
-    appCheck.activate(
-      new firebase.appCheck.ReCaptchaEnterpriseProvider('6LdCG88tAAAAAAtBU2P-GvWY7KZBx9HeadXWY1xC'),
-      true
-    );
-  } catch (err) {
-    console.warn("App Check init error:", err);
-  }
-
   const db = firebase.database();
   const auth = firebase.auth();
 
-  // ⚡ バックグラウンド事前認証（ウォームアップ）
+  // ⚡ 起動と同時に裏側で匿名ログインを開始（App Check判定がないため即座に完了）
   let authReadyPromise = null;
   function ensureAnonAuth() {
     if (auth.currentUser) return Promise.resolve(auth.currentUser);
@@ -469,7 +448,7 @@ function toggleAcc(id) {
     }
     return authReadyPromise;
   }
-  ensureAnonAuth(); // 起動時に即実行
+  ensureAnonAuth(); // 起動時に即時実行
 
   const $ = id => document.getElementById(id);
   let D = {};
@@ -929,7 +908,6 @@ function toggleAcc(id) {
           return undefined;
         });
 
-        // 削除成功者（1人のみ）がシステムメッセージを書き込む
         if (result.committed && result.snapshot.val() === null) {
           const userName = (u.n || "").trim();
           const userTrip = (u.p || "").trim();
@@ -1580,7 +1558,7 @@ function toggleAcc(id) {
     }
   }
 
-  // ⚡ 高速入室＆新規部屋作成エンジン（公式部屋の平文パスワード完全排除版）
+  // ⚡ 爆速入室＆新規部屋作成エンジン（公式部屋の平文パスワード完全排除版）
   async function joinRoom(options = {}) {
     if (!db) { alert("データベースが準備できていません。"); return; }
     let lobbyRoomId = options.roomId || ($("lobbyRoomId") ? $("lobbyRoomId").value.trim() : "");

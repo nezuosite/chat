@@ -31,6 +31,29 @@
 <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://www.gstatic.com">
 
+<!-- ⚡ 復帰時のチラつき完全制御（入室中ならロビーを見せず即復帰、自動退室後ならチャットを見せず即ロビー） -->
+<script>
+(function() {
+  if (window.__IS_BLOCKED__) return;
+  try {
+    var isJoined = localStorage.getItem("nz_is_joined") === "true";
+    var lastRoom = localStorage.getItem("nz_last_room_id");
+    var sessStart = parseInt(localStorage.getItem("nz_session_start_time") || "0", 10);
+    var lastPost = parseInt(localStorage.getItem("nz_last_post_time") || "0", 10);
+    var base = Math.max(sessStart, lastPost);
+    var savedMins = parseInt(localStorage.getItem("nz_auto_exit_minutes") || "30", 10);
+    var exitMs = (isNaN(savedMins) || savedMins <= 0 ? 30 : savedMins) * 60 * 1000;
+    var hasInvite = window.location.hash && window.location.hash.length > 1;
+
+    // まだ生存時間内である場合のみ、最初からチャット画面を表示（ロビーをチラつかせない）
+    if (isJoined && lastRoom && !hasInvite && (Date.now() - base < exitMs)) {
+      document.documentElement.classList.add("preload-chat-active");
+      window.__PRELOAD_ROOM_ID__ = lastRoom;
+    }
+  } catch (e) {}
+})();
+</script>
+
 <!-- Firebase SDK & SkyWay Room SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -69,8 +92,14 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .hbs button{padding:3px 9px;height:26px;border-radius:6px;font-size:10.5px;font-weight:700;background:var(--s2);border:1px solid var(--bd);color:var(--tx);display:flex;align-items:center;gap:3px;box-shadow:0 1px 3px rgba(0,0,0,0.2)}
 .bclr{border-color:var(--usr-color)!important}
 .bclr-dot{width:8px;height:8px;border-radius:50%;background:var(--usr-color)!important}
+
 #lobbyScreen{display:flex;flex:1;overflow-y:auto;padding:12px;background:#070a10;flex-direction:column;gap:10px}
 #chatScreen{display:none;flex-direction:column;flex:1;min-height:0;overflow:hidden;position:relative}
+
+/* ⚡ 生存中のみフライング切り替え */
+.preload-chat-active #lobbyScreen{display:none!important}
+.preload-chat-active #chatScreen{display:flex!important}
+
 .lobby-sec{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;box-shadow:0 4px 12px rgba(0,0,0,0.25)}
 .lobby-sec h2{font-size:12px;font-weight:800;color:var(--tx)!important;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:4px}
 .lobby-row{display:flex;flex-direction:column;gap:4px}
@@ -101,9 +130,11 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 #tl-inner{display:flex;flex-direction:column;justify-content:flex-start;gap:6px;width:100%;max-width:800px;margin:0 auto;min-height:100%}
 .mw{position:relative;display:flex;flex-direction:column;width:100%;padding:4px 6px;border-radius:6px;user-select:text;-webkit-user-select:text;transition:background 0.1s ease;opacity:1!important}
 .mw:hover{background:rgba(255,255,255,0.025)}
+.mw.new-msg-anim{animation:popIn .1s ease-out forwards}
+@keyframes popIn{from{transform:translateY(3px)}to{transform:translateY(0)}}
 .mw.is-pending{opacity:.7!important}
 .mw.is-failed{opacity:.9!important;border:1px dashed var(--ro)!important;background:rgba(244,63,94,0.08)!important}
-.mw.msg-deleting{opacity:0!important;transform:scale(0.92) translateY(-4px)!important;max-height:0!important;padding:0!important;margin:0!important;overflow:hidden!important;pointer-events:none!important;transition:all 0.1s ease-out!important}
+.mw.msg-deleting{opacity:0!important;transform:scale(0.92) translateY(-4px)!important;max-height:0!important;padding-top:0!important;padding-bottom:0!important;margin:0!important;overflow:hidden!important;pointer-events:none!important;transition:all 0.1s ease-out!important}
 .mw-content-row{display:flex;align-items:baseline;gap:6px;width:100%;flex-wrap:wrap;color:#f8fafc!important}
 .mm{display:inline-flex;align-items:center;gap:4px;font-size:12px;flex-shrink:0}
 .mm-name{font-weight:800;overflow:hidden;text-overflow:ellipsis}
@@ -293,7 +324,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
       </div>
     </div>
 
-    <!-- 🏠 チラつきゼロ・常にロビーから開始 -->
+    <!-- 🏠 常に美しいロビー画面からスタート（チラつき完全ゼロ） -->
     <div id="lobbyScreen">
       <div class="lobby-sec">
         <h2>👤 ユーザー設定 (必須入力)</h2>
@@ -425,7 +456,6 @@ function toggleAcc(id) {
   const db = firebase.database();
   const auth = firebase.auth();
 
-  // 🔒 認証ハンドラ（自動リトライ＆セッション即時バインド）
   function ensureAnonAuth() {
     if (auth.currentUser && auth.currentUser.uid) {
       myUid = auth.currentUser.uid;
@@ -489,7 +519,7 @@ function toggleAcc(id) {
     return authReadyPromise;
   }
 
-  // 認証完了時に自動でトリッププレビューを即時更新するリスナー
+  // 認証完了時に自動でトリッププレビューを即時更新
   auth.onAuthStateChanged((user) => {
     if (user && user.uid) {
       myUid = user.uid;
@@ -662,43 +692,70 @@ function toggleAcc(id) {
     return (h1 >>> 0).toString(16).padStart(8, '0') + (h2 >>> 0).toString(16).padStart(8, '0');
   };
 
+  function refreshAdminUIState() {
+    const isGlobalAdminNow = checkIsGlobalAdmin();
+    if ($("lobbyAdminSec")) $("lobbyAdminSec").style.display = isGlobalAdminNow ? "flex" : "none";
+    injectAdminUIIfNeeded();
+    applyRoomSettingsUI();
+  }
+
   // 🔒 トリップ生成（Workerとのみ通信・高耐障害フォールバックでプレビューを確実に表示）
+  // キャッシュはUIを即応させるためだけに使い、管理者権限は毎回バックグラウンドでWorkerに再検証させる
   window.makeTripFromUid = async (uid) => {
     if (!uid) return "";
     const cacheKey = "nz_cached_trip_" + uid;
-    const cached = safeLS.get(cacheKey);
-    if (cached && cached !== "◆000000" && cached !== "◆error") {
-      myTrip = cached;
-      return cached;
+    let cachedObj = null;
+    try { cachedObj = JSON.parse(safeLS.get(cacheKey) || "null"); } catch (e) { cachedObj = null; }
+
+    const verifyWithWorker = async () => {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+        const res = await fetch(`${AUTH_WORKER_URL}/trip`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ uid }),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.trip && data.trip !== "◆error") {
+            return { trip: data.trip, isAdmin: !!data.isAdmin };
+          }
+        }
+      } catch (e) {}
+      return null;
+    };
+
+    if (cachedObj && cachedObj.trip && cachedObj.trip !== "◆000000" && cachedObj.trip !== "◆error") {
+      myTrip = cachedObj.trip;
+      isMyTripAdmin = !!cachedObj.isAdmin;
+      // 表示は即座にキャッシュから行いつつ、管理者フラグは裏で必ずWorkerに再確認させてズレを補正する
+      verifyWithWorker().then(result => {
+        if (result && (result.trip !== myTrip || result.isAdmin !== isMyTripAdmin)) {
+          myTrip = result.trip;
+          isMyTripAdmin = result.isAdmin;
+          safeLS.set(cacheKey, JSON.stringify(result));
+          refreshAdminUIState();
+        }
+      });
+      return cachedObj.trip;
     }
 
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const result = await verifyWithWorker();
+    if (result) {
+      myTrip = result.trip;
+      isMyTripAdmin = result.isAdmin;
+      safeLS.set(cacheKey, JSON.stringify(result));
+      return result.trip;
+    }
 
-      const res = await fetch(`${AUTH_WORKER_URL}/trip`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uid }),
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.trip && data.trip !== "◆error") {
-          myTrip = data.trip;
-          safeLS.set(cacheKey, myTrip);
-          isMyTripAdmin = !!data.isAdmin;
-          return data.trip;
-        }
-      }
-    } catch (e) {}
-
-    // Worker遅延時もUIDからローカル確定ハッシュで即時表示して入室ブロックを解除
+    // Worker遅延時も即座にローカル確定計算してボタンを点灯（この経路では管理者権限は絶対に付与しない）
     const localHash = await window.sha256(uid + ":NEZUO_FIXED_SALT_2026");
     myTrip = "◆" + localHash.substring(0, 6);
-    safeLS.set(cacheKey, myTrip);
     return myTrip;
   };
 
@@ -738,16 +795,8 @@ function toggleAcc(id) {
           </div>
           <div id="admGeneralSettingsGroup" style="display:flex;flex-direction:column;gap:8px;width:100%;">
             <div style="display:flex;align-items:center;justify-content:flex-start;gap:20px;flex-wrap:wrap;row-gap:8px;">
-              <label class="toggle-switch">
-                <input type="checkbox" id="admStopJoin">
-                <span class="toggle-slider"></span>
-                <span class="toggle-label">新規制限</span>
-              </label>
-              <label class="toggle-switch">
-                <input type="checkbox" id="admPassToggle">
-                <span class="toggle-slider"></span>
-                <span class="toggle-label">合言葉あり</span>
-              </label>
+              <label class="toggle-switch"><input type="checkbox" id="admStopJoin"><span class="toggle-slider"></span><span class="toggle-label">新規制限</span></label>
+              <label class="toggle-switch"><input type="checkbox" id="admPassToggle"><span class="toggle-slider"></span><span class="toggle-label">合言葉あり</span></label>
             </div>
             <div id="admPassContainer" style="display:none;align-items:center;gap:6px;width:100%;max-width:320px;">
               <input type="text" id="admPass" class="inp" placeholder="合言葉を入力..." autocomplete="off" style="height:28px;font-size:11.5px;flex:1;padding:2px 8px;">
@@ -800,9 +849,7 @@ function toggleAcc(id) {
     if (admPassToggle && admPassContainer) {
       admPassToggle.addEventListener("change", () => {
         admPassContainer.style.display = admPassToggle.checked ? "flex" : "none";
-        if (!admPassToggle.checked && db && currentRoomId) {
-          db.ref(`settings/${currentRoomId}/passcode`).set("");
-        }
+        if (!admPassToggle.checked && db && currentRoomId) db.ref(`settings/${currentRoomId}/passcode`).set("");
       });
     }
 
@@ -1071,7 +1118,7 @@ function toggleAcc(id) {
     D.clrMsgBtn.classList.toggle("show", D.mi.value.length > 0);
   };
 
-  // 🔒 入室バリデーション（名前と部屋IDがあればOK、トリップも自動反映）
+  // 🔒 入室バリデーション（名前と部屋IDがあれば即座に入室可能）
   const validateLobbyInputs = () => {
     const name = ($("lobbyName") ? $("lobbyName").value.trim() : "");
     const roomId = ($("lobbyRoomId") ? $("lobbyRoomId").value.trim() : "");
@@ -1082,7 +1129,7 @@ function toggleAcc(id) {
     if ($("btnJoinOfficial")) $("btnJoinOfficial").disabled = (!hasUid || isNameEmpty);
   };
 
-  // 🔒 プロフィール・トリップ同期
+  // 🔒 プロフィール同期
   const syncProfileValues = async () => {
     const nameVal = safeLS.get("nz_ni") || "";
     const colorVal = safeLS.get("nz_color") || "#f1f5f9";
@@ -1107,7 +1154,7 @@ function toggleAcc(id) {
 
     } catch (err) {
       console.error("プロフィール同期エラー詳細:", err);
-      if (tripPrevEl && !myTrip) {
+      if (tripPrevEl) {
         tripPrevEl.style.color = "var(--ro)";
         const errMsg = authDetailedError || err.code || err.message || "接続エラー";
         tripPrevEl.textContent = `⚠️ 接続エラー: ${errMsg}`;
@@ -2276,7 +2323,6 @@ function toggleAcc(id) {
         const newMsgRef = db.ref(`chat/${currentRoomId}`).push();
         await newMsgRef.set({ u: myUid, c: curColor, t: postTs, cid, d: encD });
         
-        // 在室時刻の更新
         db.ref(`presence/${currentRoomId}/${myUid}/t`).set(postTs).catch(()=>{});
 
       } catch (e) {
@@ -2296,7 +2342,7 @@ function toggleAcc(id) {
     })();
   }
 
-  // 🚀 初期ロード処理（チラつきゼロ：サーバーの真実を確認するまでロビーを維持）
+  // 🚀 初期ロード処理（入室中はロビーを見せず即座に復帰、自動退室後はチャットを見せず即ロビー）
   const initDirectDatabaseProcess = async () => {
     try {
       if (db) db.goOnline();
@@ -2322,9 +2368,11 @@ function toggleAcc(id) {
           safeLS.remove("nz_is_joined");
           safeLS.remove("nz_last_room_id");
           safeLS.remove("nz_last_room_pass");
+          document.documentElement.classList.remove("preload-chat-active");
           switchScreen("lobby");
         }
       } else {
+        document.documentElement.classList.remove("preload-chat-active");
         switchScreen("lobby");
       }
       validateLobbyInputs();
@@ -2332,6 +2380,7 @@ function toggleAcc(id) {
       await offsetPromise;
       broadcastTabSync("REQUEST_STATE");
     } catch (err) {
+      document.documentElement.classList.remove("preload-chat-active");
       switchScreen("lobby");
     }
 
@@ -2430,6 +2479,16 @@ function toggleAcc(id) {
       clrPick2: $("clrPick2"), clrPrev: $("clrPrev"), pcnt: $("pcnt"), pl: $("pl"),
       mi: $("mi"), kbKeepOpenChk: $("kbKeepOpenChk"), clrDot: $("clrDot")
     };
+
+    if (window.__PRELOAD_ROOM_ID__) {
+      const pRoom = window.__PRELOAD_ROOM_ID__;
+      const logoTitle = $("logoTitle") || document.querySelector(".logo");
+      if (logoTitle) {
+        logoTitle.innerHTML = `NEZUO CHAT<span class="sub-room">${pRoom === "official" ? "常設公式部屋" : escapeHtml(pRoom)}</span>`;
+      }
+      if ($("exBtn")) $("exBtn").style.display = "inline-flex";
+      if ($("inviteBtn")) $("inviteBtn").style.display = (pRoom === "official") ? "none" : "inline-flex";
+    }
 
     const autoExitSel = $("lobbyAutoExitSelect");
     if (autoExitSel) {

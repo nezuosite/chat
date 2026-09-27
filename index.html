@@ -31,7 +31,7 @@
 <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://www.gstatic.com">
 
-<!-- Firebase SDK & SkyWay SDK -->
+<!-- Firebase SDK & SkyWay Room SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
@@ -312,7 +312,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
         </div>
 
         <div style="display:flex;gap:6px;align-items:center;margin-top:4px;width:100%;">
-          <div id="lobbyTripPrev">プレビュー: 接続中...</div>
+          <div id="lobbyTripPrev">プレビュー: 認証待機中...</div>
           <button class="btn" id="btnCopyTrip" style="background:#334155;color:#fff;font-size:11px;height:28px;width:80px;font-weight:bold;flex-shrink:0;display:none;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">📋 コピー</button>
         </div>
       </div>
@@ -425,6 +425,7 @@ function toggleAcc(id) {
   const db = firebase.database();
   const auth = firebase.auth();
 
+  // 🔒 認証ハンドラ（自動リトライ＆セッション即時バインド）
   function ensureAnonAuth() {
     if (auth.currentUser && auth.currentUser.uid) {
       myUid = auth.currentUser.uid;
@@ -487,6 +488,14 @@ function toggleAcc(id) {
 
     return authReadyPromise;
   }
+
+  // 認証完了時に自動でトリッププレビューを即時更新するリスナー
+  auth.onAuthStateChanged((user) => {
+    if (user && user.uid) {
+      myUid = user.uid;
+      syncProfileValues();
+    }
+  });
   ensureAnonAuth().catch(()=>{});
 
   const $ = id => document.getElementById(id);
@@ -653,7 +662,7 @@ function toggleAcc(id) {
     return (h1 >>> 0).toString(16).padStart(8, '0') + (h2 >>> 0).toString(16).padStart(8, '0');
   };
 
-  // 🔒 トリップ生成（Worker通信＋自動フォールバックでフリーズ完全防止）
+  // 🔒 トリップ生成（Workerとのみ通信・高耐障害フォールバックでプレビューを確実に表示）
   window.makeTripFromUid = async (uid) => {
     if (!uid) return "";
     const cacheKey = "nz_cached_trip_" + uid;
@@ -665,7 +674,7 @@ function toggleAcc(id) {
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 1800);
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
 
       const res = await fetch(`${AUTH_WORKER_URL}/trip`, {
         method: "POST",
@@ -686,7 +695,7 @@ function toggleAcc(id) {
       }
     } catch (e) {}
 
-    // Worker遅延時も即座にUIDから確定計算
+    // Worker遅延時もUIDからローカル確定ハッシュで即時表示して入室ブロックを解除
     const localHash = await window.sha256(uid + ":NEZUO_FIXED_SALT_2026");
     myTrip = "◆" + localHash.substring(0, 6);
     safeLS.set(cacheKey, myTrip);
@@ -973,6 +982,34 @@ function toggleAcc(id) {
     }
   }
 
+  if (typeof document !== 'undefined') {
+    const triggerSyncAndCheck = () => {
+      const savedScreen = safeLS.get("nz_current_screen") || "lobby";
+      const savedRoomId = safeLS.get("nz_last_room_id");
+      const savedRoomPass = safeLS.get("nz_last_room_pass");
+
+      if (savedScreen === "lobby" && isJoined) {
+        doExit(false, true);
+        return;
+      } else if (savedScreen === "chat" && savedRoomId && (!isJoined || safeLS.get("nz_last_room_id") !== currentRoomId)) {
+        joinRoom({ roomId: savedRoomId, roomPass: savedRoomPass || "", silent: true, isCrossTab: true });
+        return;
+      }
+
+      if (isJoined) {
+        syncIncrementalDiff();
+      }
+    };
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") triggerSyncAndCheck();
+    });
+    window.addEventListener("pageshow", triggerSyncAndCheck);
+    window.addEventListener("focus", triggerSyncAndCheck);
+    window.addEventListener("online", triggerSyncAndCheck);
+    document.addEventListener("resume", triggerSyncAndCheck);
+  }
+
   function updateUnreadBadge() {
     if (!D.unreadBadge) return;
     const acc = $("adminAccordion");
@@ -1034,7 +1071,7 @@ function toggleAcc(id) {
     D.clrMsgBtn.classList.toggle("show", D.mi.value.length > 0);
   };
 
-  // 🔒 入室バリデーション（名前と部屋IDがあれば即座に入室可能）
+  // 🔒 入室バリデーション（名前と部屋IDがあればOK、トリップも自動反映）
   const validateLobbyInputs = () => {
     const name = ($("lobbyName") ? $("lobbyName").value.trim() : "");
     const roomId = ($("lobbyRoomId") ? $("lobbyRoomId").value.trim() : "");
@@ -1045,7 +1082,7 @@ function toggleAcc(id) {
     if ($("btnJoinOfficial")) $("btnJoinOfficial").disabled = (!hasUid || isNameEmpty);
   };
 
-  // 🔒 プロフィール同期
+  // 🔒 プロフィール・トリップ同期
   const syncProfileValues = async () => {
     const nameVal = safeLS.get("nz_ni") || "";
     const colorVal = safeLS.get("nz_color") || "#f1f5f9";
@@ -1070,7 +1107,7 @@ function toggleAcc(id) {
 
     } catch (err) {
       console.error("プロフィール同期エラー詳細:", err);
-      if (tripPrevEl) {
+      if (tripPrevEl && !myTrip) {
         tripPrevEl.style.color = "var(--ro)";
         const errMsg = authDetailedError || err.code || err.message || "接続エラー";
         tripPrevEl.textContent = `⚠️ 接続エラー: ${errMsg}`;
@@ -1220,7 +1257,7 @@ function toggleAcc(id) {
     renderCallParticipants(list);
   }
 
-  // 📞 通話開始エンジン（純粋SFU方式専用）
+  // 📞 通話開始エンジン（純粋SFU方式専用・名前短縮でSkyWay境界値エラーを完全防止）
   async function startCall(mode) {
     if (!isJoined || !currentRoomId || callState.active || globalCallsDisabled) return;
     if (!isCallSupported()) {
@@ -1238,10 +1275,12 @@ function toggleAcc(id) {
 
       skywayContext = await roomLib.SkyWayContext.Create(token);
 
-      // 純粋SFU方式に固定
+      // SkyWayのチャンネル名制限（64文字以内）に安全に収める
+      const channelName = "rm_" + currentRoomId.substring(0, 32);
+
       skywayRoomInstance = await roomLib.SkyWayRoom.FindOrCreate(skywayContext, {
         type: "sfu",
-        name: currentRoomId
+        name: channelName
       });
 
       skywayMe = await skywayRoomInstance.join({

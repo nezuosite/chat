@@ -31,7 +31,7 @@
 <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://www.gstatic.com">
 
-<!-- ⚡ 復帰時のチラつき完全制御（入室中ならロビーを見せず即復帰、自動退室後ならチャットを見せず即ロビー） -->
+<!-- ⚡ 復帰時のチラつき完全制御（入室中ならロビーを見せず即チャット、自動退室後はチャットを見せず即ロビー） -->
 <script>
 (function() {
   if (window.__IS_BLOCKED__) return;
@@ -45,7 +45,7 @@
     var exitMs = (isNaN(savedMins) || savedMins <= 0 ? 30 : savedMins) * 60 * 1000;
     var hasInvite = window.location.hash && window.location.hash.length > 1;
 
-    // まだ生存時間内である場合のみ、最初からチャット画面を表示（ロビーをチラつかせない）
+    // 生存時間内である場合のみ、最初からチャット画面を表示（ロビー画面をチラつかせない）
     if (isJoined && lastRoom && !hasInvite && (Date.now() - base < exitMs)) {
       document.documentElement.classList.add("preload-chat-active");
       window.__PRELOAD_ROOM_ID__ = lastRoom;
@@ -141,6 +141,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .mm-trip{font-size:10px;color:var(--mu)!important;opacity:0.85}
 .ts{color:var(--mu)!important;opacity:.65;font-size:9.5px;margin-left:auto}
 .msg-del-btn{flex-shrink:0;font-size:11px;line-height:1;padding:2px 6px;border-radius:4px;background:rgba(244,63,94,0.12);border:1px solid rgba(244,63,94,0.3);color:#fda4af!important;margin-left:4px;cursor:pointer}
+.msg-del-btn:active{transform:scale(0.85);opacity:0.6}
 .mb-bubble{position:relative;font-size:13.5px;line-height:1.45;color:#f8fafc!important;word-break:break-all;white-space:pre-wrap;background:none!important;padding:0!important;margin-top:2px;width:100%;opacity:1!important}
 .mb-bubble span{color:#f8fafc!important;opacity:1!important}
 .sys-msg{position:relative;text-align:center;font-size:11px;font-weight:bold;color:#e2e8f0!important;margin:3px auto;background:rgba(255,255,255,.06);padding:4px 10px;border-radius:8px;max-width:92%;word-break:break-all;line-height:1.4;opacity:1!important}
@@ -324,7 +325,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
       </div>
     </div>
 
-    <!-- 🏠 常に美しいロビー画面からスタート（チラつき完全ゼロ） -->
+    <!-- 🏠 チラつきゼロ・常にロビーから開始 -->
     <div id="lobbyScreen">
       <div class="lobby-sec">
         <h2>👤 ユーザー設定 (必須入力)</h2>
@@ -456,6 +457,7 @@ function toggleAcc(id) {
   const db = firebase.database();
   const auth = firebase.auth();
 
+  // 🔒 認証ハンドラ
   function ensureAnonAuth() {
     if (auth.currentUser && auth.currentUser.uid) {
       myUid = auth.currentUser.uid;
@@ -692,70 +694,43 @@ function toggleAcc(id) {
     return (h1 >>> 0).toString(16).padStart(8, '0') + (h2 >>> 0).toString(16).padStart(8, '0');
   };
 
-  function refreshAdminUIState() {
-    const isGlobalAdminNow = checkIsGlobalAdmin();
-    if ($("lobbyAdminSec")) $("lobbyAdminSec").style.display = isGlobalAdminNow ? "flex" : "none";
-    injectAdminUIIfNeeded();
-    applyRoomSettingsUI();
-  }
-
   // 🔒 トリップ生成（Workerとのみ通信・高耐障害フォールバックでプレビューを確実に表示）
-  // キャッシュはUIを即応させるためだけに使い、管理者権限は毎回バックグラウンドでWorkerに再検証させる
   window.makeTripFromUid = async (uid) => {
     if (!uid) return "";
     const cacheKey = "nz_cached_trip_" + uid;
-    let cachedObj = null;
-    try { cachedObj = JSON.parse(safeLS.get(cacheKey) || "null"); } catch (e) { cachedObj = null; }
+    const cached = safeLS.get(cacheKey);
+    if (cached && cached !== "◆000000" && cached !== "◆error") {
+      myTrip = cached;
+      return cached;
+    }
 
-    const verifyWithWorker = async () => {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000);
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
 
-        const res = await fetch(`${AUTH_WORKER_URL}/trip`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ uid }),
-          signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.trip && data.trip !== "◆error") {
-            return { trip: data.trip, isAdmin: !!data.isAdmin };
-          }
-        }
-      } catch (e) {}
-      return null;
-    };
-
-    if (cachedObj && cachedObj.trip && cachedObj.trip !== "◆000000" && cachedObj.trip !== "◆error") {
-      myTrip = cachedObj.trip;
-      isMyTripAdmin = !!cachedObj.isAdmin;
-      // 表示は即座にキャッシュから行いつつ、管理者フラグは裏で必ずWorkerに再確認させてズレを補正する
-      verifyWithWorker().then(result => {
-        if (result && (result.trip !== myTrip || result.isAdmin !== isMyTripAdmin)) {
-          myTrip = result.trip;
-          isMyTripAdmin = result.isAdmin;
-          safeLS.set(cacheKey, JSON.stringify(result));
-          refreshAdminUIState();
-        }
+      const res = await fetch(`${AUTH_WORKER_URL}/trip`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid }),
+        signal: controller.signal
       });
-      return cachedObj.trip;
-    }
+      clearTimeout(timeoutId);
 
-    const result = await verifyWithWorker();
-    if (result) {
-      myTrip = result.trip;
-      isMyTripAdmin = result.isAdmin;
-      safeLS.set(cacheKey, JSON.stringify(result));
-      return result.trip;
-    }
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.trip && data.trip !== "◆error") {
+          myTrip = data.trip;
+          safeLS.set(cacheKey, myTrip);
+          isMyTripAdmin = !!data.isAdmin;
+          return data.trip;
+        }
+      }
+    } catch (e) {}
 
-    // Worker遅延時も即座にローカル確定計算してボタンを点灯（この経路では管理者権限は絶対に付与しない）
+    // Worker遅延時も即座にローカル確定計算してボタンを点灯
     const localHash = await window.sha256(uid + ":NEZUO_FIXED_SALT_2026");
     myTrip = "◆" + localHash.substring(0, 6);
+    safeLS.set(cacheKey, myTrip);
     return myTrip;
   };
 
@@ -1118,7 +1093,7 @@ function toggleAcc(id) {
     D.clrMsgBtn.classList.toggle("show", D.mi.value.length > 0);
   };
 
-  // 🔒 入室バリデーション（名前と部屋IDがあれば即座に入室可能）
+  // 🔒 入室バリデーション（名前と部屋IDがあればOK、トリップも自動反映）
   const validateLobbyInputs = () => {
     const name = ($("lobbyName") ? $("lobbyName").value.trim() : "");
     const roomId = ($("lobbyRoomId") ? $("lobbyRoomId").value.trim() : "");
@@ -1129,7 +1104,7 @@ function toggleAcc(id) {
     if ($("btnJoinOfficial")) $("btnJoinOfficial").disabled = (!hasUid || isNameEmpty);
   };
 
-  // 🔒 プロフィール同期
+  // 🔒 プロフィール・トリップ同期
   const syncProfileValues = async () => {
     const nameVal = safeLS.get("nz_ni") || "";
     const colorVal = safeLS.get("nz_color") || "#f1f5f9";
@@ -2323,6 +2298,7 @@ function toggleAcc(id) {
         const newMsgRef = db.ref(`chat/${currentRoomId}`).push();
         await newMsgRef.set({ u: myUid, c: curColor, t: postTs, cid, d: encD });
         
+        // 在室時刻の更新
         db.ref(`presence/${currentRoomId}/${myUid}/t`).set(postTs).catch(()=>{});
 
       } catch (e) {

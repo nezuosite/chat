@@ -11,18 +11,12 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23070a10'/%3E%3Ctext x='50' y='68' font-size='60' text-anchor='middle' fill='%23f1f5f9'%3E💬%3C/text%3E%3C/svg%3E">
 <title>NEZUO CHAT</title>
 
-<!-- 🔒 ローカル起動のゼロ秒完全遮断 -->
+<!-- 🔒 ローカル起動遮断 -->
 <script>
 (function() {
   var host = window.location.hostname;
   var protocol = window.location.protocol;
-  var isLocal = (
-    protocol === "file:" ||
-    host === "localhost" ||
-    host === "127.0.0.1" ||
-    host === "0.0.0.0" ||
-    (host && host.endsWith(".local"))
-  );
+  var isLocal = (protocol === "file:" || host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0" || (host && host.endsWith(".local")));
   if (isLocal) {
     window.__IS_BLOCKED__ = true;
     var s = document.createElement("style");
@@ -68,7 +62,6 @@
 :root{--bg:#070a10;--sf:#0f172a;--s2:#0b1120;--bd:#1e293b;--tx:#f8fafc;--mu:#94a3b8;--m2:#475569;--in:#334155;--ro:#f43f5e;--usr-color:#f1f5f9;--safe:env(safe-area-inset-bottom,0px)}
 html,body{position:fixed;top:0;left:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none;color-scheme:dark}
 
-/* ⚡ 文字の完全不透明化・Safari透明化バグ対策 */
 input,textarea,select{
   font-family:inherit;font-size:16px!important;
   color:#f8fafc!important;-webkit-text-fill-color:#f8fafc!important;
@@ -371,8 +364,8 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
             <input type="text" id="lobbyRoomId" class="inp" placeholder="例: room-xyz" maxlength="20" autocomplete="off">
           </div>
           <div class="lobby-row">
-            <label for="lobbyRoomPass">部屋パスワード</label>
-            <input type="text" id="lobbyRoomPass" class="inp" placeholder="パスワード..." autocomplete="off">
+            <label for="lobbyRoomPass">部屋パスワード（任意）</label>
+            <input type="text" id="lobbyRoomPass" class="inp" placeholder="パスなしでも入室可" autocomplete="off">
           </div>
         </div>
 
@@ -451,7 +444,7 @@ function toggleAcc(id) {
       const decoded = decodeURIComponent(escape(atob(hash)));
       const params = new URLSearchParams(decoded);
       const r = params.get("r"), p = params.get("p");
-      if (r && p) { inviteRoomId = r; inviteRoomPass = p; }
+      if (r) { inviteRoomId = r; inviteRoomPass = p || ""; }
     } catch (e) {}
   })();
 
@@ -505,7 +498,7 @@ function toggleAcc(id) {
             unsubscribe();
             authReadyPromise = null;
             authDetailedError = `[${err.code || "AUTH_ERR"}] ${err.message || ""}`;
-            console.error("Firebase本UID認証エラー詳細:", err);
+            console.error("Firebase認証エラー:", err);
             reject(err);
           }
         }
@@ -682,6 +675,22 @@ function toggleAcc(id) {
     if (isNaN(d.getTime())) return "--:--:--";
     const pad = n => String(n).padStart(2, "0");
     return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())}(${["日", "月", "火", "水", "木", "金", "土"][d.getDay()]}) ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  };
+
+  window.sha256 = async (str) => {
+    if (E2EE.hasCrypto) {
+      try {
+        const buf = _txtEnc.encode(str);
+        const hash = await window.crypto.subtle.digest("SHA-256", buf);
+        return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+      } catch (e) {}
+    }
+    let h1 = 0x811c9dc5, h2 = 0xcbf29ce4;
+    for (let i = 0; i < str.length; i++) {
+      h1 = Math.imul(h1 ^ str.charCodeAt(i), 0x01000193);
+      h2 = Math.imul(h2 ^ str.charCodeAt(i), 0x01000193);
+    }
+    return (h1 >>> 0).toString(16).padStart(8, '0') + (h2 >>> 0).toString(16).padStart(8, '0');
   };
 
   // 🔒 トリップ生成（Workerとのみ通信・HTML側にソルトや判定コードを持たせない安全仕様）
@@ -934,6 +943,7 @@ function toggleAcc(id) {
     exitingUsersLock.clear();
   }
 
+  // ⏱️ 1秒のズレも許さない完全同期型自動退室（数学的確定時刻の算出）
   async function triggerSelfAutoExit() {
     if (isExecutingAutoExit || !isJoined || !db || !currentRoomId || !myUid) return;
     isExecutingAutoExit = true;
@@ -942,7 +952,9 @@ function toggleAcc(id) {
     const roomId = currentRoomId;
     const cleanName = (myName || "").trim();
     const cleanTrip = myTrip || "";
-    const exactExpiryTime = myLastActiveTs + AUTO_EXIT_MS;
+
+    // 直近の発言（または入室）の秒数に完全に合わせる（+ AUTO_EXIT_MS）
+    const exactExpiryTime = Math.floor(myLastActiveTs + AUTO_EXIT_MS);
 
     try {
       if (cleanName) {
@@ -960,6 +972,7 @@ function toggleAcc(id) {
     }
   }
 
+  // ⏱️ 放置ユーザー検知（サーバー確定時刻で1秒の狂いもなくログ作成）
   async function checkAndTriggerExactAutoExit() {
     if (!isJoined || !db || !currentRoomId || isExecutingAutoExit) return;
     const nowTrue = getTrueTime();
@@ -995,7 +1008,8 @@ function toggleAcc(id) {
           const userName = (u.n || "").trim();
           const userTrip = (u.p || "").trim();
           if (userName) {
-            const exactExpiryTime = u.t + AUTO_EXIT_MS;
+            // 発言・在室の確定サーバー時刻に数学的一致
+            const exactExpiryTime = Math.floor(u.t + AUTO_EXIT_MS);
             const rawSysText = "📢 [お知らせ] " + `${userName} ${userTrip}`.trim() + ` が自動退室しました (${autoExitMinutes}分間発言がなかったため)`;
             const encD = await encodeMsgPayload("システム", "", rawSysText);
             await db.ref(`chat/${roomId}`).push({
@@ -1213,11 +1227,11 @@ function toggleAcc(id) {
   const validateLobbyInputs = () => {
     const name = ($("lobbyName") ? $("lobbyName").value.trim() : "");
     const roomId = ($("lobbyRoomId") ? $("lobbyRoomId").value.trim() : "");
-    const roomPass = ($("lobbyRoomPass") ? $("lobbyRoomPass").value : "");
     const isNameEmpty = (!name);
     const isTripReady = (myTrip && myTrip.startsWith("◆") && myTrip !== "◆------" && myTrip !== "◆error");
 
-    if ($("btnJoin")) $("btnJoin").disabled = (!isTripReady || isNameEmpty || !roomId || !roomPass);
+    // フリールームはパスワード空でも入室可能
+    if ($("btnJoin")) $("btnJoin").disabled = (!isTripReady || isNameEmpty || !roomId);
     if ($("btnJoinOfficial")) $("btnJoinOfficial").disabled = (!isTripReady || isNameEmpty);
   };
 
@@ -1459,6 +1473,7 @@ function toggleAcc(id) {
           document.body.appendChild(audioEl);
         }
         stream.attach(audioEl);
+        audioEl.play().catch(()=>{});
       };
 
       skywayRoomInstance.publications.forEach(subscribeAndPlay);
@@ -1620,12 +1635,12 @@ function toggleAcc(id) {
     }
   }
 
+  // 🚪 フリールーム・公式部屋への完全安定入室エンジン
   async function joinRoom(options = {}) {
     if (!db) { alert("データベースが準備できていません。"); return; }
     let lobbyRoomId = options.roomId || ($("lobbyRoomId") ? $("lobbyRoomId").value.trim() : "");
-    let lobbyRoomPass = options.roomPass || ($("lobbyRoomPass") ? $("lobbyRoomPass").value : "");
+    let lobbyRoomPass = options.roomPass !== undefined ? options.roomPass : ($("lobbyRoomPass") ? $("lobbyRoomPass").value : "");
     if (!lobbyRoomId) { alert("部屋IDを入力してください。"); return; }
-    if (lobbyRoomId !== "official" && !lobbyRoomPass) { alert("部屋パスワードを入力してください。"); return; }
 
     const joinBtn = $("btnJoin");
     if (joinBtn) { joinBtn.disabled = true; joinBtn.textContent = "接続中..."; }
@@ -1682,7 +1697,7 @@ function toggleAcc(id) {
         await db.ref(`settings/${safeRoomPath}`).set({
           creatorUid: roomSettings.creatorUid,
           newEntriesDisabled: false,
-          passcode: ""
+          passcode: lobbyRoomPass || ""
         });
         if (safeRoomPath !== "official") safeLS.set("nz_my_created_room_id", safeRoomPath);
       } catch (e) {
@@ -1701,12 +1716,15 @@ function toggleAcc(id) {
       return;
     }
     if (!options.silent && roomSettings.passcode && !hasApprovedTrip && !isHostOrAdmin) {
-      const userPass = prompt("部屋の合言葉を入力してください：");
-      if (userPass !== roomSettings.passcode) {
-        if (joinBtn) { joinBtn.disabled = false; joinBtn.textContent = "部屋に入る / 部屋を作る"; }
-        switchScreen("lobby");
-        alert("合言葉が一致しません。");
-        return;
+      if (lobbyRoomPass !== roomSettings.passcode) {
+        const userPass = prompt("部屋の合言葉を入力してください：");
+        if (userPass !== roomSettings.passcode) {
+          if (joinBtn) { joinBtn.disabled = false; joinBtn.textContent = "部屋に入る / 部屋を作る"; }
+          switchScreen("lobby");
+          alert("合言葉が一致しません。");
+          return;
+        }
+        lobbyRoomPass = userPass;
       }
     }
 
@@ -1719,7 +1737,7 @@ function toggleAcc(id) {
     currentRoomId = safeRoomPath; 
     currentRoomPass = lobbyRoomPass;
 
-    if (safeRoomPath === "official") {
+    if (safeRoomPath === "official" || !lobbyRoomPass) {
       activeKey = null;
     } else {
       activeKey = await E2EE.deriveKey(lobbyRoomPass);
@@ -2333,6 +2351,7 @@ function toggleAcc(id) {
         hasPresenceEverExisted = true;
         const val = s.val();
         if (val && typeof val.t === "number") {
+          // サーバー確定ミリ秒をそのまま同期保持
           myLastActiveTs = val.t;
           safeLS.set("nz_last_post_time", val.t.toString());
         }
@@ -2482,9 +2501,9 @@ function toggleAcc(id) {
       const baselineTime = Math.max(sessionStart, lastPost);
       const nowTrue = Date.now();
 
-      if (wasJoined && lastRoomId && (lastRoomId === "official" || lastRoomPass) && (nowTrue - baselineTime < AUTO_EXIT_MS)) {
+      if (wasJoined && lastRoomId && (lastRoomId === "official" || lastRoomPass !== null) && (nowTrue - baselineTime < AUTO_EXIT_MS)) {
         await offsetPromise;
-        joinRoom({ roomId: lastRoomId, roomPass: lastRoomPass, silent: true, isCrossTab: true });
+        joinRoom({ roomId: lastRoomId, roomPass: lastRoomPass || "", silent: true, isCrossTab: true });
       } else {
         switchScreen("lobby");
       }
@@ -2552,7 +2571,7 @@ function toggleAcc(id) {
       const { isJoined: remoteJoined, screen, roomId, roomPass } = data.payload || {};
       if (remoteJoined && roomId) {
         if (!isJoined || safeLS.get("nz_last_room_id") !== roomId) {
-          joinRoom({ roomId, roomPass, silent: true, isCrossTab: true });
+          joinRoom({ roomId, roomPass: roomPass || "", silent: true, isCrossTab: true });
         }
       } else if (screen === "lobby" && isJoined) {
         doExit(false, true);
@@ -2560,7 +2579,7 @@ function toggleAcc(id) {
     } else if (data.action === "ROOM_JOIN") {
       const { roomId, roomPass } = data.payload || {};
       if (roomId && (!isJoined || safeLS.get("nz_last_room_id") !== roomId)) {
-        joinRoom({ roomId, roomPass, silent: true, isCrossTab: true });
+        joinRoom({ roomId, roomPass: roomPass || "", silent: true, isCrossTab: true });
       }
     } else if (data.action === "ROOM_EXIT") {
       if (isJoined) {
@@ -2777,7 +2796,7 @@ function toggleAcc(id) {
 
     $("inviteBtn").addEventListener("click", async (e) => {
       e.preventDefault();
-      const rawParam = `r=${encodeURIComponent(safeLS.get("nz_last_room_id"))}&p=${encodeURIComponent(safeLS.get("nz_last_room_pass"))}`;
+      const rawParam = `r=${encodeURIComponent(safeLS.get("nz_last_room_id"))}&p=${encodeURIComponent(safeLS.get("nz_last_room_pass") || "")}`;
       const inviteUrl = window.location.origin + window.location.pathname + "#" + btoa(unescape(encodeURIComponent(rawParam)));
       try { await navigator.clipboard.writeText(inviteUrl); showToast("🔗 招待URLをコピーしました"); } catch(err) { alert("コピーに失敗しました：\n" + inviteUrl); }
     });

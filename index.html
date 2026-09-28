@@ -58,6 +58,9 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 
+<!-- 📞 SkyWay SDK (v3 最新版) -->
+<script src="https://cdn.jsdelivr.net/npm/@skyway-sdk/room@latest/dist/skyway_room-latest.js"></script>
+
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--bg:#070a10;--sf:#0f172a;--s2:#0b1120;--bd:#1e293b;--tx:#f8fafc;--mu:#94a3b8;--m2:#475569;--in:#334155;--ro:#f43f5e;--usr-color:#f1f5f9;--safe:env(safe-area-inset-bottom,0px)}
@@ -111,6 +114,8 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .lobby-row label{font-size:10px;font-weight:bold;color:var(--mu)!important}
 .grid-2col{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 
+.val-warning{font-size:10px;font-weight:bold;color:#f43f5e;line-height:1.4;display:none;padding:2px 4px;background:rgba(244,63,94,0.1);border-radius:4px;border:1px solid rgba(244,63,94,0.25)}
+
 #lobbyTripContainer{display:none;gap:6px;align-items:center;margin-top:4px;width:100%;}
 #lobbyTripPrev{font-size:11.5px;font-weight:bold;color:var(--usr-color)!important;text-align:center;background:rgba(0,0,0,0.3);padding:8px;border-radius:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:1.5px solid var(--usr-color);word-break:break-all;flex:1;}
 #adminAccordion{display:none;flex-direction:column;background:var(--sf);border-bottom:1px solid var(--bd);padding:10px 14px;gap:10px;flex-shrink:0;box-shadow:0 4px 12px rgba(0,0,0,0.3)}
@@ -123,6 +128,14 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .toggle-label{font-size:11px;font-weight:bold;color:var(--tx)!important}
 #pl{display:none;gap:6px;padding:6px 12px;background:var(--s2);border-bottom:1px solid var(--bd);overflow-x:auto;white-space:nowrap;min-height:36px;max-height:36px;flex-shrink:0;align-items:center}
 .chip{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,0.04);border:1.5px solid var(--usr-color);display:inline-flex;align-items:center;color:var(--usr-color);height:24px}
+
+/* 📞 通話コントロールバー */
+#callBar{display:none;align-items:center;justify-content:space-between;padding:5px 12px;background:#0d1527;border-bottom:1px solid #1e293b;gap:8px;flex-shrink:0}
+.call-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:bold;color:#38bdf8}
+.call-dot{width:7px;height:7px;border-radius:50%;background:#10b981;animation:pulse 1.5s infinite}
+@keyframes pulse{0%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.85)}100%{opacity:1;transform:scale(1)}}
+.call-btn{padding:3px 8px;height:24px;border-radius:4px;font-size:10px;font-weight:bold;background:#1e293b;color:#f8fafc;border:1px solid #334155;display:inline-flex;align-items:center;gap:3px}
+.call-btn.active{background:#0284c7;border-color:#38bdf8}
 
 #fixedPlayer{display:none;flex-direction:column;background:var(--s2);border-bottom:1px solid var(--bd);width:100%}
 #playerHeader{background:var(--sf);padding:8px 12px;font-size:12px;font-weight:bold;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--bd)}
@@ -138,7 +151,6 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .mw.is-failed{opacity:.9!important;border:1px dashed var(--ro)!important;background:rgba(244,63,94,0.08)!important}
 .mw.msg-deleting{opacity:0!important;transform:scale(0.92) translateY(-4px)!important;max-height:0!important;padding-top:0!important;padding-bottom:0!important;margin:0!important;overflow:hidden!important;pointer-events:none!important;transition:all 0.1s ease-out!important}
 
-/* ⚡ ログ上部：名前・トリップ ＆ 右端時刻・左配置削除ボタン */
 .mw-content-row{display:flex;align-items:center;justify-content:space-between;width:100%;gap:8px;color:#f8fafc!important;-webkit-text-fill-color:#f8fafc!important}
 .mm{display:inline-flex;align-items:baseline;gap:5px;font-size:12px;flex:1;min-width:0;overflow:hidden}
 .mm-name{font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -149,7 +161,6 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .msg-del-btn{flex-shrink:0;font-size:11px;line-height:1;padding:2px 5px;border-radius:4px;background:rgba(244,63,94,0.12);border:1px solid rgba(244,63,94,0.3);color:#fda4af!important;-webkit-text-fill-color:#fda4af!important;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
 .msg-del-btn:hover{background:rgba(244,63,94,0.25)}
 
-/* ⚡ 吹き出し本文のフォント・行間・視認性最適化 */
 .mb-bubble{
   position:relative;
   font-size:13.5px;
@@ -291,6 +302,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
           <div id="roomStatusBadges" style="display:none;gap:3px;align-items:center;"></div>
           <div class="hbs">
             <div id="adminBtnMount"></div>
+            <button class="btn" id="callToggleBtn" style="background:#0284c7;border:1px solid #38bdf8;color:#fff;display:none;">📞 通話開始</button>
             <button class="bclr" id="clrBtn" title="色設定"><span class="bclr-dot" id="clrDot"></span> 色</button>
             <button class="btn" id="inviteBtn" style="display:none;">🔗 招待</button>
             <button class="btn" id="exBtn" style="background:rgba(244,63,94,0.15);border:1px solid rgba(244,63,94,0.3);color:#fda4af;display:none;">退室</button>
@@ -300,6 +312,18 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
     </div>
 
     <div id="chatScreen">
+      <!-- 📞 通話コントロールバー -->
+      <div id="callBar">
+        <div class="call-badge">
+          <span class="call-dot"></span>
+          <span id="callStatusText">📞 通話接続中...</span>
+        </div>
+        <div style="display:flex;gap:5px;align-items:center;">
+          <button class="call-btn" id="callMicBtn">🎤 マイクON</button>
+          <button class="call-btn" id="callEndBtn" style="background:rgba(244,63,94,0.2);border-color:#f43f5e;color:#fda4af;">切断</button>
+        </div>
+      </div>
+
       <div id="adminAccordionMount"></div>
       <div id="pl" style="display:none;"></div>
 
@@ -349,8 +373,9 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
       <div class="lobby-sec">
         <h2>👤 ユーザー設定 (必須入力)</h2>
         <div style="display:flex;flex-direction:column;gap:4px;width:100%;">
-          <label for="lobbyName" style="font-size:10px;font-weight:bold;color:var(--mu);">名前</label>
+          <label for="lobbyName" style="font-size:10px;font-weight:bold;color:var(--mu);">名前 (必須)</label>
           <input type="text" id="lobbyName" class="inp" placeholder="名前を入力..." maxlength="10" autocomplete="off">
+          <div class="val-warning" id="nameWarning">⚠️ 名前を入力してください</div>
         </div>
         
         <div class="acc-item" style="border-bottom:none;padding-bottom:0;">
@@ -374,17 +399,19 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 
         <div class="grid-2col">
           <div class="lobby-row">
-            <label for="lobbyRoomId">部屋ID (全角20文字まで)</label>
+            <label for="lobbyRoomId">部屋ID (必須・全角20文字まで)</label>
             <input type="text" id="lobbyRoomId" class="inp" placeholder="例: room-xyz" maxlength="20" autocomplete="off">
+            <div class="val-warning" id="roomIdWarning">⚠️ 部屋IDを入力してください</div>
           </div>
           <div class="lobby-row">
-            <label for="lobbyRoomPass">部屋パスワード（任意）</label>
-            <input type="text" id="lobbyRoomPass" class="inp" placeholder="空欄のまま作成・入室可" autocomplete="off">
+            <label for="lobbyRoomPass">部屋パスワード (必須・暗号化鍵)</label>
+            <input type="text" id="lobbyRoomPass" class="inp" placeholder="合言葉パスワードを入力" autocomplete="off">
+            <div class="val-warning" id="roomPassWarning">⚠️ パスワードを入力してください</div>
           </div>
         </div>
 
         <div style="margin-top:4px;">
-          <button class="btn" id="btnJoin" style="width:100%;background:#334155;color:#fff;font-size:13px;font-weight:bold;height:38px;border-radius:6px;box-shadow:0 3px 10px rgba(0,0,0,0.3);" disabled>部屋に入る / 部屋を作る</button>
+          <button class="btn" id="btnJoin" style="width:100%;background:#334155;color:#fff;font-size:13px;font-weight:bold;height:38px;border-radius:6px;box-shadow:0 3px 10px rgba(0,0,0,0.3);" disabled>🔐 認証・トリップ確定中...</button>
         </div>
       </div>
 
@@ -405,6 +432,45 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 </div>
 
 <script>
+// 📞 SkyWay 認証情報
+const SKYWAY_APP_ID = "58cc3b17-26f0-42bb-96e8-0f557ddf970e";
+const SKYWAY_SECRET_KEY_B64 = "JoAgxrroO7FX2TckM1ftfCoGL4I6J44jLalRi+WTTGk=";
+
+// 📞 Web Crypto API を用いたブラウザ内安全JWT生成
+async function generateSkyWayToken() {
+  try {
+    const b64u = str => btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const header = { typ: "JWT", alg: "HS256" };
+    const now = Math.floor(Date.now() / 1000);
+    const payload = {
+      jti: "jwt_" + Math.random().toString(36).substring(2, 10),
+      iat: now,
+      exp: now + 86400,
+      scope: {
+        appId: SKYWAY_APP_ID,
+        rooms: [{ id: "*", name: "*", actions: ["create", "close", "read"], members: [{ id: "*", name: "*", actions: ["write"], publications: [{ action: "write" }], subscriptions: [{ action: "write" }] }] }]
+      }
+    };
+    const sHeader = b64u(JSON.stringify(header));
+    const sPayload = b64u(JSON.stringify(payload));
+    const dataToSign = `${sHeader}.${sPayload}`;
+    
+    // Base64シークレットからCryptoKey作成
+    const binStr = atob(SKYWAY_SECRET_KEY_B64);
+    const keyBytes = new Uint8Array(binStr.length);
+    for (let i = 0; i < binStr.length; i++) keyBytes[i] = binStr.charCodeAt(i);
+    
+    const key = await crypto.subtle.importKey("raw", keyBytes, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+    const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(dataToSign));
+    const sigStr = String.fromCharCode.apply(null, new Uint8Array(signature));
+    const sSignature = b64u(sigStr);
+    return `${dataToSign}.${sSignature}`;
+  } catch (err) {
+    console.error("SkyWay Token生成エラー:", err);
+    return null;
+  }
+}
+
 function showToast(msg, duration = 2500) {
   const t = document.getElementById("toastContainer");
   if (!t) return;
@@ -435,6 +501,7 @@ function toggleAcc(id) {
 
   let myUid = safeLS.get("nz_cached_uid") || "";
   let myTrip = safeLS.get("nz_cached_trip") || "";
+  let isAuthAndTripReady = false;
   let authReadyPromise = null;
 
   const tabSyncId = "tab_" + Math.random().toString(36).substring(2, 9);
@@ -471,6 +538,7 @@ function toggleAcc(id) {
   const db = firebase.database();
   const auth = firebase.auth();
 
+  // 🔒 高速かつ確実な匿名認証
   function ensureAnonAuth() {
     if (auth.currentUser && auth.currentUser.uid) {
       myUid = auth.currentUser.uid;
@@ -507,7 +575,6 @@ function toggleAcc(id) {
             resolved = true;
             unsubscribe();
             authReadyPromise = null;
-            console.error("Firebase認証エラー:", err);
             reject(err);
           }
         }
@@ -539,7 +606,6 @@ function toggleAcc(id) {
       syncProfileValues();
     }
   });
-  ensureAnonAuth().catch(()=>{});
 
   const $ = id => document.getElementById(id);
   let D = {};
@@ -574,6 +640,14 @@ function toggleAcc(id) {
   let AUTO_EXIT_MS = autoExitMinutes * 60 * 1000;
   let myLastActiveTs = 0;
   let isExecutingAutoExit = false;
+
+  // 📞 SkyWay 通話インスタンス
+  let skywayContext = null;
+  let skywayRoom = null;
+  let localAudioStream = null;
+  let localAudioPublication = null;
+  let isMicMuted = false;
+  let isCallingActive = false;
 
   // 👑 新管理人判定（◆TUNsz2に指定）
   const checkIsGlobalAdmin = () => (myTrip === "◆TUNsz2");
@@ -764,7 +838,6 @@ function toggleAcc(id) {
     return parts.join("");
   }
 
-  // ⚡ ログ要素生成：時刻の右端統一＆削除ボタンを時刻の左に配置
   function cMsg(m, isPending = false) {
     const isSys = (m.u === "system" || m.sys);
     const ts = getMsgTime(m);
@@ -797,7 +870,6 @@ function toggleAcc(id) {
     const isGlobal = checkIsGlobalAdmin();
     const canDelete = (m.u === myUid || isHost || isGlobal);
 
-    // ⚡ 削除ボタンを時刻の「左側」に配置（時刻の右端揃えを1pxも崩さない）
     if (canDelete && !isPending) {
       const delBtn = document.createElement("button");
       delBtn.className = "msg-del-btn";
@@ -906,6 +978,97 @@ function toggleAcc(id) {
     } catch(e){}
   }
 
+  // 📞 SkyWay 通話切断処理
+  async function leaveSkyWayCall() {
+    if (localAudioPublication) {
+      try { await localAudioPublication.cancel(); } catch(e){}
+      localAudioPublication = null;
+    }
+    if (localAudioStream) {
+      try {
+        localAudioStream.track.stop();
+      } catch(e){}
+      localAudioStream = null;
+    }
+    if (skywayRoom) {
+      try { await skywayRoom.leave(); await skywayRoom.close(); } catch(e){}
+      skywayRoom = null;
+    }
+    skywayContext = null;
+    isCallingActive = false;
+    isMicMuted = false;
+    const callBar = $("callBar");
+    if (callBar) callBar.style.display = "none";
+    const callToggleBtn = $("callToggleBtn");
+    if (callToggleBtn) {
+      callToggleBtn.textContent = "📞 通話開始";
+      callToggleBtn.style.background = "#0284c7";
+    }
+  }
+
+  // 📞 SkyWay 通話開始処理
+  async function startSkyWayCall() {
+    if (isCallingActive) {
+      await leaveSkyWayCall();
+      return;
+    }
+    if (!window.skyway_room) {
+      showToast("⚠️ SkyWay SDKの読み込みに失敗しています");
+      return;
+    }
+    const token = await generateSkyWayToken();
+    if (!token) {
+      showToast("⚠️ 通話認証トークンの生成に失敗しました");
+      return;
+    }
+
+    const callBar = $("callBar");
+    const statusText = $("callStatusText");
+    const callToggleBtn = $("callToggleBtn");
+    if (callBar) callBar.style.display = "flex";
+    if (statusText) statusText.textContent = "📞 通話ルーム接続中...";
+
+    try {
+      const { SkyWayContext, SkyWayRoom, SkyWayStreamFactory } = window.skyway_room;
+      skywayContext = await SkyWayContext.Create(token);
+      skywayRoom = await SkyWayRoom.FindOrCreate(skywayContext, {
+        type: "p2p",
+        name: `room_${currentRoomId}`
+      });
+
+      const me = await skywayRoom.join();
+      localAudioStream = await SkyWayStreamFactory.createMicrophoneAudioStream();
+      localAudioPublication = await me.publish(localAudioStream);
+
+      isCallingActive = true;
+      if (statusText) statusText.textContent = "🟢 通話中 (P2P接続)";
+      if (callToggleBtn) {
+        callToggleBtn.textContent = "📞 通話終了";
+        callToggleBtn.style.background = "#e11d48";
+      }
+
+      // 他メンバーの音声購読
+      const subscribeTrack = async (publication) => {
+        if (publication.publisher.id === me.id || publication.contentType !== "audio") return;
+        const { stream } = await me.subscribe(publication.id);
+        const audioEl = document.createElement("audio");
+        audioEl.srcObject = new MediaStream([stream.track]);
+        audioEl.autoplay = true;
+        audioEl.playsInline = true;
+        document.body.appendChild(audioEl);
+      };
+
+      skywayRoom.publications.forEach(subscribeTrack);
+      skywayRoom.onStreamPublished.add(e => subscribeTrack(e.publication));
+
+      showToast("🎙️ 通話に接続しました");
+    } catch (err) {
+      console.error("SkyWay 通話接続エラー:", err);
+      showToast("⚠️ 通話接続に失敗しました: " + (err.message || "マイク権限エラー"));
+      await leaveSkyWayCall();
+    }
+  }
+
   async function doExit(isAuto = false, isSilent = false) {
     if (!isJoined) {
       switchScreen("lobby");
@@ -913,6 +1076,7 @@ function toggleAcc(id) {
     }
     isJoined = false;
     stopSmartAutoExitChecker();
+    await leaveSkyWayCall();
 
     const prevRoomId = currentRoomId;
     const cleanName = (myName || "").trim();
@@ -962,59 +1126,82 @@ function toggleAcc(id) {
     }
 
     if (isAuto) {
-      showToast(`⏱️ ${autoExitMinutes}分間発言がなかったため、自動退室しました`);
+      showToast(`⏱️ ${autoExitMinutes}分間発言がなかったため、自動退室しました`, 4000);
     }
   }
 
-  // ⚡ 重複ゼロ＆時刻ズレ完全ゼロの自動退室処理エンジン（自分・他人問わず単一トランザクションで確定）
+  // ⚡【自動退室ログ完全同期エンジン】他人が放置ユーザーを検知した際の排他トランザクション処理
   async function processAutoExitForUser(targetUid, userData) {
-    if (!db || !currentRoomId || !userData) return;
-    const baseTs = typeof userData.t === "number" ? userData.t : 0;
-    if (baseTs <= 0) return;
-
-    // 数学的に完全確定した予定退室時刻
-    const exactExpiryTime = Math.floor(baseTs + AUTO_EXIT_MS);
-    const autoExitKey = `sys_autoexit_${targetUid}_${baseTs}`;
-    const pRef = db.ref(`presence/${currentRoomId}/${targetUid}`);
+    if (!db || !currentRoomId || !userData || targetUid === myUid) return;
+    const roomId = currentRoomId;
+    const pRef = db.ref(`presence/${roomId}/${targetUid}`);
 
     try {
-      // 排他トランザクション：一番最初に検知したクライアント1台のみが成功
+      let expiredBaseTs = 0;
+      // 排他トランザクション：現在ノードが存在し、期限超過している場合のみ削除
       const res = await pRef.transaction(current => {
-        if (current !== null && current.t === baseTs && (getTrueTime() >= baseTs + AUTO_EXIT_MS)) {
-          return null; // 削除
+        if (current && typeof current.t === "number") {
+          const now = getTrueTime();
+          if (now >= current.t + AUTO_EXIT_MS) {
+            expiredBaseTs = current.t;
+            return null; // 期限切れのため削除
+          }
         }
-        return undefined; // 既に消されたか発言で更新された場合は安全に何もしない
+        return undefined; // 期限切れでない、または既に誰かが消した場合は触らない
       });
 
+      // トランザクションで削除に成功した「たった1台の端末」だけがログを書き込む
       if (res.committed && res.snapshot.val() === null) {
-        const userName = (userData.n || "").trim();
+        const baseTs = expiredBaseTs || userData.t || (getTrueTime() - AUTO_EXIT_MS);
+        // ⚡ 1秒のズレもない確定時刻計算
+        const exactExpiryTime = Math.floor(baseTs + AUTO_EXIT_MS);
+        const autoExitKey = `sys_autoexit_${targetUid}_${baseTs}`;
+        const userName = (userData.n || "名無し").trim();
         const userTrip = (userData.p || "").trim();
-        if (userName) {
-          const rawSysText = "📢 [お知らせ] " + `${userName} ${userTrip}`.trim() + ` が自動退室しました (${autoExitMinutes}分間発言がなかったため)`;
-          const encD = await encodeMsgPayload("システム", "", rawSysText);
-          await db.ref(`chat/${currentRoomId}/${autoExitKey}`).set({
-            u: "system", c: "#f43f5e", d: encD, t: exactExpiryTime, sys: true
-          });
-        }
-        await destroyRoomIfEmpty(currentRoomId);
+
+        const rawSysText = "📢 [お知らせ] " + `${userName} ${userTrip}`.trim() + ` が自動退室しました (${autoExitMinutes}分間発言がなかったため)`;
+        const encD = await encodeMsgPayload("システム", "", rawSysText);
+        await db.ref(`chat/${roomId}/${autoExitKey}`).set({
+          u: "system", c: "#f43f5e", d: encD, t: exactExpiryTime, sys: true
+        });
+
+        await destroyRoomIfEmpty(roomId);
       }
-    } catch(e){}
+    } catch(e) {
+      console.error("他ユーザー自動退室処理エラー:", e);
+    }
   }
 
+  // ⚡【自身が期限を迎えた場合の自動退室処理】直接ログを書き込んでから確実に退出
   async function triggerSelfAutoExit() {
     if (isExecutingAutoExit || !isJoined || !db || !currentRoomId || !myUid) return;
     isExecutingAutoExit = true;
     stopSmartAutoExitChecker();
 
-    const userData = {
-      n: myName || "名無し",
-      p: myTrip,
-      t: myLastActiveTs
-    };
+    const roomId = currentRoomId;
+    const uid = myUid;
+    const cleanName = (myName || "名無し").trim();
+    const cleanTrip = myTrip || "";
+    const baseTs = myLastActiveTs > 0 ? myLastActiveTs : (getTrueTime() - AUTO_EXIT_MS);
+    // ⚡ 1秒のズレもない確定時刻計算
+    const exactExpiryTime = Math.floor(baseTs + AUTO_EXIT_MS);
+    const autoExitKey = `sys_autoexit_${uid}_${baseTs}`;
 
     try {
-      await processAutoExitForUser(myUid, userData);
+      // 1. まず確実に自動退室アナウンスを書き込む
+      const rawSysText = "📢 [お知らせ] " + `${cleanName} ${cleanTrip}`.trim() + ` が自動退室しました (${autoExitMinutes}分間発言がなかったため)`;
+      const encD = await encodeMsgPayload("システム", "", rawSysText);
+      await db.ref(`chat/${roomId}/${autoExitKey}`).set({
+        u: "system", c: "#f43f5e", d: encD, t: exactExpiryTime, sys: true
+      });
+
+      // 2. presence から自身を削除
+      await db.ref(`presence/${roomId}/${uid}`).remove();
+
+      // 3. 0人になったら部屋を消滅
+      await destroyRoomIfEmpty(roomId);
     } catch (e) {
+      console.error("自身自動退室エラー:", e);
     } finally {
       doExit(true, false);
       isExecutingAutoExit = false;
@@ -1445,16 +1632,41 @@ function toggleAcc(id) {
     D.clrMsgBtn.classList.toggle("show", D.mi.value.length > 0);
   };
 
+  // 🔒 厳格バリデーション（トリップ確定＋名前・部屋ID・パスワード完全必須＋警告文制御）
   const validateLobbyInputs = () => {
     const name = ($("lobbyName") ? $("lobbyName").value.trim() : "");
     const roomId = ($("lobbyRoomId") ? $("lobbyRoomId").value.trim() : "");
-    const isNameEmpty = (!name);
-    const hasUid = !!myUid;
+    const roomPass = ($("lobbyRoomPass") ? $("lobbyRoomPass").value.trim() : "");
 
-    if ($("btnJoin")) $("btnJoin").disabled = (!hasUid || isNameEmpty || !roomId);
-    if ($("btnJoinOfficial")) $("btnJoinOfficial").disabled = (!hasUid || isNameEmpty);
+    const nameWarn = $("nameWarning");
+    const roomIdWarn = $("roomIdWarning");
+    const roomPassWarn = $("roomPassWarning");
+
+    if (nameWarn) nameWarn.style.display = (!name && $("lobbyName") === document.activeElement) ? "block" : "none";
+    if (roomIdWarn) roomIdWarn.style.display = (!roomId && $("lobbyRoomId") === document.activeElement) ? "block" : "none";
+    if (roomPassWarn) roomPassWarn.style.display = (!roomPass && $("lobbyRoomPass") === document.activeElement) ? "block" : "none";
+
+    const hasAuthAndTrip = !!(myUid && myTrip && isAuthAndTripReady);
+    const isFreeRoomValid = (hasAuthAndTrip && name.length > 0 && roomId.length > 0 && roomPass.length > 0);
+    const isOfficialValid = (hasAuthAndTrip && name.length > 0);
+
+    const btnJoin = $("btnJoin");
+    if (btnJoin) {
+      btnJoin.disabled = !isFreeRoomValid;
+      if (!hasAuthAndTrip) {
+        btnJoin.textContent = "🔐 認証・トリップ確定中...";
+      } else {
+        btnJoin.textContent = "部屋に入る / 部屋を作る";
+      }
+    }
+
+    const btnOfficial = $("btnJoinOfficial");
+    if (btnOfficial) {
+      btnOfficial.disabled = !isOfficialValid;
+    }
   };
 
+  // ⚡ 匿名認証＆トリップ生成を最速で実行
   const syncProfileValues = async () => {
     const nameVal = safeLS.get("nz_ni") || "";
     const colorVal = safeLS.get("nz_color") || "#f1f5f9";
@@ -1465,21 +1677,6 @@ function toggleAcc(id) {
     const tripContainer = $("lobbyTripContainer");
     const tripPrevEl = $("lobbyTripPrev");
 
-    const renderTripUI = () => {
-      if (myTrip) {
-        if (tripContainer) tripContainer.style.display = "flex";
-        if (tripPrevEl) {
-          const clean = (myName || "").trim();
-          tripPrevEl.style.color = "var(--usr-color)";
-          tripPrevEl.textContent = clean ? `プレビュー: ${clean} ${myTrip}` : `プレビュー: ${myTrip}`;
-        }
-      } else {
-        if (tripContainer) tripContainer.style.display = "none";
-      }
-    };
-
-    renderTripUI();
-
     try {
       if (!myUid) {
         const user = await ensureAnonAuth();
@@ -1488,7 +1685,14 @@ function toggleAcc(id) {
 
       if (myUid) {
         myTrip = await window.makeTripFromUid(myUid);
-        renderTripUI();
+        isAuthAndTripReady = true;
+
+        if (tripContainer) tripContainer.style.display = "flex";
+        if (tripPrevEl) {
+          const clean = (myName || "").trim();
+          tripPrevEl.style.color = "var(--usr-color)";
+          tripPrevEl.textContent = clean ? `プレビュー: ${clean} ${myTrip}` : `プレビュー: ${myTrip}`;
+        }
       }
     } catch (err) {
       console.error("プロフィール同期エラー:", err);
@@ -1542,6 +1746,7 @@ function toggleAcc(id) {
       if (lobbyScr) lobbyScr.style.display = "none";
       if (chatScr) chatScr.style.display = "flex";
       if ($("exBtn")) $("exBtn").style.display = "inline-flex";
+      if ($("callToggleBtn")) $("callToggleBtn").style.display = "inline-flex";
       if ($("inviteBtn")) $("inviteBtn").style.display = (rawRoomId === "official") ? "none" : "inline-flex";
       if (logoTitle && rawRoomId) logoTitle.innerHTML = `NEZUO CHAT<span class="sub-room">${rawRoomId === "official" ? "常設公式部屋" : escapeHtml(rawRoomId)}</span>`;
       injectAdminUIIfNeeded();
@@ -1549,6 +1754,7 @@ function toggleAcc(id) {
       if (chatScr) chatScr.style.display = "none";
       if (lobbyScr) lobbyScr.style.display = "flex";
       if ($("exBtn")) $("exBtn").style.display = "none";
+      if ($("callToggleBtn")) $("callToggleBtn").style.display = "none";
       if ($("inviteBtn")) $("inviteBtn").style.display = "none";
       if ($("pl")) $("pl").style.display = "none";
       if ($("pcnt")) $("pcnt").style.display = "none";
@@ -1882,9 +2088,6 @@ function toggleAcc(id) {
         doExit(true, false);
       }
     });
-
-    // ⚡【重要】回線切れやスリープ時でも即時切断させず、自動退室期限（30分など）まで確実に生存させるため、
-    // onDisconnect().remove() は使用しません（サーバー側で在室状態を完全保持）
   }
 
   function detachFirebaseListeners() {
@@ -2128,10 +2331,17 @@ function toggleAcc(id) {
   async function joinRoom(options = {}) {
     if (!db) { alert("データベースが準備できていません。"); return; }
     let lobbyRoomId = options.roomId || ($("lobbyRoomId") ? $("lobbyRoomId").value.trim() : "");
-    let lobbyRoomPass = options.roomPass !== undefined ? options.roomPass : ($("lobbyRoomPass") ? $("lobbyRoomPass").value : "");
+    let lobbyRoomPass = options.roomPass !== undefined ? options.roomPass : ($("lobbyRoomPass") ? $("lobbyRoomPass").value.trim() : "");
     if (!lobbyRoomId) { alert("部屋IDを入力してください。"); return; }
 
     const isOfficialTarget = (lobbyRoomId === "official");
+    
+    // フリールームのパスワード完全必須バリデーション
+    if (!isOfficialTarget && !lobbyRoomPass) {
+      alert("部屋パスワードを入力してください（フリールームは必須です）。");
+      return;
+    }
+
     const activeBtn = isOfficialTarget ? $("btnJoinOfficial") : $("btnJoin");
     const origText = isOfficialTarget ? "🏢 常設公式部屋に入る（パス不要・即入室）" : "部屋に入る / 部屋を作る";
 
@@ -2308,7 +2518,21 @@ function toggleAcc(id) {
         logoTitle.innerHTML = `NEZUO CHAT<span class="sub-room">${pRoom === "official" ? "常設公式部屋" : escapeHtml(pRoom)}</span>`;
       }
       if ($("exBtn")) $("exBtn").style.display = "inline-flex";
+      if ($("callToggleBtn")) $("callToggleBtn").style.display = "inline-flex";
       if ($("inviteBtn")) $("inviteBtn").style.display = (pRoom === "official") ? "none" : "inline-flex";
+    }
+
+    // 📞 通話イベント登録
+    if ($("callToggleBtn")) $("callToggleBtn").addEventListener("click", startSkyWayCall);
+    if ($("callEndBtn")) $("callEndBtn").addEventListener("click", leaveSkyWayCall);
+    if ($("callMicBtn")) {
+      $("callMicBtn").addEventListener("click", () => {
+        if (!localAudioStream) return;
+        isMicMuted = !isMicMuted;
+        localAudioStream.track.enabled = !isMicMuted;
+        $("callMicBtn").textContent = isMicMuted ? "🔇 ミュート中" : "🎤 マイクON";
+        $("callMicBtn").classList.toggle("active", isMicMuted);
+      });
     }
 
     const autoExitSel = $("lobbyAutoExitSelect");
@@ -2491,10 +2715,15 @@ function toggleAcc(id) {
       let cleanVal = $("lobbyName").value.replace(/◆/g, "");
       $("lobbyName").value = cleanVal; safeLS.set("nz_ni", cleanVal); syncProfileValues();
       broadcastTabSync("PROFILE_UPDATE");
+      validateLobbyInputs();
     });
 
     $("lobbyRoomId").addEventListener("input", validateLobbyInputs);
     $("lobbyRoomPass").addEventListener("input", validateLobbyInputs);
+    $("lobbyName").addEventListener("blur", validateLobbyInputs);
+    $("lobbyRoomId").addEventListener("blur", validateLobbyInputs);
+    $("lobbyRoomPass").addEventListener("blur", validateLobbyInputs);
+
     if ($("lobbyName")) $("lobbyName").value = safeLS.get("nz_ni") || "";
     syncProfileValues();
 

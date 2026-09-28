@@ -110,20 +110,21 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 
 .lobby-sec{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;box-shadow:0 4px 12px rgba(0,0,0,0.25)}
 .lobby-sec h2{font-size:12px;font-weight:800;color:var(--tx)!important;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:4px}
-.lobby-row{display:flex;flex-direction:column;gap:4px}
+.lobby-row{display:flex;flex-direction:column;gap:3px}
 .lobby-row label{font-size:10px;font-weight:bold;color:var(--mu)!important}
 .grid-2col{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 
+/* ⚠️ 注意文（改行してすっきりまとめた配置） */
 .val-warning{
-  font-size:10px;
+  font-size:9.5px;
   font-weight:bold;
   color:#fda4af;
-  line-height:1.4;
+  line-height:1.35;
   display:block;
   padding:3px 6px;
-  background:rgba(244,63,94,0.15);
+  background:rgba(244,63,94,0.12);
   border-radius:4px;
-  border:1px solid rgba(244,63,94,0.3);
+  border:1px solid rgba(244,63,94,0.25);
   margin-top:2px;
 }
 
@@ -216,8 +217,12 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .bsd{width:44px;height:44px;border-radius:50%;background:#334155;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid rgba(255,255,255,0.12)}
 .bsd svg{width:18px;height:18px;transform:rotate(45deg);margin-top:-1px;margin-left:-2px}
 
-/* 👀 覗き見用コントロールバー */
-#lurkPromptBar{display:none;width:100%;padding:6px 12px;background:#0d1527;border-top:1px solid #1e293b;align-items:center;justify-content:space-between;gap:8px;}
+/* ⚡ 覗き見用コントロールバー（インライン名前入力＋昇格ボタン最適化） */
+#lurkPromptBar{
+  display:none;width:100%;padding:6px 10px calc(6px + var(--safe)) 10px;
+  background:#0b1120;border-top:1px solid #1e293b;
+  align-items:center;justify-content:space-between;gap:8px;flex-shrink:0;
+}
 
 .inp{
   width:100%;
@@ -274,19 +279,6 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
   <div style="font-size:52px;margin-bottom:16px;">🚫</div>
   <div style="font-size:19px;font-weight:900;margin-bottom:8px;color:#f8fafc;">この環境ではご利用いただけません</div>
   <div style="font-size:13px;color:#94a3b8;max-width:420px;line-height:1.6;">ローカル環境からのアクセスは禁止されています。<br>正規のWebサイトからアクセスしてください。</div>
-</div>
-
-<!-- 👤 覗き見からの昇格時：名前設定モーダル（新設・連動） -->
-<div id="nameInputMod" class="mod-overlay">
-  <div class="gc" style="max-width:320px;padding:16px;">
-    <div style="font-size:13px;font-weight:bold;margin-bottom:6px;">👤 名前を設定して入室</div>
-    <div style="font-size:12px;color:var(--mu);margin-bottom:12px;line-height:1.5;">発言するには名前の設定が必要です。<br>設定した名前は記憶され、次回以降も自動で使えます。</div>
-    <input type="text" id="upgradeNameInput" class="inp" placeholder="名前を入力 (10文字以内)..." maxlength="10" autocomplete="off" style="margin-bottom:10px;">
-    <div class="clr-btns">
-      <button class="clr-cancel" id="upgradeNameCancelBtn" style="height:34px;font-size:12px;">キャンセル</button>
-      <button class="clr-ok" id="upgradeNameOkBtn" style="height:34px;font-size:12px;">決定して入室</button>
-    </div>
-  </div>
 </div>
 
 <!-- 📞 通話開始モード選択モーダル -->
@@ -397,10 +389,13 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
         </div>
       </div>
 
-      <!-- 👀 覗き見モード案内バー -->
+      <!-- 👀 覗き見モード案内バー（インライン名前入力欄＋昇格ボタン完全一体化） -->
       <div id="lurkPromptBar">
-        <span style="font-size:11px;font-weight:bold;color:#38bdf8;">👀 公式部屋を覗き見中（通知なし・閲覧専用）</span>
-        <button class="btn" id="btnUpgradeToJoin" style="background:#0284c7;color:#fff;font-size:11px;height:28px;padding:0 10px;border-radius:4px;font-weight:bold;">💬 正式に入室して発言する</button>
+        <div style="display:flex;align-items:center;gap:5px;flex:1;min-width:0;">
+          <span style="font-size:10px;font-weight:900;color:#38bdf8;background:rgba(2,132,199,0.2);padding:2px 5px;border-radius:4px;white-space:nowrap;border:1px solid rgba(56,189,248,0.3);">👀 覗き見中</span>
+          <input type="text" id="lurkInlineNameInput" class="inp" placeholder="名前を入力..." maxlength="10" autocomplete="off" style="height:28px;font-size:11.5px!important;padding:2px 6px;flex:1;min-width:80px;">
+        </div>
+        <button class="btn" id="btnUpgradeToJoin" style="background:#0284c7;color:#fff;font-size:11px;height:28px;padding:0 10px;border-radius:5px;font-weight:bold;flex-shrink:0;white-space:nowrap;">💬 正式に入室</button>
       </div>
 
       <div id="ib">
@@ -419,11 +414,11 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
     <!-- 🏠 ロビー画面 -->
     <div id="lobbyScreen">
       <div class="lobby-sec">
-        <h2>👤 ユーザー設定 (必須入力)</h2>
-        <div style="display:flex;flex-direction:column;gap:4px;width:100%;">
-          <label for="lobbyName" style="font-size:10px;font-weight:bold;color:var(--mu);">名前 (正式入室時に必須)</label>
+        <h2>👤 ユーザー設定</h2>
+        <div style="display:flex;flex-direction:column;gap:3px;width:100%;">
+          <label for="lobbyName" style="font-size:10px;font-weight:bold;color:var(--mu);">名前</label>
           <input type="text" id="lobbyName" class="inp" placeholder="名前を入力..." maxlength="10" autocomplete="off">
-          <div class="val-warning" id="nameWarning">⚠️ 名前を入力してください（正式入室時に必須・覗き見時は不要）</div>
+          <div class="val-warning" id="nameWarning">名前を入力してください<br>（必須・覗き見時は不要）</div>
         </div>
         
         <div class="acc-item" style="border-bottom:none;padding-bottom:0;">
@@ -447,14 +442,14 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 
         <div class="grid-2col">
           <div class="lobby-row">
-            <label for="lobbyRoomId">部屋ID (必須・全角20文字まで)</label>
+            <label for="lobbyRoomId">部屋ID (全角20文字まで)</label>
             <input type="text" id="lobbyRoomId" class="inp" placeholder="例: room-xyz" maxlength="20" autocomplete="off">
-            <div class="val-warning" id="roomIdWarning">⚠️ 部屋IDを入力してください（必須）</div>
+            <div class="val-warning" id="roomIdWarning">部屋IDを入力してください<br>（必須）</div>
           </div>
           <div class="lobby-row">
-            <label for="lobbyRoomPass">部屋パスワード (必須・暗号化鍵)</label>
+            <label for="lobbyRoomPass">部屋パスワード</label>
             <input type="text" id="lobbyRoomPass" class="inp" placeholder="合言葉パスワードを入力" autocomplete="off">
-            <div class="val-warning" id="roomPassWarning">⚠️ パスワードを入力してください（必須）</div>
+            <div class="val-warning" id="roomPassWarning">パスワードを入力してください<br>（必須）</div>
           </div>
         </div>
 
@@ -463,12 +458,12 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
         </div>
       </div>
 
+      <!-- ⚡ 公式部屋：シンプル＆分かりやすい2分割表記 -->
       <div class="lobby-sec" style="border-color:#475569;gap:6px;">
         <h2 style="color:#cbd5e1;font-size:11px;">🏢 常設公式部屋</h2>
         <div style="display:flex;gap:6px;">
-          <button class="btn" id="btnJoinOfficial" style="flex:1;background:linear-gradient(135deg,#475569,#334155);color:#fff;font-size:12px;font-weight:900;height:38px;border-radius:6px;" disabled>🏢 正式に入る（発言・通知あり）</button>
-          <!-- ⚡ 名前が空白でもワンタップで覗き見可能 -->
-          <button class="btn" id="btnLurkOfficial" style="flex:1;background:rgba(2,132,199,0.15);border:1px solid #0284c7;color:#38bdf8;font-size:12px;font-weight:900;height:38px;border-radius:6px;" disabled>👀 覗き見する（聴くだけ・通知なし・名前不要）</button>
+          <button class="btn" id="btnJoinOfficial" style="flex:1;background:linear-gradient(135deg,#475569,#334155);color:#fff;font-size:12px;font-weight:900;height:38px;border-radius:6px;" disabled>🏢 参加する (発言可)</button>
+          <button class="btn" id="btnLurkOfficial" style="flex:1;background:rgba(2,132,199,0.15);border:1px solid #0284c7;color:#38bdf8;font-size:12px;font-weight:900;height:38px;border-radius:6px;" disabled>👀 覗き見 (聴くだけ)</button>
         </div>
       </div>
 
@@ -1064,7 +1059,6 @@ function toggleAcc(id) {
     } catch(e){}
   }
 
-  // 📞 在室ステータスへ通話モードをリアルタイム同期（覗き見時は送信しない）
   async function syncCallStatusToFirebase(mode, muted) {
     myCallMode = mode;
     isMicMuted = muted;
@@ -1077,7 +1071,6 @@ function toggleAcc(id) {
     } catch(e){}
   }
 
-  // 📞 SkyWay SFU 通話切断処理
   async function leaveSkyWayCall() {
     if (localAudioPublication) {
       try { await localAudioPublication.cancel(); } catch(e){}
@@ -1105,7 +1098,6 @@ function toggleAcc(id) {
     }
   }
 
-  // 📞 SkyWay SFU 通話開始処理（覗き見時は【聴くだけ】に完全固定）
   async function startSkyWayCall(targetMode = "speaker") {
     if (isCallingActive) {
       await leaveSkyWayCall();
@@ -1201,7 +1193,6 @@ function toggleAcc(id) {
     }
   }
 
-  // 📞 スピーカー ⇋ リスナー 相互切り替え
   async function toggleCallRoleWithConfirm() {
     if (!isCallingActive || isLurking || !skywayRoom || !localSkyWayMember) return;
 
@@ -1319,28 +1310,29 @@ function toggleAcc(id) {
     }
   }
 
-  // ⚡【秒ズレ完全ゼロ（00秒正規化）】他人が放置ユーザーを検知した際の排他トランザクション処理
+  // ⚡【秒ズレ完全ゼロ（00秒正規化）＆ どんな条件でも自動退室成功】他人が放置ユーザーを検知した際の処理
   async function processAutoExitForUser(targetUid, userData, targetRoomId = currentRoomId) {
     if (!db || !targetRoomId || !userData || targetUid === myUid) return;
     const roomId = targetRoomId;
     const pRef = db.ref(`presence/${roomId}/${targetUid}`);
 
     try {
-      let expiredBaseTs = 0;
+      const now = getTrueTime();
+      let capturedBaseTs = typeof userData.t === "number" ? userData.t : 0;
+
       const res = await pRef.transaction(current => {
         if (current && typeof current.t === "number") {
-          const now = getTrueTime();
-          if (now >= current.t + AUTO_EXIT_MS) {
-            expiredBaseTs = current.t;
-            return null;
+          if (getTrueTime() >= current.t + AUTO_EXIT_MS) {
+            capturedBaseTs = current.t;
+            return null; // 期限切れのため削除
           }
         }
         return undefined;
       });
 
       if (res.committed && res.snapshot.val() === null) {
-        const rawBase = expiredBaseTs || userData.t || (getTrueTime() - AUTO_EXIT_MS);
-        const cleanBaseTs = Math.floor(rawBase / 1000) * 1000;
+        const baseTs = capturedBaseTs || userData.t || (now - AUTO_EXIT_MS);
+        const cleanBaseTs = Math.floor(baseTs / 1000) * 1000;
         const exactExpiryTime = cleanBaseTs + AUTO_EXIT_MS;
         const autoExitKey = `sys_autoexit_${targetUid}_${cleanBaseTs}`;
         const userName = (userData.n || "名無し").trim();
@@ -1670,6 +1662,9 @@ function toggleAcc(id) {
 
       handlePresenceUpdate(presSnap.val() || {});
 
+      // ⚡ 復帰時に溜まっていた超過者のクリーンアップを即時実行
+      checkAndTriggerExactAutoExit();
+
       const rawCandidates = [];
       chatSnap.forEach(child => {
         const m = child.val();
@@ -1718,6 +1713,7 @@ function toggleAcc(id) {
     }
   }
 
+  // ⚡ 画面復帰時の即時同期＆超過判定トリガー（スリープからの確実な退室保証）
   if (typeof document !== 'undefined') {
     const triggerSyncAndCheck = () => {
       const savedScreen = safeLS.get("nz_current_screen") || "lobby";
@@ -1734,6 +1730,7 @@ function toggleAcc(id) {
 
       if (isJoined) {
         syncIncrementalDiff();
+        checkAndTriggerExactAutoExit();
       }
     };
 
@@ -1815,7 +1812,6 @@ function toggleAcc(id) {
     D.clrMsgBtn.classList.toggle("show", D.mi.value.length > 0);
   };
 
-  // 🔒 厳格バリデーション（名前・ID・パス空欄注意文常時表示 ＆ 覗き見は名前不要で常時許可）
   const validateLobbyInputs = () => {
     const name = ($("lobbyName") ? $("lobbyName").value.trim() : "");
     const roomId = ($("lobbyRoomId") ? $("lobbyRoomId").value.trim() : "");
@@ -1850,22 +1846,22 @@ function toggleAcc(id) {
     if (btnOfficial) {
       btnOfficial.disabled = !isOfficialValid;
       if (!hasAuthAndTrip) {
-        btnOfficial.textContent = "🔐 認証・トリップ確定中...";
+        btnOfficial.textContent = "🔐 認証中...";
       } else if (!name) {
-        btnOfficial.textContent = "🏢 名前を入力して公式部屋に入る";
+        btnOfficial.textContent = "🏢 参加する (要名前入力)";
       } else {
-        btnOfficial.textContent = "🏢 正式に入る（発言・通知あり）";
+        btnOfficial.textContent = "🏢 参加する (発言可)";
       }
     }
 
-    // ⚡ 覗き見ボタンは名前未入力でも認証完了で即座に押せる！
+    // ⚡ 覗き見ボタンは名前未入力でも即座に押せる！
     const btnLurk = $("btnLurkOfficial");
     if (btnLurk) {
       btnLurk.disabled = !hasAuthAndTrip;
       if (!hasAuthAndTrip) {
         btnLurk.textContent = "🔐 認証中...";
       } else {
-        btnLurk.textContent = "👀 覗き見する（聴くだけ・通知なし・名前不要）";
+        btnLurk.textContent = "👀 覗き見 (聴くだけ)";
       }
     }
   };
@@ -1963,7 +1959,12 @@ function toggleAcc(id) {
       if (isLurking) {
         if (logoTitle) logoTitle.innerHTML = `NEZUO CHAT<span class="sub-room" style="color:#38bdf8!important;border-color:rgba(56,189,248,0.3);">常設公式部屋 (覗き見中)</span>`;
         if (ibEl) ibEl.style.display = "none";
-        if (lurkBar) lurkBar.style.display = "flex";
+        if (lurkBar) {
+          lurkBar.style.display = "flex";
+          // ⚡ ロビーで記憶されていた名前を自動セット
+          const inlineInput = $("lurkInlineNameInput");
+          if (inlineInput) inlineInput.value = myName || safeLS.get("nz_ni") || "";
+        }
       } else {
         if (logoTitle && rawRoomId) logoTitle.innerHTML = `NEZUO CHAT<span class="sub-room">${rawRoomId === "official" ? "常設公式部屋" : escapeHtml(rawRoomId)}</span>`;
         if (ibEl) ibEl.style.display = "flex";
@@ -2790,18 +2791,16 @@ function toggleAcc(id) {
       if ($("inviteBtn")) $("inviteBtn").style.display = (pRoom === "official") ? "none" : "inline-flex";
     }
 
-    // 📞 SFU 通話ボタン（モード選択モーダル連携）
+    // 📞 SFU 通話ボタン
     if ($("callToggleBtn")) {
       $("callToggleBtn").addEventListener("click", () => {
         if (isCallingActive) {
           leaveSkyWayCall();
           return;
         }
-        // ⚡ 覗き見モード時は強制的に【聴くだけ】で即座に接続
         if (isLurking) {
           startSkyWayCall("listener");
         } else {
-          // 通常時は選択モーダルを表示
           const mod = $("callStartMod");
           if (mod) mod.classList.add("show");
         }
@@ -2842,47 +2841,23 @@ function toggleAcc(id) {
       });
     }
 
-    // 👀 覗き見から正式入室への昇格ボタン（名前入力モーダルと完全連動）
+    // 👀 覗き見から正式入室への昇格（インライン名前入力と完全連動）
     if ($("btnUpgradeToJoin")) {
       $("btnUpgradeToJoin").addEventListener("click", () => {
-        const curName = ($("lobbyName") ? $("lobbyName").value.trim() : "") || myName || safeLS.get("nz_ni") || "";
-        if (curName) {
-          // 既にロビー等で名前が記憶されていれば即座に入室昇格
-          joinRoom({ roomId: "official", roomPass: "", isLurk: false });
-        } else {
-          // 空欄の場合はその場で名前設定モーダルを表示
-          const nameMod = $("nameInputMod");
-          const inputEl = $("upgradeNameInput");
-          if (inputEl) inputEl.value = "";
-          if (nameMod) nameMod.classList.add("show");
-          setTimeout(() => { if (inputEl) inputEl.focus(); }, 100);
-        }
-      });
-    }
-
-    if ($("upgradeNameCancelBtn")) {
-      $("upgradeNameCancelBtn").addEventListener("click", () => {
-        const nameMod = $("nameInputMod");
-        if (nameMod) nameMod.classList.remove("show");
-      });
-    }
-
-    if ($("upgradeNameOkBtn")) {
-      $("upgradeNameOkBtn").addEventListener("click", () => {
-        const inputEl = $("upgradeNameInput");
-        const val = inputEl ? inputEl.value.trim().replace(/◆/g, "") : "";
+        const inlineInput = $("lurkInlineNameInput");
+        const val = inlineInput ? inlineInput.value.trim().replace(/◆/g, "") : "";
+        
         if (!val) {
           showToast("⚠️ 名前を入力してください");
+          if (inlineInput) inlineInput.focus();
           return;
         }
-        // ロビーとlocalStorageに即時反映・連動
+
+        // ロビーとlocalStorageに即時反映・連動保存
         myName = val;
         safeLS.set("nz_ni", val);
         if ($("lobbyName")) $("lobbyName").value = val;
         syncProfileValues();
-
-        const nameMod = $("nameInputMod");
-        if (nameMod) nameMod.classList.remove("show");
 
         // 正式入室へシームレス昇格
         joinRoom({ roomId: "official", roomPass: "", isLurk: false });
@@ -3079,6 +3054,9 @@ function toggleAcc(id) {
 
     $("lobbyRoomId").addEventListener("input", validateLobbyInputs);
     $("lobbyRoomPass").addEventListener("input", validateLobbyInputs);
+    $("lobbyName").addEventListener("blur", validateLobbyInputs);
+    $("lobbyRoomId").addEventListener("blur", validateLobbyInputs);
+    $("lobbyRoomPass").addEventListener("blur", validateLobbyInputs);
 
     if ($("lobbyName")) $("lobbyName").value = safeLS.get("nz_ni") || "";
     syncProfileValues();

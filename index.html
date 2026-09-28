@@ -127,7 +127,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .toggle-switch input:checked+.toggle-slider::after{transform:translateX(16px);background-color:#fff}
 .toggle-label{font-size:11px;font-weight:bold;color:var(--tx)!important}
 #pl{display:none;gap:6px;padding:6px 12px;background:var(--s2);border-bottom:1px solid var(--bd);overflow-x:auto;white-space:nowrap;min-height:36px;max-height:36px;flex-shrink:0;align-items:center}
-.chip{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,0.04);border:1.5px solid var(--usr-color);display:inline-flex;align-items:center;color:var(--usr-color);height:24px}
+.chip{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,0.04);border:1.5px solid var(--usr-color);display:inline-flex;align-items:center;gap:3px;color:var(--usr-color);height:24px}
 
 /* 📞 SFU 通話コントロールバー */
 #callBar{display:none;align-items:center;justify-content:space-between;padding:5px 12px;background:#0d1527;border-bottom:1px solid #1e293b;gap:8px;flex-shrink:0}
@@ -204,6 +204,9 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .bclrm.show{opacity:1;pointer-events:auto}
 .bsd{width:44px;height:44px;border-radius:50%;background:#334155;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid rgba(255,255,255,0.12)}
 .bsd svg{width:18px;height:18px;transform:rotate(45deg);margin-top:-1px;margin-left:-2px}
+
+/* 覗き見用コントロールバー */
+#lurkPromptBar{display:none;width:100%;padding:6px 12px;background:#0d1527;border-top:1px solid #1e293b;align-items:center;justify-content:space-between;gap:8px;}
 
 .inp{
   width:100%;
@@ -302,7 +305,8 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
           <div id="roomStatusBadges" style="display:none;gap:3px;align-items:center;"></div>
           <div class="hbs">
             <div id="adminBtnMount"></div>
-            <button class="btn" id="callToggleBtn" style="background:#0284c7;border:1px solid #38bdf8;color:#fff;display:none;">📞 SFU通話開始</button>
+            <!-- 📞 通話ボタン -->
+            <button class="btn" id="callToggleBtn" style="background:#0284c7;border:1px solid #38bdf8;color:#fff;display:none;">📞 SFU通話</button>
             <button class="bclr" id="clrBtn" title="色設定"><span class="bclr-dot" id="clrDot"></span> 色</button>
             <button class="btn" id="inviteBtn" style="display:none;">🔗 招待</button>
             <button class="btn" id="exBtn" style="background:rgba(244,63,94,0.15);border:1px solid rgba(244,63,94,0.3);color:#fda4af;display:none;">退室</button>
@@ -318,8 +322,9 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
           <span class="call-dot"></span>
           <span id="callStatusText">📞 SFU通話接続中...</span>
         </div>
-        <div style="display:flex;gap:5px;align-items:center;">
+        <div style="display:flex;gap:5px;align-items:center;" id="callControlButtons">
           <button class="call-btn" id="callMicBtn">🎤 マイクON</button>
+          <button class="call-btn" id="callModeSwitchBtn">🎧 聴くだけへ</button>
           <button class="call-btn" id="callEndBtn" style="background:rgba(244,63,94,0.2);border-color:#f43f5e;color:#fda4af;">切断</button>
         </div>
       </div>
@@ -353,6 +358,12 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
             <span id="unreadBadge">0</span>
           </div>
         </div>
+      </div>
+
+      <!-- 👀 覗き見モード案内バー -->
+      <div id="lurkPromptBar">
+        <span style="font-size:11px;font-weight:bold;color:#38bdf8;">👀 公式部屋を覗き見中（通知なし・閲覧専用）</span>
+        <button class="btn" id="btnUpgradeToJoin" style="background:#0284c7;color:#fff;font-size:11px;height:28px;padding:0 10px;border-radius:4px;font-weight:bold;">💬 正式に入室して発言する</button>
       </div>
 
       <div id="ib">
@@ -415,9 +426,12 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
         </div>
       </div>
 
-      <div class="lobby-sec" style="border-color:#475569;">
+      <div class="lobby-sec" style="border-color:#475569;gap:6px;">
         <h2 style="color:#cbd5e1;font-size:11px;">🏢 常設公式部屋</h2>
-        <button class="btn" id="btnJoinOfficial" style="background:linear-gradient(135deg,#475569,#334155);color:#fff;font-size:13px;font-weight:900;height:38px;width:100%;border-radius:6px;" disabled>🏢 常設公式部屋に入る（パス不要・即入室）</button>
+        <div style="display:flex;gap:6px;">
+          <button class="btn" id="btnJoinOfficial" style="flex:1;background:linear-gradient(135deg,#475569,#334155);color:#fff;font-size:12px;font-weight:900;height:38px;border-radius:6px;" disabled>🏢 正式に入る（発言・通知あり）</button>
+          <button class="btn" id="btnLurkOfficial" style="flex:1;background:rgba(2,132,199,0.15);border:1px solid #0284c7;color:#38bdf8;font-size:12px;font-weight:900;height:38px;border-radius:6px;">👀 覗き見する（聴くだけ・通知なし）</button>
+        </div>
       </div>
 
       <div class="lobby-sec" id="lobbyAdminSec" style="display:none;border-color:#f43f5e;gap:10px;">
@@ -489,7 +503,6 @@ async function generateSkyWayToken() {
     const sPayload = base64UrlEncode(JSON.stringify(payload));
     const dataToSign = `${sHeader}.${sPayload}`;
 
-    // Base64シークレットキーからHMAC鍵の生成
     const binStr = atob(SKYWAY_SECRET_KEY_B64);
     const keyBytes = new Uint8Array(binStr.length);
     for (let i = 0; i < binStr.length; i++) keyBytes[i] = binStr.charCodeAt(i);
@@ -500,7 +513,7 @@ async function generateSkyWayToken() {
 
     return `${dataToSign}.${sSignature}`;
   } catch (err) {
-    console.error("SkyWay Token手動生成エラー:", err);
+    console.error("SkyWay Token生成エラー:", err);
     return null;
   }
 }
@@ -649,6 +662,7 @@ function toggleAcc(id) {
   let curColor = safeLS.get("nz_color") || "#f1f5f9";
   let tmpColor = curColor;
   let currentRoomId = "", currentRoomPass = "", isJoined = false;
+  let isLurking = false; // 👀 覗き見フラグ
   let activeKey = null;
   const unreadMsgIds = new Set();
   let serverTimeOffset = 0, isOffsetLoaded = false;
@@ -674,11 +688,12 @@ function toggleAcc(id) {
   let myLastActiveTs = 0;
   let isExecutingAutoExit = false;
 
-  // 📞 SkyWay SFU 通話インスタンス
+  // 📞 SkyWay SFU 通話状態
   let skywayContext = null;
   let skywayRoom = null;
   let localAudioStream = null;
   let localAudioPublication = null;
+  let myCallMode = "none"; // "none" | "speaker" | "listener"
   let isMicMuted = false;
   let isCallingActive = false;
 
@@ -900,7 +915,7 @@ function toggleAcc(id) {
 
     const isHost = (currentRoomId && currentRoomId !== "official" && myUid && myUid === roomSettings.creatorUid);
     const isGlobal = checkIsGlobalAdmin();
-    const canDelete = (m.u === myUid || isHost || isGlobal);
+    const canDelete = !isLurking && (m.u === myUid || isHost || isGlobal);
 
     if (canDelete && !isPending) {
       const delBtn = document.createElement("button");
@@ -1010,6 +1025,19 @@ function toggleAcc(id) {
     } catch(e){}
   }
 
+  // 📞 在室ステータスへ通話モードをリアルタイム同期（覗き見時は送信しない）
+  async function syncCallStatusToFirebase(mode, muted) {
+    myCallMode = mode;
+    isMicMuted = muted;
+    if (isLurking || !isJoined || !db || !currentRoomId || !myUid) return;
+    try {
+      await db.ref(`presence/${currentRoomId}/${myUid}`).update({
+        callMode: mode,
+        isMuted: muted
+      });
+    } catch(e){}
+  }
+
   // 📞 SkyWay SFU 通話切断処理
   async function leaveSkyWayCall() {
     if (localAudioPublication) {
@@ -1026,22 +1054,29 @@ function toggleAcc(id) {
     }
     skywayContext = null;
     isCallingActive = false;
-    isMicMuted = false;
+    await syncCallStatusToFirebase("none", false);
+
     const callBar = $("callBar");
     if (callBar) callBar.style.display = "none";
     const callToggleBtn = $("callToggleBtn");
     if (callToggleBtn) {
-      callToggleBtn.textContent = "📞 SFU通話開始";
+      callToggleBtn.textContent = isLurking ? "🎧 聴くだけ通話" : "📞 SFU通話";
       callToggleBtn.style.background = "#0284c7";
     }
   }
 
-  // 📞 SkyWay SFU 通話開始処理（公式CreateForDevelopment＆最新SFU仕様完全適用）
-  async function startSkyWayCall() {
+  // 📞 SkyWay SFU 通話開始処理（覗き見時は【聴くだけ】に完全固定）
+  async function startSkyWayCall(targetMode = "speaker") {
     if (isCallingActive) {
       await leaveSkyWayCall();
       return;
     }
+
+    // ⚡ 覗き見モードは強制的に受聴専用に固定
+    if (isLurking) {
+      targetMode = "listener";
+    }
+
     if (!window.skyway_room) {
       showToast("⚠️ SkyWay SDKの読み込みに失敗しています");
       return;
@@ -1050,18 +1085,19 @@ function toggleAcc(id) {
     const callBar = $("callBar");
     const statusText = $("callStatusText");
     const callToggleBtn = $("callToggleBtn");
+    const micBtn = $("callMicBtn");
+    const switchBtn = $("callModeSwitchBtn");
+
     if (callBar) callBar.style.display = "flex";
     if (statusText) statusText.textContent = "📞 SFU通話接続中...";
 
     try {
       const { SkyWayContext, SkyWayRoom, SkyWayStreamFactory } = window.skyway_room;
 
-      // ⚡ 公式CreateForDevelopmentを最優先で使用（トークンデコードエラーを完全根絶）
       if (SkyWayContext.CreateForDevelopment) {
         try {
           skywayContext = await SkyWayContext.CreateForDevelopment(SKYWAY_APP_ID, SKYWAY_SECRET_KEY_B64);
         } catch (devErr) {
-          console.warn("CreateForDevelopment失敗、手動JWT生成にフォールバック:", devErr);
           const token = await generateSkyWayToken();
           if (!token) throw new Error("トークン生成失敗");
           skywayContext = await SkyWayContext.Create(token);
@@ -1078,22 +1114,34 @@ function toggleAcc(id) {
       });
 
       const me = await skywayRoom.join();
-      localAudioStream = await SkyWayStreamFactory.createMicrophoneAudioStream({
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true
-      });
 
-      // ⚡ SFU方式を明示指定してパブリッシュ
-      localAudioPublication = await me.publish(localAudioStream, { type: "sfu" });
+      // ⚡ モード制御：発言者のみマイク取得＆パブリッシュ
+      if (targetMode === "speaker" && !isLurking) {
+        localAudioStream = await SkyWayStreamFactory.createMicrophoneAudioStream({
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        });
+        localAudioPublication = await me.publish(localAudioStream, { type: "sfu" });
+        if (micBtn) { micBtn.style.display = "inline-flex"; micBtn.textContent = "🎤 マイクON"; micBtn.classList.remove("active"); }
+        if (switchBtn) { switchBtn.style.display = "inline-flex"; switchBtn.textContent = "🎧 聴くだけへ"; }
+        if (statusText) statusText.textContent = "🟢 発言者として参加中";
+        await syncCallStatusToFirebase("speaker", false);
+      } else {
+        // 🎧 聴くだけモード（覗き見時はマイクボタン・切り替えボタンを物理的に非表示）
+        if (micBtn) micBtn.style.display = "none";
+        if (switchBtn) switchBtn.style.display = isLurking ? "none" : "inline-flex";
+        if (statusText) statusText.textContent = isLurking ? "🎧 聴くだけ中 (覗き見専用)" : "🎧 聴くだけ参加中";
+        await syncCallStatusToFirebase("listener", false);
+      }
 
       isCallingActive = true;
-      if (statusText) statusText.textContent = "🟢 SFU通話中 (サーバー中継)";
       if (callToggleBtn) {
         callToggleBtn.textContent = "📞 通話終了";
         callToggleBtn.style.background = "#e11d48";
       }
 
+      // 他メンバーの音声受聴
       const subscribeTrack = async (publication) => {
         if (publication.publisher.id === me.id || publication.contentType !== "audio") return;
         const { stream } = await me.subscribe(publication.id);
@@ -1107,11 +1155,67 @@ function toggleAcc(id) {
       skywayRoom.publications.forEach(subscribeTrack);
       skywayRoom.onStreamPublished.add(e => subscribeTrack(e.publication));
 
-      showToast("🎙️ SFU通話に接続しました");
+      showToast(targetMode === "speaker" ? "🎙️ SFU通話に接続しました" : "🎧 聴くだけで接続しました");
     } catch (err) {
       console.error("SkyWay 通話接続エラー:", err);
       showToast("⚠️ 通話接続に失敗しました: " + (err.message || "マイク権限エラー"));
       await leaveSkyWayCall();
+    }
+  }
+
+  // 📞 スピーカー ⇋ リスナー 相互切り替え（確認ダイアログ付き）
+  async function toggleCallRoleWithConfirm() {
+    if (!isCallingActive || isLurking) return;
+
+    if (myCallMode === "speaker") {
+      const ok = await customConfirm("聴くだけモードへ切替", "聴くだけモードに切り替えますか？マイクは完全に停止します。", "切り替える", "キャンセル");
+      if (!ok) return;
+
+      if (localAudioPublication) {
+        try { await localAudioPublication.cancel(); } catch(e){}
+        localAudioPublication = null;
+      }
+      if (localAudioStream) {
+        try { localAudioStream.track.stop(); } catch(e){}
+        localAudioStream = null;
+      }
+      const micBtn = $("callMicBtn");
+      const switchBtn = $("callModeSwitchBtn");
+      const statusText = $("callStatusText");
+
+      if (micBtn) micBtn.style.display = "none";
+      if (switchBtn) switchBtn.textContent = "??️ 発言者へ";
+      if (statusText) statusText.textContent = "🎧 聴くだけ参加中";
+
+      await syncCallStatusToFirebase("listener", false);
+      showToast("🎧 聴くだけモードに切り替えました");
+
+    } else if (myCallMode === "listener") {
+      const ok = await customConfirm("発言者へ切替", "マイクをONにして発言者になりますか？（周囲の音が入る場合があります）", "発言者になる", "キャンセル");
+      if (!ok) return;
+
+      try {
+        const { SkyWayStreamFactory } = window.skyway_room;
+        localAudioStream = await SkyWayStreamFactory.createMicrophoneAudioStream({
+          echoCancellation: true, noiseSuppression: true, autoGainControl: true
+        });
+        const me = skywayRoom.members.find(m => m.id === skywayRoom.localMarkerId) || skywayRoom.members[0];
+        localAudioPublication = await me.publish(localAudioStream, { type: "sfu" });
+
+        const micBtn = $("callMicBtn");
+        const switchBtn = $("callModeSwitchBtn");
+        const statusText = $("callStatusText");
+
+        if (micBtn) { micBtn.style.display = "inline-flex"; micBtn.textContent = "🎤 マイクON"; micBtn.classList.remove("active"); }
+        if (switchBtn) switchBtn.textContent = "🎧 聴くだけへ";
+        if (statusText) statusText.textContent = "🟢 発言者として参加中";
+
+        isMicMuted = false;
+        await syncCallStatusToFirebase("speaker", false);
+        showToast("🎙️ 発言者に切り替えました");
+      } catch(err) {
+        showToast("⚠️ マイクの取得に失敗しました");
+      }
     }
   }
 
@@ -1128,7 +1232,8 @@ function toggleAcc(id) {
     const cleanName = (myName || "").trim();
     const cleanTrip = myTrip || "";
 
-    if (!isAuto && !isSilent && cleanName && prevRoomId && db) {
+    // ⚡ 覗き見時は退室アナウンスも送信しない
+    if (!isLurking && !isAuto && !isSilent && cleanName && prevRoomId && db) {
       try {
         const exitTs = getTrueTime();
         const exitKey = `sys_exit_${myUid}_${exitTs}`;
@@ -1140,7 +1245,7 @@ function toggleAcc(id) {
       } catch(e){}
     }
 
-    if (prevRoomId && myUid && db) {
+    if (!isLurking && prevRoomId && myUid && db) {
       try {
         await db.ref(`presence/${prevRoomId}/${myUid}`).remove();
         await destroyRoomIfEmpty(prevRoomId);
@@ -1163,6 +1268,7 @@ function toggleAcc(id) {
     currentRoomPass = "";
     activeKey = null;
     hasEnteredLogged = false;
+    isLurking = false;
 
     switchScreen("lobby");
     validateLobbyInputs();
@@ -1176,7 +1282,7 @@ function toggleAcc(id) {
     }
   }
 
-  // ⚡【自動退室ログ完全同期エンジン】他人が放置ユーザーを検知した際の排他トランザクション処理
+  // ⚡【秒ズレ完全ゼロ（00秒正規化）】他人が放置ユーザーを検知した際の排他トランザクション処理
   async function processAutoExitForUser(targetUid, userData, targetRoomId = currentRoomId) {
     if (!db || !targetRoomId || !userData || targetUid === myUid) return;
     const roomId = targetRoomId;
@@ -1196,9 +1302,11 @@ function toggleAcc(id) {
       });
 
       if (res.committed && res.snapshot.val() === null) {
-        const baseTs = expiredBaseTs || userData.t || (getTrueTime() - AUTO_EXIT_MS);
-        const exactExpiryTime = Math.floor(baseTs + AUTO_EXIT_MS);
-        const autoExitKey = `sys_autoexit_${targetUid}_${baseTs}`;
+        const rawBase = expiredBaseTs || userData.t || (getTrueTime() - AUTO_EXIT_MS);
+        // ⚡ ミリ秒端数を秒単位で切り捨てて揃える（秒ズレ完全ゼロ）
+        const cleanBaseTs = Math.floor(rawBase / 1000) * 1000;
+        const exactExpiryTime = cleanBaseTs + AUTO_EXIT_MS;
+        const autoExitKey = `sys_autoexit_${targetUid}_${cleanBaseTs}`;
         const userName = (userData.n || "名無し").trim();
         const userTrip = (userData.p || "").trim();
 
@@ -1215,7 +1323,7 @@ function toggleAcc(id) {
     }
   }
 
-  // ⚡【自身が期限を迎えた場合の自動退室処理】直接ログを書き込んでから確実に退出
+  // ⚡【秒ズレ完全ゼロ（00秒正規化）】自身が期限を迎えた場合の自動退室処理
   async function triggerSelfAutoExit() {
     if (isExecutingAutoExit || !isJoined || !db || !currentRoomId || !myUid) return;
     isExecutingAutoExit = true;
@@ -1225,9 +1333,11 @@ function toggleAcc(id) {
     const uid = myUid;
     const cleanName = (myName || "名無し").trim();
     const cleanTrip = myTrip || "";
-    const baseTs = myLastActiveTs > 0 ? myLastActiveTs : (getTrueTime() - AUTO_EXIT_MS);
-    const exactExpiryTime = Math.floor(baseTs + AUTO_EXIT_MS);
-    const autoExitKey = `sys_autoexit_${uid}_${baseTs}`;
+    const rawBase = myLastActiveTs > 0 ? myLastActiveTs : (getTrueTime() - AUTO_EXIT_MS);
+    // ⚡ ミリ秒端数を秒単位で切り捨てて揃える（秒ズレ完全ゼロ）
+    const cleanBaseTs = Math.floor(rawBase / 1000) * 1000;
+    const exactExpiryTime = cleanBaseTs + AUTO_EXIT_MS;
+    const autoExitKey = `sys_autoexit_${uid}_${cleanBaseTs}`;
 
     try {
       const rawSysText = "📢 [お知らせ] " + `${cleanName} ${cleanTrip}`.trim() + ` が自動退室しました (${autoExitMinutes}分間発言がなかったため)`;
@@ -1247,7 +1357,7 @@ function toggleAcc(id) {
   }
 
   async function checkAndTriggerExactAutoExit() {
-    if (!isJoined || !db || !currentRoomId || isExecutingAutoExit) return;
+    if (!isJoined || isLurking || !db || !currentRoomId || isExecutingAutoExit) return;
     const nowTrue = getTrueTime();
 
     if (myLastActiveTs > 0 && (nowTrue >= myLastActiveTs + AUTO_EXIT_MS)) {
@@ -1327,7 +1437,7 @@ function toggleAcc(id) {
     const accMount = $("adminAccordionMount");
     if (!btnMount || !accMount) return;
 
-    if (!hasAdminPower) {
+    if (!hasAdminPower || isLurking) {
       btnMount.innerHTML = "";
       accMount.innerHTML = "";
       return;
@@ -1771,6 +1881,8 @@ function toggleAcc(id) {
     const logoTitle = $("logoTitle") || document.querySelector(".logo");
     const lobbyScr = $("lobbyScreen");
     const chatScr = $("chatScreen");
+    const ibEl = $("ib");
+    const lurkBar = $("lurkPromptBar");
 
     safeLS.set("nz_current_screen", state);
 
@@ -1781,10 +1893,22 @@ function toggleAcc(id) {
     if (state === "chat") {
       if (lobbyScr) lobbyScr.style.display = "none";
       if (chatScr) chatScr.style.display = "flex";
-      if ($("exBtn")) $("exBtn").style.display = "inline-flex";
+      if ($("exBtn")) {
+        $("exBtn").style.display = "inline-flex";
+        $("exBtn").textContent = isLurking ? "ロビーへ" : "退室";
+      }
       if ($("callToggleBtn")) $("callToggleBtn").style.display = "inline-flex";
       if ($("inviteBtn")) $("inviteBtn").style.display = (rawRoomId === "official") ? "none" : "inline-flex";
-      if (logoTitle && rawRoomId) logoTitle.innerHTML = `NEZUO CHAT<span class="sub-room">${rawRoomId === "official" ? "常設公式部屋" : escapeHtml(rawRoomId)}</span>`;
+
+      if (isLurking) {
+        if (logoTitle) logoTitle.innerHTML = `NEZUO CHAT<span class="sub-room" style="color:#38bdf8!important;border-color:rgba(56,189,248,0.3);">常設公式部屋 (覗き見中)</span>`;
+        if (ibEl) ibEl.style.display = "none";
+        if (lurkBar) lurkBar.style.display = "flex";
+      } else {
+        if (logoTitle && rawRoomId) logoTitle.innerHTML = `NEZUO CHAT<span class="sub-room">${rawRoomId === "official" ? "常設公式部屋" : escapeHtml(rawRoomId)}</span>`;
+        if (ibEl) ibEl.style.display = "flex";
+        if (lurkBar) lurkBar.style.display = "none";
+      }
       injectAdminUIIfNeeded();
     } else {
       if (chatScr) chatScr.style.display = "none";
@@ -1795,6 +1919,8 @@ function toggleAcc(id) {
       if ($("pl")) $("pl").style.display = "none";
       if ($("pcnt")) $("pcnt").style.display = "none";
       if ($("roomStatusBadges")) $("roomStatusBadges").style.display = "none";
+      if (lurkBar) lurkBar.style.display = "none";
+      if (ibEl) ibEl.style.display = "flex";
       injectAdminUIIfNeeded();
       if (logoTitle) logoTitle.textContent = "NEZUO CHAT";
     }
@@ -1847,11 +1973,12 @@ function toggleAcc(id) {
     currentPresenceMap = members;
     renderPresence(members);
 
-    if (isJoined && currentRoomId && currentRoomId !== "official" && Object.keys(members).length === 0) {
+    if (!isLurking && isJoined && currentRoomId && currentRoomId !== "official" && Object.keys(members).length === 0) {
       destroyRoomIfEmpty(currentRoomId);
     }
   }
 
+  // 👥 通話ステータス付きメンバーチップ表示
   function renderPresence(serverListMap) {
     if (!D.pl) return;
     const sorted = Object.values(serverListMap).filter(m => m && m.n).sort((a, b) => a.id.localeCompare(b.id));
@@ -1871,7 +1998,15 @@ function toggleAcc(id) {
     });
 
     sorted.forEach(m => {
-      const text = m.p ? `${m.n} ${m.p}` : m.n, color = m.c || "#f1f5f9";
+      let callBadge = "";
+      if (m.callMode === "speaker") {
+        callBadge = m.isMuted ? " [🔇]" : " [🎙️]";
+      } else if (m.callMode === "listener") {
+        callBadge = " [🎧]";
+      }
+
+      const text = (m.p ? `${m.n} ${m.p}` : m.n) + callBadge;
+      const color = m.c || "#f1f5f9";
       let chip = D.pl.querySelector(`[data-uid="${m.id}"]`);
       if (chip) {
         if (chip.textContent !== text) chip.textContent = text;
@@ -1884,7 +2019,7 @@ function toggleAcc(id) {
         chip.style.borderColor = color; 
         chip.textContent = text;
         const canBan = currentRoomId === "official" ? checkIsGlobalAdmin() : (myUid && myUid === roomSettings.creatorUid);
-        if (canBan && m.id !== myUid) {
+        if (!isLurking && canBan && m.id !== myUid) {
           chip.title = "このユーザーを追放(BAN)"; 
           chip.style.cursor = "pointer";
           chip.addEventListener("click", () => {
@@ -2109,21 +2244,24 @@ function toggleAcc(id) {
       renderBanList(snap.val() || {});
     });
 
-    myPresenceRef = db.ref(`presence/${currentRoomId}/${myUid}`);
-    let hasPresenceEverExisted = false;
-    myPresenceRef.on("value", s => {
-      if (!isJoined || isExecutingAutoExit) return;
-      if (s.exists()) {
-        hasPresenceEverExisted = true;
-        const val = s.val();
-        if (val && typeof val.t === "number") {
-          myLastActiveTs = val.t;
-          safeLS.set("nz_last_post_time", val.t.toString());
+    // ⚡ 覗き見モードのときは自分を presence に監視・登録しない
+    if (!isLurking) {
+      myPresenceRef = db.ref(`presence/${currentRoomId}/${myUid}`);
+      let hasPresenceEverExisted = false;
+      myPresenceRef.on("value", s => {
+        if (!isJoined || isExecutingAutoExit) return;
+        if (s.exists()) {
+          hasPresenceEverExisted = true;
+          const val = s.val();
+          if (val && typeof val.t === "number") {
+            myLastActiveTs = val.t;
+            safeLS.set("nz_last_post_time", val.t.toString());
+          }
+        } else if (hasPresenceEverExisted) {
+          doExit(true, false);
         }
-      } else if (hasPresenceEverExisted) {
-        doExit(true, false);
-      }
-    });
+      });
+    }
   }
 
   function detachFirebaseListeners() {
@@ -2152,10 +2290,10 @@ function toggleAcc(id) {
     const isGlobal = checkIsGlobalAdmin();
     if (currentRoomId === "official") {
       if ($("admDestroyRoomContainer")) $("admDestroyRoomContainer").style.display = "none";
-      if ($("admClearChatContainer")) $("admClearChatContainer").style.display = isGlobal ? "flex" : "none";
+      if ($("admClearChatContainer")) $("admClearChatContainer").style.display = (!isLurking && isGlobal) ? "flex" : "none";
     } else {
-      if ($("admDestroyRoomContainer")) $("admDestroyRoomContainer").style.display = isHost ? "flex" : "none";
-      if ($("admClearChatContainer")) $("admClearChatContainer").style.display = isHost ? "flex" : "none";
+      if ($("admDestroyRoomContainer")) $("admDestroyRoomContainer").style.display = (!isLurking && isHost) ? "flex" : "none";
+      if ($("admClearChatContainer")) $("admClearChatContainer").style.display = (!isLurking && isHost) ? "flex" : "none";
     }
   }
 
@@ -2169,7 +2307,7 @@ function toggleAcc(id) {
 
   async function clearAllMessages() {
     const canManage = currentRoomId === "official" ? checkIsGlobalAdmin() : (myUid && myUid === roomSettings.creatorUid);
-    if (!db || !currentRoomId || !canManage) return;
+    if (!db || !currentRoomId || !canManage || isLurking) return;
     try {
       const clearTs = getTrueTime();
       await db.ref(`settings/${currentRoomId}/last_cleared_at`).set(clearTs);
@@ -2181,7 +2319,7 @@ function toggleAcc(id) {
 
   let lastSendAt = 0;
   function sendMessage() {
-    if (!isJoined || !db) return;
+    if (!isJoined || isLurking || !db) return;
     const text = D.mi.value.trim();
     if (!text) return;
     const nowClick = Date.now();
@@ -2364,23 +2502,23 @@ function toggleAcc(id) {
     }
   });
 
-  // 🚪 ゾンビ掃除＆まっさらな状態からの入室エンジン
+  // 🚪 ゾンビ掃除＆まっさらな状態からの入室エンジン（覗き見対応）
   async function joinRoom(options = {}) {
     if (!db) { alert("データベースが準備できていません。"); return; }
     let lobbyRoomId = options.roomId || ($("lobbyRoomId") ? $("lobbyRoomId").value.trim() : "");
     let lobbyRoomPass = options.roomPass !== undefined ? options.roomPass : ($("lobbyRoomPass") ? $("lobbyRoomPass").value.trim() : "");
     if (!lobbyRoomId) { alert("部屋IDを入力してください。"); return; }
 
+    const isLurkTarget = !!options.isLurk;
     const isOfficialTarget = (lobbyRoomId === "official");
     
-    // フリールームはパスワード完全必須
-    if (!isOfficialTarget && !lobbyRoomPass) {
+    if (!isOfficialTarget && !isLurkTarget && !lobbyRoomPass) {
       alert("部屋パスワードを入力してください（フリールームは必須です）。");
       return;
     }
 
-    const activeBtn = isOfficialTarget ? $("btnJoinOfficial") : $("btnJoin");
-    const origText = isOfficialTarget ? "🏢 常設公式部屋に入る（パス不要・即入室）" : "部屋に入る / 部屋を作る";
+    const activeBtn = isLurkTarget ? $("btnLurkOfficial") : (isOfficialTarget ? $("btnJoinOfficial") : $("btnJoin"));
+    const origText = activeBtn ? activeBtn.textContent : "";
 
     if (activeBtn) { activeBtn.disabled = true; activeBtn.textContent = "接続中..."; }
 
@@ -2397,8 +2535,8 @@ function toggleAcc(id) {
 
     const safeRoomPath = isOfficialTarget ? "official" : await window.sha256(lobbyRoomId);
 
-    // ⚡【ゾンビ掃除エンジン】次に入った人が古い放置ゾンビ部屋を完全初期化し、まっさらにする
-    if (!isOfficialTarget) {
+    // ⚡ ゾンビ掃除エンジン
+    if (!isOfficialTarget && !isLurkTarget) {
       try {
         const [pSnap, sSnap] = await Promise.all([
           db.ref(`presence/${safeRoomPath}`).once("value"),
@@ -2407,14 +2545,11 @@ function toggleAcc(id) {
         const pVal = pSnap.val() || {};
         const now = getTrueTime();
 
-        // 有効期限内の生存者がいるかチェック
         const activeMembers = Object.entries(pVal).filter(([uid, u]) => {
           return u && typeof u.t === "number" && (now - u.t < AUTO_EXIT_MS);
         });
 
-        // 生存者0人（誰もいない、または全員が放置超過ゾンビ）の場合
         if (activeMembers.length === 0 && (pSnap.exists() || sSnap.exists())) {
-          // 部屋全体を完全に消去して初期化（まっさらな状態にする）
           const updates = {};
           updates[`chat/${safeRoomPath}`] = null;
           updates[`presence/${safeRoomPath}`] = null;
@@ -2422,7 +2557,6 @@ function toggleAcc(id) {
           updates[`banlist/${safeRoomPath}`] = null;
           await db.ref().update(updates);
         } else if (activeMembers.length > 0) {
-          // まだ生きている人がいる部屋で、一部のゾンビだけを掃除
           const expiredZombies = Object.entries(pVal).filter(([uid, u]) => {
             return u && typeof u.t === "number" && (now - u.t >= AUTO_EXIT_MS);
           });
@@ -2465,7 +2599,7 @@ function toggleAcc(id) {
     roomSettings.creatorUid = val.creatorUid || "";
     localLastClearedTime = val.last_cleared_at || 0;
 
-    if (!settingsSnap || !settingsSnap.exists() || !roomSettings.creatorUid) {
+    if (!isLurkTarget && (!settingsSnap || !settingsSnap.exists() || !roomSettings.creatorUid)) {
       isNewRoom = true;
       const isGlobalAdmin = checkIsGlobalAdmin();
       roomSettings.creatorUid = isOfficialTarget ? (isGlobalAdmin ? myUid : "") : myUid;
@@ -2484,13 +2618,14 @@ function toggleAcc(id) {
     const isGlobalAdmin = checkIsGlobalAdmin();
     const isHostOrAdmin = (isOfficialTarget ? isGlobalAdmin : (myUid === roomSettings.creatorUid));
 
-    if (!options.silent && roomSettings.newEntriesDisabled && !hasApprovedTrip && !isHostOrAdmin) {
+    if (!isLurkTarget && !options.silent && roomSettings.newEntriesDisabled && !hasApprovedTrip && !isHostOrAdmin) {
       if (activeBtn) { activeBtn.disabled = false; activeBtn.textContent = origText; }
       switchScreen("lobby");
       alert("現在、新規の入室が制限されています。");
       return;
     }
 
+    isLurking = isLurkTarget;
     safeLS.set("nz_current_screen", "chat");
     switchScreen("chat", lobbyRoomId, options.silent);
 
@@ -2516,44 +2651,45 @@ function toggleAcc(id) {
     } catch (e) {}
 
     isJoined = true;
-    safeLS.set("nz_is_joined", "true"); 
-    safeLS.set("nz_last_room_id", lobbyRoomId);
-    safeLS.set("nz_last_room_pass", lobbyRoomPass); 
-    safeLS.set("nz_current_room_id", currentRoomId);
-    
-    if (!options.isCrossTab) {
-      broadcastTabSync("ROOM_JOIN", { roomId: lobbyRoomId, roomPass: lobbyRoomPass });
+    if (!isLurking) {
+      safeLS.set("nz_is_joined", "true"); 
+      safeLS.set("nz_last_room_id", lobbyRoomId);
+      safeLS.set("nz_last_room_pass", lobbyRoomPass); 
+      safeLS.set("nz_current_room_id", currentRoomId);
     }
 
     await syncServerOffset();
 
     const nowTrue = getTrueTime();
-    if (options.silent || options.isCrossTab) {
-      const prevPost = parseInt(safeLS.get("nz_last_post_time") || "0", 10);
-      const prevSess = parseInt(safeLS.get("nz_session_start_time") || "0", 10);
-      const prevBase = Math.max(prevPost, prevSess);
-      myLastActiveTs = prevBase > 0 ? prevBase : nowTrue;
-    } else {
-      updateSessionStartTime(nowTrue);
-      updateLastPostTime(nowTrue);
+    if (!isLurking) {
+      if (options.silent || options.isCrossTab) {
+        const prevPost = parseInt(safeLS.get("nz_last_post_time") || "0", 10);
+        const prevSess = parseInt(safeLS.get("nz_session_start_time") || "0", 10);
+        const prevBase = Math.max(prevPost, prevSess);
+        myLastActiveTs = prevBase > 0 ? prevBase : nowTrue;
+      } else {
+        updateSessionStartTime(nowTrue);
+        updateLastPostTime(nowTrue);
+      }
+
+      // ⚡ 正式入室時のみ presence を登録
+      try {
+        await db.ref(`presence/${currentRoomId}/${myUid}`).set({
+          n: myName || "名無し",
+          p: myTrip,
+          c: curColor,
+          t: firebase.database.ServerValue.TIMESTAMP
+        });
+      } catch (err) {}
+      startSmartAutoExitChecker();
     }
 
-    try {
-      await db.ref(`presence/${currentRoomId}/${myUid}`).set({
-        n: myName || "名無し",
-        p: myTrip,
-        c: curColor,
-        t: firebase.database.ServerValue.TIMESTAMP
-      });
-    } catch (err) {}
-
     setupFirebaseListeners();
-    startSmartAutoExitChecker();
 
     if (activeBtn) { activeBtn.disabled = false; activeBtn.textContent = origText; }
 
     const cleanName = (myName || "").trim();
-    if (!options.silent && !options.isCrossTab && cleanName && !hasEnteredLogged) {
+    if (!isLurking && !options.silent && !options.isCrossTab && cleanName && !hasEnteredLogged) {
       hasEnteredLogged = true;
       const enterTs = getTrueTime();
       
@@ -2598,15 +2734,35 @@ function toggleAcc(id) {
     }
 
     // 📞 SFU 通話イベント登録
-    if ($("callToggleBtn")) $("callToggleBtn").addEventListener("click", startSkyWayCall);
+    if ($("callToggleBtn")) {
+      $("callToggleBtn").addEventListener("click", () => {
+        // ⚡ 覗き見モード時は強制的に【聴くだけ】で起動
+        startSkyWayCall(isLurking ? "listener" : "speaker");
+      });
+    }
     if ($("callEndBtn")) $("callEndBtn").addEventListener("click", leaveSkyWayCall);
+    if ($("callModeSwitchBtn")) $("callModeSwitchBtn").addEventListener("click", toggleCallRoleWithConfirm);
     if ($("callMicBtn")) {
       $("callMicBtn").addEventListener("click", () => {
-        if (!localAudioStream) return;
+        if (!localAudioStream || myCallMode !== "speaker") return;
         isMicMuted = !isMicMuted;
         localAudioStream.track.enabled = !isMicMuted;
         $("callMicBtn").textContent = isMicMuted ? "🔇 ミュート中" : "🎤 マイクON";
         $("callMicBtn").classList.toggle("active", isMicMuted);
+        syncCallStatusToFirebase("speaker", isMicMuted);
+      });
+    }
+
+    // 👀 覗き見から正式入室への昇格ボタン
+    if ($("btnUpgradeToJoin")) {
+      $("btnUpgradeToJoin").addEventListener("click", () => {
+        const curName = ($("lobbyName") ? $("lobbyName").value.trim() : "") || myName;
+        if (!curName) {
+          showToast("⚠️ 名前を設定してから入室してください");
+          doExit(false, true);
+          return;
+        }
+        joinRoom({ roomId: "official", roomPass: "", isLurk: false });
       });
     }
 
@@ -2645,7 +2801,7 @@ function toggleAcc(id) {
       e.preventDefault(); curColor = tmpColor; setGlobalColor(curColor); safeLS.set("nz_color", curColor);
       if (D.clrDot) D.clrDot.style.background = curColor; D.clrmod.classList.remove("show");
       broadcastTabSync("PROFILE_UPDATE");
-      if (isJoined && db && myUid && currentRoomId) {
+      if (isJoined && !isLurking && db && myUid && currentRoomId) {
         db.ref(`presence/${currentRoomId}/${myUid}/c`).set(curColor).catch(() => {});
       }
     });
@@ -2653,6 +2809,10 @@ function toggleAcc(id) {
     if (D.exBtn) {
       D.exBtn.addEventListener("click", (e) => {
         e.preventDefault();
+        if (isLurking) {
+          doExit(false, false);
+          return;
+        }
         customConfirm("退室確認", "本当にこの部屋から退室しますか？", "退室する", "キャンセル", true).then(ok => {
           if (ok) doExit(false, false);
         });
@@ -2664,7 +2824,7 @@ function toggleAcc(id) {
     if (D.tl) {
       D.tl.addEventListener("click", (e) => {
         const delBtn = e.target.closest(".msg-del-btn");
-        if (!delBtn) return;
+        if (!delBtn || isLurking) return;
         e.preventDefault();
         const mid = delBtn.dataset.mid;
         if (!mid || !db || !currentRoomId) return;
@@ -2784,7 +2944,8 @@ function toggleAcc(id) {
     });
 
     D.joinBtn.addEventListener("click", (e) => { e.preventDefault(); joinRoom(); });
-    $("btnJoinOfficial").addEventListener("click", (e) => { e.preventDefault(); joinRoom({ roomId: "official", roomPass: "" }); });
+    $("btnJoinOfficial").addEventListener("click", (e) => { e.preventDefault(); joinRoom({ roomId: "official", roomPass: "", isLurk: false }); });
+    $("btnLurkOfficial").addEventListener("click", (e) => { e.preventDefault(); joinRoom({ roomId: "official", roomPass: "", isLurk: true }); });
 
     $("lobbyName").addEventListener("input", () => {
       let cleanVal = $("lobbyName").value.replace(/◆/g, "");

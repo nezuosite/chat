@@ -436,51 +436,71 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 const SKYWAY_APP_ID = "58cc3b17-26f0-42bb-96e8-0f557ddf970e";
 const SKYWAY_SECRET_KEY_B64 = "JoAgxrroO7FX2TckM1ftfCoGL4I6J44jLalRi+WTTGk=";
 
-// 📞 Web Crypto API を用いたブラウザ内安全JWT生成
+function generateUuidV4() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+function base64UrlEncode(str) {
+  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function bufferToBase64Url(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return base64UrlEncode(binary);
+}
+
+// 📞 SkyWay Auth Token (JWT version 3 公式完全準拠生成)
 async function generateSkyWayToken() {
   try {
-    const b64u = str => btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
     const header = { typ: "JWT", alg: "HS256" };
     const now = Math.floor(Date.now() / 1000);
     const payload = {
-      jti: "jwt_" + Math.random().toString(36).substring(2, 10),
+      jti: generateUuidV4(),
       iat: now,
       exp: now + 86400,
+      version: 3,
       scope: {
         appId: SKYWAY_APP_ID,
         rooms: [
           {
-            id: "*",
             name: "*",
-            actions: ["create", "close", "read"],
-            members: [
-              {
-                id: "*",
-                name: "*",
-                actions: ["write"],
-                publications: [{ action: "write" }],
-                subscriptions: [{ action: "write" }]
-              }
-            ]
+            methods: ["create", "close", "updateMetadata"],
+            member: {
+              name: "*",
+              methods: ["publish", "subscribe", "updateMetadata"]
+            },
+            sfu: {
+              enabled: true
+            }
           }
         ]
       }
     };
-    const sHeader = b64u(JSON.stringify(header));
-    const sPayload = b64u(JSON.stringify(payload));
+
+    const sHeader = base64UrlEncode(JSON.stringify(header));
+    const sPayload = base64UrlEncode(JSON.stringify(payload));
     const dataToSign = `${sHeader}.${sPayload}`;
-    
+
+    // Base64シークレットキーからHMAC鍵の生成
     const binStr = atob(SKYWAY_SECRET_KEY_B64);
     const keyBytes = new Uint8Array(binStr.length);
     for (let i = 0; i < binStr.length; i++) keyBytes[i] = binStr.charCodeAt(i);
-    
+
     const key = await crypto.subtle.importKey("raw", keyBytes, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
     const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(dataToSign));
-    const sigStr = String.fromCharCode.apply(null, new Uint8Array(signature));
-    const sSignature = b64u(sigStr);
+    const sSignature = bufferToBase64Url(signature);
+
     return `${dataToSign}.${sSignature}`;
   } catch (err) {
-    console.error("SkyWay Token生成エラー:", err);
+    console.error("SkyWay Token手動生成エラー:", err);
     return null;
   }
 }
@@ -662,7 +682,6 @@ function toggleAcc(id) {
   let isMicMuted = false;
   let isCallingActive = false;
 
-  // 👑 新管理人判定（◆TUNsz2に指定）
   const checkIsGlobalAdmin = () => (myTrip === "◆TUNsz2");
 
   const _txtEnc = (typeof TextEncoder !== 'undefined') ? new TextEncoder() : null;
@@ -1017,7 +1036,7 @@ function toggleAcc(id) {
     }
   }
 
-  // 📞 SkyWay SFU 通話開始処理（完全SFU方式指定・エコーキャンセル・ノイズ抑制）
+  // 📞 SkyWay SFU 通話開始処理（公式CreateForDevelopment＆最新SFU仕様完全適用）
   async function startSkyWayCall() {
     if (isCallingActive) {
       await leaveSkyWayCall();
@@ -1025,11 +1044,6 @@ function toggleAcc(id) {
     }
     if (!window.skyway_room) {
       showToast("⚠️ SkyWay SDKの読み込みに失敗しています");
-      return;
-    }
-    const token = await generateSkyWayToken();
-    if (!token) {
-      showToast("⚠️ 通話認証トークンの生成に失敗しました");
       return;
     }
 
@@ -1041,9 +1055,26 @@ function toggleAcc(id) {
 
     try {
       const { SkyWayContext, SkyWayRoom, SkyWayStreamFactory } = window.skyway_room;
-      skywayContext = await SkyWayContext.Create(token);
+
+      // ⚡ 公式CreateForDevelopmentを最優先で使用（トークンデコードエラーを完全根絶）
+      if (SkyWayContext.CreateForDevelopment) {
+        try {
+          skywayContext = await SkyWayContext.CreateForDevelopment(SKYWAY_APP_ID, SKYWAY_SECRET_KEY_B64);
+        } catch (devErr) {
+          console.warn("CreateForDevelopment失敗、手動JWT生成にフォールバック:", devErr);
+          const token = await generateSkyWayToken();
+          if (!token) throw new Error("トークン生成失敗");
+          skywayContext = await SkyWayContext.Create(token);
+        }
+      } else {
+        const token = await generateSkyWayToken();
+        if (!token) throw new Error("トークン生成失敗");
+        skywayContext = await SkyWayContext.Create(token);
+      }
+
       skywayRoom = await SkyWayRoom.FindOrCreate(skywayContext, {
-        name: `sfu_${currentRoomId}`
+        name: `sfu_${currentRoomId}`,
+        type: "sfu"
       });
 
       const me = await skywayRoom.join();

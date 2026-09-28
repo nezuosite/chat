@@ -129,7 +129,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 #pl{display:none;gap:6px;padding:6px 12px;background:var(--s2);border-bottom:1px solid var(--bd);overflow-x:auto;white-space:nowrap;min-height:36px;max-height:36px;flex-shrink:0;align-items:center}
 .chip{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,0.04);border:1.5px solid var(--usr-color);display:inline-flex;align-items:center;color:var(--usr-color);height:24px}
 
-/* 📞 通話コントロールバー */
+/* 📞 SFU 通話コントロールバー */
 #callBar{display:none;align-items:center;justify-content:space-between;padding:5px 12px;background:#0d1527;border-bottom:1px solid #1e293b;gap:8px;flex-shrink:0}
 .call-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:bold;color:#38bdf8}
 .call-dot{width:7px;height:7px;border-radius:50%;background:#10b981;animation:pulse 1.5s infinite}
@@ -302,7 +302,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
           <div id="roomStatusBadges" style="display:none;gap:3px;align-items:center;"></div>
           <div class="hbs">
             <div id="adminBtnMount"></div>
-            <button class="btn" id="callToggleBtn" style="background:#0284c7;border:1px solid #38bdf8;color:#fff;display:none;">📞 通話開始</button>
+            <button class="btn" id="callToggleBtn" style="background:#0284c7;border:1px solid #38bdf8;color:#fff;display:none;">📞 SFU通話開始</button>
             <button class="bclr" id="clrBtn" title="色設定"><span class="bclr-dot" id="clrDot"></span> 色</button>
             <button class="btn" id="inviteBtn" style="display:none;">🔗 招待</button>
             <button class="btn" id="exBtn" style="background:rgba(244,63,94,0.15);border:1px solid rgba(244,63,94,0.3);color:#fda4af;display:none;">退室</button>
@@ -312,11 +312,11 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
     </div>
 
     <div id="chatScreen">
-      <!-- 📞 通話コントロールバー -->
+      <!-- 📞 SFU 通話コントロールバー -->
       <div id="callBar">
         <div class="call-badge">
           <span class="call-dot"></span>
-          <span id="callStatusText">📞 通話接続中...</span>
+          <span id="callStatusText">📞 SFU通話接続中...</span>
         </div>
         <div style="display:flex;gap:5px;align-items:center;">
           <button class="call-btn" id="callMicBtn">🎤 マイクON</button>
@@ -448,14 +448,28 @@ async function generateSkyWayToken() {
       exp: now + 86400,
       scope: {
         appId: SKYWAY_APP_ID,
-        rooms: [{ id: "*", name: "*", actions: ["create", "close", "read"], members: [{ id: "*", name: "*", actions: ["write"], publications: [{ action: "write" }], subscriptions: [{ action: "write" }] }] }]
+        rooms: [
+          {
+            id: "*",
+            name: "*",
+            actions: ["create", "close", "read"],
+            members: [
+              {
+                id: "*",
+                name: "*",
+                actions: ["write"],
+                publications: [{ action: "write" }],
+                subscriptions: [{ action: "write" }]
+              }
+            ]
+          }
+        ]
       }
     };
     const sHeader = b64u(JSON.stringify(header));
     const sPayload = b64u(JSON.stringify(payload));
     const dataToSign = `${sHeader}.${sPayload}`;
     
-    // Base64シークレットからCryptoKey作成
     const binStr = atob(SKYWAY_SECRET_KEY_B64);
     const keyBytes = new Uint8Array(binStr.length);
     for (let i = 0; i < binStr.length; i++) keyBytes[i] = binStr.charCodeAt(i);
@@ -538,7 +552,6 @@ function toggleAcc(id) {
   const db = firebase.database();
   const auth = firebase.auth();
 
-  // 🔒 高速かつ確実な匿名認証
   function ensureAnonAuth() {
     if (auth.currentUser && auth.currentUser.uid) {
       myUid = auth.currentUser.uid;
@@ -641,7 +654,7 @@ function toggleAcc(id) {
   let myLastActiveTs = 0;
   let isExecutingAutoExit = false;
 
-  // 📞 SkyWay 通話インスタンス
+  // 📞 SkyWay SFU 通話インスタンス
   let skywayContext = null;
   let skywayRoom = null;
   let localAudioStream = null;
@@ -978,16 +991,14 @@ function toggleAcc(id) {
     } catch(e){}
   }
 
-  // 📞 SkyWay 通話切断処理
+  // 📞 SkyWay SFU 通話切断処理
   async function leaveSkyWayCall() {
     if (localAudioPublication) {
       try { await localAudioPublication.cancel(); } catch(e){}
       localAudioPublication = null;
     }
     if (localAudioStream) {
-      try {
-        localAudioStream.track.stop();
-      } catch(e){}
+      try { localAudioStream.track.stop(); } catch(e){}
       localAudioStream = null;
     }
     if (skywayRoom) {
@@ -1001,12 +1012,12 @@ function toggleAcc(id) {
     if (callBar) callBar.style.display = "none";
     const callToggleBtn = $("callToggleBtn");
     if (callToggleBtn) {
-      callToggleBtn.textContent = "📞 通話開始";
+      callToggleBtn.textContent = "📞 SFU通話開始";
       callToggleBtn.style.background = "#0284c7";
     }
   }
 
-  // 📞 SkyWay 通話開始処理
+  // 📞 SkyWay SFU 通話開始処理（完全SFU方式指定・エコーキャンセル・ノイズ抑制）
   async function startSkyWayCall() {
     if (isCallingActive) {
       await leaveSkyWayCall();
@@ -1026,28 +1037,32 @@ function toggleAcc(id) {
     const statusText = $("callStatusText");
     const callToggleBtn = $("callToggleBtn");
     if (callBar) callBar.style.display = "flex";
-    if (statusText) statusText.textContent = "📞 通話ルーム接続中...";
+    if (statusText) statusText.textContent = "📞 SFU通話接続中...";
 
     try {
       const { SkyWayContext, SkyWayRoom, SkyWayStreamFactory } = window.skyway_room;
       skywayContext = await SkyWayContext.Create(token);
       skywayRoom = await SkyWayRoom.FindOrCreate(skywayContext, {
-        type: "p2p",
-        name: `room_${currentRoomId}`
+        name: `sfu_${currentRoomId}`
       });
 
       const me = await skywayRoom.join();
-      localAudioStream = await SkyWayStreamFactory.createMicrophoneAudioStream();
-      localAudioPublication = await me.publish(localAudioStream);
+      localAudioStream = await SkyWayStreamFactory.createMicrophoneAudioStream({
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      });
+
+      // ⚡ SFU方式を明示指定してパブリッシュ
+      localAudioPublication = await me.publish(localAudioStream, { type: "sfu" });
 
       isCallingActive = true;
-      if (statusText) statusText.textContent = "🟢 通話中 (P2P接続)";
+      if (statusText) statusText.textContent = "🟢 SFU通話中 (サーバー中継)";
       if (callToggleBtn) {
         callToggleBtn.textContent = "📞 通話終了";
         callToggleBtn.style.background = "#e11d48";
       }
 
-      // 他メンバーの音声購読
       const subscribeTrack = async (publication) => {
         if (publication.publisher.id === me.id || publication.contentType !== "audio") return;
         const { stream } = await me.subscribe(publication.id);
@@ -1061,7 +1076,7 @@ function toggleAcc(id) {
       skywayRoom.publications.forEach(subscribeTrack);
       skywayRoom.onStreamPublished.add(e => subscribeTrack(e.publication));
 
-      showToast("🎙️ 通話に接続しました");
+      showToast("🎙️ SFU通話に接続しました");
     } catch (err) {
       console.error("SkyWay 通話接続エラー:", err);
       showToast("⚠️ 通話接続に失敗しました: " + (err.message || "マイク権限エラー"));
@@ -1131,14 +1146,13 @@ function toggleAcc(id) {
   }
 
   // ⚡【自動退室ログ完全同期エンジン】他人が放置ユーザーを検知した際の排他トランザクション処理
-  async function processAutoExitForUser(targetUid, userData) {
-    if (!db || !currentRoomId || !userData || targetUid === myUid) return;
-    const roomId = currentRoomId;
+  async function processAutoExitForUser(targetUid, userData, targetRoomId = currentRoomId) {
+    if (!db || !targetRoomId || !userData || targetUid === myUid) return;
+    const roomId = targetRoomId;
     const pRef = db.ref(`presence/${roomId}/${targetUid}`);
 
     try {
       let expiredBaseTs = 0;
-      // 排他トランザクション：現在ノードが存在し、期限超過している場合のみ削除
       const res = await pRef.transaction(current => {
         if (current && typeof current.t === "number") {
           const now = getTrueTime();
@@ -1147,13 +1161,11 @@ function toggleAcc(id) {
             return null; // 期限切れのため削除
           }
         }
-        return undefined; // 期限切れでない、または既に誰かが消した場合は触らない
+        return undefined;
       });
 
-      // トランザクションで削除に成功した「たった1台の端末」だけがログを書き込む
       if (res.committed && res.snapshot.val() === null) {
         const baseTs = expiredBaseTs || userData.t || (getTrueTime() - AUTO_EXIT_MS);
-        // ⚡ 1秒のズレもない確定時刻計算
         const exactExpiryTime = Math.floor(baseTs + AUTO_EXIT_MS);
         const autoExitKey = `sys_autoexit_${targetUid}_${baseTs}`;
         const userName = (userData.n || "名無し").trim();
@@ -1183,22 +1195,17 @@ function toggleAcc(id) {
     const cleanName = (myName || "名無し").trim();
     const cleanTrip = myTrip || "";
     const baseTs = myLastActiveTs > 0 ? myLastActiveTs : (getTrueTime() - AUTO_EXIT_MS);
-    // ⚡ 1秒のズレもない確定時刻計算
     const exactExpiryTime = Math.floor(baseTs + AUTO_EXIT_MS);
     const autoExitKey = `sys_autoexit_${uid}_${baseTs}`;
 
     try {
-      // 1. まず確実に自動退室アナウンスを書き込む
       const rawSysText = "📢 [お知らせ] " + `${cleanName} ${cleanTrip}`.trim() + ` が自動退室しました (${autoExitMinutes}分間発言がなかったため)`;
       const encD = await encodeMsgPayload("システム", "", rawSysText);
       await db.ref(`chat/${roomId}/${autoExitKey}`).set({
         u: "system", c: "#f43f5e", d: encD, t: exactExpiryTime, sys: true
       });
 
-      // 2. presence から自身を削除
       await db.ref(`presence/${roomId}/${uid}`).remove();
-
-      // 3. 0人になったら部屋を消滅
       await destroyRoomIfEmpty(roomId);
     } catch (e) {
       console.error("自身自動退室エラー:", e);
@@ -1632,7 +1639,6 @@ function toggleAcc(id) {
     D.clrMsgBtn.classList.toggle("show", D.mi.value.length > 0);
   };
 
-  // 🔒 厳格バリデーション（トリップ確定＋名前・部屋ID・パスワード完全必須＋警告文制御）
   const validateLobbyInputs = () => {
     const name = ($("lobbyName") ? $("lobbyName").value.trim() : "");
     const roomId = ($("lobbyRoomId") ? $("lobbyRoomId").value.trim() : "");
@@ -1666,7 +1672,6 @@ function toggleAcc(id) {
     }
   };
 
-  // ⚡ 匿名認証＆トリップ生成を最速で実行
   const syncProfileValues = async () => {
     const nameVal = safeLS.get("nz_ni") || "";
     const colorVal = safeLS.get("nz_color") || "#f1f5f9";
@@ -2328,6 +2333,7 @@ function toggleAcc(id) {
     }
   });
 
+  // 🚪 ゾンビ掃除＆まっさらな状態からの入室エンジン
   async function joinRoom(options = {}) {
     if (!db) { alert("データベースが準備できていません。"); return; }
     let lobbyRoomId = options.roomId || ($("lobbyRoomId") ? $("lobbyRoomId").value.trim() : "");
@@ -2336,7 +2342,7 @@ function toggleAcc(id) {
 
     const isOfficialTarget = (lobbyRoomId === "official");
     
-    // フリールームのパスワード完全必須バリデーション
+    // フリールームはパスワード完全必須
     if (!isOfficialTarget && !lobbyRoomPass) {
       alert("部屋パスワードを入力してください（フリールームは必須です）。");
       return;
@@ -2359,6 +2365,44 @@ function toggleAcc(id) {
     }
 
     const safeRoomPath = isOfficialTarget ? "official" : await window.sha256(lobbyRoomId);
+
+    // ⚡【ゾンビ掃除エンジン】次に入った人が古い放置ゾンビ部屋を完全初期化し、まっさらにする
+    if (!isOfficialTarget) {
+      try {
+        const [pSnap, sSnap] = await Promise.all([
+          db.ref(`presence/${safeRoomPath}`).once("value"),
+          db.ref(`settings/${safeRoomPath}`).once("value")
+        ]);
+        const pVal = pSnap.val() || {};
+        const now = getTrueTime();
+
+        // 有効期限内の生存者がいるかチェック
+        const activeMembers = Object.entries(pVal).filter(([uid, u]) => {
+          return u && typeof u.t === "number" && (now - u.t < AUTO_EXIT_MS);
+        });
+
+        // 生存者0人（誰もいない、または全員が放置超過ゾンビ）の場合
+        if (activeMembers.length === 0 && (pSnap.exists() || sSnap.exists())) {
+          // 部屋全体を完全に消去して初期化（まっさらな状態にする）
+          const updates = {};
+          updates[`chat/${safeRoomPath}`] = null;
+          updates[`presence/${safeRoomPath}`] = null;
+          updates[`settings/${safeRoomPath}`] = null;
+          updates[`banlist/${safeRoomPath}`] = null;
+          await db.ref().update(updates);
+        } else if (activeMembers.length > 0) {
+          // まだ生きている人がいる部屋で、一部のゾンビだけを掃除
+          const expiredZombies = Object.entries(pVal).filter(([uid, u]) => {
+            return u && typeof u.t === "number" && (now - u.t >= AUTO_EXIT_MS);
+          });
+          for (const [zUid, zData] of expiredZombies) {
+            await processAutoExitForUser(zUid, zData, safeRoomPath);
+          }
+        }
+      } catch (err) {
+        console.error("ゾンビ掃除処理エラー:", err);
+      }
+    }
 
     let isBanned = false;
     let settingsSnap = null;
@@ -2522,7 +2566,7 @@ function toggleAcc(id) {
       if ($("inviteBtn")) $("inviteBtn").style.display = (pRoom === "official") ? "none" : "inline-flex";
     }
 
-    // 📞 通話イベント登録
+    // 📞 SFU 通話イベント登録
     if ($("callToggleBtn")) $("callToggleBtn").addEventListener("click", startSkyWayCall);
     if ($("callEndBtn")) $("callEndBtn").addEventListener("click", leaveSkyWayCall);
     if ($("callMicBtn")) {

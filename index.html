@@ -114,7 +114,6 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .lobby-row label{font-size:10px;font-weight:bold;color:var(--mu)!important}
 .grid-2col{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 
-/* ⚠️ 注意文（改行してすっきりまとめた配置） */
 .val-warning{
   font-size:9.5px;
   font-weight:bold;
@@ -217,11 +216,14 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .bsd{width:44px;height:44px;border-radius:50%;background:#334155;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid rgba(255,255,255,0.12)}
 .bsd svg{width:18px;height:18px;transform:rotate(45deg);margin-top:-1px;margin-left:-2px}
 
-/* ⚡ 覗き見用コントロールバー（インライン名前入力＋昇格ボタン最適化） */
+/* ⚡ 覗き見用コントロールバー（注意文なし・ボタン制御最適化） */
 #lurkPromptBar{
   display:none;width:100%;padding:6px 10px calc(6px + var(--safe)) 10px;
   background:#0b1120;border-top:1px solid #1e293b;
   align-items:center;justify-content:space-between;gap:8px;flex-shrink:0;
+}
+#btnUpgradeToJoin:disabled{
+  background:#1e293b!important;color:#64748b!important;border:1px solid #334155!important;opacity:0.6!important;cursor:not-allowed!important;
 }
 
 .inp{
@@ -395,13 +397,13 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
         </div>
       </div>
 
-      <!-- 👀 覗き見モード案内バー（インライン名前入力欄＋昇格ボタン完全一体化） -->
+      <!-- 👀 覗き見モード案内バー（ボタン色・無効化制御でスマート化） -->
       <div id="lurkPromptBar">
         <div style="display:flex;align-items:center;gap:5px;flex:1;min-width:0;">
           <span style="font-size:10px;font-weight:900;color:#38bdf8;background:rgba(2,132,199,0.2);padding:2px 5px;border-radius:4px;white-space:nowrap;border:1px solid rgba(56,189,248,0.3);">👀 覗き見中</span>
           <input type="text" id="lurkInlineNameInput" class="inp" placeholder="名前を入力して参加..." maxlength="10" autocomplete="off" style="height:28px;font-size:11.5px!important;padding:2px 6px;flex:1;min-width:80px;">
         </div>
-        <button class="btn" id="btnUpgradeToJoin" style="background:#0284c7;color:#fff;font-size:11px;height:28px;padding:0 10px;border-radius:5px;font-weight:bold;flex-shrink:0;white-space:nowrap;">💬 正式に入室</button>
+        <button class="btn" id="btnUpgradeToJoin" style="background:#0284c7;color:#fff;font-size:11px;height:28px;padding:0 10px;border-radius:5px;font-weight:bold;flex-shrink:0;white-space:nowrap;" disabled>💬 正式に入室</button>
       </div>
 
       <div id="ib">
@@ -485,6 +487,9 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 </div>
 
 <script>
+// 👑 絶対的公式管理者マスターUID（偽造・乗っ取り100%不可能）
+const GLOBAL_ADMIN_UID = "d99bzcrWCraG74oGUWKz7158oOz1";
+
 // 📞 SkyWay 認証情報
 const SKYWAY_APP_ID = "58cc3b17-26f0-42bb-96e8-0f557ddf970e";
 const SKYWAY_SECRET_KEY_B64 = "JoAgxrroO7FX2TckM1ftfCoGL4I6J44jLalRi+WTTGk=";
@@ -737,7 +742,8 @@ function toggleAcc(id) {
   let isMicMuted = false;
   let isCallingActive = false;
 
-  const checkIsGlobalAdmin = () => (myTrip === "◆TUNsz2");
+  // 👑 新管理人判定（UID照合による絶対セキュリティ）
+  const checkIsGlobalAdmin = () => (myUid === GLOBAL_ADMIN_UID || myTrip === "◆TUNsz2");
 
   const _txtEnc = (typeof TextEncoder !== 'undefined') ? new TextEncoder() : null;
   const _txtDec = (typeof TextDecoder !== 'undefined') ? new TextDecoder() : null;
@@ -889,6 +895,7 @@ function toggleAcc(id) {
     return myTrip;
   };
 
+  // 🛡️ XSS属性インジェクション完全防止型本文レンダラー
   function renderMessageBody(text) {
     if (!text) return "";
     const parts = [];
@@ -902,18 +909,18 @@ function toggleAcc(id) {
       const url = match[0];
       const cUrl = escapeHtml(url);
       const isImg = /\.(jpeg|jpg|gif|png|webp)($|\?)/i.test(url);
-      const isYt = /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))/i.test(url);
+      const isYt = /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/))/i.test(url);
       const isNico = /(?:nicovideo\.jp\/watch\/|nico\.ms\/)(sm\d+|so\d+|nm\d+|1\d+)/i.test(url);
       const isAudio = /\.(mp3|wav|ogg|m4a|aac)($|\?)/i.test(url);
 
       if (isImg) {
-        parts.push(`<div style="margin-top:4px;"><img class="inline-img" src="${cUrl}" alt="画像" loading="lazy" onclick="window.__openImgModal('${cUrl}')" onload="window.__onImgLoaded && window.__onImgLoaded()"></div>`);
+        parts.push(`<div style="margin-top:4px;"><img class="inline-img safe-img-click" src="${cUrl}" data-url="${cUrl}" alt="画像" loading="lazy"></div>`);
       } else if (isYt) {
-        parts.push(`<div class="media-link-container"><div class="media-inline-row"><span class="media-badge" style="background:#e11d48;border-radius:3px;">YouTube</span><a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="color:#38bdf8;font-size:11.5px;text-decoration:underline;word-break:break-all;">${cUrl}</a><button class="open-player-btn" onclick="window.__openPlayer('${cUrl}','youtube')">▶ インライン再生</button></div></div>`);
+        parts.push(`<div class="media-link-container"><div class="media-inline-row"><span class="media-badge" style="background:#e11d48;border-radius:3px;">YouTube</span><a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="color:#38bdf8;font-size:11.5px;text-decoration:underline;word-break:break-all;">${cUrl}</a><button class="open-player-btn safe-player-click" data-url="${cUrl}" data-type="youtube">▶ 再生</button></div></div>`);
       } else if (isNico) {
-        parts.push(`<div class="media-link-container"><div class="media-inline-row"><span class="media-badge" style="background:#0284c7;border-radius:3px;">ニコニコ</span><a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="color:#38bdf8;font-size:11.5px;text-decoration:underline;word-break:break-all;">${cUrl}</a><button class="open-player-btn" onclick="window.__openPlayer('${cUrl}','niconico')">▶ インライン再生</button></div></div>`);
+        parts.push(`<div class="media-link-container"><div class="media-inline-row"><span class="media-badge" style="background:#0284c7;border-radius:3px;">ニコニコ</span><a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="color:#38bdf8;font-size:11.5px;text-decoration:underline;word-break:break-all;">${cUrl}</a><button class="open-player-btn safe-player-click" data-url="${cUrl}" data-type="niconico">▶ 再生</button></div></div>`);
       } else if (isAudio) {
-        parts.push(`<div class="media-link-container"><div class="media-inline-row"><span class="media-badge" style="background:#10b981;border-radius:3px;">音声</span><a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="color:#38bdf8;font-size:11.5px;text-decoration:underline;word-break:break-all;">${cUrl}</a><button class="open-player-btn" onclick="window.__openPlayer('${cUrl}','audio')">🎵 プレイヤーで再生</button></div></div>`);
+        parts.push(`<div class="media-link-container"><div class="media-inline-row"><span class="media-badge" style="background:#10b981;border-radius:3px;">音声</span><a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="color:#38bdf8;font-size:11.5px;text-decoration:underline;word-break:break-all;">${cUrl}</a><button class="open-player-btn safe-player-click" data-url="${cUrl}" data-type="audio">🎵 再生</button></div></div>`);
       } else {
         parts.push(`<a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="color:#38bdf8;text-decoration:underline;word-break:break-all;">${cUrl}</a>`);
       }
@@ -1023,12 +1030,6 @@ function toggleAcc(id) {
     D.tl.scrollTop = D.tl.scrollHeight;
     updateJumpBtns();
   }
-  window.__onImgLoaded = () => {
-    const acc = $("adminAccordion");
-    const bottomTolerance = (acc && acc.style.display === "flex") ? 130 : 80;
-    const isAtBottom = D.tl && (D.tl.scrollHeight - (D.tl.scrollTop + D.tl.clientHeight) <= bottomTolerance);
-    if (isAtBottom) snapToBottom();
-  };
 
   function updateJumpBtns() {
     if (!D.tl || !D.jumpUpBtn || !D.jumpDownBtn) return;
@@ -1104,7 +1105,7 @@ function toggleAcc(id) {
     }
   }
 
-  // 📞 SkyWay SFU 通話開始処理（LINEライクな自然・高音質・超軽量32kbps）
+  // 📞 SkyWay SFU 通話開始処理（LINE風自然設定・32kbps超軽量）
   async function startSkyWayCall(targetMode = "speaker") {
     if (isCallingActive) {
       await leaveSkyWayCall();
@@ -1154,7 +1155,6 @@ function toggleAcc(id) {
       localSkyWayMember = await skywayRoom.join();
 
       if (targetMode === "speaker" && !isLurking) {
-        // ⚡ LINE風の自然な音響セッティング（ハウリング防止＋過剰カットなし＋モノラル32kbps）
         localAudioStream = await SkyWayStreamFactory.createMicrophoneAudioStream({
           echoCancellation: true,
           noiseSuppression: true,
@@ -1163,7 +1163,7 @@ function toggleAcc(id) {
         });
         localAudioPublication = await localSkyWayMember.publish(localAudioStream, {
           type: "sfu",
-          encodings: [{ maxBitrate: 32000 }] // 32kbps超軽量
+          encodings: [{ maxBitrate: 32000 }] // 32kbps LINEライク超軽量
         });
         
         if (micBtn) { micBtn.style.display = "inline-flex"; micBtn.textContent = "🎤 マイクON"; micBtn.classList.remove("active"); }
@@ -1391,7 +1391,6 @@ function toggleAcc(id) {
     }
   }
 
-  // ⚡ どんなケースでも漏れなくスキャン
   async function checkAndTriggerExactAutoExit() {
     if (!isJoined || isLurking || !db || !currentRoomId || isExecutingAutoExit) return;
     const nowTrue = getTrueTime();
@@ -1839,19 +1838,12 @@ function toggleAcc(id) {
     if (D.imgViewSrc) D.imgViewSrc.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
   };
 
-  window.__openImgModal = (src) => {
-    if (!D.imgViewMod || !D.imgViewSrc) return;
-    D.imgViewSrc.src = src;
-    resetZoom();
-    D.imgViewMod.classList.add("show");
-  };
-
   const updateClrMsgBtnVisibility = () => {
     if (!D.clrMsgBtn || !D.mi) return;
     D.clrMsgBtn.classList.toggle("show", D.mi.value.length > 0);
   };
 
-  // 🔒 厳格バリデーション（改行注意文・覗き見は名前不要で常時許可）
+  // 🔒 厳格バリデーション（改行注意文・覗き見インラインボタン連動）
   const validateLobbyInputs = () => {
     const name = ($("lobbyName") ? $("lobbyName").value.trim() : "");
     const roomId = ($("lobbyRoomId") ? $("lobbyRoomId").value.trim() : "");
@@ -1893,7 +1885,6 @@ function toggleAcc(id) {
       }
     }
 
-    // ⚡ 覗き見ボタンは名前未入力でも即座に押せる！
     const btnLurk = $("btnLurkOfficial");
     if (btnLurk) {
       btnLurk.disabled = !hasAuthAndTrip;
@@ -1902,6 +1893,14 @@ function toggleAcc(id) {
       } else {
         btnLurk.textContent = "👀 覗き見 (聴くだけ)";
       }
+    }
+
+    // ⚡ 覗き見インラインバーのボタン制御
+    const inlineInput = $("lurkInlineNameInput");
+    const upgradeBtn = $("btnUpgradeToJoin");
+    if (inlineInput && upgradeBtn) {
+      const inVal = inlineInput.value.trim();
+      upgradeBtn.disabled = (!inVal);
     }
   };
 
@@ -2001,7 +2000,10 @@ function toggleAcc(id) {
         if (lurkBar) {
           lurkBar.style.display = "flex";
           const inlineInput = $("lurkInlineNameInput");
-          if (inlineInput) inlineInput.value = myName || safeLS.get("nz_ni") || "";
+          if (inlineInput) {
+            inlineInput.value = myName || safeLS.get("nz_ni") || "";
+            validateLobbyInputs();
+          }
         }
       } else {
         if (logoTitle && rawRoomId) logoTitle.innerHTML = `NEZUO CHAT<span class="sub-room">${rawRoomId === "official" ? "常設公式部屋" : escapeHtml(rawRoomId)}</span>`;
@@ -2037,6 +2039,7 @@ function toggleAcc(id) {
   const closePlayer = () => {
     if (!D.fixedPlayer || !D.playerContent) return;
     const ae = D.playerContent.querySelector("audio"); if (ae) { ae.pause(); ae.src = ""; }
+    const ifr = D.playerContent.querySelector("iframe"); if (ifr) { ifr.src = ""; }
     D.fixedPlayer.style.display = "none"; D.playerContent.innerHTML = ""; updateJumpBtns();
   };
 
@@ -2055,7 +2058,6 @@ function toggleAcc(id) {
     }
     updateJumpBtns();
   }
-  window.__openPlayer = openFloatingPlayer;
 
   function getYoutubeId(url) { const m = url ? url.match(/^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|shorts\/|live\/)([^#\&\?]*).*/) : null; return (m && m[2].length === 11) ? m[2] : null; }
   function getNicoId(url) { const m = url ? url.match(/(sm\d+|so\d+|nm\d+|1\d+)/) : null; return m ? m[0] : null; }
@@ -2641,10 +2643,10 @@ function toggleAcc(id) {
 
     const safeRoomPath = isOfficialTarget ? "official" : await window.sha256(lobbyRoomId);
 
-    // ⚡【先行クリーンアップ】入室時にログがポコッと降る違和感を根絶（すでに過去ログに書かれた状態にする）
+    // ⚡【先行クリーンアップ】入室時にログがポコッと降る違和感を根絶
     await cleanupExpiredMembersBeforeJoin(safeRoomPath);
 
-    // ⚡ ゾンビ掃除エンジン（フリールームで全員が期限切れの場合、まっさら初期化）
+    // ⚡ ゾンビ掃除エンジン
     if (!isOfficialTarget && !isLurkTarget) {
       try {
         const [pSnap, sSnap] = await Promise.all([
@@ -2884,12 +2886,11 @@ function toggleAcc(id) {
       });
     }
 
-    // 👀 覗き見から正式入室への昇格（インライン名前入力と完全連動）
+    // 👀 覗き見から正式入室への昇格（インライン入力から直結）
     if ($("btnUpgradeToJoin")) {
       $("btnUpgradeToJoin").addEventListener("click", () => {
         const inlineInput = $("lurkInlineNameInput");
         const val = inlineInput ? inlineInput.value.trim().replace(/◆/g, "") : "";
-        
         if (!val) {
           showToast("⚠️ 名前を入力してください");
           if (inlineInput) inlineInput.focus();
@@ -2903,6 +2904,11 @@ function toggleAcc(id) {
 
         joinRoom({ roomId: "official", roomPass: "", isLurk: false });
       });
+    }
+
+    const inlineNameInput = $("lurkInlineNameInput");
+    if (inlineNameInput) {
+      inlineNameInput.addEventListener("input", validateLobbyInputs);
     }
 
     const autoExitSel = $("lobbyAutoExitSelect");
@@ -2960,31 +2966,60 @@ function toggleAcc(id) {
 
     if (D.sdBtn) D.sdBtn.addEventListener("click", (e) => { e.preventDefault(); sendMessage(); });
 
+    // 🛡️ XSS防止・安全なイベント委譲によるクリック処理
     if (D.tl) {
       D.tl.addEventListener("click", (e) => {
-        const delBtn = e.target.closest(".msg-del-btn");
-        if (!delBtn || isLurking) return;
-        e.preventDefault();
-        const mid = delBtn.dataset.mid;
-        if (!mid || !db || !currentRoomId) return;
-        customConfirm("メッセージ削除", "この発言を削除しますか？", "削除する", "キャンセル", true).then(ok => {
-          if (ok) {
-            db.ref(`chat/${currentRoomId}/${mid}`).remove().catch(err => {
-              showToast("⚠️ 削除に失敗しました");
-            });
+        // 画像クリック
+        const imgEl = e.target.closest(".safe-img-click");
+        if (imgEl && imgEl.dataset.url) {
+          e.preventDefault();
+          if (D.imgViewMod && D.imgViewSrc) {
+            D.imgViewSrc.src = imgEl.dataset.url;
+            resetZoom();
+            D.imgViewMod.classList.add("show");
           }
-        });
+          return;
+        }
+
+        // メディアプレイヤー再生ボタンクリック
+        const playerBtn = e.target.closest(".safe-player-click");
+        if (playerBtn && playerBtn.dataset.url && playerBtn.dataset.type) {
+          e.preventDefault();
+          openFloatingPlayer(playerBtn.dataset.url, playerBtn.dataset.type);
+          return;
+        }
+
+        // 発言削除ボタンクリック
+        const delBtn = e.target.closest(".msg-del-btn");
+        if (delBtn && !isLurking) {
+          e.preventDefault();
+          const mid = delBtn.dataset.mid;
+          if (!mid || !db || !currentRoomId) return;
+          customConfirm("メッセージ削除", "この発言を削除しますか？", "削除する", "キャンセル", true).then(ok => {
+            if (ok) {
+              db.ref(`chat/${currentRoomId}/${mid}`).remove().catch(err => {
+                showToast("⚠️ 削除に失敗しました");
+              });
+            }
+          });
+        }
       });
     }
 
+    // 📱 全OS・キーボード完全最適化（IME変換ガード＆スマホ自動改行分岐）
     if (D.mi) {
       D.mi.addEventListener("input", () => { updateClrMsgBtnVisibility(); D.mi.style.height = "auto"; D.mi.style.height = Math.min(D.mi.scrollHeight, 120) + "px"; });
       D.mi.addEventListener("focus", () => { setTimeout(snapToBottom, 50); });
       D.mi.addEventListener("keydown", (e) => {
         if (e.isComposing || e.keyCode === 229) return;
-        if (e.key === "Enter" && !e.shiftKey) {
+        if (e.key === "Enter") {
           const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-          if (isMobile || !e.ctrlKey && !e.metaKey) { e.preventDefault(); sendMessage(); }
+          if (!isMobile) {
+            if (!e.shiftKey && !e.ctrlKey && !e.metaKey) {
+              e.preventDefault();
+              sendMessage();
+            }
+          }
         }
       });
     }

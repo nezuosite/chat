@@ -217,7 +217,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .bsd{width:44px;height:44px;border-radius:50%;background:#334155;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid rgba(255,255,255,0.12)}
 .bsd svg{width:18px;height:18px;transform:rotate(45deg);margin-top:-1px;margin-left:-2px}
 
-/* ⚡ 覗き見用コントロールバー（インライン名前入力＋昇格ボタン完全一体化） */
+/* ⚡ 覗き見用コントロールバー（インライン名前入力＋昇格ボタン最適化） */
 #lurkPromptBar{
   display:none;width:100%;padding:6px 10px calc(6px + var(--safe)) 10px;
   background:#0b1120;border-top:1px solid #1e293b;
@@ -281,15 +281,21 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
   <div style="font-size:13px;color:#94a3b8;max-width:420px;line-height:1.6;">ローカル環境からのアクセスは禁止されています。<br>正規のWebサイトからアクセスしてください。</div>
 </div>
 
-<!-- 📞 通話開始モード選択モーダル -->
+<!-- 📞 通話開始モード選択モーダル（超シンプル2択） -->
 <div id="callStartMod" class="mod-overlay">
   <div class="gc" style="max-width:320px;padding:16px;">
-    <div style="font-size:13px;font-weight:bold;margin-bottom:6px;">📞 通話モードを選択</div>
-    <div style="font-size:12px;color:var(--mu);margin-bottom:14px;line-height:1.5;">参加するモードを選択してください。<br>後からいつでも自由に切り替えられます。</div>
+    <div style="font-size:13px;font-weight:bold;margin-bottom:6px;">📞 通話に参加</div>
+    <div style="font-size:12px;color:var(--mu);margin-bottom:14px;line-height:1.5;">どちらで参加しますか？<br>（あとからいつでも切り替えられます）</div>
     <div style="display:flex;flex-direction:column;gap:8px;">
-      <button class="btn" id="callStartSpeakerBtn" style="background:#0284c7;color:#fff;font-size:12.5px;font-weight:bold;height:38px;border-radius:6px;">🎙️ 発言者として参加（マイクON）</button>
-      <button class="btn" id="callStartListenerBtn" style="background:#334155;color:#fff;font-size:12.5px;font-weight:bold;height:38px;border-radius:6px;">🎧 聴くだけで参加（マイク不要）</button>
-      <button class="btn" id="callStartCancelBtn" style="background:var(--s2);border:1px solid var(--bd);color:var(--tx);font-size:12px;height:32px;border-radius:6px;margin-top:4px;">キャンセル</button>
+      <button class="btn" id="callStartSpeakerBtn" style="background:#0284c7;color:#fff;font-size:12.5px;font-weight:bold;height:40px;border-radius:6px;display:flex;flex-direction:column;gap:2px;">
+        <span>🎙️ 話す（マイクON）</span>
+        <span style="font-size:9.5px;font-weight:normal;opacity:0.85;">自然な音質で声やBGMを届けます</span>
+      </button>
+      <button class="btn" id="callStartListenerBtn" style="background:#334155;color:#fff;font-size:12.5px;font-weight:bold;height:40px;border-radius:6px;display:flex;flex-direction:column;gap:2px;">
+        <span>🎧 聞くだけ（マイク不要）</span>
+        <span style="font-size:9.5px;font-weight:normal;opacity:0.85;">声は出さず、ラジオ感覚で聞きます</span>
+      </button>
+      <button class="btn" id="callStartCancelBtn" style="background:var(--s2);border:1px solid var(--bd);color:var(--tx);font-size:12px;height:32px;border-radius:6px;margin-top:4px;">やめる</button>
     </div>
   </div>
 </div>
@@ -335,7 +341,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
           <div class="hbs">
             <div id="adminBtnMount"></div>
             <!-- 📞 通話ボタン -->
-            <button class="btn" id="callToggleBtn" style="background:#0284c7;border:1px solid #38bdf8;color:#fff;display:none;">📞 SFU通話</button>
+            <button class="btn" id="callToggleBtn" style="background:#0284c7;border:1px solid #38bdf8;color:#fff;display:none;">📞 通話</button>
             <button class="bclr" id="clrBtn" title="色設定"><span class="bclr-dot" id="clrDot"></span> 色</button>
             <button class="btn" id="inviteBtn" style="display:none;">🔗 招待</button>
             <button class="btn" id="exBtn" style="background:rgba(244,63,94,0.15);border:1px solid rgba(244,63,94,0.3);color:#fda4af;display:none;">退室</button>
@@ -349,11 +355,11 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
       <div id="callBar">
         <div class="call-badge">
           <span class="call-dot"></span>
-          <span id="callStatusText">📞 SFU通話接続中...</span>
+          <span id="callStatusText">📞 通話接続中...</span>
         </div>
         <div style="display:flex;gap:5px;align-items:center;" id="callControlButtons">
           <button class="call-btn" id="callMicBtn">🎤 マイクON</button>
-          <button class="call-btn" id="callModeSwitchBtn">🎧 聴くだけにする</button>
+          <button class="call-btn" id="callModeSwitchBtn">🎧 聞くだけへ</button>
           <button class="call-btn" id="callEndBtn" style="background:rgba(244,63,94,0.2);border-color:#f43f5e;color:#fda4af;">切断</button>
         </div>
       </div>
@@ -393,7 +399,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
       <div id="lurkPromptBar">
         <div style="display:flex;align-items:center;gap:5px;flex:1;min-width:0;">
           <span style="font-size:10px;font-weight:900;color:#38bdf8;background:rgba(2,132,199,0.2);padding:2px 5px;border-radius:4px;white-space:nowrap;border:1px solid rgba(56,189,248,0.3);">👀 覗き見中</span>
-          <input type="text" id="lurkInlineNameInput" class="inp" placeholder="名前を入力..." maxlength="10" autocomplete="off" style="height:28px;font-size:11.5px!important;padding:2px 6px;flex:1;min-width:80px;">
+          <input type="text" id="lurkInlineNameInput" class="inp" placeholder="名前を入力して参加..." maxlength="10" autocomplete="off" style="height:28px;font-size:11.5px!important;padding:2px 6px;flex:1;min-width:80px;">
         </div>
         <button class="btn" id="btnUpgradeToJoin" style="background:#0284c7;color:#fff;font-size:11px;height:28px;padding:0 10px;border-radius:5px;font-weight:bold;flex-shrink:0;white-space:nowrap;">💬 正式に入室</button>
       </div>
@@ -1093,11 +1099,12 @@ function toggleAcc(id) {
     if (callBar) callBar.style.display = "none";
     const callToggleBtn = $("callToggleBtn");
     if (callToggleBtn) {
-      callToggleBtn.textContent = isLurking ? "🎧 聴くだけ通話" : "📞 SFU通話";
+      callToggleBtn.textContent = isLurking ? "🎧 聴くだけ通話" : "📞 通話";
       callToggleBtn.style.background = "#0284c7";
     }
   }
 
+  // 📞 SkyWay SFU 通話開始処理（LINEライクな自然・高音質・超軽量32kbps）
   async function startSkyWayCall(targetMode = "speaker") {
     if (isCallingActive) {
       await leaveSkyWayCall();
@@ -1120,7 +1127,7 @@ function toggleAcc(id) {
     const switchBtn = $("callModeSwitchBtn");
 
     if (callBar) callBar.style.display = "flex";
-    if (statusText) statusText.textContent = "📞 SFU通話接続中...";
+    if (statusText) statusText.textContent = "📞 通話接続中...";
 
     try {
       const { SkyWayContext, SkyWayRoom, SkyWayStreamFactory } = window.skyway_room;
@@ -1147,22 +1154,29 @@ function toggleAcc(id) {
       localSkyWayMember = await skywayRoom.join();
 
       if (targetMode === "speaker" && !isLurking) {
+        // ⚡ LINE風の自然な音響セッティング（ハウリング防止＋過剰カットなし＋モノラル32kbps）
         localAudioStream = await SkyWayStreamFactory.createMicrophoneAudioStream({
-          echoCancellation: true, noiseSuppression: true, autoGainControl: true
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1
         });
-        localAudioPublication = await localSkyWayMember.publish(localAudioStream, { type: "sfu" });
+        localAudioPublication = await localSkyWayMember.publish(localAudioStream, {
+          type: "sfu",
+          encodings: [{ maxBitrate: 32000 }] // 32kbps超軽量
+        });
         
         if (micBtn) { micBtn.style.display = "inline-flex"; micBtn.textContent = "🎤 マイクON"; micBtn.classList.remove("active"); }
-        if (switchBtn) { switchBtn.style.display = "inline-flex"; switchBtn.textContent = "🎧 聴くだけにする"; }
-        if (statusText) statusText.textContent = "🟢 発言中 (マイクON)";
+        if (switchBtn) { switchBtn.style.display = "inline-flex"; switchBtn.textContent = "🎧 聞くだけへ"; }
+        if (statusText) statusText.textContent = "🟢 通話中 (マイクON)";
         await syncCallStatusToFirebase("speaker", false);
       } else {
         if (micBtn) micBtn.style.display = "none";
         if (switchBtn) {
           switchBtn.style.display = isLurking ? "none" : "inline-flex";
-          switchBtn.textContent = "🎙️ 発言者になる";
+          switchBtn.textContent = "🎙️ 話す";
         }
-        if (statusText) statusText.textContent = isLurking ? "🎧 聴くだけ中 (覗き見専用)" : "🎧 聴くだけ参加中";
+        if (statusText) statusText.textContent = isLurking ? "🎧 聞くだけ中 (覗き見専用)" : "🎧 聞くだけ参加中";
         await syncCallStatusToFirebase("listener", false);
       }
 
@@ -1185,7 +1199,7 @@ function toggleAcc(id) {
       skywayRoom.publications.forEach(subscribeTrack);
       skywayRoom.onStreamPublished.add(e => subscribeTrack(e.publication));
 
-      showToast(targetMode === "speaker" ? "🎙️ SFU通話に接続しました" : "🎧 聴くだけで接続しました");
+      showToast(targetMode === "speaker" ? "🎙️ 通話に接続しました" : "🎧 聞くだけで接続しました");
     } catch (err) {
       console.error("SkyWay 通話接続エラー:", err);
       showToast("⚠️ 通話接続に失敗しました: " + (err.message || "マイク権限エラー"));
@@ -1197,7 +1211,7 @@ function toggleAcc(id) {
     if (!isCallingActive || isLurking || !skywayRoom || !localSkyWayMember) return;
 
     if (myCallMode === "speaker") {
-      const ok = await customConfirm("聴くだけモードへ切替", "聴くだけモードに切り替えますか？\nマイクが停止し、相手に声が届かなくなります。", "切り替える", "キャンセル");
+      const ok = await customConfirm("聞くだけモードへ切替", "聞くだけモードに切り替えますか？\nマイクが停止し、相手に声が届かなくなります。", "切り替える", "キャンセル");
       if (!ok) return;
 
       if (localAudioPublication) {
@@ -1213,30 +1227,32 @@ function toggleAcc(id) {
       const statusText = $("callStatusText");
 
       if (micBtn) micBtn.style.display = "none";
-      if (switchBtn) switchBtn.textContent = "🎙️ 発言者になる";
-      if (statusText) statusText.textContent = "🎧 聴くだけ参加中";
+      if (switchBtn) switchBtn.textContent = "🎙️ 話す";
+      if (statusText) statusText.textContent = "🎧 聞くだけ参加中";
 
       await syncCallStatusToFirebase("listener", false);
-      showToast("🎧 聴くだけモードに切り替えました");
+      showToast("🎧 聞くだけモードに切り替えました");
 
     } else if (myCallMode === "listener") {
-      const ok = await customConfirm("発言者へ切替", "発言者モードに切り替えますか？\nマイクがONになり、声が届くようになります。", "発言者になる", "キャンセル");
+      const ok = await customConfirm("発言者へ切替", "話すモードに切り替えますか？\nマイクがONになり、声が届くようになります。", "話す", "キャンセル");
       if (!ok) return;
 
       try {
         const { SkyWayStreamFactory } = window.skyway_room;
         localAudioStream = await SkyWayStreamFactory.createMicrophoneAudioStream({
-          echoCancellation: true, noiseSuppression: true, autoGainControl: true
+          echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1
         });
-        localAudioPublication = await localSkyWayMember.publish(localAudioStream, { type: "sfu" });
+        localAudioPublication = await localSkyWayMember.publish(localAudioStream, {
+          type: "sfu", encodings: [{ maxBitrate: 32000 }]
+        });
 
         const micBtn = $("callMicBtn");
         const switchBtn = $("callModeSwitchBtn");
         const statusText = $("callStatusText");
 
         if (micBtn) { micBtn.style.display = "inline-flex"; micBtn.textContent = "🎤 マイクON"; micBtn.classList.remove("active"); }
-        if (switchBtn) switchBtn.textContent = "🎧 聴くだけにする";
-        if (statusText) statusText.textContent = "🟢 発言中 (マイクON)";
+        if (switchBtn) switchBtn.textContent = "🎧 聞くだけへ";
+        if (statusText) statusText.textContent = "🟢 通話中 (マイクON)";
 
         isMicMuted = false;
         await syncCallStatusToFirebase("speaker", false);
@@ -1310,7 +1326,7 @@ function toggleAcc(id) {
     }
   }
 
-  // ⚡【全条件自動退室保証エンジン】超過ユーザーの確実なクリーンアップ＆ログ送信
+  // ⚡【秒ズレ完全ゼロ（00秒正規化）＆ 全条件自動退室保証エンジン】
   async function processAutoExitForUser(targetUid, userData, targetRoomId = currentRoomId) {
     if (!db || !targetRoomId || !userData || targetUid === myUid) return;
     const roomId = targetRoomId;
@@ -1321,7 +1337,6 @@ function toggleAcc(id) {
       const current = snap.val();
       if (!current || typeof current.t !== "number") return;
 
-      // 期限超過していなければ何もしない
       if (now < current.t + AUTO_EXIT_MS) return;
 
       const baseTs = current.t;
@@ -1331,17 +1346,13 @@ function toggleAcc(id) {
       const userName = (current.n || userData.n || "名無し").trim();
       const userTrip = (current.p || userData.p || "").trim();
 
-      // 1. 先に確定ログを送信
       const rawSysText = "📢 [お知らせ] " + `${userName} ${userTrip}`.trim() + ` が自動退室しました (${autoExitMinutes}分間発言がなかったため)`;
       const encD = await encodeMsgPayload("システム", "", rawSysText);
       await db.ref(`chat/${roomId}/${autoExitKey}`).set({
         u: "system", c: "#f43f5e", d: encD, t: exactExpiryTime, sys: true
       });
 
-      // 2. presence から削除
       await db.ref(`presence/${roomId}/${targetUid}`).remove();
-
-      // 3. 0人になったら部屋消滅
       await destroyRoomIfEmpty(roomId);
     } catch(e) {
       console.error("他ユーザー自動退室処理エラー:", e);
@@ -1380,18 +1391,16 @@ function toggleAcc(id) {
     }
   }
 
-  // ⚡ どんなケース（自身超過、相手超過、双方スリープ）でも漏れなくスキャン
+  // ⚡ どんなケースでも漏れなくスキャン
   async function checkAndTriggerExactAutoExit() {
     if (!isJoined || isLurking || !db || !currentRoomId || isExecutingAutoExit) return;
     const nowTrue = getTrueTime();
 
-    // 自身の超過判定
     if (myLastActiveTs > 0 && (nowTrue >= myLastActiveTs + AUTO_EXIT_MS)) {
       await triggerSelfAutoExit();
       return;
     }
 
-    // 他人の超過判定（isMeActiveに関わらず誰でも期限切れを漏れなく看取れる）
     const expiredList = Object.entries(rawPresenceMap).filter(([id, u]) => {
       return id !== myUid && u && typeof u.t === "number" && (nowTrue >= u.t + AUTO_EXIT_MS);
     });
@@ -1403,7 +1412,7 @@ function toggleAcc(id) {
     }));
   }
 
-  // ⚡【入室前クリーンアップ】入室時にログがポコッと出る違和感を完全根絶
+  // ⚡【入室前先行クリーンアップ】入室時にログがポコッと降る違和感を完全根絶
   async function cleanupExpiredMembersBeforeJoin(roomId) {
     if (!db || !roomId) return;
     try {
@@ -1417,7 +1426,6 @@ function toggleAcc(id) {
 
       if (expired.length === 0) return;
 
-      // 履歴取得の前に、先行して確定ログを書き込み presence を消去
       await Promise.all(expired.map(async ([zUid, zData]) => {
         const rawBase = zData.t;
         const cleanBaseTs = Math.floor(rawBase / 1000) * 1000;
@@ -1885,6 +1893,7 @@ function toggleAcc(id) {
       }
     }
 
+    // ⚡ 覗き見ボタンは名前未入力でも即座に押せる！
     const btnLurk = $("btnLurkOfficial");
     if (btnLurk) {
       btnLurk.disabled = !hasAuthAndTrip;
@@ -1982,7 +1991,7 @@ function toggleAcc(id) {
       }
       if ($("callToggleBtn")) {
         $("callToggleBtn").style.display = "inline-flex";
-        $("callToggleBtn").textContent = isLurking ? "🎧 聴くだけ通話" : "📞 SFU通話";
+        $("callToggleBtn").textContent = isLurking ? "🎧 聴くだけ通話" : "📞 通話";
       }
       if ($("inviteBtn")) $("inviteBtn").style.display = (rawRoomId === "official") ? "none" : "inline-flex";
 
@@ -2123,10 +2132,20 @@ function toggleAcc(id) {
     updateJumpBtns();
   }
 
+  // 🚫 BAN処理（追放お知らせログをリアルタイム発行）
   const banUser = function(targetUid, targetName, targetTrip) {
     const canBan = currentRoomId === "official" ? checkIsGlobalAdmin() : (myUid && myUid === roomSettings.creatorUid);
-    if (!db || !canBan) return;
-    db.ref(`banlist/${currentRoomId}/${targetUid}`).set({ n: targetName, p: targetTrip, t: firebase.database.ServerValue.TIMESTAMP }).then(() => {
+    if (!db || !canBan || !currentRoomId) return;
+    const ts = getTrueTime();
+    const cleanTs = Math.floor(ts / 1000) * 1000;
+    const banKey = `sys_ban_${targetUid}_${cleanTs}`;
+    const banText = "🚫 [お知らせ] " + `${targetName} ${targetTrip}`.trim() + " が管理者により追放されました";
+
+    db.ref(`banlist/${currentRoomId}/${targetUid}`).set({ n: targetName, p: targetTrip, t: firebase.database.ServerValue.TIMESTAMP }).then(async () => {
+      const encD = await encodeMsgPayload("システム", "", banText);
+      await db.ref(`chat/${currentRoomId}/${banKey}`).set({
+        u: "system", c: "#f43f5e", d: encD, t: cleanTs, sys: true
+      }).catch(()=>{});
       db.ref(`presence/${currentRoomId}/${targetUid}`).remove().catch(()=>{});
     });
   };

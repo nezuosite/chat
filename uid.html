@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>UID確認ツール - NEZUO CHAT</title>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:#070a10;color:#f8fafc;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  display:flex;align-items:center;justify-content:center;
+  min-height:100vh;padding:20px;
+}
+.card{
+  background:#0f172a;border:1px solid #1e293b;border-radius:12px;
+  max-width:440px;width:100%;padding:24px;box-shadow:0 10px 30px rgba(0,0,0,0.5);
+  display:flex;flex-direction:column;gap:16px;
+}
+h1{font-size:16px;font-weight:900;color:#fff;display:flex;align-items:center;gap:6px;}
+.desc{font-size:12px;color:#94a3b8;line-height:1.6;}
+.field-box{
+  background:#070a10;border:1px solid #334155;border-radius:8px;
+  padding:12px;display:flex;flex-direction:column;gap:6px;position:relative;
+}
+.label{font-size:11px;font-weight:bold;color:#38bdf8;}
+.val{
+  font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+  font-size:13px;font-weight:bold;color:#f1f5f9;word-break:break-all;
+  user-select:all;-webkit-user-select:all;
+}
+.btn{
+  background:#0284c7;color:#fff;border:none;border-radius:6px;
+  padding:10px 16px;font-size:13px;font-weight:bold;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  transition:background .15s ease, transform .1s;
+}
+.btn:active{transform:scale(0.97);}
+.guide-box{
+  background:rgba(255,255,255,0.03);border:1px dashed #334155;
+  border-radius:8px;padding:12px;font-size:11px;color:#94a3b8;line-height:1.6;
+}
+#toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:#0284c7;color:#fff;padding:8px 16px;border-radius:6px;
+  font-size:12px;font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,0.4);
+  opacity:0;pointer-events:none;transition:all 0.2s ease;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<div id="toast">📋 コピーしました</div>
+
+<div class="card">
+  <h1>🔑 管理者 UID ＆ トリップ確認</h1>
+  <p class="desc">
+    この端末・ブラウザに紐づいているFirebase認証の「固有UID」です。<br>
+    同一ブラウザであれば、チャット本体（NEZUO CHAT）と全く同じUID・トリップが表示されます。
+  </p>
+
+  <div class="field-box">
+    <span class="label">🔑 あなたの Firebase UID (不可変の一意ID)</span>
+    <span class="val" id="dispUid">取得中...</span>
+  </div>
+
+  <div class="field-box">
+    <span class="label">🏷️ 生成されるトリップ (ハッシュ計算値)</span>
+    <span class="val" id="dispTrip" style="color:#38bdf8;font-size:15px;">計算中...</span>
+  </div>
+
+  <button class="btn" id="copyBtn" disabled>📋 UID をクリップボードにコピー</button>
+
+  <div class="guide-box">
+    💡 <strong>管理者権限の固定方法:</strong><br>
+    トリップが <code>◆TUNsz2</code> になっていることを確認し、コピーしたUIDを教えてください。チャット本体の管理者判定とFirebaseセキュリティルールにそのUIDを直接焼き込むことで、<strong>トリップ偽造による乗っ取りを100%遮断する鉄壁の管理者セキュリティ</strong>が完成します。
+  </div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCsRidc0smUQDaBwq-oki5NzxSHx6-ljiw",
+  authDomain: "nezuochat.firebaseapp.com",
+  databaseURL: "https://nezuochat-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "nezuochat",
+  storageBucket: "nezuochat.firebasestorage.app",
+  messagingSenderId: "154725381397",
+  appId: "1:154725381397:web:8742ccd957e20cee8ce51c"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2000);
+}
+
+// チャット本体と100%同一のSHA-256 + Base62 トリップ算出
+async function makeTripFromUid(uid) {
+  const buf = new TextEncoder().encode(uid);
+  const hash = await crypto.subtle.digest("SHA-256", buf);
+  const hex = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+  const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+  let tripStr = "";
+  for (let i = 0; i < 6; i++) {
+    const byte = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
+    tripStr += chars[byte % 62];
+  }
+  return "◆" + tripStr;
+}
+
+async function init() {
+  const dispUid = document.getElementById("dispUid");
+  const dispTrip = document.getElementById("dispTrip");
+  const copyBtn = document.getElementById("copyBtn");
+
+  // チャット本体のキャッシュがあれば先読み
+  const cachedUid = localStorage.getItem("nz_cached_uid");
+  if (cachedUid) {
+    dispUid.textContent = cachedUid;
+    const trip = await makeTripFromUid(cachedUid);
+    dispTrip.textContent = trip;
+    copyBtn.disabled = false;
+  }
+
+  auth.onAuthStateChanged(async (user) => {
+    let uid = "";
+    if (user && user.uid) {
+      uid = user.uid;
+    } else {
+      try {
+        const cred = await auth.signInAnonymously();
+        uid = cred.user.uid;
+      } catch (e) {
+        dispUid.textContent = "認証エラー: " + e.message;
+        return;
+      }
+    }
+
+    localStorage.setItem("nz_cached_uid", uid);
+    dispUid.textContent = uid;
+    const trip = await makeTripFromUid(uid);
+    dispTrip.textContent = trip;
+    copyBtn.disabled = false;
+
+    copyBtn.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(uid);
+        showToast("📋 UIDをコピーしました");
+      } catch (err) {
+        showToast("⚠️ コピーに失敗しました");
+      }
+    };
+  });
+}
+
+init();
+</script>
+</body>
+</html>

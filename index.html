@@ -147,7 +147,6 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 #playerHeader{background:var(--sf);padding:5px 10px;font-size:11.5px;font-weight:bold;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--bd);flex-shrink:0}
 #playerContent{width:100%;max-width:480px;height:220px;aspect-ratio:16/9;background:#000;margin:0 auto;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
 #playerContent iframe{width:100%;height:100%;border:none}
-/* SNS縦型動画の余白・UIトリミング用スタイル */
 .sns-cropped-wrapper{width:100%;height:100%;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;background:#000}
 .sns-cropped-wrapper iframe{width:100%;height:140%;margin-top:-20%;object-fit:cover}
 
@@ -200,7 +199,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .bsd{width:44px;height:44px;border-radius:50%;background:#334155;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid rgba(255,255,255,0.12)}
 .bsd svg{width:18px;height:18px;transform:rotate(45deg);margin-top:-1px;margin-left:-2px}
 
-/* ⚡ 覗き見用コントロールバー（注意文なし・ボタン制御最適化） */
+/* ⚡ 覗き見用コントロールバー */
 #lurkPromptBar{
   display:none;width:100%;padding:6px 10px calc(6px + var(--safe)) 10px;
   background:#0b1120;border-top:1px solid #1e293b;
@@ -372,7 +371,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
         </div>
       </div>
 
-      <!-- 👀 覗き見モード案内バー（ボタン色・無効化制御でスマート化） -->
+      <!-- 👀 覗き見モード案内バー（ボタン制御最適化） -->
       <div id="lurkPromptBar">
         <div style="display:flex;align-items:center;gap:5px;flex:1;min-width:0;">
           <span style="font-size:10px;font-weight:900;color:#38bdf8;background:rgba(2,132,199,0.2);padding:2px 5px;border-radius:4px;white-space:nowrap;border:1px solid rgba(56,189,248,0.3);">👀 覗き見中</span>
@@ -490,6 +489,39 @@ function bufferToBase64Url(buffer) {
   return base64UrlEncode(binary);
 }
 
+// 🔗 短く美しい暗号化招待トークンのパック/アンパック
+function packInviteToken(roomId, roomPass) {
+  try {
+    const payload = `${roomId}\0${roomPass}`;
+    const bytes = new TextEncoder().encode(payload);
+    // XORマスクによる平文難読化
+    for (let i = 0; i < bytes.length; i++) {
+      bytes[i] ^= (0x5A ^ (i % 7));
+    }
+    return bufferToBase64Url(bytes.buffer);
+  } catch (e) {
+    return "";
+  }
+}
+
+function unpackInviteToken(token) {
+  try {
+    let b64 = token.replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4) b64 += '=';
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i) ^ (0x5A ^ (i % 7));
+    }
+    const decoded = new TextDecoder().decode(bytes);
+    const parts = decoded.split('\0');
+    if (parts.length >= 2) {
+      return { roomId: parts[0], roomPass: parts[1] };
+    }
+  } catch (e) {}
+  return null;
+}
+
 // 📞 SkyWay Auth Token (JWT version 3 公式完全準拠生成)
 async function generateSkyWayToken() {
   try {
@@ -566,15 +598,20 @@ function toggleAcc(id) {
     safeLS.set("nz_tab_broadcast", JSON.stringify(data));
   }
 
+  // 🔗 短縮暗号化招待URL（#inv/...）の解析
   let inviteRoomId = "", inviteRoomPass = "";
   (function parseInviteHash() {
     try {
       const hash = window.location.hash ? window.location.hash.substring(1) : "";
       if (!hash) return;
-      const decoded = decodeURIComponent(escape(atob(hash)));
-      const params = new URLSearchParams(decoded);
-      const r = params.get("r"), p = params.get("p");
-      if (r) { inviteRoomId = r; inviteRoomPass = p || ""; }
+      if (hash.startsWith("inv/")) {
+        const token = hash.substring(4);
+        const unpacked = unpackInviteToken(token);
+        if (unpacked) {
+          inviteRoomId = unpacked.roomId;
+          inviteRoomPass = unpacked.roomPass;
+        }
+      }
     } catch (e) {}
   })();
 
@@ -1140,7 +1177,7 @@ function toggleAcc(id) {
           channelCount: 1
         });
         localAudioPublication = await localSkyWayMember.publish(localAudioStream, {
-          type: "sfu", encodings: [{ maxBitrate: 32000 }] // LINEライク32kbps超軽量
+          type: "sfu", encodings: [{ maxBitrate: 32000 }]
         });
         
         if (micBtn) { micBtn.style.display = "inline-flex"; micBtn.textContent = "🎤 マイクON"; micBtn.classList.remove("active"); }
@@ -1677,7 +1714,6 @@ function toggleAcc(id) {
       }
 
       handlePresenceUpdate(presSnap.val() || {});
-
       checkAndTriggerExactAutoExit();
 
       const rawCandidates = [];
@@ -1815,13 +1851,6 @@ function toggleAcc(id) {
     if (D.imgViewSrc) D.imgViewSrc.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
   };
 
-  window.__openImgModal = (src) => {
-    if (!D.imgViewMod || !D.imgViewSrc) return;
-    D.imgViewSrc.src = src;
-    resetZoom();
-    D.imgViewMod.classList.add("show");
-  };
-
   const updateClrMsgBtnVisibility = () => {
     if (!D.clrMsgBtn || !D.mi) return;
     D.clrMsgBtn.classList.toggle("show", D.mi.value.length > 0);
@@ -1869,7 +1898,6 @@ function toggleAcc(id) {
       }
     }
 
-    // ⚡ 覗き見ボタンは名前未入力でも即座に押せる！
     const btnLurk = $("btnLurkOfficial");
     if (btnLurk) {
       btnLurk.disabled = !hasAuthAndTrip;
@@ -1880,7 +1908,6 @@ function toggleAcc(id) {
       }
     }
 
-    // ⚡ 覗き見インラインバーのボタン制御
     const inlineInput = $("lurkInlineNameInput");
     const upgradeBtn = $("btnUpgradeToJoin");
     if (inlineInput && upgradeBtn) {
@@ -2055,13 +2082,11 @@ function toggleAcc(id) {
         const match = url.match(/video\/(\d+)/i) || url.match(/\/(\d+)($|\?)/);
         const tVid = match ? match[1] : "";
         titleEl.textContent = "🎵 TikTok";
-        // ⚡ CSSスマートクロッピングで動画以外の余白・UIをトリミング
         D.playerContent.innerHTML = `<div class="sns-cropped-wrapper"><iframe src="https://www.tiktok.com/embed/v2/${tVid}" allowfullscreen></iframe></div>`;
       } else if (type === "insta-reel" || type === "insta-post") {
         const match = url.match(/(?:reel|p|tv)\/([a-zA-Z0-9_-]+)/i);
         const shortcode = match ? match[1] : "";
         titleEl.textContent = (type === "insta-reel" ? "📸 Instagram リール" : "📸 Instagram 投稿");
-        // ⚡ CSSスマートクロッピングで動画以外の余白・UIをトリミング
         D.playerContent.innerHTML = `<div class="sns-cropped-wrapper"><iframe src="https://www.instagram.com/p/${shortcode}/embed" allowfullscreen></iframe></div>`;
       } else if (type === "niconico") {
         const nicoId = getNicoId(url);
@@ -3046,7 +3071,6 @@ function toggleAcc(id) {
           rafPending = false;
           if (appEl && window.visualViewport) {
             const vv = window.visualViewport;
-            // ⚡ 上部アンカーを保ったまま高さのみをキーボードの隙間に合わせる
             appEl.style.height = vv.height + "px";
             window.scrollTo(0, 0);
           }
@@ -3107,11 +3131,21 @@ function toggleAcc(id) {
       validateLobbyInputs();
     });
 
+    // 🔗 きれいで短い暗号化招待URL（#inv/...）の生成＆ワンタップコピー
     $("inviteBtn").addEventListener("click", async (e) => {
       e.preventDefault();
-      const rawParam = `r=${encodeURIComponent(safeLS.get("nz_last_room_id"))}&p=${encodeURIComponent(safeLS.get("nz_last_room_pass") || "")}`;
-      const inviteUrl = window.location.origin + window.location.pathname + "#" + btoa(unescape(encodeURIComponent(rawParam)));
-      try { await navigator.clipboard.writeText(inviteUrl); showToast("🔗 招待URLをコピーしました"); } catch(err) { alert("コピーに失敗しました：\n" + inviteUrl); }
+      const rId = safeLS.get("nz_last_room_id") || "";
+      const rPass = safeLS.get("nz_last_room_pass") || "";
+      if (!rId) return;
+
+      const token = packInviteToken(rId, rPass);
+      const inviteUrl = `${window.location.origin}${window.location.pathname}#inv/${token}`;
+      try {
+        await navigator.clipboard.writeText(inviteUrl);
+        showToast("📋 招待URLをコピーしました");
+      } catch (err) {
+        alert("招待URL:\n" + inviteUrl);
+      }
     });
 
     D.joinBtn.addEventListener("click", (e) => { e.preventDefault(); joinRoom(); });
@@ -3134,11 +3168,13 @@ function toggleAcc(id) {
     if ($("lobbyName")) $("lobbyName").value = safeLS.get("nz_ni") || "";
     syncProfileValues();
 
+    // 🔗 招待URL経由で開いたときの自動セット
     if (inviteRoomId) {
       if ($("lobbyRoomId")) $("lobbyRoomId").value = inviteRoomId;
       if ($("lobbyRoomPass")) $("lobbyRoomPass").value = inviteRoomPass;
       history.replaceState(null, "", window.location.pathname + window.location.search);
       validateLobbyInputs();
+      showToast(`🔗 「${inviteRoomId}」に招待されました`);
     }
 
     initDirectDatabaseProcess();

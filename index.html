@@ -225,12 +225,11 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .acc-bdy{display:none;padding:4px 0;flex-direction:column;gap:6px}
 .acc-bdy.show{display:flex}
 
-/* 🖼️ 画像拡大モーダル（角丸なし・全画面ピンチズーム対応） */
-#imgViewMod{background:rgba(0,0,0,.96);backdrop-filter:blur(10px);flex-direction:column;padding:0!important;}
-#zoomViewport{width:100%;height:100%;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:none;cursor:grab;}
-#zoomViewport:active{cursor:grabbing;}
+/* 🖼️ Google画像検索風 拡大モーダル（角丸なし・境界クランプ・高速レスポンス） */
+#imgViewMod{background:rgba(0,0,0,.96);backdrop-filter:blur(10px);flex-direction:column;padding:0!important;user-select:none;}
+#zoomViewport{width:100%;height:100%;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:none;cursor:default;}
 .modal-top-close{position:absolute;top:calc(16px + env(safe-area-inset-top,0px));right:calc(16px + env(safe-area-inset-right,0px));width:38px;height:38px;border-radius:0!important;background:rgba(0,0,0,0.6)!important;border:1px solid rgba(255,255,255,0.25)!important;color:#fff!important;font-size:16px!important;display:flex;align-items:center;justify-content:center;z-index:10002}
-#imgViewSrc{max-width:95%;max-height:95%;object-fit:contain;border-radius:0!important;user-select:none;-webkit-user-drag:none;pointer-events:auto;transition:transform 0.05s ease-out;}
+#imgViewSrc{max-width:100%;max-height:100%;object-fit:contain;border-radius:0!important;user-select:none;-webkit-user-drag:none;pointer-events:auto;will-change:transform;}
 
 /* 🖼️ チャット内インライン画像（角丸なし） */
 .inline-img{max-width:100%;max-height:180px;width:auto;height:auto;object-fit:contain;margin-top:4px;display:block;cursor:zoom-in;border-radius:0!important;border:1px solid rgba(255,255,255,0.1)}
@@ -314,7 +313,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
   </div>
 </div>
 
-<!-- 🖼️ 拡大モーダル（角丸なし・全画面ピンチズーム・背景タップで閉じる） -->
+<!-- 🖼️ Google画像検索風 拡大モーダル（角丸なし・壁ストッパー・背景タップで閉じる） -->
 <div id="imgViewMod" class="mod-overlay">
   <button class="modal-top-close" id="imgViewCloseBtn" aria-label="閉じる">✕</button>
   <div id="zoomViewport"><img id="imgViewSrc" src="" alt="拡大画像"></div>
@@ -409,7 +408,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
           <button class="bsd" id="imgUploadBtn" aria-label="画像添付" title="画像を添付">📷</button>
 
           <div class="mi-container">
-            <textarea id="mi" rows="1" placeholder="メッセージを入力... (Enterで送信)" maxlength="500"></textarea>
+            <textarea id="mi" rows="1" placeholder="メッセージを入力 (Enterで送信)" maxlength="500"></textarea>
             <button class="bclrm" id="clrMsgBtn" title="クリア">×</button>
           </div>
           <button class="bsd" id="sdBtn" aria-label="送信">
@@ -469,8 +468,8 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
       <div class="lobby-sec" style="border-color:#475569;gap:6px;">
         <h2 style="color:#cbd5e1;font-size:11px;">🏢 常設公式部屋</h2>
         <div style="display:flex;gap:6px;">
-          <button class="btn" id="btnJoinOfficial" style="flex:1;background:linear-gradient(135deg,#475569,#334155);color:#fff;font-size:12px;font-weight:900;height:38px;border-radius:6px;" disabled>🏢 参加する (発言可)</button>
-          <button class="btn" id="btnLurkOfficial" style="flex:1;background:rgba(2,132,199,0.15);border:1px solid #0284c7;color:#38bdf8;font-size:12px;font-weight:900;height:38px;border-radius:6px;" disabled>👀 覗き見 (聴くだけ)</button>
+          <button class="btn" id="btnJoinOfficial" style="flex:1;background:linear-gradient(135deg,#475569,#334155);color:#fff;font-size:12px;font-weight:900;height:38px;border-radius:6px;" disabled>🏢 参加する</button>
+          <button class="btn" id="btnLurkOfficial" style="flex:1;background:rgba(2,132,199,0.15);border:1px solid #0284c7;color:#38bdf8;font-size:12px;font-weight:900;height:38px;border-radius:6px;" disabled>👀 覗き見</button>
         </div>
       </div>
 
@@ -739,7 +738,7 @@ function toggleAcc(id) {
 
   let isFirstLoad = true, isFirebaseListenersBound = false;
 
-  // 🖼️ 拡大モーダル ピンチズーム・移動制御用ステート
+  // 🖼️ Google画像検索風 境界クランプズーム制御用ステート
   let zoomState = {
     scale: 1,
     posX: 0,
@@ -749,6 +748,10 @@ function toggleAcc(id) {
     startY: 0,
     initialDist: 0,
     initialScale: 1,
+    initialPosX: 0,
+    initialPosY: 0,
+    focalX: 0,
+    focalY: 0,
     lastTouchEnd: 0
   };
   
@@ -1614,6 +1617,7 @@ function toggleAcc(id) {
     }
   }
 
+  // 👑 覗き見モード中であっても管理パネルを確実に描画
   function injectAdminUIIfNeeded() {
     const hasAdminPower = hasCurrentRoomAdminPower();
     const btnMount = $("adminBtnMount");
@@ -1976,18 +1980,44 @@ function toggleAcc(id) {
     }
   };
 
-  // 🖼️ 拡大モーダルの位置・スケール更新
-  function updateZoomTransform() {
+  // 🖼️ 【Google画像検索風 境界ストッパー付きズーム制御】
+  // 画像が拡大された時、画像の端が画面フチより内側に入り込まない（余白を見せない）ようクランプ計算
+  function clampZoomPositions() {
+    if (!D.imgViewSrc || !D.zoomViewport) return;
+    const vpW = D.zoomViewport.clientWidth;
+    const vpH = D.zoomViewport.clientHeight;
+
+    // 現在のスケールでの画像実寸
+    const imgNaturalW = D.imgViewSrc.offsetWidth || vpW;
+    const imgNaturalH = D.imgViewSrc.offsetHeight || vpH;
+    const curW = imgNaturalW * zoomState.scale;
+    const curH = imgNaturalH * zoomState.scale;
+
+    // はみ出し量から最大移動限界（壁）を算出
+    const maxPanX = Math.max(0, (curW - vpW) / 2);
+    const maxPanY = Math.max(0, (curH - vpH) / 2);
+
+    if (zoomState.scale <= 1) {
+      zoomState.posX = 0;
+      zoomState.posY = 0;
+    } else {
+      zoomState.posX = Math.min(maxPanX, Math.max(-maxPanX, zoomState.posX));
+      zoomState.posY = Math.min(maxPanY, Math.max(-maxPanY, zoomState.posY));
+    }
+  }
+
+  function updateZoomTransform(animate = false) {
     if (!D.imgViewSrc) return;
+    D.imgViewSrc.style.transition = animate ? "transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)" : "none";
     D.imgViewSrc.style.transform = `translate(${zoomState.posX}px, ${zoomState.posY}px) scale(${zoomState.scale})`;
   }
 
-  function resetZoom() {
+  function resetZoom(animate = true) {
     zoomState.scale = 1;
     zoomState.posX = 0;
     zoomState.posY = 0;
     zoomState.isDragging = false;
-    updateZoomTransform();
+    updateZoomTransform(animate);
   }
 
   const updateClrMsgBtnVisibility = () => {
@@ -3109,85 +3139,109 @@ function toggleAcc(id) {
       });
     }
 
-    // 🖼️ 拡大モーダル：ピンチズーム・パン移動・ダブルタップ・背景タップで閉じる
+    // 🖼️ 【Google画像検索風 境界クランプ＆ピンチズーム完全実装】
     if (D.zoomViewport && D.imgViewSrc) {
-      // 1. 背景タップ（画像の外側）で閉じる
+      // 1. 画像外タップで閉じる（等倍時のみ背景タップで即時閉じる）
       D.zoomViewport.addEventListener("click", (e) => {
-        if (e.target !== D.imgViewSrc) {
+        if (e.target !== D.imgViewSrc && zoomState.scale <= 1.05) {
           D.imgViewMod.classList.remove("show");
-          resetZoom();
+          resetZoom(false);
         }
       });
 
-      // 2. ダブルタップで拡大・等倍リセット
+      // 2. ダブルタップズーム（タップ位置を中心に拡大 / 等倍復帰）
       D.imgViewSrc.addEventListener("touchend", (e) => {
         const now = Date.now();
         if (now - zoomState.lastTouchEnd < 300) {
           e.preventDefault();
           if (zoomState.scale > 1.2) {
-            resetZoom();
+            resetZoom(true);
           } else {
+            // タップ位置を画面中心に持ってくるように拡大
+            const touch = e.changedTouches[0];
+            const vpRect = D.zoomViewport.getBoundingClientRect();
+            const focalX = touch.clientX - vpRect.left - vpRect.width / 2;
+            const focalY = touch.clientY - vpRect.top - vpRect.height / 2;
+
             zoomState.scale = 2.5;
-            zoomState.posX = 0;
-            zoomState.posY = 0;
-            updateZoomTransform();
+            zoomState.posX = -focalX * 1.5;
+            zoomState.posY = -focalY * 1.5;
+            clampZoomPositions();
+            updateZoomTransform(true);
           }
         }
         zoomState.lastTouchEnd = now;
       });
 
-      // 3. ピンチズーム＆タッチパン操作
+      // 3. ピンチ操作（指と指の間を中心に拡大・縮小） ＆ パン移動（境界ストッパー付き）
       D.zoomViewport.addEventListener("touchstart", (e) => {
         if (e.touches.length === 2) {
-          zoomState.initialDist = Math.hypot(
-            e.touches[0].clientX - e.touches[1].clientX,
-            e.touches[0].clientY - e.touches[1].clientY
-          );
+          const t1 = e.touches[0], t2 = e.touches[1];
+          zoomState.initialDist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
           zoomState.initialScale = zoomState.scale;
-        } else if (e.touches.length === 1) {
+          zoomState.initialPosX = zoomState.posX;
+          zoomState.initialPosY = zoomState.posY;
+
+          const vpRect = D.zoomViewport.getBoundingClientRect();
+          zoomState.focalX = (t1.clientX + t2.clientX) / 2 - vpRect.left - vpRect.width / 2;
+          zoomState.focalY = (t1.clientY + t2.clientY) / 2 - vpRect.top - vpRect.height / 2;
+          D.imgViewSrc.style.transition = "none";
+        } else if (e.touches.length === 1 && zoomState.scale > 1) {
           zoomState.isDragging = true;
           zoomState.startX = e.touches[0].clientX - zoomState.posX;
           zoomState.startY = e.touches[0].clientY - zoomState.posY;
+          D.imgViewSrc.style.transition = "none";
         }
       }, { passive: false });
 
       D.zoomViewport.addEventListener("touchmove", (e) => {
         if (e.touches.length === 2 && zoomState.initialDist > 0) {
           e.preventDefault();
-          const dist = Math.hypot(
-            e.touches[0].clientX - e.touches[1].clientX,
-            e.touches[0].clientY - e.touches[1].clientY
-          );
-          zoomState.scale = Math.min(Math.max(1, zoomState.initialScale * (dist / zoomState.initialDist)), 6);
-          updateZoomTransform();
-        } else if (e.touches.length === 1 && zoomState.isDragging && zoomState.scale > 1.05) {
+          const t1 = e.touches[0], t2 = e.touches[1];
+          const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+          const factor = dist / zoomState.initialDist;
+          const targetScale = Math.min(Math.max(1, zoomState.initialScale * factor), 5);
+
+          // 指の間を中心としたズーム計算
+          const scaleDiff = targetScale - zoomState.initialScale;
+          zoomState.scale = targetScale;
+          zoomState.posX = zoomState.initialPosX - (zoomState.focalX * (scaleDiff / zoomState.initialScale));
+          zoomState.posY = zoomState.initialPosY - (zoomState.focalY * (scaleDiff / zoomState.initialScale));
+
+          clampZoomPositions(); // 💡 画像の外にいけないようストッパー作動
+          updateZoomTransform(false);
+
+        } else if (e.touches.length === 1 && zoomState.isDragging && zoomState.scale > 1) {
           e.preventDefault();
           zoomState.posX = e.touches[0].clientX - zoomState.startX;
           zoomState.posY = e.touches[0].clientY - zoomState.startY;
-          updateZoomTransform();
+
+          clampZoomPositions(); // 💡 画像の端でピタッと吸い付いて止まる
+          updateZoomTransform(false);
         }
       }, { passive: false });
 
       D.zoomViewport.addEventListener("touchend", (e) => {
         if (e.touches.length < 2) zoomState.initialDist = 0;
-        if (e.touches.length === 0) zoomState.isDragging = false;
-        if (zoomState.scale <= 1) {
-          zoomState.posX = 0;
-          zoomState.posY = 0;
-          updateZoomTransform();
+        if (e.touches.length === 0) {
+          zoomState.isDragging = false;
+          clampZoomPositions();
+          updateZoomTransform(true); // 離した時の自然なスナップ
         }
       });
 
       // 4. PC マウスホイールズーム & ドラッグ
       D.zoomViewport.addEventListener("wheel", (e) => {
         e.preventDefault();
-        const delta = e.deltaY < 0 ? 0.25 : -0.25;
-        zoomState.scale = Math.min(Math.max(1, zoomState.scale + delta), 6);
-        if (zoomState.scale === 1) {
-          zoomState.posX = 0;
-          zoomState.posY = 0;
+        const delta = e.deltaY < 0 ? 0.3 : -0.3;
+        const targetScale = Math.min(Math.max(1, zoomState.scale + delta), 5);
+        if (targetScale === 1) {
+          resetZoom(true);
+        } else {
+          zoomState.scale = targetScale;
+          clampZoomPositions();
+          updateZoomTransform(true);
         }
-        updateZoomTransform();
       }, { passive: false });
 
       D.zoomViewport.addEventListener("mousedown", (e) => {
@@ -3195,6 +3249,7 @@ function toggleAcc(id) {
           zoomState.isDragging = true;
           zoomState.startX = e.clientX - zoomState.posX;
           zoomState.startY = e.clientY - zoomState.posY;
+          D.imgViewSrc.style.transition = "none";
         }
       });
 
@@ -3202,12 +3257,17 @@ function toggleAcc(id) {
         if (zoomState.isDragging && zoomState.scale > 1) {
           zoomState.posX = e.clientX - zoomState.startX;
           zoomState.posY = e.clientY - zoomState.startY;
-          updateZoomTransform();
+          clampZoomPositions();
+          updateZoomTransform(false);
         }
       });
 
       window.addEventListener("mouseup", () => {
-        zoomState.isDragging = false;
+        if (zoomState.isDragging) {
+          zoomState.isDragging = false;
+          clampZoomPositions();
+          updateZoomTransform(true);
+        }
       });
     }
 
@@ -3347,7 +3407,7 @@ function toggleAcc(id) {
           e.preventDefault();
           if (D.imgViewMod && D.imgViewSrc) {
             D.imgViewSrc.src = imgEl.dataset.url;
-            resetZoom();
+            resetZoom(false);
             D.imgViewMod.classList.add("show");
           }
           return;
@@ -3439,7 +3499,7 @@ function toggleAcc(id) {
       D.imgViewCloseBtn.addEventListener("click", (e) => {
         e.preventDefault();
         D.imgViewMod.classList.remove("show");
-        resetZoom();
+        resetZoom(false);
       });
     }
 

@@ -74,7 +74,7 @@
 :root{--bg:#070a10;--sf:#0f172a;--s2:#0b1120;--bd:#1e293b;--tx:#f8fafc;--mu:#94a3b8;--m2:#475569;--in:#334155;--ro:#f43f5e;--usr-color:#f1f5f9;--safe:env(safe-area-inset-bottom,0px)}
 html,body{position:fixed;top:0;left:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none;color-scheme:dark}
 
-/* ⚡ IME入力中・確定後の文字透明化バグを完全根絶（GPU競合解除） */
+/* ⚡ IME入力中・確定後の文字透明化バグを根絶 */
 input,textarea,select{
   font-family:inherit;font-size:16px!important;
   color:#f8fafc!important;
@@ -145,7 +145,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .call-btn{padding:4px 9px;height:26px;border-radius:5px;font-size:10.5px;font-weight:bold;background:#1e293b;color:#f8fafc;border:1px solid #334155;display:inline-flex;align-items:center;gap:4px;cursor:pointer}
 .call-btn.active{background:#e11d48!important;border-color:#f43f5e!important;color:#fff!important}
 
-/* 📺 固定インラインプレイヤー（爆速表示） */
+/* 📺 固定インラインプレイヤー（爆速対応） */
 #fixedPlayer{display:none;flex-direction:column;background:#000;border-bottom:1px solid var(--bd);width:100%;flex-shrink:0}
 #playerHeader{background:var(--sf);padding:5px 10px;font-size:11.5px;font-weight:bold;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--bd);flex-shrink:0}
 #playerContent{width:100%;max-width:480px;height:220px;aspect-ratio:16/9;background:#000;margin:0 auto;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center}
@@ -197,13 +197,13 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .bsd{width:44px;height:44px;border-radius:50%;background:#334155;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid rgba(255,255,255,0.12)}
 .bsd svg{width:18px;height:18px;transform:rotate(45deg);margin-top:-1px;margin-left:-2px}
 
-/* 📷 画像アップロードボタン（入力バー左端） */
+/* 📷 画像アップロードボタン */
 #imgUploadBtn{width:44px;height:44px;border-radius:50%;background:var(--s2);border:1px solid var(--bd);color:var(--tx);font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 
-/* 🖼️ 送信前画像プレビュー確認バー */
-#imgPreviewArea{display:none;align-items:center;gap:10px;padding:6px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;margin-bottom:4px;width:100%;max-width:fit-content;position:relative;}
-#imgPreviewThumb{width:46px;height:46px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,0.15);}
-#imgPreviewCancelBtn{background:rgba(244,63,94,0.15);border:1px solid rgba(244,63,94,0.3);color:#fda4af;border-radius:50%;width:22px;height:22px;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-left:auto;}
+/* 🖼️ 送信前画像プレビュー確認バー（角丸なし） */
+#imgPreviewArea{display:none;align-items:center;gap:10px;padding:6px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:0!important;margin-bottom:4px;width:100%;max-width:fit-content;position:relative;}
+#imgPreviewThumb{width:46px;height:46px;object-fit:cover;border-radius:0!important;border:1px solid rgba(255,255,255,0.15);}
+#imgPreviewCancelBtn{background:rgba(244,63,94,0.15);border:1px solid rgba(244,63,94,0.3);color:#fda4af;border-radius:0!important;width:22px;height:22px;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-left:auto;}
 
 #lurkPromptBar{
   display:none;width:100%;padding:6px 10px calc(6px + var(--safe)) 10px;
@@ -224,18 +224,27 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .acc-hdr{font-size:10.5px;font-weight:bold;color:var(--tx);padding:4px 0;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
 .acc-bdy{display:none;padding:4px 0;flex-direction:column;gap:6px}
 .acc-bdy.show{display:flex}
-#imgViewMod{background:rgba(0,0,0,.96);backdrop-filter:blur(10px);flex-direction:column}
-#zoomViewport{width:100%;height:calc(100dvh - 100px);position:absolute;top:0;left:0;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:grab}
-.modal-top-close{position:absolute;top:calc(16px + env(safe-area-inset-top,0px));right:calc(16px + env(safe-area-inset-right,0px));width:38px;height:38px;border-radius:50%!important;background:rgba(0,0,0,0.6)!important;border:1px solid rgba(255,255,255,0.25)!important;color:#fff!important;font-size:16px!important;display:flex;align-items:center;justify-content:center;z-index:10002}
-#imgViewSrc{max-width:95%;max-height:95%;object-fit:contain}
+
+/* 🖼️ 画像拡大モーダル（角丸なし・全画面ピンチズーム対応） */
+#imgViewMod{background:rgba(0,0,0,.96);backdrop-filter:blur(10px);flex-direction:column;padding:0!important;}
+#zoomViewport{width:100%;height:100%;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:none;cursor:grab;}
+#zoomViewport:active{cursor:grabbing;}
+.modal-top-close{position:absolute;top:calc(16px + env(safe-area-inset-top,0px));right:calc(16px + env(safe-area-inset-right,0px));width:38px;height:38px;border-radius:0!important;background:rgba(0,0,0,0.6)!important;border:1px solid rgba(255,255,255,0.25)!important;color:#fff!important;font-size:16px!important;display:flex;align-items:center;justify-content:center;z-index:10002}
+#imgViewSrc{max-width:95%;max-height:95%;object-fit:contain;border-radius:0!important;user-select:none;-webkit-user-drag:none;pointer-events:auto;transition:transform 0.05s ease-out;}
+
+/* 🖼️ チャット内インライン画像（角丸なし） */
+.inline-img{max-width:100%;max-height:180px;width:auto;height:auto;object-fit:contain;margin-top:4px;display:block;cursor:zoom-in;border-radius:0!important;border:1px solid rgba(255,255,255,0.1)}
+
 .clrpick-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .clrc2{aspect-ratio:1;width:100%;max-width:28px;border-radius:50%;margin:0 auto;border:2px solid transparent}
 .clrc2.sel{border-color:var(--tx)!important;transform:scale(1.2)}
-.inline-img{max-width:100%;max-height:180px;width:auto;height:auto;object-fit:contain;margin-top:4px;display:block;cursor:zoom-in;border-radius:6px;border:1px solid rgba(255,255,255,0.1)}
-.media-link-container{margin-top:6px;background:rgba(11,16,28,0.6);border:1px solid var(--bd);border-radius:7px;padding:6px 10px;display:inline-flex;flex-direction:column;gap:5px;max-width:100%}
+
+/* 📺 最適化メディアカード（角丸なし） */
+.media-link-container{margin-top:6px;background:rgba(11,16,28,0.6);border:1px solid var(--bd);border-radius:0!important;padding:6px 10px;display:inline-flex;flex-direction:column;gap:5px;max-width:100%}
 .media-inline-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.media-badge{font-size:9.5px;font-weight:900;color:#fff;padding:2px 6px;letter-spacing:0.5px}
-.open-player-btn{font-size:11px;font-weight:800;color:#cbd5e1;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);padding:4px 10px;border-radius:5px;text-decoration:none;display:inline-flex;align-items:center;}
+.media-badge{font-size:9.5px;font-weight:900;color:#fff;padding:2px 6px;letter-spacing:0.5px;border-radius:0!important;}
+.open-player-btn{font-size:11px;font-weight:800;color:#cbd5e1;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);padding:4px 10px;border-radius:0!important;text-decoration:none;display:inline-flex;align-items:center;}
+
 #toastContainer{position:fixed;bottom:64px;left:50%;transform:translateX(-50%) translateY(10px);background:rgba(15,23,42,0.96);backdrop-filter:blur(6px);border:1px solid var(--bd);color:var(--tx);padding:6px 14px;border-radius:6px;font-size:12px;font-weight:bold;z-index:10000;box-shadow:0 4px 14px rgba(0,0,0,0.5);pointer-events:none;opacity:0;display:none}
 #toastContainer.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .mod-overlay{display:flex;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(5,7,10,0.5)!important;backdrop-filter:blur(3px)!important;z-index:200000;align-items:center;justify-content:center;padding:20px;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .14s ease,visibility .14s}
@@ -305,6 +314,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
   </div>
 </div>
 
+<!-- 🖼️ 拡大モーダル（角丸なし・全画面ピンチズーム・背景タップで閉じる） -->
 <div id="imgViewMod" class="mod-overlay">
   <button class="modal-top-close" id="imgViewCloseBtn" aria-label="閉じる">✕</button>
   <div id="zoomViewport"><img id="imgViewSrc" src="" alt="拡大画像"></div>
@@ -345,7 +355,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
       <div id="adminAccordionMount"></div>
       <div id="pl" style="display:none;"></div>
 
-      <!-- 📺 固定インラインプレイヤー（爆速対応） -->
+      <!-- 📺 固定インラインプレイヤー -->
       <div id="fixedPlayer">
         <div id="playerHeader">
           <span id="playerTitle">📺 インラインプレイヤー</span>
@@ -383,7 +393,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
       </div>
 
       <div id="ib">
-        <!-- 🖼️ 送信前画像プレビュー確認領域 -->
+        <!-- 🖼️ 送信前画像プレビュー確認領域（角丸なし） -->
         <div id="imgPreviewArea">
           <img id="imgPreviewThumb" src="" alt="プレビュー">
           <div style="display:flex;flex-direction:column;gap:2px;">
@@ -728,7 +738,19 @@ function toggleAcc(id) {
   const tripUidCache = new Map();
 
   let isFirstLoad = true, isFirebaseListenersBound = false;
-  let scale = 1, panX = 0, panY = 0;
+
+  // 🖼️ 拡大モーダル ピンチズーム・移動制御用ステート
+  let zoomState = {
+    scale: 1,
+    posX: 0,
+    posY: 0,
+    isDragging: false,
+    startX: 0,
+    startY: 0,
+    initialDist: 0,
+    initialScale: 1,
+    lastTouchEnd: 0
+  };
   
   let rawPresenceMap = {};
   let currentPresenceMap = {}, isConnectedBound = false;
@@ -955,12 +977,11 @@ function toggleAcc(id) {
     });
   }
 
-  // 📺 【最適化メディアパーサー：画像/Base64/YouTube/TikTok/インスタ】
+  // 📺 【最適化メディアパーサー：ラベル統一・角丸なし】
   function renderMessageBody(text) {
     if (!text) return "";
     const parts = [];
     let lastIdx = 0;
-    // URL または Base64画像データを検出
     const regex = /(https?:\/\/[^\s\n<>"]+|data:image\/[a-zA-Z]+;base64,[A-Za-z0-9+/=]+)/gi;
     let match;
     while ((match = regex.exec(text)) !== null) {
@@ -976,7 +997,7 @@ function toggleAcc(id) {
       const isYtShorts = /youtube\.com\/shorts\/([a-zA-Z0-9_-]+)/i.test(url);
       const isYtVideo = !isYtLive && !isYtShorts && /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))/i.test(url);
 
-      // SNS直結リンクカード判定（埋め込み廃止）
+      // SNS判定
       const isTiktok = /(?:tiktok\.com|vt\.tiktok\.com|vm\.tiktok\.com)/i.test(url);
       const isInsta = /instagram\.com\/(?:p|reel|tv)/i.test(url);
       const isNico = /(?:nicovideo\.jp\/watch\/|nico\.ms\/)(sm\d+|so\d+|nm\d+|1\d+)/i.test(url);
@@ -987,26 +1008,25 @@ function toggleAcc(id) {
         parts.push(`<div style="margin-top:4px;"><img class="inline-img safe-img-click" src="${srcVal}" data-url="${srcVal}" alt="画像" loading="lazy"></div>`);
       } else if (isYtLive) {
         const cUrl = escapeHtml(url);
-        parts.push(`<div class="media-link-container"><div class="media-inline-row"><span class="media-badge" style="background:#e11d48;border-radius:3px;">YouTube Live</span><a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="color:#38bdf8;font-size:11.5px;text-decoration:underline;word-break:break-all;">${cUrl}</a><button class="open-player-btn safe-player-click" data-url="${cUrl}" data-type="youtube-live">▶ 再生</button></div></div>`);
+        parts.push(`<div class="media-link-container"><div class="media-inline-row"><span class="media-badge" style="background:#e11d48;">YouTube Live</span><a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="color:#38bdf8;font-size:11.5px;text-decoration:underline;word-break:break-all;">${cUrl}</a><button class="open-player-btn safe-player-click" data-url="${cUrl}" data-type="youtube-live">▶ 再生</button></div></div>`);
       } else if (isYtShorts) {
         const cUrl = escapeHtml(url);
-        parts.push(`<div class="media-link-container"><div class="media-inline-row"><span class="media-badge" style="background:#e11d48;border-radius:3px;">Shorts</span><a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="color:#38bdf8;font-size:11.5px;text-decoration:underline;word-break:break-all;">${cUrl}</a><button class="open-player-btn safe-player-click" data-url="${cUrl}" data-type="yt-shorts">▶ 再生</button></div></div>`);
+        parts.push(`<div class="media-link-container"><div class="media-inline-row"><span class="media-badge" style="background:#e11d48;">Shorts</span><a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="color:#38bdf8;font-size:11.5px;text-decoration:underline;word-break:break-all;">${cUrl}</a><button class="open-player-btn safe-player-click" data-url="${cUrl}" data-type="yt-shorts">▶ 再生</button></div></div>`);
       } else if (isYtVideo) {
         const cUrl = escapeHtml(url);
-        parts.push(`<div class="media-link-container"><div class="media-inline-row"><span class="media-badge" style="background:#e11d48;border-radius:3px;">YouTube</span><a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="color:#38bdf8;font-size:11.5px;text-decoration:underline;word-break:break-all;">${cUrl}</a><button class="open-player-btn safe-player-click" data-url="${cUrl}" data-type="youtube">▶ 再生</button></div></div>`);
-      } else if (isTiktok) {
-        const cUrl = escapeHtml(url);
-        parts.push(`<div class="media-link-container"><div class="media-inline-row"><span class="media-badge" style="background:#000;border:1px solid #334155;border-radius:3px;">TikTok</span><a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="color:#38bdf8;font-size:11.5px;text-decoration:underline;word-break:break-all;">${cUrl}</a><a class="open-player-btn" href="${cUrl}" target="_blank" rel="noopener noreferrer">↗ 開く</a></div></div>`);
-      } else if (isInsta) {
-        const cUrl = escapeHtml(url);
-        const isReel = /instagram\.com\/reel\//i.test(url);
-        parts.push(`<div class="media-link-container"><div class="media-inline-row"><span class="media-badge" style="background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);border-radius:3px;">${isReel ? 'Reel' : 'Instagram'}</span><a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="color:#38bdf8;font-size:11.5px;text-decoration:underline;word-break:break-all;">${cUrl}</a><a class="open-player-btn" href="${cUrl}" target="_blank" rel="noopener noreferrer">↗ 開く</a></div></div>`);
+        parts.push(`<div class="media-link-container"><div class="media-inline-row"><span class="media-badge" style="background:#e11d48;">YouTube</span><a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="color:#38bdf8;font-size:11.5px;text-decoration:underline;word-break:break-all;">${cUrl}</a><button class="open-player-btn safe-player-click" data-url="${cUrl}" data-type="youtube">▶ 再生</button></div></div>`);
       } else if (isNico) {
         const cUrl = escapeHtml(url);
-        parts.push(`<div class="media-link-container"><div class="media-inline-row"><span class="media-badge" style="background:#0284c7;border-radius:3px;">ニコニコ</span><a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="color:#38bdf8;font-size:11.5px;text-decoration:underline;word-break:break-all;">${cUrl}</a><button class="open-player-btn safe-player-click" data-url="${cUrl}" data-type="niconico">▶ 再生</button></div></div>`);
+        parts.push(`<div class="media-link-container"><div class="media-inline-row"><span class="media-badge" style="background:#0284c7;">ニコニコ動画</span><a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="color:#38bdf8;font-size:11.5px;text-decoration:underline;word-break:break-all;">${cUrl}</a><button class="open-player-btn safe-player-click" data-url="${cUrl}" data-type="niconico">▶ 再生</button></div></div>`);
+      } else if (isTiktok) {
+        const cUrl = escapeHtml(url);
+        parts.push(`<div class="media-link-container"><div class="media-inline-row"><span class="media-badge" style="background:#010101;border:1px solid #334155;">TikTok</span><a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="color:#38bdf8;font-size:11.5px;text-decoration:underline;word-break:break-all;">${cUrl}</a><a class="open-player-btn" href="${cUrl}" target="_blank" rel="noopener noreferrer">↗ 開く</a></div></div>`);
+      } else if (isInsta) {
+        const cUrl = escapeHtml(url);
+        parts.push(`<div class="media-link-container"><div class="media-inline-row"><span class="media-badge" style="background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);">Instagram</span><a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="color:#38bdf8;font-size:11.5px;text-decoration:underline;word-break:break-all;">${cUrl}</a><a class="open-player-btn" href="${cUrl}" target="_blank" rel="noopener noreferrer">↗ 開く</a></div></div>`);
       } else if (isAudio) {
         const cUrl = escapeHtml(url);
-        parts.push(`<div class="media-link-container"><div class="media-inline-row"><span class="media-badge" style="background:#10b981;border-radius:3px;">音声</span><a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="color:#38bdf8;font-size:11.5px;text-decoration:underline;word-break:break-all;">${cUrl}</a><button class="open-player-btn safe-player-click" data-url="${cUrl}" data-type="audio">🎵 再生</button></div></div>`);
+        parts.push(`<div class="media-link-container"><div class="media-inline-row"><span class="media-badge" style="background:#10b981;">Audio</span><a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="color:#38bdf8;font-size:11.5px;text-decoration:underline;word-break:break-all;">${cUrl}</a><button class="open-player-btn safe-player-click" data-url="${cUrl}" data-type="audio">🎵 再生</button></div></div>`);
       } else {
         const cUrl = escapeHtml(url);
         parts.push(`<a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="color:#38bdf8;text-decoration:underline;word-break:break-all;">${cUrl}</a>`);
@@ -1136,7 +1156,6 @@ function toggleAcc(id) {
     updateJumpBtns();
   }
 
-  // 💡 クリア時刻より前の過去メッセージだけを消去（全削除お知らせログを保持）
   function clearOldMessagesBefore(cutoffTs) {
     if (!D.tli) return;
     const children = Array.from(D.tli.children);
@@ -1595,7 +1614,6 @@ function toggleAcc(id) {
     }
   }
 
-  // 👑 覗き見モード中であっても管理パネルを確実に描画
   function injectAdminUIIfNeeded() {
     const hasAdminPower = hasCurrentRoomAdminPower();
     const btnMount = $("adminBtnMount");
@@ -1718,7 +1736,6 @@ function toggleAcc(id) {
       });
     }
 
-    // 🔑 6桁トリップから生UIDを自動逆引きして事前承認
     if ($("admTripAddBtn")) {
       $("admTripAddBtn").addEventListener("click", async (e) => {
         e.preventDefault();
@@ -1959,10 +1976,19 @@ function toggleAcc(id) {
     }
   };
 
-  const resetZoom = () => {
-    scale = 1; panX = 0; panY = 0;
-    if (D.imgViewSrc) D.imgViewSrc.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
-  };
+  // 🖼️ 拡大モーダルの位置・スケール更新
+  function updateZoomTransform() {
+    if (!D.imgViewSrc) return;
+    D.imgViewSrc.style.transform = `translate(${zoomState.posX}px, ${zoomState.posY}px) scale(${zoomState.scale})`;
+  }
+
+  function resetZoom() {
+    zoomState.scale = 1;
+    zoomState.posX = 0;
+    zoomState.posY = 0;
+    zoomState.isDragging = false;
+    updateZoomTransform();
+  }
 
   const updateClrMsgBtnVisibility = () => {
     if (!D.clrMsgBtn || !D.mi) return;
@@ -2620,7 +2646,6 @@ function toggleAcc(id) {
     if (nowClick - lastSendAt < 250) return;
     lastSendAt = nowClick;
 
-    // 画像とテキストを統合
     let text = rawText;
     if (pendingImageBase64) {
       text = rawText ? `${rawText}\n${pendingImageBase64}` : pendingImageBase64;
@@ -3024,7 +3049,8 @@ function toggleAcc(id) {
       mi: $("mi"), kbKeepOpenChk: $("kbKeepOpenChk"), clrDot: $("clrDot"),
       imgFileInput: $("imgFileInput"), imgUploadBtn: $("imgUploadBtn"),
       imgPreviewArea: $("imgPreviewArea"), imgPreviewThumb: $("imgPreviewThumb"),
-      imgPreviewInfo: $("imgPreviewInfo"), imgPreviewCancelBtn: $("imgPreviewCancelBtn")
+      imgPreviewInfo: $("imgPreviewInfo"), imgPreviewCancelBtn: $("imgPreviewCancelBtn"),
+      zoomViewport: $("zoomViewport")
     };
 
     if (window.__PRELOAD_ROOM_ID__) {
@@ -3049,7 +3075,6 @@ function toggleAcc(id) {
         const file = e.target.files && e.target.files[0];
         if (!file) return;
 
-        // 20MB制限チェック
         if (file.size > 20 * 1024 * 1024) {
           showToast("⚠️ 画像サイズは20MBまでです");
           D.imgFileInput.value = "";
@@ -3058,11 +3083,9 @@ function toggleAcc(id) {
 
         try {
           D.imgUploadBtn.textContent = "⏳";
-          // ブラウザ内で一瞬で軽量Base64に変換
           const base64 = await compressImageToDataUrl(file, 1000, 1000, 0.72);
           pendingImageBase64 = base64;
 
-          // プレビュー表示
           if (D.imgPreviewThumb) D.imgPreviewThumb.src = base64;
           if (D.imgPreviewInfo) D.imgPreviewInfo.textContent = `${file.name || '画像'} (${Math.round(file.size / 1024)} KB)`;
           if (D.imgPreviewArea) D.imgPreviewArea.style.display = "flex";
@@ -3083,6 +3106,108 @@ function toggleAcc(id) {
       D.imgPreviewCancelBtn.addEventListener("click", (e) => {
         e.preventDefault();
         resetImagePreview();
+      });
+    }
+
+    // 🖼️ 拡大モーダル：ピンチズーム・パン移動・ダブルタップ・背景タップで閉じる
+    if (D.zoomViewport && D.imgViewSrc) {
+      // 1. 背景タップ（画像の外側）で閉じる
+      D.zoomViewport.addEventListener("click", (e) => {
+        if (e.target !== D.imgViewSrc) {
+          D.imgViewMod.classList.remove("show");
+          resetZoom();
+        }
+      });
+
+      // 2. ダブルタップで拡大・等倍リセット
+      D.imgViewSrc.addEventListener("touchend", (e) => {
+        const now = Date.now();
+        if (now - zoomState.lastTouchEnd < 300) {
+          e.preventDefault();
+          if (zoomState.scale > 1.2) {
+            resetZoom();
+          } else {
+            zoomState.scale = 2.5;
+            zoomState.posX = 0;
+            zoomState.posY = 0;
+            updateZoomTransform();
+          }
+        }
+        zoomState.lastTouchEnd = now;
+      });
+
+      // 3. ピンチズーム＆タッチパン操作
+      D.zoomViewport.addEventListener("touchstart", (e) => {
+        if (e.touches.length === 2) {
+          zoomState.initialDist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          zoomState.initialScale = zoomState.scale;
+        } else if (e.touches.length === 1) {
+          zoomState.isDragging = true;
+          zoomState.startX = e.touches[0].clientX - zoomState.posX;
+          zoomState.startY = e.touches[0].clientY - zoomState.posY;
+        }
+      }, { passive: false });
+
+      D.zoomViewport.addEventListener("touchmove", (e) => {
+        if (e.touches.length === 2 && zoomState.initialDist > 0) {
+          e.preventDefault();
+          const dist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          zoomState.scale = Math.min(Math.max(1, zoomState.initialScale * (dist / zoomState.initialDist)), 6);
+          updateZoomTransform();
+        } else if (e.touches.length === 1 && zoomState.isDragging && zoomState.scale > 1.05) {
+          e.preventDefault();
+          zoomState.posX = e.touches[0].clientX - zoomState.startX;
+          zoomState.posY = e.touches[0].clientY - zoomState.startY;
+          updateZoomTransform();
+        }
+      }, { passive: false });
+
+      D.zoomViewport.addEventListener("touchend", (e) => {
+        if (e.touches.length < 2) zoomState.initialDist = 0;
+        if (e.touches.length === 0) zoomState.isDragging = false;
+        if (zoomState.scale <= 1) {
+          zoomState.posX = 0;
+          zoomState.posY = 0;
+          updateZoomTransform();
+        }
+      });
+
+      // 4. PC マウスホイールズーム & ドラッグ
+      D.zoomViewport.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const delta = e.deltaY < 0 ? 0.25 : -0.25;
+        zoomState.scale = Math.min(Math.max(1, zoomState.scale + delta), 6);
+        if (zoomState.scale === 1) {
+          zoomState.posX = 0;
+          zoomState.posY = 0;
+        }
+        updateZoomTransform();
+      }, { passive: false });
+
+      D.zoomViewport.addEventListener("mousedown", (e) => {
+        if (e.target === D.imgViewSrc && zoomState.scale > 1) {
+          zoomState.isDragging = true;
+          zoomState.startX = e.clientX - zoomState.posX;
+          zoomState.startY = e.clientY - zoomState.posY;
+        }
+      });
+
+      window.addEventListener("mousemove", (e) => {
+        if (zoomState.isDragging && zoomState.scale > 1) {
+          zoomState.posX = e.clientX - zoomState.startX;
+          zoomState.posY = e.clientY - zoomState.startY;
+          updateZoomTransform();
+        }
+      });
+
+      window.addEventListener("mouseup", () => {
+        zoomState.isDragging = false;
       });
     }
 
@@ -3214,7 +3339,7 @@ function toggleAcc(id) {
 
     if (D.sdBtn) D.sdBtn.addEventListener("click", (e) => { e.preventDefault(); sendMessage(); });
 
-    // 🛡️ XSS防止・安全なイベント委譲によるクリック処理
+    // 🛡️ イベント委譲（画像クリックでモーダルオープン）
     if (D.tl) {
       D.tl.addEventListener("click", (e) => {
         const imgEl = e.target.closest(".safe-img-click");
@@ -3310,7 +3435,13 @@ function toggleAcc(id) {
       unreadMsgIds.clear(); updateUnreadBadge(); 
     });
 
-    if (D.imgViewCloseBtn && D.imgViewMod) D.imgViewCloseBtn.addEventListener("click", (e) => { e.preventDefault(); D.imgViewMod.classList.remove("show"); });
+    if (D.imgViewCloseBtn && D.imgViewMod) {
+      D.imgViewCloseBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        D.imgViewMod.classList.remove("show");
+        resetZoom();
+      });
+    }
 
     $("btnCopyTrip").addEventListener("click", async (e) => {
       e.preventDefault();

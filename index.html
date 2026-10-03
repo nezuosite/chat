@@ -42,8 +42,7 @@
     var isJoined = localStorage.getItem("nz_is_joined") === "true";
     var lastRoom = localStorage.getItem("nz_last_room_id");
     var base = Math.max(parseInt(localStorage.getItem("nz_session_start_time")||"0",10), parseInt(localStorage.getItem("nz_last_post_time")||"0",10));
-    var savedMins = parseInt(localStorage.getItem("nz_auto_exit_minutes")||"30",10);
-    var exitMs = (isNaN(savedMins) || savedMins <= 0 ? 30 : savedMins) * 60 * 1000;
+    var exitMs = 30 * 60 * 1000;
     if (isJoined && lastRoom && (!window.location.hash || window.location.hash.length <= 1) && (Date.now() - base < exitMs)) {
       document.documentElement.classList.add("preload-chat-active");
       window.__PRELOAD_ROOM_ID__ = lastRoom;
@@ -62,7 +61,6 @@
 :root{
   --bg:#070a10;--sf:#0f172a;--s2:#0b1120;--bd:#1e293b;--tx:#f8fafc;--mu:#94a3b8;--m2:#475569;--in:#334155;--ro:#f43f5e;
   --my-bubble:#0284c7;--other-bubble:#1e293b;--usr-color:#f1f5f9;--safe:env(safe-area-inset-bottom,0px);
-  /* 🔤 大手標準フォントスタック（アンチエイリアス強制解除でwも自然な太さ） */
   --font-stack:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI","Yu Gothic",Meiryo,sans-serif;
 }
 html,body{position:fixed;top:0;left:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-family:var(--font-stack);overscroll-behavior:none;color-scheme:dark;}
@@ -135,12 +133,10 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .mw.is-failed{opacity:.9!important}
 .mw.msg-deleting{opacity:0!important;transform:scale(0.92) translateY(-4px)!important;max-height:0!important;padding:0!important;margin:0!important;overflow:hidden!important;pointer-events:none!important;transition:all 0.1s ease-out!important}
 
-/* 送信者ヘッダー（自分も相手も表示） */
 .sender-header{display:inline-flex;align-items:baseline;gap:6px;font-size:11.5px;margin-bottom:3px;padding:0 4px;width:100%}
 .sender-name{font-weight:700}
 .sender-trip{font-size:10px;color:var(--mu);opacity:.85}
 
-/* 相手の発言（左寄せ） */
 .mw.other-msg{align-items:flex-start}
 .mw.other-msg .sender-header{justify-content:flex-start}
 .mw.other-msg .bubble-row{display:flex;align-items:flex-end;gap:6px;max-width:88%}
@@ -150,7 +146,6 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
   padding:9px 13px;border:1px solid rgba(255,255,255,0.06);box-shadow:0 2px 6px rgba(0,0,0,0.25);
 }
 
-/* 自分の発言（右寄せ・名前あり） */
 .mw.my-msg{align-items:flex-end}
 .mw.my-msg .sender-header{justify-content:flex-end}
 .mw.my-msg .bubble-row{display:flex;flex-direction:row-reverse;align-items:flex-end;gap:6px;max-width:88%}
@@ -179,7 +174,6 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .sys-msg{position:relative;text-align:center;font-size:11px;font-weight:bold;color:#cbd5e1!important;margin:6px auto;background:rgba(255,255,255,.05);padding:5px 12px;border-radius:12px;max-width:92%;word-break:break-all;line-height:1.45}
 .sys-ts{display:inline-block;font-size:9.5px;color:var(--mu);opacity:.85;margin-left:6px}
 
-/* 💬 LINE風 下部入力バー */
 #ib{
   display:flex;flex-direction:column;padding:8px calc(10px + env(safe-area-inset-right,0px)) calc(8px + var(--safe)) calc(10px + env(safe-area-inset-left,0px));
   background:rgba(15,23,42,0.98);backdrop-filter:blur(10px);border-top:1px solid var(--bd);gap:6px;flex-shrink:0;
@@ -228,7 +222,6 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .modal-top-close{position:absolute;top:calc(16px + env(safe-area-inset-top,0px));right:calc(16px + env(safe-area-inset-right,0px));width:40px;height:40px;border-radius:50%!important;background:rgba(30,41,59,0.75)!important;border:1px solid rgba(255,255,255,0.25)!important;color:#fff!important;font-size:18px!important;display:flex;align-items:center;justify-content:center;z-index:10002}
 #imgViewSrc{max-width:100%;max-height:100%;object-fit:contain;border-radius:0!important;user-select:none;-webkit-user-drag:none;pointer-events:auto;will-change:transform;touch-action:none}
 
-/* 🖼️ チャット内インライン画像（角丸なし） */
 .inline-img{max-width:100%;max-height:200px;width:auto;height:auto;object-fit:cover;border-radius:0!important;margin-top:2px;display:block;cursor:zoom-in;border:1px solid rgba(255,255,255,0.12)}
 .clrpick-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .clrc2{aspect-ratio:1;width:100%;max-width:28px;border-radius:50%;margin:0 auto;border:2px solid transparent}
@@ -402,7 +395,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
       </div>
     </div>
 
-    <!-- 🏠 ロビー画面 -->
+    <!-- 🏠 ロビー画面（設定パネルを完全撤廃） -->
     <div id="lobbyScreen">
       <div class="lobby-sec">
         <h2>👤 ユーザー設定</h2>
@@ -450,14 +443,6 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
           <button class="btn" id="btnLurkOfficial" style="flex:1;background:rgba(2,132,199,0.15);border:1px solid #0284c7;color:#38bdf8;font-size:12px;font-weight:900;height:38px;border-radius:6px;" disabled>👀 覗き見</button>
         </div>
       </div>
-
-      <div class="lobby-sec" id="lobbyAdminSec" style="display:none;border-color:#f43f5e;gap:10px;">
-        <h2 style="color:#fda4af;font-size:11px;">👑 全体管理（公式管理者のみ）</h2>
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-          <label for="lobbyAutoExitSelect" style="color:var(--tx);font-size:11px;font-weight:bold;cursor:pointer;">⏱️ 全部屋統一 自動退室時間</label>
-          <select id="lobbyAutoExitSelect" class="inp" style="width:110px;height:30px;padding:2px 6px;font-size:11.5px;"></select>
-        </div>
-      </div>
     </div>
   </div>
 </div>
@@ -466,6 +451,9 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 const GLOBAL_ADMIN_UID = "d99bzcrWCraG74oGUWKz7158oOz1";
 const SKYWAY_APP_ID = "58cc3b17-26f0-42bb-96e8-0f557ddf970e";
 const SKYWAY_SECRET_KEY_B64 = "JoAgxrroO7FX2TckM1ftfCoGL4I6J44jLalRi+WTTGk=";
+
+// ⏱️ 全部屋一律30分固定
+const AUTO_EXIT_MS = 30 * 60 * 1000;
 
 function generateUuidV4() {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
@@ -613,9 +601,8 @@ function toggleAcc(id) {
   let rawPresenceMap = {}, currentPresenceMap = {}, isConnectedBound = false, lastSyncAt = 0;
   let roomSettings = { newEntriesDisabled: false, approvedTrips: {}, approvedUids: {}, creatorUid: "" };
   let localLastClearedTime = 0, latestDisplayedTs = 0, pendingImageBase64 = null;
-  let autoExitMinutes = parseInt(safeLS.get("nz_auto_exit_minutes") || "30", 10);
-  if (isNaN(autoExitMinutes) || autoExitMinutes <= 0) autoExitMinutes = 30;
-  let AUTO_EXIT_MS = autoExitMinutes * 60 * 1000, myLastActiveTs = 0, isExecutingAutoExit = false;
+  
+  let myLastActiveTs = 0, isExecutingAutoExit = false;
 
   let skywayContext = null, skywayRoom = null, localSkyWayMember = null;
   let localAudioStream = null, localAudioPublication = null;
@@ -674,7 +661,9 @@ function toggleAcc(id) {
     }
   };
 
-  async function encodeMsgPayload(name, trip, msg) { return E2EE.encrypt(JSON.stringify({ n: name, p: trip, m: msg }), activeKey); }
+  async function encodeMsgPayload(name, trip, msg, customKey = activeKey) {
+    return E2EE.encrypt(JSON.stringify({ n: name, p: trip, m: msg }), customKey);
+  }
   async function decodeMsgPayload(m) {
     if (!m) return m;
     let authenticTrip = "";
@@ -702,7 +691,7 @@ function toggleAcc(id) {
 
   const COLORS = [
     {v:"#f1f5f9",n:"ホワイト"},{v:"#94a3b8",n:"グレー"},{v:"#38bdf8",n:"スカイ"},{v:"#06b6d4",n:"シアン"},
-    {v:"#34d399",n:"ミント"},{v:"#10b981",n:"エメラルド"},{v:"#a3e635",n:"ライム"},{v:"#fde68a",n:"パステルイエロー"},
+    {v:"#34d399",n:"ミント"},{v:"#10b981",n:"エメラルド"},{v:"a3e635",n:"ライム"},{v:"#fde68a",n:"パステルイエロー"},
     {v:"#f59e0b",n:"アンバー"},{v:"#fb923c",n:"オレンジ"},{v:"#f87171",n:"レッド"},{v:"#f43f5e",n:"ローズ"},
     {v:"#f472b6",n:"ピンク"},{v:"#c084fc",n:"ライトパープル"},{v:"#a855f7",n:"パープル"},{v:"#818cf8",n:"インディゴ"}
   ];
@@ -818,7 +807,6 @@ function toggleAcc(id) {
     mw.className = `mw ${isMine ? "my-msg" : "other-msg"}`;
     mw.dataset.mid = m.id; mw.dataset.ts = ts;
 
-    // 👤 自分も相手も名前とトリップを表示
     const header = document.createElement("div");
     header.className = "sender-header";
     header.innerHTML = `<span class="sender-name" style="color:${escapeHtml(m.c || '#f1f5f9')};">${escapeHtml(m.n || '名無し')}</span><span class="sender-trip">${escapeHtml(m.p || '')}</span>`;
@@ -1064,82 +1052,130 @@ function toggleAcc(id) {
     validateLobbyInputs();
 
     if (!isSilent) broadcastTabSync("ROOM_EXIT", { isAuto });
-    if (isAuto) showToast(`⏱️ ${autoExitMinutes}分間発言がなかったため、自動退室しました`, 4000);
+    if (isAuto) showToast("⏱️ 30分間発言がなかったため、自動退室しました", 4000);
   }
 
+  /* 🛡️ 他ユーザーの自動退室代行（防弾設計：型ゆれ吸収・finally構造で確実にremove完遂） */
   async function processAutoExitForUser(targetUid, userData, targetRoomId = currentRoomId) {
     if (!db || !targetRoomId || !userData || targetUid === myUid) return;
     const roomId = targetRoomId, now = getTrueTime();
     try {
       const snap = await db.ref(`presence/${roomId}/${targetUid}`).once("value");
       const current = snap.val();
-      if (!current || typeof current.t !== "number" || now < current.t + AUTO_EXIT_MS) return;
+      if (!current) return;
 
-      const baseTs = current.t;
-      const cleanBaseTs = Math.floor(baseTs / 1000) * 1000;
+      const rawBase = parseInt(current.t, 10);
+      if (isNaN(rawBase) || rawBase <= 0) {
+        // 壊れた時刻データは安全のため即時清掃
+        await db.ref(`presence/${roomId}/${targetUid}`).remove().catch(()=>{});
+        return;
+      }
+      if (now < rawBase + AUTO_EXIT_MS) return;
+
+      const cleanBaseTs = Math.floor(rawBase / 1000) * 1000;
       const exactExpiryTime = cleanBaseTs + AUTO_EXIT_MS;
       const autoExitKey = `sys_autoexit_${targetUid}_${cleanBaseTs}`;
       const userName = (current.n || userData.n || "名無し").trim();
       const userTrip = (current.p || userData.p || "").trim();
-      const rawSysText = "📢 [お知らせ] " + `${userName} ${userTrip}`.trim() + ` が自動退室しました (${autoExitMinutes}分間発言がなかったため)`;
-      const encD = await encodeMsgPayload("システム", "", rawSysText);
-      await db.ref(`chat/${roomId}/${autoExitKey}`).set({ u: "system", c: "#f43f5e", d: encD, t: exactExpiryTime, sys: true });
-      await db.ref(`presence/${roomId}/${targetUid}`).remove();
-      await destroyRoomIfEmpty(roomId);
-    } catch(e) { console.error("other autoexit error:", e); }
+      const rawSysText = "📢 [お知らせ] " + `${userName} ${userTrip}`.trim() + " が自動退室しました (30分間発言がなかったため)";
+
+      try {
+        const encD = await encodeMsgPayload("システム", "", rawSysText);
+        await db.ref(`chat/${roomId}/${autoExitKey}`).set({ u: "system", c: "#f43f5e", d: encD, t: exactExpiryTime, sys: true });
+      } catch(logErr) {
+        console.error("退室ログ書き込みエラー:", logErr);
+      } finally {
+        // 💡 ログ書き込み成否にかかわらず在室データは100%確実に削除
+        await db.ref(`presence/${roomId}/${targetUid}`).remove().catch(()=>{});
+        await destroyRoomIfEmpty(roomId);
+      }
+    } catch(e) {
+      console.error("他ユーザー自動退室処理エラー:", e);
+    }
   }
 
+  /* 🛡️ 自分自身の自動退室（予定満了時刻で正確に自己退室ログを記録） */
   async function triggerSelfAutoExit() {
     if (isExecutingAutoExit || !isJoined || !db || !currentRoomId || !myUid) return;
     isExecutingAutoExit = true;
     stopSmartAutoExitChecker();
 
     const roomId = currentRoomId, uid = myUid;
-    const cleanName = (myName || "名無し").trim();
-    const cleanTrip = myTrip || "";
+    const cleanName = (myName || "名無し").trim(), cleanTrip = myTrip || "";
     const rawBase = myLastActiveTs > 0 ? myLastActiveTs : (getTrueTime() - AUTO_EXIT_MS);
     const cleanBaseTs = Math.floor(rawBase / 1000) * 1000;
     const exactExpiryTime = cleanBaseTs + AUTO_EXIT_MS;
     const autoExitKey = `sys_autoexit_${uid}_${cleanBaseTs}`;
 
     try {
-      const rawSysText = "📢 [お知らせ] " + `${cleanName} ${cleanTrip}`.trim() + ` が自動退室しました (${autoExitMinutes}分間発言がなかったため)`;
+      const rawSysText = "📢 [お知らせ] " + `${cleanName} ${cleanTrip}`.trim() + " が自動退室しました (30分間発言がなかったため)";
       const encD = await encodeMsgPayload("システム", "", rawSysText);
       await db.ref(`chat/${roomId}/${autoExitKey}`).set({ u: "system", c: "#f43f5e", d: encD, t: exactExpiryTime, sys: true });
-      await db.ref(`presence/${roomId}/${uid}`).remove();
-      await destroyRoomIfEmpty(roomId);
-    } catch (e) { console.error("self autoexit error:", e); }
-    finally { doExit(true, false); isExecutingAutoExit = false; }
+    } catch(logErr) {
+      console.error("自己退室ログ書き込みエラー:", logErr);
+    } finally {
+      try {
+        await db.ref(`presence/${roomId}/${uid}`).remove().catch(()=>{});
+        await destroyRoomIfEmpty(roomId);
+      } finally {
+        doExit(true, false);
+        isExecutingAutoExit = false;
+      }
+    }
   }
 
+  /* ⏱️ 1秒ごとの相互監視タイマー（型ゆれ完全吸収） */
   async function checkAndTriggerExactAutoExit() {
-    if (!isJoined || isLurking || !db || !currentRoomId || isExecutingAutoExit) return;
+    if (!isJoined || !db || !currentRoomId || isExecutingAutoExit) return;
     const nowTrue = getTrueTime();
-    if (myLastActiveTs > 0 && (nowTrue >= myLastActiveTs + AUTO_EXIT_MS)) {
-      await triggerSelfAutoExit(); return;
+
+    // 自分の満了チェック
+    if (!isLurking && myLastActiveTs > 0 && (nowTrue >= myLastActiveTs + AUTO_EXIT_MS)) {
+      await triggerSelfAutoExit();
+      return;
     }
-    const expiredList = Object.entries(rawPresenceMap).filter(([id, u]) => id !== myUid && u && typeof u.t === "number" && (nowTrue >= u.t + AUTO_EXIT_MS));
+
+    // 他人の満了チェック（参加者・覗き見者全員で相互監視）
+    const expiredList = Object.entries(rawPresenceMap).filter(([id, u]) => {
+      if (id === myUid || !u) return false;
+      const parsedT = parseInt(u.t, 10);
+      return isNaN(parsedT) || parsedT <= 0 || (nowTrue >= parsedT + AUTO_EXIT_MS);
+    });
+
     if (expiredList.length === 0) return;
     await Promise.all(expiredList.map(([id, u]) => processAutoExitForUser(id, u)));
   }
 
-  async function cleanupExpiredMembersBeforeJoin(roomId) {
+  /* 🧹 入室前の期限切れユーザー安全清掃（満了時刻で過去ログを正確に記録） */
+  async function cleanupExpiredMembersBeforeJoin(roomId, roomPass = "") {
     if (!db || !roomId) return;
     try {
       const snap = await db.ref(`presence/${roomId}`).once("value");
       const pVal = snap.val() || {}, now = getTrueTime();
-      const expired = Object.entries(pVal).filter(([uid, u]) => u && typeof u.t === "number" && (now >= u.t + AUTO_EXIT_MS));
+      const expired = Object.entries(pVal).filter(([uid, u]) => {
+        if (!u) return false;
+        const parsedT = parseInt(u.t, 10);
+        return isNaN(parsedT) || parsedT <= 0 || (now >= parsedT + AUTO_EXIT_MS);
+      });
+
       if (expired.length === 0) return;
+      const tempKey = (roomId === "official" || !roomPass) ? null : await E2EE.deriveKey(roomPass);
+
       await Promise.all(expired.map(async ([zUid, zData]) => {
-        const rawBase = zData.t;
+        const rawBase = parseInt(zData.t, 10) || (now - AUTO_EXIT_MS);
         const cleanBaseTs = Math.floor(rawBase / 1000) * 1000;
         const exactExpiryTime = cleanBaseTs + AUTO_EXIT_MS;
         const autoExitKey = `sys_autoexit_${zUid}_${cleanBaseTs}`;
         const name = (zData.n || "名無し").trim(), trip = (zData.p || "").trim();
-        const rawSysText = "📢 [お知らせ] " + `${name} ${trip}`.trim() + ` が自動退室しました (${autoExitMinutes}分間発言がなかったため)`;
-        const encD = await encodeMsgPayload("システム", "", rawSysText);
-        await db.ref(`chat/${roomId}/${autoExitKey}`).set({ u: "system", c: "#f43f5e", d: encD, t: exactExpiryTime, sys: true });
-        await db.ref(`presence/${roomId}/${zUid}`).remove();
+        const rawSysText = "📢 [お知らせ] " + `${name} ${trip}`.trim() + " が自動退室しました (30分間発言がなかったため)";
+
+        try {
+          const encD = await encodeMsgPayload("システム", "", rawSysText, tempKey);
+          await db.ref(`chat/${roomId}/${autoExitKey}`).set({ u: "system", c: "#f43f5e", d: encD, t: exactExpiryTime, sys: true });
+        } catch(e) {
+        } finally {
+          await db.ref(`presence/${roomId}/${zUid}`).remove().catch(()=>{});
+        }
       }));
     } catch(err) { console.error("cleanup error:", err); }
   }
@@ -1391,6 +1427,7 @@ function toggleAcc(id) {
     } finally { isDiffSyncing = false; }
   }
 
+  // 🛡️ 画面復帰時の自動復帰・退室処理（厳格な有効期限チェックつき）
   if (typeof document !== 'undefined') {
     const triggerSyncAndCheck = () => {
       const savedScreen = safeLS.get("nz_current_screen") || "lobby";
@@ -1401,6 +1438,7 @@ function toggleAcc(id) {
       const baselineTime = Math.max(sessionStart, lastPost);
       const nowTrue = Date.now();
 
+      // ⏱️ 30分超過している場合は即座に自己退室処理を実行
       if (baselineTime > 0 && (nowTrue - baselineTime >= AUTO_EXIT_MS)) {
         if (isJoined) triggerSelfAutoExit(); else doExit(true, true);
         return;
@@ -1545,20 +1583,6 @@ function toggleAcc(id) {
         }
       }
     } catch (err) { console.error("profile sync error:", err); }
-
-    const isGlobalAdminNow = checkIsGlobalAdmin();
-    if ($("lobbyAdminSec")) $("lobbyAdminSec").style.display = isGlobalAdminNow ? "flex" : "none";
-    if (db) {
-      db.ref("globalSettings").once("value").then(snap => {
-        const gVal = snap.val() || {};
-        if (gVal.autoExitMinutes) {
-          autoExitMinutes = parseInt(gVal.autoExitMinutes, 10);
-          safeLS.set("nz_auto_exit_minutes", autoExitMinutes.toString());
-          AUTO_EXIT_MS = autoExitMinutes * 60 * 1000;
-          if ($("lobbyAutoExitSelect")) $("lobbyAutoExitSelect").value = autoExitMinutes;
-        }
-      }).catch(() => {});
-    }
     validateLobbyInputs();
   };
 
@@ -1661,15 +1685,22 @@ function toggleAcc(id) {
   }
   function getNicoId(url) { const m = url ? url.match(/(sm\d+|so\d+|nm\d+|1\d+)/) : null; return m ? m[0] : ""; }
 
+  /* 👥 在室リスト更新（型ゆれ完全吸収） */
   function handlePresenceUpdate(rawList) {
     rawPresenceMap = rawList || {};
     const now = getTrueTime(), members = {};
     for (const [id, u] of Object.entries(rawPresenceMap)) {
-      if (u && u.n && typeof u.t === "number" && (now - u.t < AUTO_EXIT_MS)) members[id] = { id, ...u };
+      if (!u || !u.n) continue;
+      const parsedT = parseInt(u.t, 10);
+      if (!isNaN(parsedT) && parsedT > 0 && (now - parsedT < AUTO_EXIT_MS)) {
+        members[id] = { id, ...u, t: parsedT };
+      }
     }
     currentPresenceMap = members;
     renderPresence(members);
-    if (!isLurking && isJoined && currentRoomId && currentRoomId !== "official" && Object.keys(members).length === 0) destroyRoomIfEmpty(currentRoomId);
+    if (!isLurking && isJoined && currentRoomId && currentRoomId !== "official" && Object.keys(members).length === 0) {
+      destroyRoomIfEmpty(currentRoomId);
+    }
   }
 
   function renderPresence(serverListMap) {
@@ -1889,14 +1920,12 @@ function toggleAcc(id) {
         if (!isJoined || isExecutingAutoExit) return;
         if (s.exists()) {
           hasPresenceEverExisted = true;
-          const val = s.val();
-          if (val && typeof val.t === "number") {
-            myLastActiveTs = val.t;
-            safeLS.set("nz_last_post_time", val.t.toString());
-          }
         } else if (hasPresenceEverExisted) { doExit(true, false); }
       });
     }
+
+    // ⏱️ 参加・覗き見問わず全員で相互自動退室チェッカーを常時稼働
+    startSmartAutoExitChecker();
   }
 
   function detachFirebaseListeners() {
@@ -1997,7 +2026,7 @@ function toggleAcc(id) {
         if (!user || !user.uid) user = await ensureAnonAuth();
         if (!user || !user.uid) throw new Error("認証未完了です (再読み込みしてください)");
         myUid = user.uid;
-        updateLastPostTime(getTrueTime());
+        updateLastPostTime(getTrueTime()); // 💬 発言時のみ起点時刻を更新！
 
         const encD = await encodeMsgPayload(myName || "名無し", myTrip, text);
         const postTs = firebase.database.ServerValue.TIMESTAMP;
@@ -2018,10 +2047,12 @@ function toggleAcc(id) {
     })();
   }
 
+  // 🔄 ページ読み込み時：過去の放置状態を確実にクリーンアップして自動退室ログを書き込む
   const initDirectDatabaseProcess = async () => {
     try {
       if (db) db.goOnline();
-      ensureAnonAuth().catch(()=>{});
+      const user = await ensureAnonAuth().catch(()=>null);
+      if (user && user.uid) myUid = user.uid;
       await syncProfileValues();
       const offsetPromise = syncServerOffset().catch(() => {});
 
@@ -2033,17 +2064,37 @@ function toggleAcc(id) {
       const baselineTime = Math.max(sessionStart, lastPost);
       const nowTrue = Date.now();
 
+      // ⏱️ 30分以内の有効なセッションなら復帰、超過していたら確実に自動退室アナウンスを書き込んでロビーへ
       if (wasJoined && lastRoomId && baselineTime > 0 && (nowTrue - baselineTime < AUTO_EXIT_MS)) {
         const safePath = (lastRoomId === "official") ? "official" : await window.sha256(lastRoomId);
         const snap = await db.ref(`presence/${safePath}/${myUid}`).once("value").catch(() => null);
         if (snap && snap.exists()) {
           await offsetPromise;
           joinRoom({ roomId: lastRoomId, roomPass: lastRoomPass || "", silent: true, isCrossTab: true });
-        } else { doExit(true, true); }
+        } else {
+          doExit(true, true);
+        }
       } else {
         if (wasJoined && lastRoomId) {
           const safePath = (lastRoomId === "official") ? "official" : await window.sha256(lastRoomId);
-          if (myUid) db.ref(`presence/${safePath}/${myUid}`).remove().catch(()=>{});
+          if (myUid) {
+            // 💡 満了時刻（1:30など）で正確に自動退室ログを残して在室を消去
+            const cleanBaseTs = Math.floor(baselineTime / 1000) * 1000;
+            const exactExpiryTime = cleanBaseTs + AUTO_EXIT_MS;
+            const autoExitKey = `sys_autoexit_${myUid}_${cleanBaseTs}`;
+            const cleanName = (myName || "名無し").trim(), cleanTrip = myTrip || "";
+            const rawSysText = "📢 [お知らせ] " + `${cleanName} ${cleanTrip}`.trim() + " が自動退室しました (30分間発言がなかったため)";
+            const tempKey = (lastRoomId === "official" || !lastRoomPass) ? null : await E2EE.deriveKey(lastRoomPass);
+
+            try {
+              const encD = await encodeMsgPayload("システム", "", rawSysText, tempKey);
+              await db.ref(`chat/${safePath}/${autoExitKey}`).set({
+                u: "system", c: "#f43f5e", d: encD, t: exactExpiryTime, sys: true
+              }).catch(()=>{});
+            } finally {
+              await db.ref(`presence/${safePath}/${myUid}`).remove().catch(()=>{});
+            }
+          }
         }
         safeLS.remove("nz_is_joined"); safeLS.remove("nz_last_room_id"); safeLS.remove("nz_last_room_pass");
         safeLS.remove("nz_session_start_time"); safeLS.remove("nz_last_post_time");
@@ -2064,15 +2115,6 @@ function toggleAcc(id) {
       db.ref(".info/connected").on("value", snap => {
         if (snap.val() === true) { if (hasDisconnectedOnce) { syncIncrementalDiff(); hasDisconnectedOnce = false; } }
         else { hasDisconnectedOnce = true; }
-      });
-      db.ref("globalSettings/autoExitMinutes").on("value", snap => {
-        const val = snap.val();
-        if (val) {
-          autoExitMinutes = parseInt(val, 10);
-          safeLS.set("nz_auto_exit_minutes", autoExitMinutes.toString());
-          AUTO_EXIT_MS = autoExitMinutes * 60 * 1000;
-          if ($("lobbyAutoExitSelect")) $("lobbyAutoExitSelect").value = autoExitMinutes;
-        }
       });
       isConnectedBound = true;
     }
@@ -2131,13 +2173,19 @@ function toggleAcc(id) {
     db.ref(`tripIndex/${realTrip.substring(1)}`).set(myUid).catch(() => {});
 
     const safeRoomPath = isOfficialTarget ? "official" : await window.sha256(lobbyRoomId);
-    await cleanupExpiredMembersBeforeJoin(safeRoomPath);
+    
+    // 💡 入室前に放置ユーザーの安全清掃
+    await cleanupExpiredMembersBeforeJoin(safeRoomPath, lobbyRoomPass);
 
     if (!isOfficialTarget && !isLurkTarget) {
       try {
         const [pSnap, sSnap] = await Promise.all([db.ref(`presence/${safeRoomPath}`).once("value"), db.ref(`settings/${safeRoomPath}`).once("value")]);
         const pVal = pSnap.val() || {}, now = getTrueTime();
-        const activeMembers = Object.entries(pVal).filter(([uid, u]) => u && typeof u.t === "number" && (now - u.t < AUTO_EXIT_MS));
+        const activeMembers = Object.entries(pVal).filter(([uid, u]) => {
+          if (!u) return false;
+          const parsedT = parseInt(u.t, 10);
+          return !isNaN(parsedT) && parsedT > 0 && (now - parsedT < AUTO_EXIT_MS);
+        });
         if (activeMembers.length === 0 && (pSnap.exists() || sSnap.exists())) {
           const updates = {};
           updates[`chat/${safeRoomPath}`] = null; updates[`presence/${safeRoomPath}`] = null;
@@ -2228,7 +2276,6 @@ function toggleAcc(id) {
           n: myName || "名無し", p: realTrip, c: curColor, t: firebase.database.ServerValue.TIMESTAMP
         });
       } catch (err) {}
-      startSmartAutoExitChecker();
     }
 
     setupFirebaseListeners();
@@ -2473,23 +2520,6 @@ function toggleAcc(id) {
       });
     }
     if ($("lurkInlineNameInput")) $("lurkInlineNameInput").addEventListener("input", validateLobbyInputs);
-
-    const autoExitSel = $("lobbyAutoExitSelect");
-    if (autoExitSel) {
-      autoExitSel.innerHTML = "";
-      for (let m = 1; m <= 120; m++) {
-        const opt = document.createElement("option");
-        opt.value = m; opt.textContent = `${m} 分`;
-        if (m === autoExitMinutes) opt.selected = true;
-        autoExitSel.appendChild(opt);
-      }
-      autoExitSel.addEventListener("change", async () => {
-        if (!checkIsGlobalAdmin() || !db) return;
-        const val = parseInt(autoExitSel.value, 10);
-        await ensureAnonAuth().catch(()=>{});
-        db.ref("globalSettings/autoExitMinutes").set(val).catch(() => {});
-      });
-    }
 
     buildPicker($("lobbyColorGrid"), curColor, "clrc2", (v) => {
       curColor = v; setGlobalColor(curColor); safeLS.set("nz_color", curColor);

@@ -15,8 +15,7 @@
 <script>
 (function() {
   var host = window.location.hostname;
-  var protocol = window.location.protocol;
-  var isLocal = (protocol === "file:" || host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0" || (host && host.endsWith(".local")));
+  var isLocal = (window.location.protocol === "file:" || host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0" || (host && host.endsWith(".local")));
   if (isLocal) {
     window.__IS_BLOCKED__ = true;
     var s = document.createElement("style");
@@ -42,14 +41,10 @@
   try {
     var isJoined = localStorage.getItem("nz_is_joined") === "true";
     var lastRoom = localStorage.getItem("nz_last_room_id");
-    var sessStart = parseInt(localStorage.getItem("nz_session_start_time") || "0", 10);
-    var lastPost = parseInt(localStorage.getItem("nz_last_post_time") || "0", 10);
-    var base = Math.max(sessStart, lastPost);
-    var savedMins = parseInt(localStorage.getItem("nz_auto_exit_minutes") || "30", 10);
+    var base = Math.max(parseInt(localStorage.getItem("nz_session_start_time")||"0",10), parseInt(localStorage.getItem("nz_last_post_time")||"0",10));
+    var savedMins = parseInt(localStorage.getItem("nz_auto_exit_minutes")||"30",10);
     var exitMs = (isNaN(savedMins) || savedMins <= 0 ? 30 : savedMins) * 60 * 1000;
-    var hasInvite = window.location.hash && window.location.hash.length > 1;
-
-    if (isJoined && lastRoom && !hasInvite && (Date.now() - base < exitMs)) {
+    if (isJoined && lastRoom && (!window.location.hash || window.location.hash.length <= 1) && (Date.now() - base < exitMs)) {
       document.documentElement.classList.add("preload-chat-active");
       window.__PRELOAD_ROOM_ID__ = lastRoom;
     }
@@ -67,21 +62,13 @@
 :root{
   --bg:#070a10;--sf:#0f172a;--s2:#0b1120;--bd:#1e293b;--tx:#f8fafc;--mu:#94a3b8;--m2:#475569;--in:#334155;--ro:#f43f5e;
   --my-bubble:#0284c7;--other-bubble:#1e293b;--usr-color:#f1f5f9;--safe:env(safe-area-inset-bottom,0px);
-  /* 🔤 一般の大手サイト（Yahoo/Twitter/LINE等）と全く同じ標準フォントスタック */
+  /* 🔤 大手標準フォントスタック（アンチエイリアス強制解除でwも自然な太さ） */
   --font-stack:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI","Yu Gothic",Meiryo,sans-serif;
 }
-html,body{
-  position:fixed;top:0;left:0;width:100%;height:100%;overflow:hidden;
-  background:var(--bg);color:var(--tx);
-  font-family:var(--font-stack);
-  overscroll-behavior:none;color-scheme:dark;
-}
-/* ⚡ IME入力中・確定後の文字透明化バグを完全防止 */
+html,body{position:fixed;top:0;left:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-family:var(--font-stack);overscroll-behavior:none;color-scheme:dark;}
 input,textarea,select{
-  font-family:var(--font-stack)!important;
-  font-size:16px!important;color:#f8fafc!important;
-  -webkit-text-fill-color:#f8fafc!important;
-  background-color:var(--s2)!important;
+  font-family:var(--font-stack)!important;font-size:16px!important;color:#f8fafc!important;
+  -webkit-text-fill-color:#f8fafc!important;background-color:var(--s2)!important;
   caret-color:#38bdf8!important;opacity:1!important;visibility:visible!important;-webkit-appearance:none;
   user-select:text!important;-webkit-user-select:text!important;color-scheme:dark!important;
 }
@@ -90,7 +77,6 @@ button,.chip,.btn,.jump-btn,.bsd,.bclrm,.open-player-btn{cursor:pointer;font-fam
 button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:active,.open-player-btn:active{opacity:.65!important;transform:scale(.95)}
 #app{position:fixed;inset:0;width:100%;height:100vh;height:100dvh;display:flex;flex-direction:column;z-index:50;background:var(--bg);overflow:hidden}
 #cp{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;background:#090d16;position:relative;max-width:900px;width:100%;margin:0 auto;border-left:1px solid var(--bd);border-right:1px solid var(--bd)}
-
 #hdr{background:rgba(15,23,42,0.96);backdrop-filter:blur(8px);border-bottom:1px solid var(--bd);padding:6px 12px;flex-shrink:0;z-index:100}
 .hr{display:flex;flex-direction:column;gap:4px}
 .hr-top{display:flex;align-items:center;gap:6px;width:100%;overflow:hidden;white-space:nowrap}
@@ -140,7 +126,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 #playerContent{width:100%;max-width:480px;height:220px;aspect-ratio:16/9;background:#000;margin:0 auto;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center}
 #playerContent iframe{width:100%;height:100%;border:none}
 
-/* 💬 LINE風 プロフェッショナル・タイムライン */
+/* 💬 LINE風 タイムラインレイアウト */
 #tl{flex:1;min-height:0;overflow-y:auto;overflow-anchor:auto;padding:12px 14px 24px 14px;background-color:#070a10;-webkit-overflow-scrolling:touch}
 #tl-inner{display:flex;flex-direction:column;justify-content:flex-start;gap:12px;width:100%;max-width:800px;margin:0 auto;min-height:100%}
 
@@ -149,25 +135,28 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .mw.is-failed{opacity:.9!important}
 .mw.msg-deleting{opacity:0!important;transform:scale(0.92) translateY(-4px)!important;max-height:0!important;padding:0!important;margin:0!important;overflow:hidden!important;pointer-events:none!important;transition:all 0.1s ease-out!important}
 
+/* 送信者ヘッダー（自分も相手も表示） */
+.sender-header{display:inline-flex;align-items:baseline;gap:6px;font-size:11.5px;margin-bottom:3px;padding:0 4px;width:100%}
+.sender-name{font-weight:700}
+.sender-trip{font-size:10px;color:var(--mu);opacity:.85}
+
 /* 相手の発言（左寄せ） */
 .mw.other-msg{align-items:flex-start}
-.mw.other-msg .sender-header{display:inline-flex;align-items:baseline;gap:6px;font-size:11.5px;margin-bottom:3px;padding-left:4px}
-.mw.other-msg .sender-name{font-weight:700}
-.mw.other-msg .sender-trip{font-size:10px;color:var(--mu);opacity:.85}
-.mw.other-msg .bubble-row{display:flex;align-items:flex-end;gap:6px;max-width:85%}
+.mw.other-msg .sender-header{justify-content:flex-start}
+.mw.other-msg .bubble-row{display:flex;align-items:flex-end;gap:6px;max-width:88%}
 .mw.other-msg .mb-bubble{
   background:var(--other-bubble);color:#f8fafc;
-  border-radius:18px 18px 18px 4px;
+  border-radius:16px 16px 16px 4px;
   padding:9px 13px;border:1px solid rgba(255,255,255,0.06);box-shadow:0 2px 6px rgba(0,0,0,0.25);
 }
 
-/* 自分の発言（右寄せ・LINEスタイル） */
+/* 自分の発言（右寄せ・名前あり） */
 .mw.my-msg{align-items:flex-end}
-.mw.my-msg .sender-header{display:none}
-.mw.my-msg .bubble-row{display:flex;flex-direction:row-reverse;align-items:flex-end;gap:6px;max-width:85%}
+.mw.my-msg .sender-header{justify-content:flex-end}
+.mw.my-msg .bubble-row{display:flex;flex-direction:row-reverse;align-items:flex-end;gap:6px;max-width:88%}
 .mw.my-msg .mb-bubble{
   background:#0284c7;color:#fff;
-  border-radius:18px 18px 4px 18px;
+  border-radius:16px 16px 4px 16px;
   padding:9px 13px;box-shadow:0 2px 8px rgba(2,132,199,0.35);
 }
 
@@ -180,9 +169,9 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 
 .bubble-meta{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0;margin-bottom:2px}
 .mw.other-msg .bubble-meta{align-items:flex-start}
-.ts{color:var(--mu);opacity:.75;font-size:10px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ts{color:var(--mu);opacity:.75;font-size:9.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .msg-del-btn{
-  font-size:10.5px;line-height:1;padding:2px 4px;border-radius:4px;
+  font-size:10px;line-height:1;padding:2px 4px;border-radius:4px;
   background:rgba(244,63,94,0.12);border:1px solid rgba(244,63,94,0.3);color:#fda4af;cursor:pointer;
 }
 .msg-del-btn:hover{background:rgba(244,63,94,0.25)}
@@ -218,9 +207,10 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .bsd svg{width:18px;height:18px;transform:rotate(45deg);margin-top:-1px;margin-left:-2px}
 #imgUploadBtn{width:42px;height:42px;border-radius:50%;background:var(--s2);border:1px solid var(--bd);color:var(--tx);font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 
-#imgPreviewArea{display:none;align-items:center;gap:10px;padding:6px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;margin-bottom:4px;width:100%;max-width:fit-content;position:relative}
-#imgPreviewThumb{width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,0.15)}
-#imgPreviewCancelBtn{background:rgba(244,63,94,0.15);border:1px solid rgba(244,63,94,0.3);color:#fda4af;border-radius:50%;width:22px;height:22px;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-left:auto}
+/* 🖼️ 画像プレビュー（角丸なし） */
+#imgPreviewArea{display:none;align-items:center;gap:10px;padding:6px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:0!important;margin-bottom:4px;width:100%;max-width:fit-content;position:relative}
+#imgPreviewThumb{width:44px;height:44px;object-fit:cover;border-radius:0!important;border:1px solid rgba(255,255,255,0.15)}
+#imgPreviewCancelBtn{background:rgba(244,63,94,0.15);border:1px solid rgba(244,63,94,0.3);color:#fda4af;border-radius:0!important;width:22px;height:22px;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-left:auto}
 
 #lurkPromptBar{display:none;width:100%;padding:6px 10px calc(6px + var(--safe)) 10px;background:#0b1120;border-top:1px solid #1e293b;align-items:center;justify-content:space-between;gap:8px;flex-shrink:0}
 #btnUpgradeToJoin:disabled{background:#1e293b!important;color:#64748b!important;border:1px solid #334155!important;opacity:0.5!important;cursor:not-allowed!important}
@@ -232,21 +222,22 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .acc-bdy{display:none;padding:4px 0;flex-direction:column;gap:6px}
 .acc-bdy.show{display:flex}
 
-/* 🖼️ Google画像検索風 漆黒ビューア（画像外タップで即クローズ） */
+/* 🖼️ Google画像検索風 漆黒ビューア（画像外タップで即クローズ・角丸なし） */
 #imgViewMod{background:#000!important;backdrop-filter:none!important;flex-direction:column;padding:0!important;user-select:none;touch-action:none}
 #zoomViewport{width:100%;height:100%;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:none;cursor:default}
 .modal-top-close{position:absolute;top:calc(16px + env(safe-area-inset-top,0px));right:calc(16px + env(safe-area-inset-right,0px));width:40px;height:40px;border-radius:50%!important;background:rgba(30,41,59,0.75)!important;border:1px solid rgba(255,255,255,0.25)!important;color:#fff!important;font-size:18px!important;display:flex;align-items:center;justify-content:center;z-index:10002}
 #imgViewSrc{max-width:100%;max-height:100%;object-fit:contain;border-radius:0!important;user-select:none;-webkit-user-drag:none;pointer-events:auto;will-change:transform;touch-action:none}
 
-.inline-img{max-width:100%;max-height:200px;width:auto;height:auto;object-fit:cover;border-radius:12px;margin-top:4px;display:block;cursor:zoom-in;border:1px solid rgba(255,255,255,0.12)}
+/* 🖼️ チャット内インライン画像（角丸なし） */
+.inline-img{max-width:100%;max-height:200px;width:auto;height:auto;object-fit:cover;border-radius:0!important;margin-top:2px;display:block;cursor:zoom-in;border:1px solid rgba(255,255,255,0.12)}
 .clrpick-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .clrc2{aspect-ratio:1;width:100%;max-width:28px;border-radius:50%;margin:0 auto;border:2px solid transparent}
 .clrc2.sel{border-color:var(--tx)!important;transform:scale(1.2)}
 
-.media-link-container{margin-top:6px;background:rgba(11,16,28,0.6);border:1px solid var(--bd);border-radius:8px;padding:6px 10px;display:inline-flex;flex-direction:column;gap:5px;max-width:100%}
+.media-link-container{margin-top:6px;background:rgba(11,16,28,0.6);border:1px solid var(--bd);border-radius:0!important;padding:6px 10px;display:inline-flex;flex-direction:column;gap:5px;max-width:100%}
 .media-inline-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.media-badge{font-size:9.5px;font-weight:900;color:#fff;padding:2px 6px;letter-spacing:0.5px;border-radius:4px}
-.open-player-btn{font-size:11px;font-weight:800;color:#cbd5e1;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);padding:4px 10px;border-radius:6px;text-decoration:none;display:inline-flex;align-items:center}
+.media-badge{font-size:9.5px;font-weight:900;color:#fff;padding:2px 6px;letter-spacing:0.5px;border-radius:0!important}
+.open-player-btn{font-size:11px;font-weight:800;color:#cbd5e1;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);padding:4px 10px;border-radius:0!important;text-decoration:none;display:inline-flex;align-items:center}
 
 #toastContainer{position:fixed;bottom:68px;left:50%;transform:translateX(-50%) translateY(10px);background:rgba(15,23,42,0.96);backdrop-filter:blur(6px);border:1px solid var(--bd);color:var(--tx);padding:7px 16px;border-radius:20px;font-size:12px;font-weight:bold;z-index:10000;box-shadow:0 4px 14px rgba(0,0,0,0.5);pointer-events:none;opacity:0;display:none}
 #toastContainer.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -342,10 +333,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 
     <div id="chatScreen">
       <div id="callBar">
-        <div class="call-badge">
-          <span class="call-dot"></span>
-          <span id="callStatusText">📞 通話接続中...</span>
-        </div>
+        <div class="call-badge"><span class="call-dot"></span><span id="callStatusText">📞 通話接続中...</span></div>
         <div style="display:flex;gap:5px;align-items:center;" id="callControlButtons">
           <button class="call-btn" id="callMicBtn">🎤 マイクON</button>
           <button class="call-btn" id="callModeSwitchBtn">🎧 聞くだけへ</button>
@@ -364,9 +352,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
         <div id="playerContent"></div>
       </div>
 
-      <div id="tl" role="log" aria-live="polite">
-        <div id="tl-inner"></div>
-      </div>
+      <div id="tl" role="log" aria-live="polite"><div id="tl-inner"></div></div>
 
       <div id="ibTopBar" style="background:var(--sf);border-top:1px solid var(--bd);padding:6px 10px;display:flex;align-items:center;justify-content:space-between;gap:6px;flex-shrink:0;">
         <div style="display:flex;align-items:center;gap:6px;height:32px;">
@@ -405,7 +391,6 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
         <div id="ibToolbar">
           <input type="file" id="imgFileInput" accept="image/*" style="display:none;">
           <button class="bsd" id="imgUploadBtn" aria-label="画像添付" title="画像を添付">📷</button>
-
           <div class="mi-container">
             <textarea id="mi" rows="1" placeholder="メッセージを入力 (Enterで送信)" maxlength="500"></textarea>
             <button class="bclrm" id="clrMsgBtn" title="クリア">×</button>
@@ -426,16 +411,12 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
           <input type="text" id="lobbyName" class="inp" placeholder="名前を入力..." maxlength="10" autocomplete="off">
           <div class="val-warning" id="nameWarning">名前を入力してください<br>（必須・覗き見時は不要）</div>
         </div>
-        
         <div class="acc-item" style="border-bottom:none;padding-bottom:0;">
           <div class="acc-hdr" onclick="toggleAcc('lobbyColorAcc')" style="font-size:10px;font-weight:bold;color:var(--mu);padding:0 0 4px 0;border-bottom:1px solid rgba(255,255,255,0.03);">
             🎨 表示カラー設定を開く <span class="acc-icon">▶</span>
           </div>
-          <div class="acc-bdy" id="lobbyColorAcc">
-            <div class="clrpick-grid" id="lobbyColorGrid"></div>
-          </div>
+          <div class="acc-bdy" id="lobbyColorAcc"><div class="clrpick-grid" id="lobbyColorGrid"></div></div>
         </div>
-
         <div id="lobbyTripContainer">
           <div id="lobbyTripPrev"></div>
           <button class="btn" id="btnCopyTrip" style="background:#334155;color:#fff;font-size:11px;height:28px;width:80px;font-weight:bold;flex-shrink:0;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">📋 コピー</button>
@@ -445,7 +426,6 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
       <div class="lobby-sec">
         <h2>🔑 部屋作成 / パスワード入室</h2>
         <button class="btn" id="btnGen" style="width:100%;background:linear-gradient(135deg,#334155,#1e293b);color:#fff;font-weight:bold;font-size:12px;height:36px;border-radius:6px;box-shadow:0 3px 10px rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);">🎲 部屋IDとパスワードを自動生成する</button>
-
         <div class="grid-2col">
           <div class="lobby-row">
             <label for="lobbyRoomId">部屋ID (全角20文字まで)</label>
@@ -458,7 +438,6 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
             <div class="val-warning" id="roomPassWarning">パスワードを入力してください<br>（必須）</div>
           </div>
         </div>
-
         <div style="margin-top:4px;">
           <button class="btn" id="btnJoin" style="width:100%;background:#334155;color:#fff;font-size:13px;font-weight:bold;height:38px;border-radius:6px;box-shadow:0 3px 10px rgba(0,0,0,0.3);" disabled>🔐 認証・トリップ確定中...</button>
         </div>
@@ -491,100 +470,69 @@ const SKYWAY_SECRET_KEY_B64 = "JoAgxrroO7FX2TckM1ftfCoGL4I6J44jLalRi+WTTGk=";
 function generateUuidV4() {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
+    const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
   });
 }
-
 function base64UrlEncode(str) { return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
 function bufferToBase64Url(buffer) {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
+  const bytes = new Uint8Array(buffer); let binary = '';
   for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
   return base64UrlEncode(binary);
 }
-
 function packInviteToken(roomId, roomPass) {
   try {
-    const payload = `${roomId}\0${roomPass}`;
-    const bytes = new TextEncoder().encode(payload);
+    const payload = `${roomId}\0${roomPass}`, bytes = new TextEncoder().encode(payload);
     for (let i = 0; i < bytes.length; i++) bytes[i] ^= (0x5A ^ (i % 7));
     return bufferToBase64Url(bytes.buffer);
   } catch (e) { return ""; }
 }
-
 function unpackInviteToken(token) {
   try {
     let b64 = token.replace(/-/g, '+').replace(/_/g, '/');
     while (b64.length % 4) b64 += '=';
-    const binary = atob(b64);
-    const bytes = new Uint8Array(binary.length);
+    const binary = atob(b64), bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i) ^ (0x5A ^ (i % 7));
-    const decoded = new TextDecoder().decode(bytes);
-    const parts = decoded.split('\0');
+    const parts = new TextDecoder().decode(bytes).split('\0');
     if (parts.length >= 2) return { roomId: parts[0], roomPass: parts[1] };
   } catch (e) {}
   return null;
 }
-
 async function generateSkyWayToken() {
   try {
-    const header = { typ: "JWT", alg: "HS256" };
     const now = Math.floor(Date.now() / 1000);
+    const header = { typ: "JWT", alg: "HS256" };
     const payload = {
       jti: generateUuidV4(), iat: now, exp: now + 86400, version: 3,
-      scope: {
-        appId: SKYWAY_APP_ID,
-        rooms: [{ name: "*", methods: ["create", "close", "updateMetadata"], member: { name: "*", methods: ["publish", "subscribe", "updateMetadata"] }, sfu: { enabled: true } }]
-      }
+      scope: { appId: SKYWAY_APP_ID, rooms: [{ name: "*", methods: ["create", "close", "updateMetadata"], member: { name: "*", methods: ["publish", "subscribe", "updateMetadata"] }, sfu: { enabled: true } }] }
     };
-    const sHeader = base64UrlEncode(JSON.stringify(header));
-    const sPayload = base64UrlEncode(JSON.stringify(payload));
-    const dataToSign = `${sHeader}.${sPayload}`;
-    const binStr = atob(SKYWAY_SECRET_KEY_B64);
-    const keyBytes = new Uint8Array(binStr.length);
+    const dataToSign = `${base64UrlEncode(JSON.stringify(header))}.${base64UrlEncode(JSON.stringify(payload))}`;
+    const binStr = atob(SKYWAY_SECRET_KEY_B64), keyBytes = new Uint8Array(binStr.length);
     for (let i = 0; i < binStr.length; i++) keyBytes[i] = binStr.charCodeAt(i);
     const key = await crypto.subtle.importKey("raw", keyBytes, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
     const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(dataToSign));
     return `${dataToSign}.${bufferToBase64Url(signature)}`;
-  } catch (err) {
-    console.error("SkyWay Token error:", err);
-    return null;
-  }
+  } catch (err) { return null; }
 }
-
 function showToast(msg, duration = 2500) {
-  const t = document.getElementById("toastContainer");
-  if (!t) return;
-  t.textContent = msg;
-  t.style.display = "inline-flex";
-  requestAnimationFrame(() => t.classList.add("show"));
-  setTimeout(() => {
-    t.classList.remove("show");
-    setTimeout(() => { t.style.display = "none"; }, 150);
-  }, duration);
+  const t = document.getElementById("toastContainer"); if (!t) return;
+  t.textContent = msg; t.style.display = "inline-flex"; requestAnimationFrame(() => t.classList.add("show"));
+  setTimeout(() => { t.classList.remove("show"); setTimeout(() => { t.style.display = "none"; }, 150); }, duration);
 }
-
 function toggleAcc(id) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  const isShow = el.classList.toggle('show');
-  el.previousElementSibling.querySelector('.acc-icon').textContent = isShow ? '▼' : '▶';
+  const el = document.getElementById(id); if (!el) return;
+  const isShow = el.classList.toggle('show'); el.previousElementSibling.querySelector('.acc-icon').textContent = isShow ? '▼' : '▶';
 }
 
 (function() {
  try {
   const MAX_CHAT_LOGS = 100;
-  function safeLS_get(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
-  function safeLS_set(key, val) { try { localStorage.setItem(key, val); } catch (e) {} }
-  function safeLS_remove(key) { try { localStorage.removeItem(key); } catch (e) {} }
+  function safeLS_get(k) { try { return localStorage.getItem(k); } catch(e){ return null; } }
+  function safeLS_set(k, v) { try { localStorage.setItem(k, v); } catch(e){} }
+  function safeLS_remove(k) { try { localStorage.removeItem(k); } catch(e){} }
   const safeLS = { get: safeLS_get, set: safeLS_set, remove: safeLS_remove };
 
-  let myUid = safeLS.get("nz_cached_uid") || "";
-  let myTrip = safeLS.get("nz_cached_trip") || "";
-  let isAuthAndTripReady = false;
-  let authReadyPromise = null;
-
+  let myUid = safeLS.get("nz_cached_uid") || "", myTrip = safeLS.get("nz_cached_trip") || "";
+  let isAuthAndTripReady = false, authReadyPromise = null;
   const tabSyncId = "tab_" + Math.random().toString(36).substring(2, 9);
   const tabChannel = (typeof BroadcastChannel !== "undefined") ? new BroadcastChannel("nezuo_tab_sync") : null;
   function broadcastTabSync(action, payload = {}) {
@@ -597,12 +545,11 @@ function toggleAcc(id) {
   (function parseInviteHash() {
     try {
       const hash = window.location.hash ? window.location.hash.substring(1) : "";
-      if (!hash) return;
-      if (hash.startsWith("inv/")) {
+      if (hash && hash.startsWith("inv/")) {
         const unpacked = unpackInviteToken(hash.substring(4));
         if (unpacked) { inviteRoomId = unpacked.roomId; inviteRoomPass = unpacked.roomPass; }
       }
-    } catch (e) {}
+    } catch(e){}
   })();
 
   const firebaseConfig = {
@@ -614,100 +561,61 @@ function toggleAcc(id) {
     messagingSenderId: "154725381397",
     appId: "1:154725381397:web:8742ccd957e20cee8ce51c"
   };
-
   firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
-  const auth = firebase.auth();
+  const db = firebase.database(), auth = firebase.auth();
 
   function ensureAnonAuth() {
     if (auth.currentUser && auth.currentUser.uid) {
-      myUid = auth.currentUser.uid;
-      safeLS.set("nz_cached_uid", myUid);
+      myUid = auth.currentUser.uid; safeLS.set("nz_cached_uid", myUid);
       return Promise.resolve(auth.currentUser);
     }
     if (authReadyPromise) return authReadyPromise;
-
     authReadyPromise = new Promise((resolve, reject) => {
       let resolved = false;
       const unsubscribe = auth.onAuthStateChanged(async (user) => {
         if (user && user.uid) {
-          myUid = user.uid;
-          safeLS.set("nz_cached_uid", myUid);
+          myUid = user.uid; safeLS.set("nz_cached_uid", myUid);
           if (!resolved) { resolved = true; unsubscribe(); authReadyPromise = null; resolve(user); }
         } else if (!resolved) {
           try {
             const cred = await auth.signInAnonymously();
             if (cred && cred.user) {
-              myUid = cred.user.uid;
-              safeLS.set("nz_cached_uid", myUid);
+              myUid = cred.user.uid; safeLS.set("nz_cached_uid", myUid);
               resolved = true; unsubscribe(); authReadyPromise = null; resolve(cred.user);
             }
-          } catch (err) { resolved = true; unsubscribe(); authReadyPromise = null; reject(err); }
+          } catch(err) { resolved = true; unsubscribe(); authReadyPromise = null; reject(err); }
         }
-      }, (error) => {
-        if (!resolved) { resolved = true; authReadyPromise = null; reject(error); }
-      });
+      }, (error) => { if (!resolved) { resolved = true; authReadyPromise = null; reject(error); } });
       setTimeout(() => { if (!resolved) { resolved = true; unsubscribe(); authReadyPromise = null; reject(new Error("auth_timeout")); } }, 5000);
     });
     return authReadyPromise;
   }
 
   auth.onAuthStateChanged((user) => {
-    if (user && user.uid) {
-      myUid = user.uid;
-      safeLS.set("nz_cached_uid", myUid);
-      syncProfileValues();
-    }
+    if (user && user.uid) { myUid = user.uid; safeLS.set("nz_cached_uid", myUid); syncProfileValues(); }
   });
 
   const $ = id => document.getElementById(id);
-  let D = {};
-  let myPresenceRef = null;
-  let hasEnteredLogged = false;
-
-  let myName = safeLS.get("nz_ni") || "";
-  let curColor = safeLS.get("nz_color") || "#f1f5f9";
-  let tmpColor = curColor;
-  let currentRoomId = "", currentRoomPass = "", isJoined = false;
-  let isLurking = false;
-  let activeKey = null;
+  let D = {}, myPresenceRef = null, hasEnteredLogged = false;
+  let myName = safeLS.get("nz_ni") || "", curColor = safeLS.get("nz_color") || "#f1f5f9", tmpColor = curColor;
+  let currentRoomId = "", currentRoomPass = "", isJoined = false, isLurking = false, activeKey = null;
   const unreadMsgIds = new Set();
   let serverTimeOffset = 0, isOffsetLoaded = false;
-  
-  const displayedMsgIds = new Set();
-  const processingMsgIds = new Set();
-  const pendingSendMap = new Map();
-  const decodedPayloadCache = new Map();
-  const tripUidCache = new Map();
-
+  const displayedMsgIds = new Set(), processingMsgIds = new Set(), pendingSendMap = new Map();
+  const decodedPayloadCache = new Map(), tripUidCache = new Map();
   let isFirstLoad = true, isFirebaseListenersBound = false;
 
-  /* 🖼️ Google画像検索風 ズームステート */
   let zoomState = {
-    scale: 1, posX: 0, posY: 0,
-    isPinching: false, isDragging: false,
-    startX: 0, startY: 0,
-    initialDist: 0, initialScale: 1,
-    initialPosX: 0, initialPosY: 0,
-    focalX: 0, focalY: 0,
-    lastSingleTouchTime: 0,
-    lastPinchEndTime: 0,
-    hasMoved: false
+    scale: 1, posX: 0, posY: 0, isPinching: false, isDragging: false,
+    startX: 0, startY: 0, initialDist: 0, initialScale: 1, initialPosX: 0, initialPosY: 0,
+    focalX: 0, focalY: 0, lastSingleTouchTime: 0, lastPinchEndTime: 0, hasMoved: false
   };
-  
-  let rawPresenceMap = {};
-  let currentPresenceMap = {}, isConnectedBound = false;
-  let lastSyncAt = 0;
+  let rawPresenceMap = {}, currentPresenceMap = {}, isConnectedBound = false, lastSyncAt = 0;
   let roomSettings = { newEntriesDisabled: false, approvedTrips: {}, approvedUids: {}, creatorUid: "" };
-  let localLastClearedTime = 0;
-  let latestDisplayedTs = 0;
-  let pendingImageBase64 = null;
-
+  let localLastClearedTime = 0, latestDisplayedTs = 0, pendingImageBase64 = null;
   let autoExitMinutes = parseInt(safeLS.get("nz_auto_exit_minutes") || "30", 10);
   if (isNaN(autoExitMinutes) || autoExitMinutes <= 0) autoExitMinutes = 30;
-  let AUTO_EXIT_MS = autoExitMinutes * 60 * 1000;
-  let myLastActiveTs = 0;
-  let isExecutingAutoExit = false;
+  let AUTO_EXIT_MS = autoExitMinutes * 60 * 1000, myLastActiveTs = 0, isExecutingAutoExit = false;
 
   let skywayContext = null, skywayRoom = null, localSkyWayMember = null;
   let localAudioStream = null, localAudioPublication = null;
@@ -734,9 +642,8 @@ function toggleAcc(id) {
         const passData = _txtEnc.encode(passcode.normalize('NFKC'));
         const hash = await crypto.subtle.digest("SHA-256", passData);
         const key = await crypto.subtle.importKey("raw", hash, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
-        this.keyCache.set(passcode, key);
-        return key;
-      } catch (e) { return null; }
+        this.keyCache.set(passcode, key); return key;
+      } catch(e){ return null; }
     },
     async encrypt(text, key) {
       if (!text) return "";
@@ -747,7 +654,7 @@ function toggleAcc(id) {
         const combined = new Uint8Array(12 + encrypted.byteLength);
         combined.set(iv); combined.set(new Uint8Array(encrypted), 12);
         return btoa(String.fromCharCode.apply(null, combined));
-      } catch (e) { return "[PLAIN]::" + text; }
+      } catch(e){ return "[PLAIN]::" + text; }
     },
     async decrypt(base64Text, key) {
       if (!base64Text) return "";
@@ -755,52 +662,40 @@ function toggleAcc(id) {
       if (!key || !this.hasCrypto) return base64Text;
       let combined;
       try {
-        const binary = atob(base64Text);
-        combined = new Uint8Array(binary.length);
+        const binary = atob(base64Text); combined = new Uint8Array(binary.length);
         for (let i = 0; i < binary.length; i++) combined[i] = binary.charCodeAt(i);
-      } catch (e) { return base64Text; }
+      } catch(e){ return base64Text; }
       if (combined.length < 28) return base64Text;
       try {
-        const iv = combined.slice(0, 12);
-        const ciphertext = combined.slice(12);
+        const iv = combined.slice(0, 12), ciphertext = combined.slice(12);
         const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, key, ciphertext);
         return _txtDec.decode(decrypted);
-      } catch (e) { return base64Text; }
+      } catch(e){ return base64Text; }
     }
   };
 
   async function encodeMsgPayload(name, trip, msg) { return E2EE.encrypt(JSON.stringify({ n: name, p: trip, m: msg }), activeKey); }
-
   async function decodeMsgPayload(m) {
     if (!m) return m;
     let authenticTrip = "";
     if (m.u && m.u !== "system") {
-      if (tripUidCache.has(m.u)) {
-        authenticTrip = tripUidCache.get(m.u);
-      } else {
-        authenticTrip = await window.makeTripFromUid(m.u);
-        tripUidCache.set(m.u, authenticTrip);
-      }
+      if (tripUidCache.has(m.u)) authenticTrip = tripUidCache.get(m.u);
+      else { authenticTrip = await window.makeTripFromUid(m.u); tripUidCache.set(m.u, authenticTrip); }
     }
     if (m.d !== undefined) {
       if (decodedPayloadCache.has(m.d)) {
-        const p = decodedPayloadCache.get(m.d);
-        m.n = p.n; m.p = authenticTrip; m.m = p.m;
-        return m;
+        const p = decodedPayloadCache.get(m.d); m.n = p.n; m.p = authenticTrip; m.m = p.m; return m;
       }
       try {
-        const raw = await E2EE.decrypt(m.d, activeKey);
-        const parsed = JSON.parse(raw);
+        const parsed = JSON.parse(await E2EE.decrypt(m.d, activeKey));
         m.n = parsed.n || ""; m.p = authenticTrip; m.m = parsed.m || "";
         decodedPayloadCache.set(m.d, { n: m.n, p: m.p, m: m.m });
-      } catch (e) { m.n = m.u === "system" ? "システム" : "不明"; m.p = ""; m.m = "[復号エラー]"; }
+      } catch(e){ m.n = m.u === "system" ? "システム" : "不明"; m.p = ""; m.m = "[復号エラー]"; }
     } else {
       try {
-        m.m = await E2EE.decrypt(m.m, activeKey);
-        m.n = await E2EE.decrypt(m.n, activeKey);
-        m.p = authenticTrip;
+        m.m = await E2EE.decrypt(m.m, activeKey); m.n = await E2EE.decrypt(m.n, activeKey); m.p = authenticTrip;
         if (typeof m.m === "string" && m.m.startsWith("[SYS]::")) m.m = m.m.substring(7);
-      } catch (e) { m.n = m.u === "system" ? "システム" : "不明"; m.p = ""; m.m = "[復号エラー]"; }
+      } catch(e){ m.n = m.u === "system" ? "システム" : "不明"; m.p = ""; m.m = "[復号エラー]"; }
     }
     return m;
   }
@@ -811,55 +706,41 @@ function toggleAcc(id) {
     {v:"#f59e0b",n:"アンバー"},{v:"#fb923c",n:"オレンジ"},{v:"#f87171",n:"レッド"},{v:"#f43f5e",n:"ローズ"},
     {v:"#f472b6",n:"ピンク"},{v:"#c084fc",n:"ライトパープル"},{v:"#a855f7",n:"パープル"},{v:"#818cf8",n:"インディゴ"}
   ];
-
   const renderedMwNodes = new Map();
   const setGlobalColor = c => document.documentElement.style.setProperty("--usr-color", c);
   setGlobalColor(curColor);
 
   const getTrueTime = () => { const t = Date.now() + serverTimeOffset; return isNaN(t) ? Date.now() : t; };
-  const getMsgTime = (m) => {
-    if (m && m.t) {
-      if (typeof m.t === "number") return m.t;
-      const parsed = parseInt(m.t, 10);
-      return isNaN(parsed) ? getTrueTime() : parsed;
-    }
-    return getTrueTime();
-  };
+  const getMsgTime = (m) => (m && m.t ? (typeof m.t === "number" ? m.t : (parseInt(m.t,10) || getTrueTime())) : getTrueTime());
   const escapeHtml = str => typeof str !== "string" ? "" : str.replace(/[&<>'"]/g, t => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[t] || t));
 
+  /* ⏱️ 時刻フォーマット（西暦から秒まで完全表示） */
   const fDT = (ts) => {
-    if (!ts || typeof ts !== "number") return "--:--";
-    const d = new Date(ts);
-    if (isNaN(d.getTime())) return "--:--";
+    if (!ts || typeof ts !== "number") return "--/--/--(--) --:--:--";
+    const d = new Date(ts); if (isNaN(d.getTime())) return "--/--/--(--) --:--:--";
     const pad = n => String(n).padStart(2, "0");
-    return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())}(${["日", "月", "火", "水", "木", "金", "土"][d.getDay()]}) ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
   };
 
   window.sha256 = async (str) => {
     if (E2EE.hasCrypto) {
       try {
-        const buf = _txtEnc.encode(str);
-        const hash = await window.crypto.subtle.digest("SHA-256", buf);
+        const hash = await window.crypto.subtle.digest("SHA-256", _txtEnc.encode(str));
         return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
-      } catch (e) {}
+      } catch(e){}
     }
     let h1 = 0x811c9dc5, h2 = 0xcbf29ce4;
     for (let i = 0; i < str.length; i++) {
-      h1 = Math.imul(h1 ^ str.charCodeAt(i), 0x01000193);
-      h2 = Math.imul(h2 ^ str.charCodeAt(i), 0x01000193);
+      h1 = Math.imul(h1 ^ str.charCodeAt(i), 0x01000193); h2 = Math.imul(h2 ^ str.charCodeAt(i), 0x01000193);
     }
     return (h1 >>> 0).toString(16).padStart(8, '0') + (h2 >>> 0).toString(16).padStart(8, '0');
   };
 
   window.makeTripFromUid = async (uid) => {
     if (!uid) return "";
-    const hex = await window.sha256(uid);
-    const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    const hex = await window.sha256(uid), chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     let tripStr = "";
-    for (let i = 0; i < 6; i++) {
-      const byte = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
-      tripStr += chars[byte % 62];
-    }
+    for (let i = 0; i < 6; i++) tripStr += chars[parseInt(hex.substring(i*2, i*2+2), 16) % 62];
     return "◆" + tripStr;
   };
 
@@ -874,10 +755,8 @@ function toggleAcc(id) {
             if (w > h) { h = Math.round((h * maxWidth) / w); w = maxWidth; }
             else { w = Math.round((w * maxHeight) / h); h = maxHeight; }
           }
-          const canvas = document.createElement("canvas");
-          canvas.width = w; canvas.height = h;
-          const ctx = canvas.getContext("2d");
-          ctx.drawImage(img, 0, 0, w, h);
+          const canvas = document.createElement("canvas"); canvas.width = w; canvas.height = h;
+          canvas.getContext("2d").drawImage(img, 0, 0, w, h);
           resolve(canvas.toDataURL("image/jpeg", quality));
         };
         img.onerror = reject; img.src = e.target.result;
@@ -888,58 +767,41 @@ function toggleAcc(id) {
 
   function renderMessageBody(text) {
     if (!text) return "";
-    const parts = [];
-    let lastIdx = 0;
-    const regex = /(https?:\/\/[^\s\n<>"]+|data:image\/[a-zA-Z]+;base64,[A-Za-z0-9+/=]+)/gi;
-    let match;
-    while ((match = regex.exec(text)) !== null) {
-      if (match.index > lastIdx) parts.push(escapeHtml(text.substring(lastIdx, match.index)));
-      const url = match[0];
-      const isBase64Img = url.startsWith("data:image/");
-      const isImgUrl = /\.(jpeg|jpg|gif|png|webp)($|\?)/i.test(url);
-      const isYtLive = /youtube\.com\/live\/([a-zA-Z0-9_-]+)/i.test(url);
-      const isYtShorts = /youtube\.com\/shorts\/([a-zA-Z0-9_-]+)/i.test(url);
-      const isYtVideo = !isYtLive && !isYtShorts && /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))/i.test(url);
-      const isTiktok = /(?:tiktok\.com|vt\.tiktok\.com|vm\.tiktok\.com)/i.test(url);
-      const isInsta = /instagram\.com\/(?:p|reel|tv)/i.test(url);
+    const reg = /(https?:\/\/[^\s\n<>"]+|data:image\/[a-zA-Z]+;base64,[A-Za-z0-9+/=]+)/gi;
+    return text.split(reg).map((part, i) => {
+      if (i % 2 === 0) return escapeHtml(part);
+      const url = part;
+      if (url.startsWith("data:image/") || /\.(jpeg|jpg|gif|png|webp)($|\?)/i.test(url)) {
+        const s = escapeHtml(url);
+        return `<div style="margin-top:2px;"><img class="inline-img safe-img-click" src="${s}" data-url="${s}" alt="画像" loading="lazy"></div>`;
+      }
+      const cUrl = escapeHtml(url);
+      const isYtL = /youtube\.com\/live\/([a-zA-Z0-9_-]+)/i.test(url);
+      const isYtS = /youtube\.com\/shorts\/([a-zA-Z0-9_-]+)/i.test(url);
+      const isYtV = !isYtL && !isYtS && /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))/i.test(url);
       const isNico = /(?:nicovideo\.jp\/watch\/|nico\.ms\/)(sm\d+|so\d+|nm\d+|1\d+)/i.test(url);
       const isAudio = /\.(mp3|wav|ogg|m4a|aac)($|\?)/i.test(url);
+      const isTiktok = /(?:tiktok\.com|vt\.tiktok\.com|vm\.tiktok\.com)/i.test(url);
+      const isInsta = /instagram\.com\/(?:p|reel|tv)/i.test(url);
 
-      if (isBase64Img || isImgUrl) {
-        const srcVal = isBase64Img ? url : escapeHtml(url);
-        parts.push(`<div style="margin-top:2px;"><img class="inline-img safe-img-click" src="${srcVal}" data-url="${srcVal}" alt="画像" loading="lazy"></div>`);
-      } else if (isYtLive) {
-        const cUrl = escapeHtml(url);
-        parts.push(`<div class="media-link-container"><div class="media-inline-row"><span class="media-badge" style="background:#e11d48;">YouTube Live</span><a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="font-size:11.5px;word-break:break-all;">${cUrl}</a><button class="open-player-btn safe-player-click" data-url="${cUrl}" data-type="youtube-live">▶ 再生</button></div></div>`);
-      } else if (isYtShorts) {
-        const cUrl = escapeHtml(url);
-        parts.push(`<div class="media-link-container"><div class="media-inline-row"><span class="media-badge" style="background:#e11d48;">Shorts</span><a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="font-size:11.5px;word-break:break-all;">${cUrl}</a><button class="open-player-btn safe-player-click" data-url="${cUrl}" data-type="yt-shorts">▶ 再生</button></div></div>`);
-      } else if (isYtVideo) {
-        const cUrl = escapeHtml(url);
-        parts.push(`<div class="media-link-container"><div class="media-inline-row"><span class="media-badge" style="background:#e11d48;">YouTube</span><a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="font-size:11.5px;word-break:break-all;">${cUrl}</a><button class="open-player-btn safe-player-click" data-url="${cUrl}" data-type="youtube">▶ 再生</button></div></div>`);
-      } else if (isNico) {
-        const cUrl = escapeHtml(url);
-        parts.push(`<div class="media-link-container"><div class="media-inline-row"><span class="media-badge" style="background:#0284c7;">ニコニコ動画</span><a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="font-size:11.5px;word-break:break-all;">${cUrl}</a><button class="open-player-btn safe-player-click" data-url="${cUrl}" data-type="niconico">▶ 再生</button></div></div>`);
-      } else if (isTiktok) {
-        const cUrl = escapeHtml(url);
-        parts.push(`<div class="media-link-container"><div class="media-inline-row"><span class="media-badge" style="background:#010101;border:1px solid #334155;">TikTok</span><a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="font-size:11.5px;word-break:break-all;">${cUrl}</a><a class="open-player-btn" href="${cUrl}" target="_blank" rel="noopener noreferrer">↗ 開く</a></div></div>`);
-      } else if (isInsta) {
-        const cUrl = escapeHtml(url);
-        parts.push(`<div class="media-link-container"><div class="media-inline-row"><span class="media-badge" style="background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);">Instagram</span><a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="font-size:11.5px;word-break:break-all;">${cUrl}</a><a class="open-player-btn" href="${cUrl}" target="_blank" rel="noopener noreferrer">↗ 開く</a></div></div>`);
-      } else if (isAudio) {
-        const cUrl = escapeHtml(url);
-        parts.push(`<div class="media-link-container"><div class="media-inline-row"><span class="media-badge" style="background:#10b981;">Audio</span><a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="font-size:11.5px;word-break:break-all;">${cUrl}</a><button class="open-player-btn safe-player-click" data-url="${cUrl}" data-type="audio">🎵 再生</button></div></div>`);
-      } else {
-        const cUrl = escapeHtml(url);
-        parts.push(`<a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="word-break:break-all;">${cUrl}</a>`);
+      if (isYtL || isYtS || isYtV || isNico || isAudio) {
+        let b = "YouTube", type = "youtube", bg = "#e11d48";
+        if (isYtL) { b = "YouTube Live"; type = "youtube-live"; }
+        else if (isYtS) { b = "Shorts"; type = "yt-shorts"; }
+        else if (isNico) { b = "ニコニコ動画"; type = "niconico"; bg = "#0284c7"; }
+        else if (isAudio) { b = "Audio"; type = "audio"; bg = "#10b981"; }
+        return `<div class="media-link-container"><div class="media-inline-row"><span class="media-badge" style="background:${bg};">${b}</span><a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="font-size:11.5px;word-break:break-all;">${cUrl}</a><button class="open-player-btn safe-player-click" data-url="${cUrl}" data-type="${type}">▶ 再生</button></div></div>`;
       }
-      lastIdx = regex.lastIndex;
-    }
-    if (lastIdx < text.length) parts.push(escapeHtml(text.substring(lastIdx)));
-    return parts.join("");
+      if (isTiktok || isInsta) {
+        const b = isTiktok ? "TikTok" : "Instagram";
+        const bg = isTiktok ? "#010101" : "linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)";
+        return `<div class="media-link-container"><div class="media-inline-row"><span class="media-badge" style="background:${bg};">${b}</span><a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="font-size:11.5px;word-break:break-all;">${cUrl}</a><a class="open-player-btn" href="${cUrl}" target="_blank" rel="noopener noreferrer">↗ 開く</a></div></div>`;
+      }
+      return `<a href="${cUrl}" target="_blank" rel="noopener noreferrer" style="word-break:break-all;">${cUrl}</a>`;
+    }).join("");
   }
 
-  /* 💬 LINE風メッセージノード生成（自分＝右、相手＝左、横に時刻） */
+  /* 💬 LINE風メッセージノード生成（自分も相手も名前・トリップを表示） */
   function cMsg(m, isPending = false) {
     const isSys = (m.u === "system" || m.sys);
     const ts = getMsgTime(m);
@@ -956,12 +818,11 @@ function toggleAcc(id) {
     mw.className = `mw ${isMine ? "my-msg" : "other-msg"}`;
     mw.dataset.mid = m.id; mw.dataset.ts = ts;
 
-    if (!isMine) {
-      const header = document.createElement("div");
-      header.className = "sender-header";
-      header.innerHTML = `<span class="sender-name" style="color:${escapeHtml(m.c || '#f1f5f9')};">${escapeHtml(m.n || '名無し')}</span><span class="sender-trip">${escapeHtml(m.p || '')}</span>`;
-      mw.appendChild(header);
-    }
+    // 👤 自分も相手も名前とトリップを表示
+    const header = document.createElement("div");
+    header.className = "sender-header";
+    header.innerHTML = `<span class="sender-name" style="color:${escapeHtml(m.c || '#f1f5f9')};">${escapeHtml(m.n || '名無し')}</span><span class="sender-trip">${escapeHtml(m.p || '')}</span>`;
+    mw.appendChild(header);
 
     const bubbleRow = document.createElement("div");
     bubbleRow.className = "bubble-row";
@@ -2439,7 +2300,7 @@ function toggleAcc(id) {
 
     if (D.imgPreviewCancelBtn) D.imgPreviewCancelBtn.addEventListener("click", (e) => { e.preventDefault(); resetImagePreview(); });
 
-    /* 🖼️ Google画像検索風 境界ストッパー＆画像外タップで即クローズ */
+    /* 🖼️ Google画像検索風 境界ストッパー＆画像外タップで即クローズ（角丸なし） */
     if (D.zoomViewport && D.imgViewSrc) {
       D.zoomViewport.addEventListener("click", (e) => {
         if (zoomState.hasMoved) { zoomState.hasMoved = false; return; }

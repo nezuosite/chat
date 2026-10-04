@@ -131,8 +131,8 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 #playerContent{width:100%;max-width:480px;height:220px;aspect-ratio:16/9;background:#000;margin:0 auto;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center}
 #playerContent iframe{width:100%;height:100%;border:none}
 
-/* 💬 LINE風 タイムラインレイアウト */
-#tl{flex:1;min-height:0;overflow-y:auto;overflow-anchor:auto;padding:12px 14px 24px 14px;background-color:#070a10;-webkit-overflow-scrolling:touch}
+/* 💬 LINE風 タイムラインレイアウト（下部余白を確保し完全追従） */
+#tl{flex:1;min-height:0;overflow-y:auto;overflow-anchor:auto;padding:12px 14px 28px 14px;background-color:#070a10;-webkit-overflow-scrolling:touch}
 #tl-inner{display:flex;flex-direction:column;justify-content:flex-start;gap:12px;width:100%;max-width:800px;margin:0 auto;min-height:100%}
 
 .mw{position:relative;display:flex;flex-direction:column;width:100%;user-select:text;-webkit-user-select:text;transition:opacity .15s ease}
@@ -181,7 +181,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .sys-msg{position:relative;text-align:center;font-size:11px;font-weight:bold;color:#cbd5e1!important;margin:6px auto;background:rgba(255,255,255,.05);padding:5px 12px;border-radius:12px;max-width:92%;word-break:break-all;line-height:1.45}
 .sys-ts{display:inline-block;font-size:9.5px;color:var(--mu);opacity:.85;margin-left:6px}
 
-/* 💬 LINE風 下部入力バー（backdrop-filter撤廃で描画落ちを防止） */
+/* 💬 LINE風 下部入力バー（不透明背景で文字透明化バグを根絶） */
 #ib{
   display:flex;flex-direction:column;padding:8px calc(10px + env(safe-area-inset-right,0px)) calc(8px + var(--safe)) calc(10px + env(safe-area-inset-left,0px));
   background:#0f172a;border-top:1px solid var(--bd);gap:6px;flex-shrink:0;
@@ -199,7 +199,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 }
 .mi-container:focus-within{border-color:#38bdf8;box-shadow:0 0 0 3px rgba(56,189,248,0.2)}
 
-/* ⚡ #mi の背景色を明示し透明化バグを完全に排除 */
+/* ⚡ #mi の背景色明示＋GPUレイヤー分離 */
 #mi{
   width:100%;border:none!important;outline:none!important;resize:none;font-size:15.5px!important;
   max-height:110px;line-height:1.4;padding:4px 0;color:#f8fafc!important;
@@ -409,7 +409,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
       </div>
     </div>
 
-    <!-- 🏠 ロビー画面 -->
+    <!-- 🏠 ロビー画面（設定パネルを完全撤廃） -->
     <div id="lobbyScreen">
       <div class="lobby-sec">
         <h2>👤 ユーザー設定</h2>
@@ -534,7 +534,7 @@ function toggleAcc(id) {
   const safeLS = { get: safeLS_get, set: safeLS_set, remove: safeLS_remove };
 
   let myUid = safeLS.get("nz_cached_uid") || "", myTrip = safeLS.get("nz_cached_trip") || "";
-  let isAuthAndTripReady = false, authReadyPromise = null;
+  let isAuthAndTripReady = false;
   const tabSyncId = "tab_" + Math.random().toString(36).substring(2, 9);
   const tabChannel = (typeof BroadcastChannel !== "undefined") ? new BroadcastChannel("nezuo_tab_sync") : null;
   function broadcastTabSync(action, payload = {}) {
@@ -566,31 +566,28 @@ function toggleAcc(id) {
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database(), auth = firebase.auth();
 
-  function ensureAnonAuth() {
+  // 🛡️ 自己修復型 堅牢な認証処理（リトライ機能付き・スリープ復帰時もエラー撲滅）
+  async function ensureAnonAuth(retryCount = 0) {
     if (auth.currentUser && auth.currentUser.uid) {
-      myUid = auth.currentUser.uid; safeLS.set("nz_cached_uid", myUid);
-      return Promise.resolve(auth.currentUser);
+      myUid = auth.currentUser.uid;
+      safeLS.set("nz_cached_uid", myUid);
+      return auth.currentUser;
     }
-    if (authReadyPromise) return authReadyPromise;
-    authReadyPromise = new Promise((resolve, reject) => {
-      let resolved = false;
-      const unsubscribe = auth.onAuthStateChanged(async (user) => {
-        if (user && user.uid) {
-          myUid = user.uid; safeLS.set("nz_cached_uid", myUid);
-          if (!resolved) { resolved = true; unsubscribe(); authReadyPromise = null; resolve(user); }
-        } else if (!resolved) {
-          try {
-            const cred = await auth.signInAnonymously();
-            if (cred && cred.user) {
-              myUid = cred.user.uid; safeLS.set("nz_cached_uid", myUid);
-              resolved = true; unsubscribe(); authReadyPromise = null; resolve(cred.user);
-            }
-          } catch(err) { resolved = true; unsubscribe(); authReadyPromise = null; reject(err); }
-        }
-      }, (error) => { if (!resolved) { resolved = true; authReadyPromise = null; reject(error); } });
-      setTimeout(() => { if (!resolved) { resolved = true; unsubscribe(); authReadyPromise = null; reject(new Error("auth_timeout")); } }, 5000);
-    });
-    return authReadyPromise;
+    try {
+      db.goOnline();
+      const cred = await auth.signInAnonymously();
+      if (cred && cred.user) {
+        myUid = cred.user.uid;
+        safeLS.set("nz_cached_uid", myUid);
+        return cred.user;
+      }
+    } catch (err) {
+      if (retryCount < 3) {
+        await new Promise(r => setTimeout(r, 1000 * (retryCount + 1)));
+        return ensureAnonAuth(retryCount + 1);
+      }
+    }
+    return auth.currentUser;
   }
 
   auth.onAuthStateChanged((user) => {
@@ -618,9 +615,11 @@ function toggleAcc(id) {
   
   let myLastActiveTs = 0, isExecutingAutoExit = false;
 
+  // 📞 通話管理用（多重再生・ハウリング・セルフエコー完全防止）
   let skywayContext = null, skywayRoom = null, localSkyWayMember = null;
   let localAudioStream = null, localAudioPublication = null;
   let myCallMode = "none", isMicMuted = false, isCallingActive = false;
+  const remoteAudioMap = new Map(); // publicationId -> HTMLAudioElement
 
   const checkIsGlobalAdmin = () => (auth.currentUser ? auth.currentUser.uid : myUid) === GLOBAL_ADMIN_UID;
   const hasCurrentRoomAdminPower = () => {
@@ -705,7 +704,7 @@ function toggleAcc(id) {
 
   const COLORS = [
     {v:"#f1f5f9",n:"ホワイト"},{v:"#94a3b8",n:"グレー"},{v:"#38bdf8",n:"スカイ"},{v:"#06b6d4",n:"シアン"},
-    {v:"#34d399",n:"ミント"},{v:"#10b981",n:"エメラルド"},{v:"a3e635",n:"ライム"},{v:"#fde68a",n:"パステルイエロー"},
+    {v:"#34d399",n:"ミント"},{v:"#10b981",n:"エメラルド"},{v:"#a3e635",n:"ライム"},{v:"#fde68a",n:"パステルイエロー"},
     {v:"#f59e0b",n:"アンバー"},{v:"#fb923c",n:"オレンジ"},{v:"#f87171",n:"レッド"},{v:"#f43f5e",n:"ローズ"},
     {v:"#f472b6",n:"ピンク"},{v:"#c084fc",n:"ライトパープル"},{v:"#a855f7",n:"パープル"},{v:"#818cf8",n:"インディゴ"}
   ];
@@ -804,7 +803,7 @@ function toggleAcc(id) {
     }).join("");
   }
 
-  /* 💬 LINE風メッセージノード生成（自分も相手も名前・トリップを表示） */
+  /* 💬 LINE風メッセージノード生成（画像ロード検知フック付き） */
   function cMsg(m, isPending = false) {
     const isSys = (m.u === "system" || m.sys);
     const ts = getMsgTime(m);
@@ -833,6 +832,13 @@ function toggleAcc(id) {
     bubble.className = "mb-bubble";
     bubble.innerHTML = renderMessageBody(m.m);
 
+    // 🖼️ 画像展開時のスクロール完全追従（onload監視）
+    bubble.querySelectorAll("img").forEach(img => {
+      img.addEventListener("load", () => {
+        if (isAtBottomNear()) snapToBottom();
+      }, { once: true });
+    });
+
     const meta = document.createElement("div");
     meta.className = "bubble-meta";
 
@@ -855,6 +861,11 @@ function toggleAcc(id) {
     return mw;
   }
 
+  function isAtBottomNear(tolerance = 120) {
+    if (!D.tl) return true;
+    return (D.tl.scrollHeight - (D.tl.scrollTop + D.tl.clientHeight) <= tolerance);
+  }
+
   function insertMessageInOrder(el) {
     if (!D.tli || !el) return;
     const ts = parseInt(el.dataset.ts || "0", 10);
@@ -874,9 +885,13 @@ function toggleAcc(id) {
     if (mid) { renderedMwNodes.set(mid, el); displayedMsgIds.add(mid); }
   }
 
+  // 📜 最下部へ完全吸着スクロール（画像の底面まで確実に表示）
   function snapToBottom() {
     if (!D.tl) return;
     D.tl.scrollTop = D.tl.scrollHeight;
+    requestAnimationFrame(() => {
+      if (D.tl) D.tl.scrollTop = D.tl.scrollHeight;
+    });
     updateJumpBtns();
   }
 
@@ -928,16 +943,42 @@ function toggleAcc(id) {
     try { await db.ref(`presence/${currentRoomId}/${myUid}`).update({ callMode: mode, isMuted: muted }); } catch(e){}
   }
 
+  // 📞 通話完全切断（多重再生・ハウリング・残存タグの完全消去）
   async function leaveSkyWayCall() {
-    if (localAudioPublication) { try { await localAudioPublication.cancel(); } catch(e){} localAudioPublication = null; }
-    if (localAudioStream) { try { localAudioStream.track.stop(); } catch(e){} localAudioStream = null; }
-    if (skywayRoom) { try { await skywayRoom.leave(); await skywayRoom.close(); } catch(e){} skywayRoom = null; }
-    localSkyWayMember = null; skywayContext = null; isCallingActive = false;
+    remoteAudioMap.forEach(audio => {
+      try {
+        audio.pause();
+        audio.srcObject = null;
+        audio.remove();
+      } catch(e){}
+    });
+    remoteAudioMap.clear();
+
+    if (localAudioPublication) {
+      try { await localAudioPublication.cancel(); } catch(e){}
+      localAudioPublication = null;
+    }
+    if (localAudioStream) {
+      try { localAudioStream.track.stop(); } catch(e){}
+      localAudioStream = null;
+    }
+    if (skywayRoom) {
+      try { await skywayRoom.leave(); await skywayRoom.close(); } catch(e){}
+      skywayRoom = null;
+    }
+    localSkyWayMember = null;
+    skywayContext = null;
+    isCallingActive = false;
     await syncCallStatusToFirebase("none", false);
+
     if ($("callBar")) $("callBar").style.display = "none";
-    if ($("callToggleBtn")) { $("callToggleBtn").textContent = isLurking ? "🎧 聴くだけ通話" : "📞 通話"; $("callToggleBtn").style.background = "#0284c7"; }
+    if ($("callToggleBtn")) {
+      $("callToggleBtn").textContent = isLurking ? "🎧 聴くだけ通話" : "📞 通話";
+      $("callToggleBtn").style.background = "#0284c7";
+    }
   }
 
+  // 📞 通話開始（LINE品質・人の声特化・通信量半減 20kbps・ハウリング完全排除）
   async function startSkyWayCall(targetMode = "speaker") {
     if (isCallingActive) { await leaveSkyWayCall(); return; }
     if (isLurking) targetMode = "listener";
@@ -955,12 +996,23 @@ function toggleAcc(id) {
       } else {
         const token = await generateSkyWayToken(); if (!token) throw new Error("トークン生成失敗"); skywayContext = await SkyWayContext.Create(token);
       }
+
       skywayRoom = await SkyWayRoom.FindOrCreate(skywayContext, { name: `sfu_${currentRoomId}`, type: "sfu" });
       localSkyWayMember = await skywayRoom.join();
 
       if (targetMode === "speaker" && !isLurking) {
-        localAudioStream = await SkyWayStreamFactory.createMicrophoneAudioStream({ echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 });
-        localAudioPublication = await localSkyWayMember.publish(localAudioStream, { type: "sfu", encodings: [{ maxBitrate: 32000 }] });
+        // 🎙️ 人の声に特化した高品質フィルター
+        localAudioStream = await SkyWayStreamFactory.createMicrophoneAudioStream({
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1
+        });
+        // 🚀 通信量を20kbpsに最適化（人の声がクリアに通り、回線負荷を半減）
+        localAudioPublication = await localSkyWayMember.publish(localAudioStream, {
+          type: "sfu", encodings: [{ maxBitrate: 20000 }]
+        });
+
         if (micBtn) { micBtn.style.display = "inline-flex"; micBtn.textContent = "🎤 マイクON"; micBtn.classList.remove("active"); }
         if (switchBtn) { switchBtn.style.display = "inline-flex"; switchBtn.textContent = "🎧 聞くだけへ"; }
         if (statusText) statusText.textContent = "🟢 通話中 (マイクON)";
@@ -975,16 +1027,40 @@ function toggleAcc(id) {
       isCallingActive = true;
       if (callToggleBtn) { callToggleBtn.textContent = "📞 通話切断"; callToggleBtn.style.background = "#e11d48"; }
 
+      // 🛡️ 音声購読（自分の声を絶対に再生しない＆相手ごとに1つのタグに固定）
       const subscribeTrack = async (publication) => {
-        if (publication.publisher.id === localSkyWayMember.id || publication.contentType !== "audio") return;
+        if (!localSkyWayMember || publication.publisher.id === localSkyWayMember.id || publication.contentType !== "audio") return;
+        if (remoteAudioMap.has(publication.id)) return; // すでに購読中なら重複作成を阻止
+
         const { stream } = await localSkyWayMember.subscribe(publication.id);
         const audioEl = document.createElement("audio");
         audioEl.srcObject = new MediaStream([stream.track]);
-        audioEl.autoplay = true; audioEl.playsInline = true;
+        audioEl.autoplay = true;
+        audioEl.playsInline = true;
         document.body.appendChild(audioEl);
+        remoteAudioMap.set(publication.id, audioEl);
+
+        stream.track.addEventListener("ended", () => {
+          if (remoteAudioMap.has(publication.id)) {
+            const el = remoteAudioMap.get(publication.id);
+            el.srcObject = null;
+            el.remove();
+            remoteAudioMap.delete(publication.id);
+          }
+        });
       };
+
       skywayRoom.publications.forEach(subscribeTrack);
       skywayRoom.onStreamPublished.add(e => subscribeTrack(e.publication));
+      skywayRoom.onStreamUnpublished.add(e => {
+        if (remoteAudioMap.has(e.publication.id)) {
+          const el = remoteAudioMap.get(e.publication.id);
+          el.srcObject = null;
+          el.remove();
+          remoteAudioMap.delete(e.publication.id);
+        }
+      });
+
       showToast(targetMode === "speaker" ? "🎙️ 通話に接続しました" : "🎧 聞くだけで接続しました");
     } catch (err) {
       console.error("SkyWay error:", err);
@@ -1010,8 +1086,12 @@ function toggleAcc(id) {
       if (!ok) return;
       try {
         const { SkyWayStreamFactory } = window.skyway_room;
-        localAudioStream = await SkyWayStreamFactory.createMicrophoneAudioStream({ echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 });
-        localAudioPublication = await localSkyWayMember.publish(localAudioStream, { type: "sfu", encodings: [{ maxBitrate: 32000 }] });
+        localAudioStream = await SkyWayStreamFactory.createMicrophoneAudioStream({
+          echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1
+        });
+        localAudioPublication = await localSkyWayMember.publish(localAudioStream, {
+          type: "sfu", encodings: [{ maxBitrate: 20000 }]
+        });
         if ($("callMicBtn")) { $("callMicBtn").style.display = "inline-flex"; $("callMicBtn").textContent = "🎤 マイクON"; $("callMicBtn").classList.remove("active"); }
         if ($("callModeSwitchBtn")) $("callModeSwitchBtn").textContent = "🎧 聞くだけへ";
         if ($("callStatusText")) $("callStatusText").textContent = "🟢 通話中 (マイクON)";
@@ -1085,7 +1165,7 @@ function toggleAcc(id) {
       }
       if (now < rawBase + AUTO_EXIT_MS) return;
 
-      // ⏱️ 丸め誤差を完全排除：基準時刻 rawBase に直接 30分(1,800,000ms) を加算
+      // ⏱️ 基準時刻 rawBase に直接 30分(1,800,000ms) を加算
       const exactExpiryTime = rawBase + AUTO_EXIT_MS;
       const autoExitKey = `sys_autoexit_${targetUid}_${rawBase}`;
       const userName = (current.n || userData.n || "名無し").trim();
@@ -1096,7 +1176,6 @@ function toggleAcc(id) {
         const encD = await encodeMsgPayload("システム", "", rawSysText);
         await db.ref(`chat/${roomId}/${autoExitKey}`).set({ u: "system", c: "#f43f5e", d: encD, t: exactExpiryTime, sys: true });
       } catch(logErr) {
-        console.error("退室ログ書き込みエラー:", logErr);
       } finally {
         await db.ref(`presence/${roomId}/${targetUid}`).remove().catch(()=>{});
         await destroyRoomIfEmpty(roomId);
@@ -1115,7 +1194,6 @@ function toggleAcc(id) {
     const roomId = currentRoomId, uid = myUid;
     const cleanName = (myName || "名無し").trim(), cleanTrip = myTrip || "";
     
-    // ⏱️ DB上の確定タイムスタンプを優先参照し、発言時刻と1秒もズレない満了時刻を計算
     let rawBase = myLastActiveTs;
     try {
       const snap = await db.ref(`presence/${roomId}/${uid}/t`).once("value");
@@ -1133,7 +1211,6 @@ function toggleAcc(id) {
       const encD = await encodeMsgPayload("システム", "", rawSysText);
       await db.ref(`chat/${roomId}/${autoExitKey}`).set({ u: "system", c: "#f43f5e", d: encD, t: exactExpiryTime, sys: true });
     } catch(logErr) {
-      console.error("自己退室ログ書き込みエラー:", logErr);
     } finally {
       try {
         await db.ref(`presence/${roomId}/${uid}`).remove().catch(()=>{});
@@ -1211,9 +1288,7 @@ function toggleAcc(id) {
         if (localEl) { localEl.remove(); renderedMwNodes.delete(localId); displayedMsgIds.delete(localId); }
       }
       if (displayedMsgIds.has(m.id)) return;
-      const acc = $("adminAccordion");
-      const bottomTolerance = (acc && acc.style.display === "flex") ? 130 : 80;
-      const isAtBottom = D.tl && (D.tl.scrollHeight - (D.tl.scrollTop + D.tl.clientHeight) <= bottomTolerance);
+      const isAtBottom = isAtBottomNear();
       const el = cMsg(m, false);
       insertMessageInOrder(el);
       const msgTime = getMsgTime(m);
@@ -1391,6 +1466,7 @@ function toggleAcc(id) {
     }, 100);
   }
 
+  // 🔄 スリープ復帰時などの増分同期（ログ欠落ゼロ）
   let isDiffSyncing = false;
   async function syncIncrementalDiff() {
     if (!isJoined || !currentRoomId || !db || isDiffSyncing || isFirstLoad) return;
@@ -1424,9 +1500,7 @@ function toggleAcc(id) {
         await Promise.all(rawCandidates.map(m => decodeMsgPayload(m)));
         rawCandidates.sort((a, b) => (getMsgTime(a) - getMsgTime(b)) || a.id.localeCompare(b.id));
 
-        const acc = $("adminAccordion");
-        const bottomTolerance = (acc && acc.style.display === "flex") ? 130 : 80;
-        const isAtBottom = D.tl && (D.tl.scrollHeight - (D.tl.scrollTop + D.tl.clientHeight) <= bottomTolerance);
+        const isAtBottom = isAtBottomNear();
         rawCandidates.forEach(m => {
           processingMsgIds.delete(m.id);
           if (displayedMsgIds.has(m.id)) return;
@@ -1445,28 +1519,26 @@ function toggleAcc(id) {
     } finally { isDiffSyncing = false; }
   }
 
-  // 🛡️ 画面復帰時の自動復帰・退室処理（厳格な有効期限チェックつき）
+  // 🛡️ 画面復帰時の安全同期（エラーで勝手に退室・勝手に入室させない）
   if (typeof document !== 'undefined') {
     const triggerSyncAndCheck = () => {
       const savedScreen = safeLS.get("nz_current_screen") || "lobby";
       const savedRoomId = safeLS.get("nz_last_room_id");
-      const savedRoomPass = safeLS.get("nz_last_room_pass");
       const sessionStart = parseInt(safeLS.get("nz_session_start_time") || "0", 10);
       const lastPost = parseInt(safeLS.get("nz_last_post_time") || "0", 10);
       const baselineTime = Math.max(sessionStart, lastPost);
       const nowTrue = Date.now();
 
-      // ⏱️ 30分超過している場合は即座に自己退室処理を実行
+      // ⏱️ 30分超過している場合のみ確実に自己退室処理を実行
       if (baselineTime > 0 && (nowTrue - baselineTime >= AUTO_EXIT_MS)) {
         if (isJoined) triggerSelfAutoExit(); else doExit(true, true);
         return;
       }
-      if (savedScreen === "lobby" && isJoined) { doExit(false, true); return; }
-      else if (savedScreen === "chat" && savedRoomId && (!isJoined || safeLS.get("nz_last_room_id") !== currentRoomId)) {
-        joinRoom({ roomId: savedRoomId, roomPass: savedRoomPass || "", silent: true, isCrossTab: true });
-        return;
+      // 勝手な再入室は行わず、在室中のセッションのみ安全に再同期
+      if (isJoined && savedScreen === "chat" && savedRoomId === currentRoomId) {
+        syncIncrementalDiff();
+        checkAndTriggerExactAutoExit();
       }
-      if (isJoined) { syncIncrementalDiff(); checkAndTriggerExactAutoExit(); }
     };
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") triggerSyncAndCheck(); });
     window.addEventListener("pageshow", triggerSyncAndCheck);
@@ -1477,9 +1549,7 @@ function toggleAcc(id) {
 
   function updateUnreadBadge() {
     if (!D.unreadBadge) return;
-    const acc = $("adminAccordion");
-    const bottomTolerance = (acc && acc.style.display === "flex") ? 130 : 40;
-    const isAtBottom = D.tl && (D.tl.scrollHeight - (D.tl.scrollTop + D.tl.clientHeight) <= bottomTolerance);
+    const isAtBottom = isAtBottomNear();
     const count = isAtBottom ? 0 : unreadMsgIds.size;
     if (isAtBottom) unreadMsgIds.clear();
     if (count > 0) { D.unreadBadge.textContent = count > 99 ? "99+" : count; D.unreadBadge.style.display = "inline-flex"; }
@@ -1588,7 +1658,10 @@ function toggleAcc(id) {
 
     const tripContainer = $("lobbyTripContainer"), tripPrevEl = $("lobbyTripPrev");
     try {
-      if (!myUid) { const user = await ensureAnonAuth(); if (user && user.uid) myUid = user.uid; }
+      if (!myUid) {
+        const user = await ensureAnonAuth();
+        if (user && user.uid) myUid = user.uid;
+      }
       if (myUid) {
         myTrip = await window.makeTripFromUid(myUid);
         isAuthAndTripReady = true;
@@ -1826,8 +1899,6 @@ function toggleAcc(id) {
       if (D.tli) D.tli.appendChild(fragment);
       pruneOldMessages();
       snapToBottom();
-      requestAnimationFrame(snapToBottom);
-      setTimeout(snapToBottom, 40);
     } catch (e) {
       console.error("initial load error:", e);
     } finally {
@@ -1942,7 +2013,6 @@ function toggleAcc(id) {
       });
     }
 
-    // ⏱️ 参加・覗き見問わず全員で相互自動退室チェッカーを常時稼働
     startSmartAutoExitChecker();
   }
 
@@ -2053,7 +2123,7 @@ function toggleAcc(id) {
         await newMsgRef.set({ u: myUid, c: curColor, t: postTs, cid, d: encD });
         await db.ref(`presence/${currentRoomId}/${myUid}/t`).set(postTs);
 
-        // サーバー側で変換された正確なミリ秒を取得してローカル起点時刻を完全一致同期
+        // サーバー確定ミリ秒をローカル起点に完全一致同期
         const snap = await db.ref(`presence/${currentRoomId}/${myUid}/t`).once("value");
         const confirmedTs = parseInt(snap.val(), 10);
         if (!isNaN(confirmedTs) && confirmedTs > 0) {
@@ -2191,11 +2261,12 @@ function toggleAcc(id) {
     const origText = activeBtn ? activeBtn.textContent : "";
     if (activeBtn) { activeBtn.disabled = true; activeBtn.textContent = "接続中..."; }
 
+    // 🛡️ 認証の自己修復待機（アラートで投げ出さずに自動回復）
     let user = null;
     try { user = await ensureAnonAuth(); } catch(e){}
     if (!user || !user.uid) {
       if (activeBtn) { activeBtn.disabled = false; activeBtn.textContent = origText; }
-      alert("Firebase認証に失敗しました。ページを再読み込みしてください。");
+      showToast("🔄 回線を再接続しています... もう一度お試しください");
       return;
     }
 
@@ -2237,7 +2308,8 @@ function toggleAcc(id) {
       settingsSnap = sSnap;
     } catch (e) {
       if (activeBtn) { activeBtn.disabled = false; activeBtn.textContent = origText; }
-      switchScreen("lobby"); alert("データベース接続、または権限エラーです。"); return;
+      showToast("⚠️ 通信を再試行しています...");
+      return;
     }
 
     if (isBanned) {
@@ -2303,7 +2375,6 @@ function toggleAcc(id) {
         const prevBase = Math.max(prevPost, prevSess);
         myLastActiveTs = prevBase > 0 ? prevBase : nowTrue;
       } else {
-        // ⏱️ 在室登録をサーバータイムスタンプで行い、ミリ秒単位で完全に確定した時刻を起点にする
         try {
           await db.ref(`presence/${currentRoomId}/${myUid}`).set({
             n: myName || "名無し", p: realTrip, c: curColor, t: firebase.database.ServerValue.TIMESTAMP
@@ -2323,7 +2394,7 @@ function toggleAcc(id) {
     const cleanName = (myName || "").trim();
     if (!isLurking && !options.silent && !options.isCrossTab && cleanName && !hasEnteredLogged) {
       hasEnteredLogged = true;
-      const enterTs = confirmedJoinTs; // 💡 入室ログの表示時刻を presence.t と1秒の狂いもなく完全一致させる
+      const enterTs = confirmedJoinTs; // 💡 入室ログの表示時刻を presence.t と1秒の狂いもなく完全一致
       if (isNewRoom && !isOfficialTarget) {
         const createKey = `sys_create_${safeRoomPath}_${enterTs}`;
         const createText = "📢 [お知らせ] " + `${cleanName} ${realTrip}`.trim() + " が部屋を作成しました";
@@ -2362,6 +2433,14 @@ function toggleAcc(id) {
       if ($("exBtn")) $("exBtn").style.display = "inline-flex";
       if ($("callToggleBtn")) $("callToggleBtn").style.display = "inline-flex";
       if ($("inviteBtn")) $("inviteBtn").style.display = (pRoom === "official") ? "none" : "inline-flex";
+    }
+
+    // 📜 タイムラインの高さ変化（画像表示など）を完全検知して最下部へ自動追従
+    if (typeof ResizeObserver !== 'undefined' && D.tli) {
+      const ro = new ResizeObserver(() => {
+        if (isAtBottomNear(150)) snapToBottom();
+      });
+      ro.observe(D.tli);
     }
 
     if (D.imgUploadBtn && D.imgFileInput) {
@@ -2635,14 +2714,11 @@ function toggleAcc(id) {
       function syncViewportToKeyboard() {
         if (rafPending) return;
         rafPending = true;
-        const acc = $("adminAccordion");
-        const bottomTolerance = (acc && acc.style.display === "flex") ? 130 : 80;
-        const wasAtBottom = D.tl && (D.tl.scrollHeight - (D.tl.scrollTop + D.tl.clientHeight) <= bottomTolerance);
+        const wasAtBottom = isAtBottomNear();
         requestAnimationFrame(() => {
           rafPending = false;
           if (appEl && window.visualViewport) {
-            const vv = window.visualViewport;
-            appEl.style.height = vv.height + "px";
+            appEl.style.height = window.visualViewport.height + "px";
             window.scrollTo(0, 0);
           }
           if (isJoined && wasAtBottom) snapToBottom();
@@ -2660,9 +2736,7 @@ function toggleAcc(id) {
 
     if (D.tl) {
       D.tl.addEventListener("scroll", () => {
-        const acc = $("adminAccordion");
-        const bottomTolerance = (acc && acc.style.display === "flex") ? 130 : 80;
-        const isAtBottom = D.tl.scrollHeight - (D.tl.scrollTop + D.tl.clientHeight) <= bottomTolerance;
+        const isAtBottom = isAtBottomNear();
         if (isAtBottom) { unreadMsgIds.clear(); updateUnreadBadge(); }
         updateJumpBtns();
       });

@@ -60,7 +60,7 @@
 }
 html,body{position:fixed;inset:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-family:var(--font-stack);overscroll-behavior:none;color-scheme:dark}
 
-/* ⚡ 文字透明化バグの根絶（不透明背景＆GPU強制描画） */
+/* ⚡ 文字透明化バグの根絶 */
 input,textarea,select{
   font-family:var(--font-stack)!important;font-size:16px!important;color:#f8fafc!important;
   background-color:var(--s2)!important;caret-color:#38bdf8!important;opacity:1!important;visibility:visible!important;
@@ -74,7 +74,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 #app{position:fixed;inset:0;width:100%;height:100vh;height:100dvh;display:flex;flex-direction:column;z-index:50;background:var(--bg);overflow:hidden}
 #cp{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;background:#090d16;position:relative;max-width:900px;width:100%;margin:0 auto;border-left:1px solid var(--bd);border-right:1px solid var(--bd)}
 
-/* ヘッダー */
+/* 上部ヘッダー（固定） */
 #hdr{background:#0f172a;border-bottom:1px solid var(--bd);padding:6px 12px;flex-shrink:0;z-index:100}
 .hr{display:flex;flex-direction:column;gap:4px}
 .hr-top{display:flex;align-items:center;gap:6px;width:100%;overflow:hidden;white-space:nowrap}
@@ -101,15 +101,23 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 #lobbyTripContainer{display:none;gap:6px;align-items:center;margin-top:4px;width:100%}
 #lobbyTripPrev{font-size:11.5px;font-weight:bold;color:var(--usr-color)!important;text-align:center;background:rgba(0,0,0,0.3);padding:8px;border-radius:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:1.5px solid var(--usr-color);word-break:break-all;flex:1}
 
-#adminAccordion{display:none;flex-direction:column;background:var(--sf);border-bottom:1px solid var(--bd);padding:10px 14px;gap:10px;flex-shrink:0;box-shadow:0 4px 12px rgba(0,0,0,0.3)}
+/* ⚙️ 管理パネル（シルキースムーズ・アコーディオン） */
+#adminAccordionMount{flex-shrink:0;z-index:90}
+#adminAccordion{
+  display:none;flex-direction:column;background:var(--sf);border-bottom:1px solid var(--bd);padding:10px 14px;gap:10px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.3);animation:slideDown .2s cubic-bezier(0.16,1,0.3,1) forwards;
+}
+@keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
 .toggle-switch{position:relative;display:inline-flex;align-items:center;cursor:pointer;gap:8px;user-select:none}
 .toggle-switch input{position:absolute;opacity:0;width:0;height:0}
-.toggle-slider{position:relative;width:36px;height:20px;background-color:#1e293b;border:1px solid #334155;border-radius:20px;transition:background-color .15s ease,border-color .15s ease;flex-shrink:0}
-.toggle-slider::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background-color:#64748b;transition:transform .15s ease,background-color .15s ease}
+.toggle-slider{position:relative;width:36px;height:20px;background-color:#1e293b;border:1px solid #334155;border-radius:20px;transition:background-color .15s ease;flex-shrink:0}
+.toggle-slider::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background-color:#64748b;transition:transform .15s ease}
 .toggle-switch input:checked+.toggle-slider{background-color:#0284c7;border-color:#38bdf8}
 .toggle-switch input:checked+.toggle-slider::after{transform:translateX(16px);background-color:#fff}
 .toggle-label{font-size:11px;font-weight:bold;color:var(--tx)!important}
-#pl{display:none;gap:6px;padding:6px 12px;background:var(--s2);border-bottom:1px solid var(--bd);overflow-x:auto;white-space:nowrap;min-height:36px;max-height:36px;flex-shrink:0;align-items:center}
+
+/* 在室リスト（固定） */
+#pl{display:none;gap:6px;padding:6px 12px;background:var(--s2);border-bottom:1px solid var(--bd);overflow-x:auto;white-space:nowrap;min-height:36px;max-height:36px;flex-shrink:0;align-items:center;z-index:80}
 .chip{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,0.04);border:1.5px solid var(--usr-color);display:inline-flex;align-items:center;gap:3px;color:var(--usr-color);height:24px}
 
 #callBar{display:none;align-items:center;justify-content:space-between;padding:6px 12px;background:#0d1527;border-bottom:1px solid #1e293b;gap:8px;flex-shrink:0}
@@ -119,13 +127,32 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .call-btn{padding:4px 9px;height:26px;border-radius:5px;font-size:10.5px;font-weight:bold;background:#1e293b;color:#f8fafc;border:1px solid #334155;display:inline-flex;align-items:center;gap:4px;cursor:pointer}
 .call-btn.active{background:#e11d48!important;border-color:#f43f5e!important;color:#fff!important}
 
-#fixedPlayer{display:none;flex-direction:column;background:#000;border-bottom:1px solid var(--bd);width:100%;flex-shrink:0}
-#playerHeader{background:var(--sf);padding:5px 10px;font-size:11.5px;font-weight:bold;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--bd);flex-shrink:0}
-#playerContent{width:100%;max-width:480px;height:220px;aspect-ratio:16/9;background:#000;margin:0 auto;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center}
-#playerContent iframe{width:100%;height:100%;border:none}
+/* 📺 フローティング・ピクチャーインピクチャー（PiP）プレイヤー（ドラッグ移動・サイズ切替） */
+#fixedPlayer{
+  display:none;position:fixed;top:60px;right:16px;z-index:9999;flex-direction:column;
+  background:#000;border:1.5px solid #334155;box-shadow:0 10px 30px rgba(0,0,0,0.8);
+  width:290px;transition:width .2s cubic-bezier(0.16,1,0.3,1);touch-action:none;user-select:none;
+}
+#fixedPlayer.is-mini{width:180px}
+#playerHeader{
+  background:#0f172a;padding:5px 8px;font-size:11px;font-weight:bold;color:#f8fafc;
+  display:flex;justify-content:space-between;align-items:center;cursor:grab;border-bottom:1px solid #1e293b;
+}
+#playerHeader:active{cursor:grabbing}
+#playerTitle{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px}
+#fixedPlayer.is-mini #playerTitle{max-width:70px}
+.player-actions{display:flex;gap:4px;align-items:center}
+.p-act-btn{background:rgba(255,255,255,0.08);color:#cbd5e1;border:1px solid rgba(255,255,255,0.15);border-radius:4px;height:20px;padding:0 5px;font-size:10px;font-weight:bold}
+#playerContent{width:100%;aspect-ratio:16/9;background:#000;position:relative;overflow:hidden}
+#playerContent iframe,#playerContent audio{width:100%;height:100%;border:none}
 
-/* 💬 LINE風タイムライン */
-#tl{flex:1;min-height:0;overflow-y:auto;overflow-anchor:auto;padding:12px 14px 28px 14px;background-color:#070a10;-webkit-overflow-scrolling:touch}
+/* 💬 LINE風タイムライン（初期不可視レンダリングでガタつきゼロ） */
+#tl{
+  flex:1;min-height:0;overflow-y:auto;overflow-anchor:auto;padding:12px 14px 28px 14px;
+  background-color:#070a10;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;
+}
+#tl.instant-ready{opacity:0}
+#tl.is-ready{opacity:1;transition:opacity .12s ease-out}
 #tl-inner{display:flex;flex-direction:column;justify-content:flex-start;gap:12px;width:100%;max-width:800px;margin:0 auto;min-height:100%}
 
 .mw{position:relative;display:flex;flex-direction:column;width:100%;user-select:text;-webkit-user-select:text;transition:opacity .15s ease}
@@ -159,7 +186,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .mb-bubble a{color:#38bdf8;text-decoration:underline}
 .mw.my-msg .mb-bubble a{color:#e0f2fe;font-weight:bold}
 
-/* ⏱️ 時刻スタック表示（スマホ幅を圧迫しない2段配置） */
+/* ⏱️ 時刻スタック表示 */
 .bubble-meta{display:flex;flex-direction:column;gap:1px;flex-shrink:0;margin-bottom:2px}
 .mw.my-msg .bubble-meta{align-items:flex-end}
 .mw.other-msg .bubble-meta{align-items:flex-start}
@@ -173,7 +200,8 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .sys-msg{position:relative;text-align:center;font-size:11px;font-weight:bold;color:#cbd5e1!important;margin:6px auto;background:rgba(255,255,255,.05);padding:5px 12px;border-radius:12px;max-width:92%;word-break:break-all;line-height:1.45}
 .sys-ts{display:inline-block;font-size:9.5px;color:var(--mu);opacity:.85;margin-left:6px}
 
-/* 💬 入力バー（不透明背景で文字透明化バグを根絶） */
+/* 💬 入力バー（固定・広がり防止・不透明背景） */
+#ibTopBar{background:var(--sf);border-top:1px solid var(--bd);padding:6px 10px;display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-shrink:0}
 #ib{
   display:flex;flex-direction:column;padding:8px calc(10px + env(safe-area-inset-right,0px)) calc(8px + var(--safe)) calc(10px + env(safe-area-inset-left,0px));
   background:#0f172a;border-top:1px solid var(--bd);gap:6px;flex-shrink:0;
@@ -231,10 +259,10 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .clrc2{aspect-ratio:1;width:100%;max-width:28px;border-radius:50%;margin:0 auto;border:2px solid transparent}
 .clrc2.sel{border-color:var(--tx)!important;transform:scale(1.2)}
 
-.media-link-container{margin-top:6px;background:rgba(11,16,28,0.6);border:1px solid var(--bd);border-radius:0!important;padding:6px 10px;display:inline-flex;flex-direction:column;gap:5px;max-width:100%}
+.media-link-container{margin-top:6px;background:rgba(11,16,28,0.6);border:1px solid var(--bd);border-radius:8px;padding:6px 10px;display:inline-flex;flex-direction:column;gap:5px;max-width:100%}
 .media-inline-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.media-badge{font-size:9.5px;font-weight:900;color:#fff;padding:2px 6px;letter-spacing:0.5px;border-radius:0!important}
-.open-player-btn{font-size:11px;font-weight:800;color:#cbd5e1;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);padding:4px 10px;border-radius:0!important;text-decoration:none;display:inline-flex;align-items:center}
+.media-badge{font-size:9.5px;font-weight:900;color:#fff;padding:2px 6px;letter-spacing:0.5px;border-radius:4px}
+.open-player-btn{font-size:11px;font-weight:800;color:#cbd5e1;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);padding:4px 10px;border-radius:6px;text-decoration:none;display:inline-flex;align-items:center}
 
 #toastContainer{position:fixed;bottom:68px;left:50%;transform:translateX(-50%) translateY(10px);background:rgba(15,23,42,0.96);backdrop-filter:blur(6px);border:1px solid var(--bd);color:var(--tx);padding:7px 16px;border-radius:20px;font-size:12px;font-weight:bold;z-index:10000;box-shadow:0 4px 14px rgba(0,0,0,0.5);pointer-events:none;opacity:0;display:none}
 #toastContainer.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -342,17 +370,21 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
       <div id="adminAccordionMount"></div>
       <div id="pl" style="display:none;"></div>
 
+      <!-- 📺 フローティング・ピクチャーインピクチャー（PiP）プレイヤー -->
       <div id="fixedPlayer">
         <div id="playerHeader">
-          <span id="playerTitle">📺 インラインプレイヤー</span>
-          <button id="playerCloseBtn" class="btn" style="background:rgba(244,63,94,0.15);color:#fda4af;height:22px;padding:0 6px;font-size:10px;">閉じる</button>
+          <span id="playerTitle">📺 ミニプレイヤー</span>
+          <div class="player-actions">
+            <button id="playerResizeBtn" class="p-act-btn" title="サイズ切替">🗗</button>
+            <button id="playerCloseBtn" class="p-act-btn" style="background:rgba(244,63,94,0.2);color:#fda4af;" title="閉じる">✕</button>
+          </div>
         </div>
         <div id="playerContent"></div>
       </div>
 
       <div id="tl" role="log" aria-live="polite"><div id="tl-inner"></div></div>
 
-      <div id="ibTopBar" style="background:var(--sf);border-top:1px solid var(--bd);padding:6px 10px;display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-shrink:0;">
+      <div id="ibTopBar">
         <div class="jump-btns">
           <button class="jump-btn" id="jumpUpBtn" title="最上部へ" disabled>▲</button>
           <div style="position:relative;display:inline-block;">
@@ -451,7 +483,7 @@ const GLOBAL_ADMIN_UID = "d99bzcrWCraG74oGUWKz7158oOz1";
 const SKYWAY_APP_ID = "58cc3b17-26f0-42bb-96e8-0f557ddf970e";
 const SKYWAY_SECRET_KEY_B64 = "JoAgxrroO7FX2TckM1ftfCoGL4I6J44jLalRi+WTTGk=";
 
-// ⏱️ 全部屋一律30分固定（30分 ＝ 1,800,000ミリ秒）
+// ⏱️ 全部屋一律30分固定
 const AUTO_EXIT_MS = 30 * 60 * 1000;
 
 function generateUuidV4() {
@@ -551,7 +583,6 @@ function toggleAcc(id) {
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database(), auth = firebase.auth();
 
-  // 🛡️ 自己修復型 堅牢な認証処理（リトライ機能付き）
   async function ensureAnonAuth(retryCount = 0) {
     if (auth.currentUser && auth.currentUser.uid) {
       myUid = auth.currentUser.uid; safeLS.set("nz_cached_uid", myUid);
@@ -595,14 +626,16 @@ function toggleAcc(id) {
   let rawPresenceMap = {}, currentPresenceMap = {}, isConnectedBound = false, lastSyncAt = 0;
   let roomSettings = { newEntriesDisabled: false, approvedTrips: {}, approvedUids: {}, creatorUid: "" };
   let localLastClearedTime = 0, latestDisplayedTs = 0, pendingImageBase64 = null;
-  
   let myLastActiveTs = 0, isExecutingAutoExit = false;
 
-  // 📞 通話管理用（多重再生・ハウリング・セルフエコー完全防止）
+  // 📞 通話管理
   let skywayContext = null, skywayRoom = null, localSkyWayMember = null;
   let localAudioStream = null, localAudioPublication = null;
   let myCallMode = "none", isMicMuted = false, isCallingActive = false;
   const remoteAudioMap = new Map();
+
+  // 📺 フローティングプレイヤー用ドラッグステート
+  let playerDrag = { isDragging: false, startX: 0, startY: 0, initialLeft: 0, initialTop: 0 };
 
   const checkIsGlobalAdmin = () => (auth.currentUser ? auth.currentUser.uid : myUid) === GLOBAL_ADMIN_UID;
   const hasCurrentRoomAdminPower = () => {
@@ -699,7 +732,7 @@ function toggleAcc(id) {
   const getMsgTime = (m) => (m && m.t ? (typeof m.t === "number" ? m.t : (parseInt(m.t,10) || getTrueTime())) : getTrueTime());
   const escapeHtml = str => typeof str !== "string" ? "" : str.replace(/[&<>'"]/g, t => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[t] || t));
 
-  /* ⏱️ 時刻フォーマット（西暦〜秒をスマホ幅を圧迫しないよう2段分解） */
+  /* ⏱️ 時刻フォーマット（西暦〜秒 2段分解） */
   const fDT_parts = (ts) => {
     if (!ts || typeof ts !== "number") return { date: "--/--/--(--)", time: "--:--:--" };
     const d = new Date(ts); if (isNaN(d.getTime())) return { date: "--/--/--(--)", time: "--:--:--" };
@@ -731,7 +764,6 @@ function toggleAcc(id) {
     return "◆" + tripStr;
   };
 
-  // 📷 画像超高効率圧縮（長辺800px・品質0.65・30〜50KB以内・EXIF自動消去）
   function compressImageToDataUrl(file, maxWidth = 800, maxHeight = 800, quality = 0.65) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -789,7 +821,7 @@ function toggleAcc(id) {
     }).join("");
   }
 
-  /* 💬 LINE風メッセージノード生成（画像ロード検知フック付き） */
+  /* 💬 LINE風メッセージノード生成 */
   function cMsg(m, isPending = false) {
     const isSys = (m.u === "system" || m.sys);
     const ts = getMsgTime(m);
@@ -819,7 +851,7 @@ function toggleAcc(id) {
     bubble.className = "mb-bubble";
     bubble.innerHTML = renderMessageBody(m.m);
 
-    // 🖼️ 画像展開時のスクロール完全追従（onload監視）
+    // 🖼️ 画像展開時の完全吸着追従（onload監視）
     bubble.querySelectorAll("img").forEach(img => {
       img.addEventListener("load", () => {
         if (isAtBottomNear()) snapToBottom();
@@ -868,13 +900,14 @@ function toggleAcc(id) {
     if (mid) { renderedMwNodes.set(mid, el); displayedMsgIds.add(mid); }
   }
 
-  // 📜 最下部へ完全吸着スクロール
-  function snapToBottom() {
+  function snapToBottom(instant = false) {
     if (!D.tl) return;
-    D.tl.scrollTop = D.tl.scrollHeight;
-    requestAnimationFrame(() => {
-      if (D.tl) D.tl.scrollTop = D.tl.scrollHeight;
-    });
+    if (instant) {
+      D.tl.scrollTop = D.tl.scrollHeight;
+    } else {
+      D.tl.scrollTop = D.tl.scrollHeight;
+      requestAnimationFrame(() => { if (D.tl) D.tl.scrollTop = D.tl.scrollHeight; });
+    }
     updateJumpBtns();
   }
 
@@ -929,29 +962,14 @@ function toggleAcc(id) {
   // 📞 通話完全切断（多重再生・ハウリング防止）
   async function leaveSkyWayCall() {
     remoteAudioMap.forEach(audio => {
-      try {
-        audio.pause();
-        audio.srcObject = null;
-        audio.remove();
-      } catch(e){}
+      try { audio.pause(); audio.srcObject = null; audio.remove(); } catch(e){}
     });
     remoteAudioMap.clear();
 
-    if (localAudioPublication) {
-      try { await localAudioPublication.cancel(); } catch(e){}
-      localAudioPublication = null;
-    }
-    if (localAudioStream) {
-      try { localAudioStream.track.stop(); } catch(e){}
-      localAudioStream = null;
-    }
-    if (skywayRoom) {
-      try { await skywayRoom.leave(); await skywayRoom.close(); } catch(e){}
-      skywayRoom = null;
-    }
-    localSkyWayMember = null;
-    skywayContext = null;
-    isCallingActive = false;
+    if (localAudioPublication) { try { await localAudioPublication.cancel(); } catch(e){} localAudioPublication = null; }
+    if (localAudioStream) { try { localAudioStream.track.stop(); } catch(e){} localAudioStream = null; }
+    if (skywayRoom) { try { await skywayRoom.leave(); await skywayRoom.close(); } catch(e){} skywayRoom = null; }
+    localSkyWayMember = null; skywayContext = null; isCallingActive = false;
     await syncCallStatusToFirebase("none", false);
 
     if ($("callBar")) $("callBar").style.display = "none";
@@ -961,11 +979,11 @@ function toggleAcc(id) {
     }
   }
 
-  // 📞 通話開始（LINE品質・人の声特化・通信量20kbps・ハウリング完全排除）
+  // 📞 通話開始（LINE品質・20kbps・ハウリング完全排除）
   async function startSkyWayCall(targetMode = "speaker") {
     if (isCallingActive) { await leaveSkyWayCall(); return; }
     if (isLurking) targetMode = "listener";
-    if (!window.skyway_room) { showToast("⚠️ SkyWay SDKの読み込みに失敗しています"); return; }
+    if (!window.skyway_room) { showToast("⚠️ 通話モジュールの読み込みに失敗しました"); return; }
 
     const callBar = $("callBar"), statusText = $("callStatusText"), callToggleBtn = $("callToggleBtn"), micBtn = $("callMicBtn"), switchBtn = $("callModeSwitchBtn");
     if (callBar) callBar.style.display = "flex";
@@ -1123,7 +1141,7 @@ function toggleAcc(id) {
     if (isAuto) showToast("⏱️ 30分間発言がなかったため自動退出しました", 4000);
   }
 
-  /* 🛡️ 他ユーザーの自動退室代行（起点時刻 T ＋ ぴったり30分00秒で記録） */
+  /* 🛡️ 他ユーザーの自動退室代行（起点時刻 T ＋ ぴったり30分00秒） */
   async function processAutoExitForUser(targetUid, userData, targetRoomId = currentRoomId) {
     if (!db || !targetRoomId || !userData || targetUid === myUid) return;
     const roomId = targetRoomId, now = getTrueTime();
@@ -1158,7 +1176,7 @@ function toggleAcc(id) {
     }
   }
 
-  /* 🛡️ 自分自身の自動退室（最後の発言・入室時刻 T ＋ ぴったり30分00秒で自己退室） */
+  /* 🛡️ 自分自身の自動退室（起点時刻 T ＋ ぴったり30分00秒） */
   async function triggerSelfAutoExit() {
     if (isExecutingAutoExit || !isJoined || !db || !currentRoomId || !myUid) return;
     isExecutingAutoExit = true;
@@ -1195,7 +1213,7 @@ function toggleAcc(id) {
     }
   }
 
-  /* ⏱️ 1秒ごとの相互監視タイマー（型ゆれ完全吸収） */
+  /* ⏱️ 1秒ごとの相互監視タイマー */
   async function checkAndTriggerExactAutoExit() {
     if (!isJoined || !db || !currentRoomId || isExecutingAutoExit) return;
     const nowTrue = getTrueTime();
@@ -1215,7 +1233,7 @@ function toggleAcc(id) {
     await Promise.all(expiredList.map(([id, u]) => processAutoExitForUser(id, u)));
   }
 
-  /* 🧹 入室前の期限切れユーザー安全清掃（基準時刻 rawBase ＋ 30分00秒） */
+  /* 🧹 入室前の期限切れユーザー安全清掃（先行確定保証） */
   async function cleanupExpiredMembersBeforeJoin(roomId, roomPass = "") {
     if (!db || !roomId) return;
     try {
@@ -1285,9 +1303,11 @@ function toggleAcc(id) {
         e.preventDefault();
         const acc = $("adminAccordion");
         if (!acc) return;
+        const wasAtBottom = isAtBottomNear();
         const isShow = acc.style.display === "flex";
         acc.style.display = isShow ? "none" : "flex";
         if (!isShow) updateAdminAccordionFields();
+        if (wasAtBottom) snapToBottom(true);
         updateJumpBtns();
       });
     }
@@ -1371,7 +1391,10 @@ function toggleAcc(id) {
     if ($("admMembersToggleBtn") && $("admMembersDrawer")) {
       $("admMembersToggleBtn").addEventListener("click", (e) => {
         e.preventDefault();
-        $("admMembersDrawer").style.display = $("admMembersDrawer").style.display === "flex" ? "none" : "flex";
+        const drawer = $("admMembersDrawer");
+        const wasAtBottom = isAtBottomNear();
+        drawer.style.display = drawer.style.display === "flex" ? "none" : "flex";
+        if (wasAtBottom) snapToBottom(true);
         updateJumpBtns();
       });
     }
@@ -1439,7 +1462,7 @@ function toggleAcc(id) {
     }, 100);
   }
 
-  // 🔄 増分同期（スリープ復帰時も100%確実に追従）
+  // 🔄 増分同期
   let isDiffSyncing = false;
   async function syncIncrementalDiff() {
     if (!isJoined || !currentRoomId || !db || isDiffSyncing || isFirstLoad) return;
@@ -1502,7 +1525,6 @@ function toggleAcc(id) {
       const baselineTime = Math.max(sessionStart, lastPost);
       const nowTrue = Date.now();
 
-      // ⏱️ 30分超過している場合のみ確実に自己退室処理を実行
       if (baselineTime > 0 && (nowTrue - baselineTime >= AUTO_EXIT_MS)) {
         if (isJoined) triggerSelfAutoExit(); else doExit(true, true);
         return;
@@ -1550,7 +1572,7 @@ function toggleAcc(id) {
     }
   };
 
-  /* 🖼️ Google画像検索風 境界クランプ制御（画像の縁でピタッと吸着ストップ） */
+  /* 🖼️ Google画像検索風 境界クランプ制御 */
   function clampZoomPositions() {
     if (!D.imgViewSrc || !D.zoomViewport) return;
     const vpW = D.zoomViewport.clientWidth || window.innerWidth;
@@ -1708,12 +1730,14 @@ function toggleAcc(id) {
   const updateLastPostTime = time => { myLastActiveTs = time; safeLS.set("nz_last_post_time", time.toString()); };
   const updateSessionStartTime = time => { myLastActiveTs = time; safeLS.set("nz_session_start_time", time.toString()); };
 
+  // 📺 フローティングプレイヤー制御（ワンサイズ縮小・ドラッグ）
   const closePlayer = () => {
     if (!D.fixedPlayer || !D.playerContent) return;
     const ifr = D.playerContent.querySelector("iframe"); if (ifr) ifr.src = "";
     const ae = D.playerContent.querySelector("audio"); if (ae) { ae.pause(); ae.src = ""; }
     D.fixedPlayer.style.display = "none"; D.playerContent.innerHTML = "";
-    updateJumpBtns();
+    D.fixedPlayer.classList.remove("is-mini");
+    if ($("playerResizeBtn")) $("playerResizeBtn").textContent = "🗗";
   };
 
   function openFloatingPlayer(url, type) {
@@ -1722,16 +1746,21 @@ function toggleAcc(id) {
     const titleEl = $("playerTitle");
     D.playerContent.innerHTML = "";
 
+    // 初期位置（画面右上付近）
+    D.fixedPlayer.style.top = "60px";
+    D.fixedPlayer.style.left = Math.max(10, window.innerWidth - 310) + "px";
+    D.fixedPlayer.style.right = "auto";
+
     if (type === "audio") {
       titleEl.textContent = "🎵 音楽プレイヤー";
       D.playerContent.style.height = "auto";
-      D.playerContent.innerHTML = `<div style="padding:16px;width:100%;display:flex;flex-direction:column;gap:8px;"><audio id="audioElement" controls style="width:100%;height:40px;"></audio></div>`;
+      D.playerContent.innerHTML = `<div style="padding:10px;width:100%;"><audio id="audioElement" controls style="width:100%;height:36px;"></audio></div>`;
       const ae = $("audioElement"); if (ae) { ae.src = url; ae.play().catch(()=>{}); }
     } else {
-      D.playerContent.style.height = "220px";
+      D.playerContent.style.height = "auto";
       const vid = getYoutubeId(url);
       if (type === "youtube-live" || type === "yt-shorts" || type === "youtube") {
-        titleEl.textContent = type === "youtube-live" ? "📺 YouTube Live" : (type === "yt-shorts" ? "📱 YouTube ショート" : "📺 YouTube");
+        titleEl.textContent = type === "youtube-live" ? "📺 YouTube Live" : (type === "yt-shorts" ? "📱 ショート" : "📺 YouTube");
         D.playerContent.innerHTML = `<iframe src="https://www.youtube.com/embed/${vid}?autoplay=1&playsinline=1&rel=0&enablejsapi=0" loading="eager" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
       } else if (type === "niconico") {
         const nicoId = getNicoId(url);
@@ -1739,7 +1768,6 @@ function toggleAcc(id) {
         D.playerContent.innerHTML = `<iframe src="https://embed.nicovideo.jp/watch/${nicoId}?jsapi=0&autoplay=1" loading="eager" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
       }
     }
-    updateJumpBtns();
   }
 
   function getYoutubeId(url) {
@@ -1748,7 +1776,7 @@ function toggleAcc(id) {
   }
   function getNicoId(url) { const m = url ? url.match(/(sm\d+|so\d+|nm\d+|1\d+)/) : null; return m ? m[0] : ""; }
 
-  /* 👥 在室リスト更新（型ゆれ完全吸収） */
+  /* 👥 在室リスト更新 */
   function handlePresenceUpdate(rawList) {
     rawPresenceMap = rawList || {};
     const now = getTrueTime(), members = {};
@@ -1829,11 +1857,18 @@ function toggleAcc(id) {
     } catch(e) {}
   }
 
+  /* 📥 過去ログ初期取得（不可視ロード・チラつきゼロ・先行退室ログを確実に含有） */
   async function loadInitialRoomData() {
     if (!db || !isJoined || !currentRoomId) return;
     const roomId = currentRoomId;
     const incomingQueue = [];
     let isInitialRenderDone = false;
+
+    // 描画が整うまでチラつきを完全防止
+    if (D.tl) {
+      D.tl.classList.add("instant-ready");
+      D.tl.classList.remove("is-ready");
+    }
 
     if (directChatQuery) directChatQuery.off();
     directChatQuery = db.ref(`chat/${roomId}`).limitToLast(MAX_CHAT_LOGS);
@@ -1870,7 +1905,9 @@ function toggleAcc(id) {
       });
       if (D.tli) D.tli.appendChild(fragment);
       pruneOldMessages();
-      snapToBottom();
+
+      // 即時最下部に位置を合わせてからパッと表示
+      snapToBottom(true);
     } catch (e) {
       console.error("initial load error:", e);
     } finally {
@@ -1879,7 +1916,11 @@ function toggleAcc(id) {
         for (const m of incomingQueue) { if (!displayedMsgIds.has(m.id)) await syncSingleMessage(m); }
         incomingQueue.length = 0;
       }
-      snapToBottom();
+      snapToBottom(true);
+      if (D.tl) {
+        D.tl.classList.remove("instant-ready");
+        D.tl.classList.add("is-ready");
+      }
     }
   }
 
@@ -2064,7 +2105,7 @@ function toggleAcc(id) {
 
     const cid = "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
     D.mi.value = ""; updateClrMsgBtnVisibility(); D.mi.style.height = "auto";
-    D.mi.focus(); // 📱 モバイル入力維持
+    D.mi.focus();
 
     resetImagePreview();
     const localTs = getTrueTime();
@@ -2086,7 +2127,6 @@ function toggleAcc(id) {
         if (!user || !user.uid) throw new Error("認証未完了です");
         myUid = user.uid;
 
-        // ⏱️ 発言の正確なサーバー確定時刻をミリ秒で統一保存
         const postTs = firebase.database.ServerValue.TIMESTAMP;
         const newMsgRef = db.ref(`chat/${currentRoomId}`).push();
         const encD = await encodeMsgPayload(myName || "名無し", myTrip, text);
@@ -2094,7 +2134,6 @@ function toggleAcc(id) {
         await newMsgRef.set({ u: myUid, c: curColor, t: postTs, cid, d: encD });
         await db.ref(`presence/${currentRoomId}/${myUid}/t`).set(postTs);
 
-        // サーバー確定ミリ秒をローカル起点に完全一致同期
         const snap = await db.ref(`presence/${currentRoomId}/${myUid}/t`).once("value");
         const confirmedTs = parseInt(snap.val(), 10);
         if (!isNaN(confirmedTs) && confirmedTs > 0) {
@@ -2231,7 +2270,6 @@ function toggleAcc(id) {
     const origText = activeBtn ? activeBtn.textContent : "";
     if (activeBtn) { activeBtn.disabled = true; activeBtn.textContent = "接続中..."; }
 
-    // 🛡️ 認証の自己修復待機
     let user = null;
     try { user = await ensureAnonAuth(); } catch(e){}
     if (!user || !user.uid) {
@@ -2247,7 +2285,7 @@ function toggleAcc(id) {
 
     const safeRoomPath = isOfficialTarget ? "official" : await window.sha256(lobbyRoomId);
     
-    // 💡 入室前に放置ユーザーの安全清掃
+    // 💡 先行完了保証：放置ユーザーの退室ログ書き込みを完全に終わらせてから部屋を開く
     await cleanupExpiredMembersBeforeJoin(safeRoomPath, lobbyRoomPass);
 
     if (!isOfficialTarget && !isLurkTarget) {
@@ -2364,7 +2402,7 @@ function toggleAcc(id) {
     const cleanName = (myName || "").trim();
     if (!isLurking && !options.silent && !options.isCrossTab && cleanName && !hasEnteredLogged) {
       hasEnteredLogged = true;
-      const enterTs = confirmedJoinTs; // 💡 入室ログの表示時刻を presence.t と1秒の狂いもなく完全一致
+      const enterTs = confirmedJoinTs;
       if (isNewRoom && !isOfficialTarget) {
         const createKey = `sys_create_${safeRoomPath}_${enterTs}`;
         const createText = "✨ " + `${cleanName} ${realTrip}`.trim() + " がルームを作成しました";
@@ -2384,7 +2422,8 @@ function toggleAcc(id) {
     D = {
       joinBtn: $("btnJoin"), sdBtn: $("sdBtn"), ib: $("ib"), exBtn: $("exBtn"),
       clrBtn: $("clrBtn"), fixedPlayer: $("fixedPlayer"), playerCloseBtn: $("playerCloseBtn"),
-      playerContent: $("playerContent"), tl: $("tl"), tli: $("tl-inner"), unreadBadge: $("unreadBadge"),
+      playerResizeBtn: $("playerResizeBtn"), playerContent: $("playerContent"),
+      tl: $("tl"), tli: $("tl-inner"), unreadBadge: $("unreadBadge"),
       jumpUpBtn: $("jumpUpBtn"), jumpDownBtn: $("jumpDownBtn"), clrMsgBtn: $("clrMsgBtn"),
       clrmod: $("clrmod"), imgViewMod: $("imgViewMod"), imgViewSrc: $("imgViewSrc"),
       imgViewCloseBtn: $("imgViewCloseBtn"), clrCancel: $("clrCancel"), clrOk: $("clrOk"),
@@ -2413,6 +2452,61 @@ function toggleAcc(id) {
       ro.observe(D.tli);
     }
 
+    // 📺 フローティングプレイヤー（ドラッグ移動）
+    const pHeader = $("playerHeader");
+    if (pHeader && D.fixedPlayer) {
+      const onDragStart = (e) => {
+        if (e.target.closest(".p-act-btn")) return;
+        playerDrag.isDragging = true;
+        const pageX = e.touches ? e.touches[0].clientX : e.clientX;
+        const pageY = e.touches ? e.touches[0].clientY : e.clientY;
+        const rect = D.fixedPlayer.getBoundingClientRect();
+        playerDrag.startX = pageX;
+        playerDrag.startY = pageY;
+        playerDrag.initialLeft = rect.left;
+        playerDrag.initialTop = rect.top;
+      };
+      const onDragMove = (e) => {
+        if (!playerDrag.isDragging) return;
+        e.preventDefault();
+        const pageX = e.touches ? e.touches[0].clientX : e.clientX;
+        const pageY = e.touches ? e.touches[0].clientY : e.clientY;
+        const deltaX = pageX - playerDrag.startX;
+        const deltaY = pageY - playerDrag.startY;
+
+        const maxLeft = window.innerWidth - D.fixedPlayer.offsetWidth - 8;
+        const maxTop = window.innerHeight - D.fixedPlayer.offsetHeight - 60;
+        const newLeft = Math.min(Math.max(8, playerDrag.initialLeft + deltaX), maxLeft);
+        const newTop = Math.min(Math.max(50, playerDrag.initialTop + deltaY), maxTop);
+
+        D.fixedPlayer.style.left = newLeft + "px";
+        D.fixedPlayer.style.top = newTop + "px";
+      };
+      const onDragEnd = () => { playerDrag.isDragging = false; };
+
+      pHeader.addEventListener("mousedown", onDragStart);
+      window.addEventListener("mousemove", onDragMove);
+      window.addEventListener("mouseup", onDragEnd);
+
+      pHeader.addEventListener("touchstart", onDragStart, { passive: false });
+      window.addEventListener("touchmove", onDragMove, { passive: false });
+      window.addEventListener("touchend", onDragEnd);
+    }
+
+    // 📺 プレイヤーのワンサイズ縮小／拡大トグル
+    if (D.playerResizeBtn && D.fixedPlayer) {
+      D.playerResizeBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        const isMini = D.fixedPlayer.classList.toggle("is-mini");
+        D.playerResizeBtn.textContent = isMini ? "⤢" : "🗗";
+        // 画面外はみ出し防止クランプ
+        const rect = D.fixedPlayer.getBoundingClientRect();
+        if (rect.right > window.innerWidth) {
+          D.fixedPlayer.style.left = Math.max(8, window.innerWidth - D.fixedPlayer.offsetWidth - 8) + "px";
+        }
+      });
+    }
+
     if (D.imgUploadBtn && D.imgFileInput) {
       D.imgUploadBtn.addEventListener("click", (e) => { e.preventDefault(); D.imgFileInput.click(); });
       D.imgFileInput.addEventListener("change", async (e) => {
@@ -2435,7 +2529,7 @@ function toggleAcc(id) {
 
     if (D.imgPreviewCancelBtn) D.imgPreviewCancelBtn.addEventListener("click", (e) => { e.preventDefault(); resetImagePreview(); });
 
-    /* 🖼️ Google画像検索風 境界ストッパー＆画像外タップで即クローズ（角丸なし） */
+    /* 🖼️ Google画像検索風 境界ストッパー＆画像外タップで即クローズ */
     if (D.zoomViewport && D.imgViewSrc) {
       D.zoomViewport.addEventListener("click", (e) => {
         if (zoomState.hasMoved) { zoomState.hasMoved = false; return; }
@@ -2671,34 +2765,24 @@ function toggleAcc(id) {
         D.mi.style.height = "auto";
         D.mi.style.height = Math.min(D.mi.scrollHeight, 110) + "px";
       });
-      D.mi.addEventListener("focus", () => setTimeout(snapToBottom, 50));
+      D.mi.addEventListener("focus", () => setTimeout(() => snapToBottom(), 50));
       D.mi.addEventListener("keydown", (e) => {
         if (e.isComposing || e.keyCode === 229) return;
         if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
       });
     }
 
-    if (typeof window !== 'undefined') {
+    // 📱 キーボード展開時に入力バーを完全固定（スクロール中の画面広がりを完全阻止）
+    if (typeof window !== 'undefined' && window.visualViewport) {
       const appEl = $("app");
-      let rafPending = false;
-      function syncViewportToKeyboard() {
-        if (rafPending) return;
-        rafPending = true;
-        const wasAtBottom = isAtBottomNear();
-        requestAnimationFrame(() => {
-          rafPending = false;
-          if (appEl && window.visualViewport) {
-            appEl.style.height = window.visualViewport.height + "px";
-            window.scrollTo(0, 0);
-          }
-          if (isJoined && wasAtBottom) snapToBottom();
-        });
-      }
-      if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', syncViewportToKeyboard);
-        window.visualViewport.addEventListener('scroll', syncViewportToKeyboard);
-        syncViewportToKeyboard();
-      }
+      const onViewportResize = () => {
+        if (!appEl) return;
+        appEl.style.height = window.visualViewport.height + "px";
+        window.scrollTo(0, 0);
+        if (isJoined && isAtBottomNear()) snapToBottom(true);
+      };
+      window.visualViewport.addEventListener('resize', onViewportResize);
+      onViewportResize();
     }
 
     if (D.clrMsgBtn && D.mi) D.clrMsgBtn.addEventListener("click", (e) => { e.preventDefault(); D.mi.value = ""; updateClrMsgBtnVisibility(); D.mi.style.height = "auto"; D.mi.focus(); });

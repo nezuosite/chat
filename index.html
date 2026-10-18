@@ -541,7 +541,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
           </div>
         </div>
         <div style="margin-top:4px;">
-          <button class="btn" id="btnJoin" style="width:100%;background:#334155;color:#fff;font-size:13px;font-weight:bold;height:38px;border-radius:6px;box-shadow:0 3px 10px rgba(0,0,0,0.3);" disabled>接続中...</button>
+          <button class="btn" id="btnJoin" style="width:100%;background:#334155;color:#fff;font-size:13px;font-weight:bold;height:38px;border-radius:6px;box-shadow:0 3px 10px rgba(0,0,0,0.3);" disabled>認証準備中...</button>
         </div>
       </div>
 
@@ -553,7 +553,6 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
         </div>
       </div>
 
-      <!-- 🔍 プロレベルSEO 兼 サイト説明・部屋説明・使い方ガイド統合セクション -->
       <section class="seo-guide-box">
         <h1>💬 NEZUO CHAT（ねづおチャット / ネヅオチャット）とは？</h1>
         <p><strong>NEZUO CHAT（ねづおチャット / ネヅオチャット ※表記揺れ：ねずおチャット / ネズオチャット / Nezuo Chat）</strong>は、会員登録やアプリのインストールが一切不要で、ブラウザを開くだけで今すぐ誰でも使える<strong>完全無料の使い捨てチャット</strong>です。個人情報の交換なしに、合言葉（部屋ID＋パスワード）を決めるだけで安全な個室が作れます。</p>
@@ -738,6 +737,9 @@ function toggleAcc(id) {
 
   let myUid = safeLS.get("nz_cached_uid") || "", myTrip = safeLS.get("nz_cached_trip") || "";
   let isAuthAndTripReady = false;
+  let authPromiseResolver = null;
+  const authReadyPromise = new Promise(r => { authPromiseResolver = r; });
+
   const tabSyncId = "tab_" + Math.random().toString(36).substring(2, 9);
   const tabChannel = (typeof BroadcastChannel !== "undefined") ? new BroadcastChannel("nezuo_tab_sync") : null;
   function broadcastTabSync(action, payload = {}) {
@@ -769,29 +771,45 @@ function toggleAcc(id) {
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database(), auth = firebase.auth();
 
-  async function ensureAnonAuth(retryCount = 0) {
-    if (auth.currentUser && auth.currentUser.uid) {
-      myUid = auth.currentUser.uid; safeLS.set("nz_cached_uid", myUid);
-      return auth.currentUser;
-    }
+  async function ensureAnonAuthAndTrip(retryCount = 0) {
+    if (isAuthAndTripReady && myUid && myTrip) return { uid: myUid, trip: myTrip };
     try {
       db.goOnline();
-      const cred = await auth.signInAnonymously();
-      if (cred && cred.user) {
-        myUid = cred.user.uid; safeLS.set("nz_cached_uid", myUid);
-        return cred.user;
+      let user = auth.currentUser;
+      if (!user || !user.uid) {
+        const cred = await auth.signInAnonymously();
+        user = cred.user;
+      }
+      if (user && user.uid) {
+        myUid = user.uid;
+        safeLS.set("nz_cached_uid", myUid);
+        myTrip = await window.makeTripFromUid(myUid);
+        safeLS.set("nz_cached_trip", myTrip);
+        isAuthAndTripReady = true;
+        if (db && myTrip && myTrip.length === 7) db.ref(`tripIndex/${myTrip.substring(1)}`).set(myUid).catch(() => {});
+        if (authPromiseResolver) authPromiseResolver({ uid: myUid, trip: myTrip });
+        syncProfileValues();
+        return { uid: myUid, trip: myTrip };
       }
     } catch (err) {
       if (retryCount < 3) {
-        await new Promise(r => setTimeout(r, 1000 * (retryCount + 1)));
-        return ensureAnonAuth(retryCount + 1);
+        await new Promise(r => setTimeout(r, 800 * (retryCount + 1)));
+        return ensureAnonAuthAndTrip(retryCount + 1);
       }
     }
-    return auth.currentUser;
+    return { uid: myUid, trip: myTrip };
   }
 
-  auth.onAuthStateChanged((user) => {
-    if (user && user.uid) { myUid = user.uid; safeLS.set("nz_cached_uid", myUid); syncProfileValues(); }
+  auth.onAuthStateChanged(async (user) => {
+    if (user && user.uid) {
+      myUid = user.uid;
+      safeLS.set("nz_cached_uid", myUid);
+      myTrip = await window.makeTripFromUid(myUid);
+      safeLS.set("nz_cached_trip", myTrip);
+      isAuthAndTripReady = true;
+      if (authPromiseResolver) authPromiseResolver({ uid: myUid, trip: myTrip });
+      syncProfileValues();
+    }
   });
 
   const $ = id => document.getElementById(id);
@@ -1387,7 +1405,7 @@ function toggleAcc(id) {
     validateLobbyInputs();
 
     if (!isSilent) broadcastTabSync("ROOM_EXIT", { isAuto });
-    if (isAuto) showToast("⏱️ 30分間発言がなかったため自動退出しました", 4000);
+    if (isAuto) showToast("⏱️ 30分間無発言のため自動退室しました", 4000);
   }
 
   async function processAutoExitForUser(targetUid, userData, targetRoomId = currentRoomId) {
@@ -1406,7 +1424,7 @@ function toggleAcc(id) {
       if (now < rawBase + AUTO_EXIT_MS) return;
 
       const exactExpiryTime = rawBase + AUTO_EXIT_MS;
-      const autoExitKey = `sys_autoexit_${targetUid}_${rawBase}`;
+      const autoExitKey = `sys_autoexit_${targetUid}`;
       const userName = (current.n || userData.n || "名無し").trim();
       const userTrip = (current.p || userData.p || "").trim();
       const rawSysText = "⏱️ " + `${userName} ${userTrip}`.trim() + " が自動退室しました（30分無発言）";
@@ -1442,7 +1460,7 @@ function toggleAcc(id) {
     if (!rawBase || rawBase <= 0) rawBase = getTrueTime() - AUTO_EXIT_MS;
 
     const exactExpiryTime = rawBase + AUTO_EXIT_MS;
-    const autoExitKey = `sys_autoexit_${uid}_${rawBase}`;
+    const autoExitKey = `sys_autoexit_${uid}`;
 
     try {
       const rawSysText = "⏱️ " + `${cleanName} ${cleanTrip}`.trim() + " が自動退室しました（30分無発言）";
@@ -1496,7 +1514,7 @@ function toggleAcc(id) {
       await Promise.all(expired.map(async ([zUid, zData]) => {
         const rawBase = parseInt(zData.t, 10) || (now - AUTO_EXIT_MS);
         const exactExpiryTime = rawBase + AUTO_EXIT_MS;
-        const autoExitKey = `sys_autoexit_${zUid}_${rawBase}`;
+        const autoExitKey = `sys_autoexit_${zUid}`;
         const name = (zData.n || "名無し").trim(), trip = (zData.p || "").trim();
         const rawSysText = "⏱️ " + `${name} ${trip}`.trim() + " が自動退室しました（30分無発言）";
 
@@ -1880,17 +1898,17 @@ function toggleAcc(id) {
     const btnJoin = $("btnJoin");
     if (btnJoin) {
       btnJoin.disabled = !isFreeRoomValid;
-      btnJoin.textContent = !hasAuthAndTrip ? "接続中..." : (!isFreeRoomValid ? "必要項目を入力してください" : "ルームに入る / 作成");
+      btnJoin.textContent = !hasAuthAndTrip ? "認証準備中..." : (!isFreeRoomValid ? "必要項目を入力してください" : "ルームに入る / 作成");
     }
     const btnOfficial = $("btnJoinOfficial");
     if (btnOfficial) {
       btnOfficial.disabled = !isOfficialValid;
-      btnOfficial.textContent = !hasAuthAndTrip ? "接続中..." : (!name ? "🏢 参加する (要名前入力)" : "🏢 参加する");
+      btnOfficial.textContent = !hasAuthAndTrip ? "認証準備中..." : (!name ? "🏢 参加する (要名前入力)" : "🏢 参加する");
     }
     const btnLurk = $("btnLurkOfficial");
     if (btnLurk) {
       btnLurk.disabled = !hasAuthAndTrip;
-      btnLurk.textContent = !hasAuthAndTrip ? "接続中..." : "👀 閲覧のみ（覗き見）";
+      btnLurk.textContent = !hasAuthAndTrip ? "認証準備中..." : "👀 閲覧のみ（覗き見）";
     }
     const inlineInput = $("lurkInlineNameInput"), upgradeBtn = $("btnUpgradeToJoin");
     if (inlineInput && upgradeBtn) upgradeBtn.disabled = !inlineInput.value.trim();
@@ -1904,14 +1922,10 @@ function toggleAcc(id) {
 
     const tripContainer = $("lobbyTripContainer"), tripPrevEl = $("lobbyTripPrev");
     try {
-      if (!myUid) {
-        const user = await ensureAnonAuth();
-        if (user && user.uid) myUid = user.uid;
+      if (!isAuthAndTripReady) {
+        await ensureAnonAuthAndTrip();
       }
-      if (myUid) {
-        myTrip = await window.makeTripFromUid(myUid);
-        isAuthAndTripReady = true;
-        if (db && myTrip && myTrip.length === 7) db.ref(`tripIndex/${myTrip.substring(1)}`).set(myUid).catch(() => {});
+      if (myUid && myTrip) {
         if (tripContainer) tripContainer.style.display = "flex";
         if (tripPrevEl) {
           const clean = (myName || "").trim();
@@ -2389,10 +2403,9 @@ function toggleAcc(id) {
 
     (async () => {
       try {
-        let user = auth.currentUser;
-        if (!user || !user.uid) user = await ensureAnonAuth();
-        if (!user || !user.uid) throw new Error("認証未完了です");
-        myUid = user.uid;
+        const { uid } = await ensureAnonAuthAndTrip();
+        if (!uid) throw new Error("認証未完了です");
+        myUid = uid;
 
         const postTs = firebase.database.ServerValue.TIMESTAMP;
         const newMsgRef = db.ref(`chat/${currentRoomId}`).push();
@@ -2425,9 +2438,7 @@ function toggleAcc(id) {
   const initDirectDatabaseProcess = async () => {
     try {
       if (db) db.goOnline();
-      const user = await ensureAnonAuth().catch(()=>null);
-      if (user && user.uid) myUid = user.uid;
-      await syncProfileValues();
+      await ensureAnonAuthAndTrip();
       const offsetPromise = syncServerOffset().catch(() => {});
 
       db.ref("settings/official/lurkDisabled").on("value", snap => {
@@ -2466,7 +2477,7 @@ function toggleAcc(id) {
 
             if (rawBase > 0) {
               const exactExpiryTime = rawBase + AUTO_EXIT_MS;
-              const autoExitKey = `sys_autoexit_${myUid}_${rawBase}`;
+              const autoExitKey = `sys_autoexit_${myUid}`;
               const cleanName = (myName || "名無し").trim(), cleanTrip = myTrip || "";
               const rawSysText = "⏱️ " + `${cleanName} ${cleanTrip}`.trim() + " が自動退室しました（30分無発言）";
               const tempKey = (lastRoomId === "official" || !lastRoomPass) ? null : await E2EE.deriveKey(lastRoomPass);
@@ -2533,37 +2544,48 @@ function toggleAcc(id) {
 
   async function joinRoom(options = {}) {
     if (!db) { alert("データベースが準備できていません。"); return; }
+    
+    // 匿名認証 & トリップ生成が完全に完了するまで確実に待機（ブロック）
+    const activeBtn = options.isLurk ? $("btnLurkOfficial") : ((options.roomId === "official") ? $("btnJoinOfficial") : $("btnJoin"));
+    const origText = activeBtn ? activeBtn.textContent : "";
+    if (activeBtn) { activeBtn.disabled = true; activeBtn.textContent = "認証準備中..."; }
+
+    const authRes = await ensureAnonAuthAndTrip();
+    if (!authRes || !authRes.uid || !authRes.trip) {
+      if (activeBtn) { activeBtn.disabled = false; activeBtn.textContent = origText; }
+      showToast("🔄 回線を準備しています... もう一度お試しください");
+      return;
+    }
+
     let lobbyRoomId = options.roomId || ($("lobbyRoomId") ? $("lobbyRoomId").value.trim() : "");
     let lobbyRoomPass = options.roomPass !== undefined ? options.roomPass : ($("lobbyRoomPass") ? $("lobbyRoomPass").value.trim() : "");
-    if (!lobbyRoomId) { alert("ルームIDを入力してください。"); return; }
+    if (!lobbyRoomId) { 
+      if (activeBtn) { activeBtn.disabled = false; activeBtn.textContent = origText; }
+      alert("ルームIDを入力してください。"); 
+      return; 
+    }
 
     const isLurkTarget = !!options.isLurk;
     const isOfficialTarget = (lobbyRoomId === "official");
-    if (!isOfficialTarget && !isLurkTarget && !lobbyRoomPass) { alert("パスワードを入力してください（フリールームは必須です）。"); return; }
+    if (!isOfficialTarget && !isLurkTarget && !lobbyRoomPass) { 
+      if (activeBtn) { activeBtn.disabled = false; activeBtn.textContent = origText; }
+      alert("パスワードを入力してください（フリールームは必須です）。"); 
+      return; 
+    }
 
     if (isOfficialTarget && isLurkTarget) {
       try {
         const snap = await db.ref("settings/official/lurkDisabled").once("value");
-        if (snap.val() === true) { showToast("⚠️ 現在、公式ラウンジの閲覧は制限されています"); return; }
+        if (snap.val() === true) { 
+          if (activeBtn) { activeBtn.disabled = false; activeBtn.textContent = origText; }
+          showToast("⚠️ 現在、公式ラウンジの閲覧は制限されています"); 
+          return; 
+        }
       } catch(e){}
     }
 
-    const activeBtn = isLurkTarget ? $("btnLurkOfficial") : (isOfficialTarget ? $("btnJoinOfficial") : $("btnJoin"));
-    const origText = activeBtn ? activeBtn.textContent : "";
-    if (activeBtn) { activeBtn.disabled = true; activeBtn.textContent = "接続中..."; }
-
-    let user = null;
-    try { user = await ensureAnonAuth(); } catch(e){}
-    if (!user || !user.uid) {
-      if (activeBtn) { activeBtn.disabled = false; activeBtn.textContent = origText; }
-      showToast("🔄 回線を再接続しています... もう一度お試しください");
-      return;
-    }
-
-    myUid = user.uid;
-    const realTrip = await window.makeTripFromUid(myUid);
-    myTrip = realTrip;
-    db.ref(`tripIndex/${realTrip.substring(1)}`).set(myUid).catch(() => {});
+    myUid = authRes.uid;
+    myTrip = authRes.trip;
 
     const safeRoomPath = isOfficialTarget ? "official" : await window.sha256(lobbyRoomId);
     await cleanupExpiredMembersBeforeJoin(safeRoomPath, lobbyRoomPass);
@@ -2613,7 +2635,7 @@ function toggleAcc(id) {
     roomSettings.approvedUids = val.approvedUids || {};
     roomSettings.creatorUid = val.creatorUid || "";
     localLastClearedTime = val.last_cleared_at || 0;
-
+    
     if (!isLurkTarget && (!settingsSnap || !settingsSnap.exists() || !roomSettings.creatorUid)) {
       isNewRoom = true;
       roomSettings.creatorUid = isOfficialTarget ? (checkIsGlobalAdmin() ? myUid : "") : myUid;
@@ -2667,19 +2689,19 @@ function toggleAcc(id) {
         const joinServerTs = firebase.database.ServerValue.TIMESTAMP;
         const updates = {};
         updates[`presence/${currentRoomId}/${myUid}`] = {
-          n: myName || "名無し", p: realTrip, c: curColor, t: joinServerTs
+          n: myName || "名無し", p: myTrip, c: curColor, t: joinServerTs
         };
 
         if (cleanName && !hasEnteredLogged) {
           hasEnteredLogged = true;
           const enterKey = `sys_enter_${myUid}_${Date.now()}`;
-          const rawEnterText = "👋 " + `${cleanName} ${realTrip}`.trim() + " が入室しました";
+          const rawEnterText = "👋 " + `${cleanName} ${myTrip}`.trim() + " が入室しました";
           const encEnter = await encodeMsgPayload("システム", "", rawEnterText);
           updates[`chat/${currentRoomId}/${enterKey}`] = { u: "system", c: "#f43f5e", d: encEnter, t: joinServerTs, sys: true };
 
           if (isNewRoom && !isOfficialTarget) {
             const createKey = `sys_create_${safeRoomPath}_${Date.now() - 10}`;
-            const createText = "✨ " + `${cleanName} ${realTrip}`.trim() + " がルームを作成しました";
+            const createText = "✨ " + `${cleanName} ${myTrip}`.trim() + " がルームを作成しました";
             const encCreate = await encodeMsgPayload("システム", "", createText);
             updates[`chat/${currentRoomId}/${createKey}`] = { u: "system", c: "#f43f5e", d: encCreate, t: joinServerTs, sys: true };
           }
@@ -2939,13 +2961,13 @@ function toggleAcc(id) {
     }
 
     if ($("btnUpgradeToJoin")) {
-      $("btnUpgradeToJoin").addEventListener("click", () => {
+      $("btnUpgradeToJoin").addEventListener("click", async () => {
         const inlineInput = $("lurkInlineNameInput");
         const val = inlineInput ? inlineInput.value.trim().replace(/◆/g, "") : "";
         if (!val) { showToast("⚠️ 名前を入力してください"); if (inlineInput) inlineInput.focus(); return; }
         myName = val; safeLS.set("nz_ni", val);
         if ($("lobbyName")) $("lobbyName").value = val;
-        syncProfileValues();
+        await syncProfileValues();
         joinRoom({ roomId: "official", roomPass: "", isLurk: false });
       });
     }
@@ -3127,3 +3149,4 @@ function toggleAcc(id) {
 </script>
 </body>
 </html>
+    

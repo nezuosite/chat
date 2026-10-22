@@ -110,7 +110,11 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
   --bg:#070a10;--sf:#0f172a;--s2:#0b1120;--bd:#1e293b;--tx:#f8fafc;--mu:#94a3b8;--m2:#475569;--in:#334155;--ro:#f43f5e;
-  --my-bubble:#0284c7;--other-bubble:#1e293b;--usr-color:#f1f5f9;--safe:env(safe-area-inset-bottom,0px);
+  --my-bubble:#0284c7;--other-bubble:#1e293b;--usr-color:#f1f5f9;
+  --sat:env(safe-area-inset-top,0px);
+  --sab:env(safe-area-inset-bottom,0px);
+  --sal:env(safe-area-inset-left,0px);
+  --sar:env(safe-area-inset-right,0px);
   --font-stack:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI",Meiryo,sans-serif;
 }
 html,body{
@@ -132,9 +136,18 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 }
 
 #app{position:fixed;inset:0;width:100%;height:100%;display:flex;flex-direction:column;z-index:50;background:var(--bg);overflow:hidden;overscroll-behavior:none}
-#cp{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;background:#090d16;position:relative;max-width:900px;width:100%;margin:0 auto;border-left:1px solid var(--bd);border-right:1px solid var(--bd)}
+#cp{
+  display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;background:#090d16;
+  position:relative;max-width:960px;width:100%;margin:0 auto;
+  border-left:1px solid var(--bd);border-right:1px solid var(--bd);
+}
 
-#hdr{background:#0f172a;border-bottom:1px solid var(--bd);padding:6px 12px;flex-shrink:0;z-index:100}
+/* 📱 全機種ノッチ＆Dynamic Island対応ヘッダー */
+#hdr{
+  background:#0f172a;border-bottom:1px solid var(--bd);
+  padding:calc(6px + var(--sat)) calc(12px + var(--sar)) 6px calc(12px + var(--sal));
+  flex-shrink:0;z-index:100;
+}
 .hr{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%}
 .hr-left{display:flex;align-items:center;gap:6px;overflow:hidden;white-space:nowrap;min-width:0;flex:1}
 .hr-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
@@ -142,7 +155,11 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .logo span.sub-room{font-size:10.5px;font-weight:bold;color:var(--mu)!important;background:rgba(255,255,255,0.06);padding:1.5px 6px;border-radius:4px;border:1px solid rgba(255,255,255,0.08);margin-left:6px}
 .pcnt{font-size:10px;font-weight:900;background:rgba(255,255,255,.08);padding:2px 7px;border-radius:4px;border:1px solid rgba(255,255,255,.06);flex-shrink:0;color:#e2e8f0!important}
 
-#lobbyScreen{display:flex;flex:1;overflow-y:auto;padding:12px;background:#070a10;flex-direction:column;gap:12px;-webkit-overflow-scrolling:touch}
+#lobbyScreen{
+  display:flex;flex:1;overflow-y:auto;
+  padding:12px calc(12px + var(--sar)) calc(16px + var(--sab)) calc(12px + var(--sal));
+  background:#070a10;flex-direction:column;gap:12px;-webkit-overflow-scrolling:touch;
+}
 #chatScreen{display:none;flex-direction:column;flex:1;min-height:0;overflow:hidden;position:relative}
 .preload-chat-active #lobbyScreen{display:none!important}
 .preload-chat-active #chatScreen{display:flex!important}
@@ -176,7 +193,8 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 
 #adminAccordionMount{flex-shrink:0;z-index:90}
 #adminAccordion{
-  display:none;flex-direction:column;background:var(--sf);border-bottom:1px solid var(--bd);padding:10px 14px;gap:10px;
+  display:none;flex-direction:column;background:var(--sf);border-bottom:1px solid var(--bd);
+  padding:10px calc(14px + var(--sar)) 10px calc(14px + var(--sal));gap:10px;
   box-shadow:0 4px 12px rgba(0,0,0,0.3);animation:slideDown .2s cubic-bezier(0.16,1,0.3,1) forwards;
 }
 @keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
@@ -188,34 +206,45 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .toggle-switch input:checked+.toggle-slider::after{transform:translateX(16px);background-color:#fff}
 .toggle-label{font-size:11px;font-weight:bold;color:var(--tx)!important}
 
-#pl{display:none;gap:6px;padding:6px 12px;background:var(--s2);border-bottom:1px solid var(--bd);overflow-x:auto;white-space:nowrap;min-height:36px;max-height:36px;flex-shrink:0;align-items:center;z-index:80}
+#pl{
+  display:none;gap:6px;
+  padding:6px calc(12px + var(--sar)) 6px calc(12px + var(--sal));
+  background:var(--s2);border-bottom:1px solid var(--bd);overflow-x:auto;white-space:nowrap;min-height:36px;max-height:36px;flex-shrink:0;align-items:center;z-index:80;
+}
 .chip{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,0.04);border:1.5px solid var(--usr-color);display:inline-flex;align-items:center;gap:3px;color:var(--usr-color);height:24px}
 
-#callBar{display:none;align-items:center;justify-content:space-between;padding:6px 12px;background:#0d1527;border-bottom:1px solid #1e293b;gap:8px;flex-shrink:0}
+#callBar{
+  display:none;align-items:center;justify-content:space-between;
+  padding:6px calc(12px + var(--sar)) 6px calc(12px + var(--sal));
+  background:#0d1527;border-bottom:1px solid #1e293b;gap:8px;flex-shrink:0;
+}
 .call-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:bold;color:#38bdf8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .call-dot{width:8px;height:8px;border-radius:50%;background:#10b981;flex-shrink:0;animation:pulse 1.5s infinite}
 @keyframes pulse{0%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.85)}100%{opacity:1;transform:scale(1)}}
 .call-btn{padding:4px 9px;height:26px;border-radius:5px;font-size:10.5px;font-weight:bold;background:#1e293b;color:#f8fafc;border:1px solid #334155;display:inline-flex;align-items:center;gap:4px;cursor:pointer}
 .call-btn.active{background:#e11d48!important;border-color:#f43f5e!important;color:#fff!important}
 
+/* 📺 画質変更対応・最適固定サイズプレイヤー（幅480px / スマホ全幅フィット） */
 #fixedPlayer{
   display:none;position:fixed;top:60px;right:16px;z-index:9999;flex-direction:column;
   background:#000;border:1.5px solid #334155;box-shadow:0 10px 30px rgba(0,0,0,0.8);
-  width:320px;max-width:calc(100vw - 20px);touch-action:none;user-select:none;border-radius:8px;overflow:hidden;
+  width:480px;max-width:calc(100vw - 16px);touch-action:none;user-select:none;border-radius:8px;overflow:hidden;
 }
 #playerHeader{
-  background:#0f172a;padding:6px 10px;font-size:11px;font-weight:bold;color:#f8fafc;
+  background:#0f172a;padding:7px 10px;font-size:11px;font-weight:bold;color:#f8fafc;
   display:flex;justify-content:space-between;align-items:center;cursor:grab;border-bottom:1px solid #1e293b;
 }
 #playerHeader:active{cursor:grabbing}
-#playerTitle{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px}
+#playerTitle{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:380px}
 .player-actions{display:flex;gap:4px;align-items:center}
 .p-act-btn{background:rgba(255,255,255,0.08);color:#cbd5e1;border:1px solid rgba(255,255,255,0.15);border-radius:4px;height:22px;padding:0 7px;font-size:10.5px;font-weight:bold}
 #playerContent{width:100%;aspect-ratio:16/9;background:#000;position:relative;overflow:hidden}
 #playerContent iframe,#playerContent audio{width:100%;height:100%;border:none}
 
+/* 💬 タイムライン：キーボード展開時も最新ログ1行を死守する下限高さ */
 #tl{
-  flex:1;min-height:56px!important;overflow-y:auto;overflow-anchor:auto;padding:12px 14px 24px 14px;
+  flex:1;min-height:56px!important;overflow-y:auto;overflow-anchor:auto;
+  padding:12px calc(14px + var(--sar)) 24px calc(14px + var(--sal));
   background-color:#070a10;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;
 }
 #tl.instant-ready{opacity:0}
@@ -253,15 +282,6 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .mb-bubble a{color:#38bdf8;text-decoration:underline}
 .mw.my-msg .mb-bubble a{color:#e0f2fe;font-weight:bold}
 
-.chat-table-wrap{
-  overflow-x:auto;max-width:100%;margin:4px 0;border-radius:6px;border:1px solid rgba(255,255,255,0.1);
-  background:rgba(0,0,0,0.25);-webkit-overflow-scrolling:touch;
-}
-.chat-table{border-collapse:collapse;width:100%;min-width:200px;font-size:11.5px;text-align:left}
-.chat-table th,.chat-table td{padding:5px 8px;border:1px solid rgba(255,255,255,0.08);white-space:nowrap}
-.chat-table th{background:rgba(255,255,255,0.08);font-weight:bold;color:#38bdf8}
-.chat-table tr:nth-child(even){background:rgba(255,255,255,0.02)}
-
 .bubble-meta{display:flex;flex-direction:column;gap:1px;flex-shrink:0;margin-bottom:2px;user-select:none}
 .mw.my-msg .bubble-meta{align-items:flex-end}
 .mw.other-msg .bubble-meta{align-items:flex-start}
@@ -276,7 +296,8 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .sys-ts{display:inline-block;font-size:9.5px;color:var(--mu);opacity:.85;margin-left:6px}
 
 #ibTopBar{
-  background:#0f172a;border-top:1px solid var(--bd);padding:5px 10px;
+  background:#0f172a;border-top:1px solid var(--bd);
+  padding:5px calc(10px + var(--sar)) 5px calc(10px + var(--sal));
   display:flex;align-items:center;justify-content:space-between;gap:8px;flex-shrink:0;
 }
 .ib-actions-left{display:flex;align-items:center;gap:5px;flex-wrap:nowrap;min-width:0}
@@ -300,7 +321,8 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 }
 
 #ib{
-  display:flex;flex-direction:column;padding:6px calc(10px + env(safe-area-inset-right,0px)) calc(6px + var(--safe)) calc(10px + env(safe-area-inset-left,0px));
+  display:flex;flex-direction:column;
+  padding:6px calc(10px + var(--sar)) calc(6px + var(--sab)) calc(10px + var(--sal));
   background:#0f172a;border-top:1px solid rgba(255,255,255,0.04);gap:6px;flex-shrink:0;
 }
 #ibToolbar{width:100%;align-items:flex-end;display:flex;gap:8px}
@@ -329,7 +351,11 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 #imgPreviewThumb{width:44px;height:44px;object-fit:cover;border-radius:0!important;border:1px solid rgba(255,255,255,0.15)}
 #imgPreviewCancelBtn{background:rgba(244,63,94,0.15);border:1px solid rgba(244,63,94,0.3);color:#fda4af;border-radius:0!important;width:22px;height:22px;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-left:auto}
 
-#lurkPromptBar{display:none;width:100%;padding:6px 10px calc(6px + var(--safe)) 10px;background:#0b1120;border-top:1px solid #1e293b;align-items:center;justify-content:space-between;gap:8px;flex-shrink:0}
+#lurkPromptBar{
+  display:none;width:100%;
+  padding:6px calc(10px + var(--sar)) calc(6px + var(--sab)) calc(10px + var(--sal));
+  background:#0b1120;border-top:1px solid #1e293b;align-items:center;justify-content:space-between;gap:8px;flex-shrink:0;
+}
 #btnUpgradeToJoin:disabled{background:#1e293b!important;color:#64748b!important;border:1px solid #334155!important;opacity:0.5!important;cursor:not-allowed!important}
 
 .inp{width:100%;background-color:var(--s2)!important;border:1px solid var(--bd);border-radius:6px;padding:5px 8px;color:#f8fafc!important;outline:none;font-size:16px!important;height:34px;opacity:1!important;visibility:visible!important}
@@ -341,7 +367,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 
 #imgViewMod{background:#000!important;backdrop-filter:none!important;flex-direction:column;padding:0!important;user-select:none;touch-action:none}
 #zoomViewport{width:100%;height:100%;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:none;cursor:default}
-.modal-top-close{position:absolute;top:calc(16px + env(safe-area-inset-top,0px));right:calc(16px + env(safe-area-inset-right,0px));width:40px;height:40px;border-radius:50%!important;background:rgba(30,41,59,0.75)!important;border:1px solid rgba(255,255,255,0.25)!important;color:#fff!important;font-size:18px!important;display:flex;align-items:center;justify-content:center;z-index:10002}
+.modal-top-close{position:absolute;top:calc(16px + var(--sat));right:calc(16px + var(--sar));width:40px;height:40px;border-radius:50%!important;background:rgba(30,41,59,0.75)!important;border:1px solid rgba(255,255,255,0.25)!important;color:#fff!important;font-size:18px!important;display:flex;align-items:center;justify-content:center;z-index:10002}
 #imgViewSrc{max-width:100%;max-height:100%;object-fit:contain;border-radius:0!important;user-select:none;-webkit-user-drag:none;pointer-events:auto;will-change:transform;touch-action:none}
 
 .inline-img{max-width:100%;max-height:200px;width:auto;height:auto;object-fit:cover;border-radius:0!important;margin-top:2px;display:block;cursor:zoom-in;border:1px solid rgba(255,255,255,0.12)}
@@ -356,16 +382,29 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 
 #toastContainer{position:fixed;bottom:68px;left:50%;transform:translateX(-50%) translateY(10px);background:rgba(15,23,42,0.96);backdrop-filter:blur(6px);border:1px solid var(--bd);color:var(--tx);padding:7px 16px;border-radius:20px;font-size:12px;font-weight:bold;z-index:10000;box-shadow:0 4px 14px rgba(0,0,0,0.5);pointer-events:none;opacity:0;display:none}
 #toastContainer.show{opacity:1;transform:translateX(-50%) translateY(0)}
-.mod-overlay{display:flex;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(5,7,10,0.6)!important;backdrop-filter:blur(4px)!important;z-index:200000;align-items:center;justify-content:center;padding:20px;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .14s ease,visibility .14s}
+.mod-overlay{display:flex;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(5,7,10,0.6)!important;backdrop-filter:blur(4px)!important;z-index:200000;align-items:center;justify-content:center;padding:20px calc(20px + var(--sar)) 20px calc(20px + var(--sal));opacity:0;visibility:hidden;pointer-events:none;transition:opacity .14s ease,visibility .14s}
 .mod-overlay.show{opacity:1;visibility:visible;pointer-events:auto}
-.gc{background:var(--sf);border:1px solid var(--bd);border-radius:12px;width:100%;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,0.6);display:flex;flex-direction:column}
+.gc{background:var(--sf);border:1px solid var(--bd);border-radius:12px;width:100%;max-height:calc(100vh - 40px);overflow-y:auto;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,0.6);display:flex;flex-direction:column}
 .clrmc{display:flex;flex-direction:column}
 .clr-prev{font-size:13px;font-weight:bold;text-align:center;background:rgba(0,0,0,0.25);padding:12px;border-radius:6px;border:1px dashed var(--bd);word-break:break-all}
 .clr-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
 .clr-ok{background:var(--in);color:#fff;border:none;padding:10px;border-radius:6px;font-size:12.5px;font-weight:bold;cursor:pointer;height:36px;display:flex;align-items:center;justify-content:center;order:1}
 .clr-cancel{background:var(--s2);color:var(--tx);border:1px solid var(--bd);padding:10px;border-radius:6px;font-size:12.5px;font-weight:bold;cursor:pointer;height:36px;display:flex;align-items:center;justify-content:center;order:2}
 #confirmMod{z-index:300000!important}
-@media (max-width:580px){#hdr{padding-right:10px!important}#ib{padding-right:0!important}}
+
+/* 🔄 横画面（ランドスケープ）時の自動スリム化・高さ死守レイアウト */
+@media (orientation: landscape) and (max-height: 500px) {
+  #hdr{padding-top:calc(3px + var(--sat));padding-bottom:3px}
+  #ibTopBar{padding-top:3px;padding-bottom:3px}
+  #ib{padding-top:4px}
+  #pl{min-height:30px;max-height:30px}
+  .chip{height:20px;font-size:10px}
+  .mi-container{min-height:34px}
+  #mi{font-size:14px!important;padding:2px 0}
+  .bsd,#imgUploadBtn{width:34px;height:34px}
+  .bsd svg{width:16px;height:16px}
+}
+@media (max-width:580px){#hdr{padding-right:calc(10px + var(--sar))!important}#ib{padding-right:calc(6px + var(--sar))!important}}
 </style>
 </head>
 <body>
@@ -502,7 +541,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
           <input type="file" id="imgFileInput" accept="image/*" style="display:none;">
           <button class="bsd" id="imgUploadBtn" aria-label="画像添付" title="画像を添付">📷</button>
           <div class="mi-container">
-            <textarea id="mi" rows="1" placeholder="メッセージを入力...（表の貼り付け対応）" maxlength="2000"></textarea>
+            <textarea id="mi" rows="1" placeholder="メッセージを入力..." maxlength="500"></textarea>
             <button class="bclrm" id="clrMsgBtn" title="クリア">×</button>
           </div>
           <button class="bsd" id="sdBtn" aria-label="送信">
@@ -630,8 +669,8 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
             メンバーが揃ったらスイッチ1つで入室制限をON。後からパスワードを推測した部外者が乱入してくる心配がありません。
           </div>
           <div class="seo-card">
-            <strong>⏱️ 30分でログ物理完全消去</strong>
-            30分間無発言で自動退室となり、部屋が無人になるとメッセージ・画像を含めサーバーから痕跡ゼロで物理消去されます。
+            <strong>⏱️ 30分無発言＆無人でログ物理完全消去</strong>
+            30分間無発言で自動退室となり、部屋が無人になった瞬間にメッセージ・画像を含めサーバーから痕跡ゼロで物理消去されます。
           </div>
           <div class="seo-card">
             <strong>📷 写真のGPS位置情報（Exif）自動抹消</strong>
@@ -650,8 +689,8 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
             <div class="seo-faq-a">A. パスワード付きの個室は一切見られません。端末間暗号化（E2EE）技術を採用しているため、第三者はもちろんサーバー管理者であっても会話内容を閲覧することは技術的に不可能です。</div>
           </div>
           <div class="seo-faq-item">
-            <div class="seo-faq-q">Q. 退室後、会話の履歴（ログ）はどこかに残りますか？</div>
-            <div class="seo-faq-a">A. サーバーには一切残りません。30分間発言のないユーザーは自動退室となり、部屋が無人になった瞬間にすべてのデータが物理消去されます。</div>
+            <div class="seo-faq-q">Q. 会話の途中でチャットが勝手に消えてしまいませんか？</div>
+            <div class="seo-faq-a">A. 会話が続いている限り消えません。30分間無発言のユーザーのみが自動退室となり、全員が退出して部屋が無人になった瞬間にログが物理完全消去されます。</div>
           </div>
           <div class="seo-faq-item">
             <div class="seo-faq-q">Q. アプリを入れずにボイス通話はできますか？</div>
@@ -1030,28 +1069,10 @@ function toggleAcc(id) {
 
   function renderMessageBody(text) {
     if (!text) return "";
-    const reg = /(https?:\/\/[^\s\n<>"]+|data:image\/[a-zA-Z]+;base64,[A-Za-z0-9+/=]+|\[TABLE\][\s\S]*?\[\/TABLE\])/gi;
+    const reg = /(https?:\/\/[^\s\n<>"]+|data:image\/[a-zA-Z]+;base64,[A-Za-z0-9+/=]+)/gi;
     return text.split(reg).map((part, i) => {
       if (i % 2 === 0) return escapeHtml(part);
       const url = part;
-
-      if (url.startsWith("[TABLE]") && url.endsWith("[/TABLE]")) {
-        const tableBody = url.substring(7, url.length - 8).trim();
-        const lines = tableBody.split("\n").filter(l => l.trim().length > 0);
-        let tableHtml = '<div class="chat-table-wrap"><table class="chat-table">';
-        lines.forEach((line, rIdx) => {
-          const cells = line.split("\t");
-          tableHtml += '<tr>';
-          cells.forEach(cell => {
-            const tag = (rIdx === 0) ? 'th' : 'td';
-            tableHtml += `<${tag}>${escapeHtml(cell.trim())}</${tag}>`;
-          });
-          tableHtml += '</tr>';
-        });
-        tableHtml += '</table></div>';
-        return tableHtml;
-      }
-
       if (url.startsWith("data:image/") || /\.(jpeg|jpg|gif|png|webp)($|\?)/i.test(url)) {
         const s = escapeHtml(url);
         return `<div style="margin-top:2px;"><img class="inline-img safe-img-click" src="${s}" data-url="${s}" alt="画像" loading="lazy"></div>`;
@@ -1809,6 +1830,19 @@ function toggleAcc(id) {
     } finally { isDiffSyncing = false; }
   }
 
+  /* 🔄 画面回転＆リサイズ時の自動引き戻し＆スナップ補正 */
+  function handleScreenGeometryChange() {
+    clampFloatingPlayerInScreen();
+    if (zoomState.scale > 1) clampZoomPositions();
+    if (isJoined && isAtBottomNear(250)) snapToBottom(true);
+    updateJumpBtns();
+  }
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener("resize", handleScreenGeometryChange);
+    window.addEventListener("orientationchange", () => setTimeout(handleScreenGeometryChange, 120));
+  }
+
   if (typeof document !== 'undefined') {
     const triggerSyncAndCheck = () => {
       const savedScreen = safeLS.get("nz_current_screen") || "lobby";
@@ -1903,6 +1937,7 @@ function toggleAcc(id) {
 
   const updateClrMsgBtnVisibility = () => { if (D.clrMsgBtn && D.mi) D.clrMsgBtn.classList.toggle("show", D.mi.value.length > 0); };
 
+  /* 👤 ロビー入力バリデーション（触るまで警告を隠す洗練UI） */
   const validateLobbyInputs = (isSubmitAttempt = false) => {
     const name = ($("lobbyName") ? $("lobbyName").value.trim() : "");
     const roomId = ($("lobbyRoomId") ? $("lobbyRoomId").value.trim() : "");
@@ -2035,15 +2070,29 @@ function toggleAcc(id) {
     D.fixedPlayer.style.display = "none"; D.playerContent.innerHTML = "";
   };
 
+  /* 📺 画面外飛び出し防止クランプ（上下左右の壁） */
+  function clampFloatingPlayerInScreen() {
+    if (!D.fixedPlayer || D.fixedPlayer.style.display === "none") return;
+    const pW = D.fixedPlayer.offsetWidth || 320, pH = D.fixedPlayer.offsetHeight || 220;
+    const maxLeft = Math.max(0, window.innerWidth - pW);
+    const maxTop = Math.max(0, window.innerHeight - pH);
+    const curLeft = parseInt(D.fixedPlayer.style.left || "0", 10);
+    const curTop = parseInt(D.fixedPlayer.style.top || "0", 10);
+
+    D.fixedPlayer.style.left = Math.min(Math.max(0, curLeft), maxLeft) + "px";
+    D.fixedPlayer.style.top = Math.min(Math.max(0, curTop), maxTop) + "px";
+  }
+
   function openFloatingPlayer(url, type) {
     if (!D.fixedPlayer || !D.playerContent) return;
     D.fixedPlayer.style.display = "flex";
     const titleEl = $("playerTitle");
     D.playerContent.innerHTML = "";
 
-    const playerWidth = D.fixedPlayer.offsetWidth || 320;
+    const playerWidth = Math.min(480, window.innerWidth - 16);
+    D.fixedPlayer.style.width = playerWidth + "px";
     D.fixedPlayer.style.top = "60px";
-    D.fixedPlayer.style.left = Math.max(10, window.innerWidth - playerWidth - 16) + "px";
+    D.fixedPlayer.style.left = Math.max(8, window.innerWidth - playerWidth - 12) + "px";
     D.fixedPlayer.style.right = "auto";
 
     if (type === "audio") {
@@ -2063,6 +2112,7 @@ function toggleAcc(id) {
         D.playerContent.innerHTML = `<iframe src="https://embed.nicovideo.jp/watch/${nicoId}?jsapi=0&autoplay=1" loading="eager" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
       }
     }
+    clampFloatingPlayerInScreen();
   }
 
   function getYoutubeId(url) {
@@ -2795,6 +2845,7 @@ function toggleAcc(id) {
       ro.observe(D.tli);
     }
 
+    /* 📺 動画プレイヤーの全域ドラッグ移動＆画面外飛び出し防止 */
     const pHeader = $("playerHeader");
     if (pHeader && D.fixedPlayer) {
       const onDragStart = (e) => {
@@ -2813,12 +2864,12 @@ function toggleAcc(id) {
         const pageY = e.touches ? e.touches[0].clientY : e.clientY;
         const deltaX = pageX - playerDrag.startX;
         const deltaY = pageY - playerDrag.startY;
-        const maxLeft = window.innerWidth - D.fixedPlayer.offsetWidth - 8;
-        const maxTop = window.innerHeight - D.fixedPlayer.offsetHeight - 60;
-        D.fixedPlayer.style.left = Math.min(Math.max(8, playerDrag.initialLeft + deltaX), maxLeft) + "px";
-        D.fixedPlayer.style.top = Math.min(Math.max(50, playerDrag.initialTop + deltaY), maxTop) + "px";
+        const maxLeft = Math.max(0, window.innerWidth - D.fixedPlayer.offsetWidth);
+        const maxTop = Math.max(0, window.innerHeight - D.fixedPlayer.offsetHeight);
+        D.fixedPlayer.style.left = Math.min(Math.max(0, playerDrag.initialLeft + deltaX), maxLeft) + "px";
+        D.fixedPlayer.style.top = Math.min(Math.max(0, playerDrag.initialTop + deltaY), maxTop) + "px";
       };
-      const onDragEnd = () => { playerDrag.isDragging = false; };
+      const onDragEnd = () => { playerDrag.isDragging = false; clampFloatingPlayerInScreen(); };
 
       pHeader.addEventListener("mousedown", onDragStart);
       window.addEventListener("mousemove", onDragMove);
@@ -3049,6 +3100,7 @@ function toggleAcc(id) {
       });
     }
 
+    /* ⌨️ キーボード展開時に入力欄の高さを抑え、最新ログを1行以上死守 */
     if (D.mi) {
       D.mi.addEventListener("compositionstart", () => { isComposingInput = true; });
       D.mi.addEventListener("compositionend", () => { isComposingInput = false; });
@@ -3060,50 +3112,6 @@ function toggleAcc(id) {
         if (isAtBottomNear(200)) snapToBottom();
       });
       D.mi.addEventListener("focus", ensureFocusSnap);
-
-      D.mi.addEventListener("paste", (e) => {
-        const html = e.clipboardData ? e.clipboardData.getData("text/html") : "";
-        const plain = e.clipboardData ? e.clipboardData.getData("text/plain") : "";
-
-        if (html && /<table[\s\S]*?>/i.test(html)) {
-          e.preventDefault();
-          try {
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, "text/html");
-            const table = doc.querySelector("table");
-            if (table) {
-              const rows = Array.from(table.querySelectorAll("tr"));
-              const tsvLines = rows.map(r => {
-                const cells = Array.from(r.querySelectorAll("th, td"));
-                return cells.map(c => c.textContent.replace(/[\t\n\r]/g, " ").trim()).join("\t");
-              }).filter(l => l.trim().length > 0);
-
-              if (tsvLines.length > 0) {
-                const tableCode = `\n[TABLE]\n${tsvLines.join("\n")}\n[/TABLE]\n`;
-                const curVal = D.mi.value, start = D.mi.selectionStart || 0, end = D.mi.selectionEnd || 0;
-                D.mi.value = curVal.substring(0, start) + tableCode + curVal.substring(end);
-                updateClrMsgBtnVisibility();
-                D.mi.dispatchEvent(new Event("input"));
-                showToast("📊 表形式を取り込みました");
-                return;
-              }
-            }
-          } catch(err){}
-        } else if (plain && plain.includes("\t") && plain.includes("\n")) {
-          const lines = plain.split("\n").filter(l => l.trim().length > 0);
-          if (lines.length >= 2 && lines.some(l => l.includes("\t"))) {
-            e.preventDefault();
-            const tableCode = `\n[TABLE]\n${plain.trim()}\n[/TABLE]\n`;
-            const curVal = D.mi.value, start = D.mi.selectionStart || 0, end = D.mi.selectionEnd || 0;
-            D.mi.value = curVal.substring(0, start) + tableCode + curVal.substring(end);
-            updateClrMsgBtnVisibility();
-            D.mi.dispatchEvent(new Event("input"));
-            showToast("📊 表形式を取り込みました");
-            return;
-          }
-        }
-      });
-
       D.mi.addEventListener("keydown", (e) => {
         if (e.isComposing || isComposingInput || e.keyCode === 229) return;
         if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
@@ -3123,6 +3131,7 @@ function toggleAcc(id) {
         }
         window.scrollTo(0, 0);
         if (isJoined) ensureFocusSnap();
+        handleScreenGeometryChange();
       };
       window.visualViewport.addEventListener('resize', onViewportResize);
       onViewportResize();

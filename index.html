@@ -224,7 +224,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .call-btn{padding:4px 9px;height:26px;border-radius:5px;font-size:10.5px;font-weight:bold;background:#1e293b;color:#f8fafc;border:1px solid #334155;display:inline-flex;align-items:center;gap:4px;cursor:pointer}
 .call-btn.active{background:#e11d48!important;border-color:#f43f5e!important;color:#fff!important}
 
-/* 📺 画質変更対応・限界サイズ小型プレイヤー（幅360px / スマホ全幅フィット） */
+/* 📺 画質変更対応・限界サイズ360px小型プレイヤー（スマホ全幅フィット） */
 #fixedPlayer{
   display:none;position:fixed;top:60px;right:16px;z-index:9999;flex-direction:column;
   background:#000;border:1.5px solid #334155;box-shadow:0 10px 30px rgba(0,0,0,0.8);
@@ -1495,6 +1495,7 @@ function toggleAcc(id) {
     }
   }
 
+  /* ⏱️ 寝落ち・放置時も30分で通話ごと強制切断して完全消去 */
   async function triggerSelfAutoExit() {
     if (isExecutingAutoExit || !isJoined || !db || !currentRoomId || !myUid) return;
     isExecutingAutoExit = true;
@@ -1655,7 +1656,7 @@ function toggleAcc(id) {
               <label style="font-size:9.5px;font-weight:bold;color:var(--mu);display:block;margin-bottom:2px;">📋 事前承認トリップ追加 (6文字 / ◆不要)</label>
               <div style="display:flex;gap:5px;position:relative;">
                 <input type="text" id="admTripInput" class="inp" placeholder="例: ◆7Xm2Qp" maxlength="7" autocomplete="off" style="height:26px;font-size:11px;width:140px;padding:2px 22px 2px 6px;">
-                <button id="admTripClearBtn" style="position:absolute;left:115px;top:3px;background:none;border:none;color:var(--mu);font-size:13px;font-weight:bold;cursor:padding:2px 4px;" title="クリア">×</button>
+                <button id="admTripClearBtn" style="position:absolute;left:115px;top:3px;background:none;border:none;color:var(--mu);font-size:13px;font-weight:bold;cursor:pointer;padding:2px 4px;" title="クリア">×</button>
                 <button class="btn" id="admTripAddBtn" style="background:#334155;color:#fff;font-size:10px;height:26px;width:44px;font-weight:bold;border-radius:4px;">追加</button>
               </div>
               <div id="admTripList" style="background:var(--s2);border:1px solid var(--bd);border-radius:5px;max-height:45px;overflow-y:auto;padding:3px;font-size:10px;display:flex;flex-direction:column;gap:2px;margin-top:2px;"></div>
@@ -2477,7 +2478,6 @@ function toggleAcc(id) {
 
     const cid = "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
     D.mi.value = ""; updateClrMsgBtnVisibility(); D.mi.style.height = "auto";
-    safeLS.remove("nz_draft_msg"); // 送信成功時に下書きクリア
     D.mi.focus();
 
     resetImagePreview();
@@ -3112,12 +3112,8 @@ function toggleAcc(id) {
       });
     }
 
-    /* ⌨️ キーボード展開時の制御＆下書き自動保存 */
+    /* ⌨️ キーボード展開時の制御（下書き保存は撤去・完全使い捨て化） */
     if (D.mi) {
-      // 下書き復元
-      const savedDraft = safeLS.get("nz_draft_msg");
-      if (savedDraft) { D.mi.value = savedDraft; updateClrMsgBtnVisibility(); }
-
       D.mi.addEventListener("compositionstart", () => { isComposingInput = true; });
       D.mi.addEventListener("compositionend", () => { isComposingInput = false; });
       D.mi.addEventListener("input", () => {
@@ -3125,7 +3121,6 @@ function toggleAcc(id) {
         D.mi.style.height = "auto";
         const maxH = document.body.classList.contains("keyboard-open") ? 52 : 110;
         D.mi.style.height = Math.min(D.mi.scrollHeight, maxH) + "px";
-        safeLS.set("nz_draft_msg", D.mi.value); // 下書きをリアルタイム記憶
         if (isAtBottomNear(200)) snapToBottom();
       });
       D.mi.addEventListener("focus", ensureFocusSnap);
@@ -3156,7 +3151,7 @@ function toggleAcc(id) {
 
     if (D.clrMsgBtn && D.mi) {
       D.clrMsgBtn.addEventListener("click", (e) => {
-        e.preventDefault(); D.mi.value = ""; safeLS.remove("nz_draft_msg"); updateClrMsgBtnVisibility(); D.mi.style.height = "auto"; D.mi.focus();
+        e.preventDefault(); D.mi.value = ""; updateClrMsgBtnVisibility(); D.mi.style.height = "auto"; D.mi.focus();
       });
     }
 

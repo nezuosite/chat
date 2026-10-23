@@ -224,9 +224,9 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .call-btn{padding:4px 9px;height:26px;border-radius:5px;font-size:10.5px;font-weight:bold;background:#1e293b;color:#f8fafc;border:1px solid #334155;display:inline-flex;align-items:center;gap:4px;cursor:pointer}
 .call-btn.active{background:#e11d48!important;border-color:#f43f5e!important;color:#fff!important}
 
-/* 📺 画質変更対応・限界サイズ360px小型プレイヤー（スマホ全幅フィット） */
+/* 📺 画質変更対応・限界サイズ360px小型プレイヤー（最上部吸着＆スマホ全幅フィット） */
 #fixedPlayer{
-  display:none;position:fixed;top:60px;right:16px;z-index:9999;flex-direction:column;
+  display:none;position:fixed;top:0;right:0;z-index:9999;flex-direction:column;
   background:#000;border:1.5px solid #334155;box-shadow:0 10px 30px rgba(0,0,0,0.8);
   width:360px;max-width:calc(100vw - 16px);touch-action:none;user-select:none;border-radius:8px;overflow:hidden;
 }
@@ -530,7 +530,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
       </div>
 
       <div id="lurkPromptBar">
-        <div style="display:flex;align-items:center;gap:5px;flex-1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:5px;flex:1;min-width:0;">
           <span style="font-size:10px;font-weight:900;color:#38bdf8;background:rgba(2,132,199,0.2);padding:2px 5px;border-radius:4px;white-space:nowrap;border:1px solid rgba(56,189,248,0.3);">👀 閲覧モード</span>
           <input type="text" id="lurkInlineNameInput" class="inp" placeholder="名前を入力して会話に参加..." maxlength="10" autocomplete="off" style="height:28px;font-size:11.5px!important;padding:2px 6px;flex:1;min-width:80px;">
         </div>
@@ -551,7 +551,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
           <input type="file" id="imgFileInput" accept="image/*" style="display:none;">
           <button class="bsd" id="imgUploadBtn" aria-label="画像添付" title="画像を添付">📷</button>
           <div class="mi-container">
-            <textarea id="mi" rows="1" placeholder="メッセージを入力..." maxlength="500"></textarea>
+            <textarea id="mi" rows="1" placeholder="メッセージを入力..." maxlength="500" autocomplete="off"></textarea>
             <button class="bclrm" id="clrMsgBtn" title="クリア">×</button>
           </div>
           <button class="bsd" id="sdBtn" aria-label="送信">
@@ -1451,6 +1451,7 @@ function toggleAcc(id) {
     document.documentElement.classList.remove("preload-chat-active");
 
     clearChatUIOnly();
+    if (D.mi) { D.mi.value = ""; D.mi.style.height = "auto"; updateClrMsgBtnVisibility(); } // 🚪 退出時に入力欄を完全にクリア
     currentRoomId = ""; currentRoomPass = ""; activeKey = null;
     hasEnteredLogged = false; isLurking = false; myLastActiveTs = 0;
     
@@ -2094,7 +2095,7 @@ function toggleAcc(id) {
     D.fixedPlayer.style.top = Math.min(Math.max(0, curTop), maxTop) + "px";
   }
 
-  /* 📺 画質変更対応・限界サイズ360pxで表示 */
+  /* 📺 画質変更対応・限界サイズ360px＆一番上にピタッと吸着 */
   function openFloatingPlayer(url, type) {
     if (!D.fixedPlayer || !D.playerContent) return;
     D.fixedPlayer.style.display = "flex";
@@ -2103,8 +2104,8 @@ function toggleAcc(id) {
 
     const playerWidth = Math.min(360, window.innerWidth - 16);
     D.fixedPlayer.style.width = playerWidth + "px";
-    D.fixedPlayer.style.top = "60px";
-    D.fixedPlayer.style.left = Math.max(8, window.innerWidth - playerWidth - 12) + "px";
+    D.fixedPlayer.style.top = "0px"; // 🔝 開いた瞬間に一番上にピタッと吸着
+    D.fixedPlayer.style.left = Math.max(0, window.innerWidth - playerWidth) + "px";
     D.fixedPlayer.style.right = "auto";
 
     if (type === "audio") {
@@ -2752,6 +2753,7 @@ function toggleAcc(id) {
 
     detachFirebaseListeners();
     clearChatUIOnly();
+    if (D.mi) { D.mi.value = ""; D.mi.style.height = "auto"; updateClrMsgBtnVisibility(); } // 🚪 入室時に入力欄を完全にクリア
     isFirstLoad = true;
     isEnteringRoom = true;
     currentRoomId = safeRoomPath; currentRoomPass = lobbyRoomPass;
@@ -2840,6 +2842,8 @@ function toggleAcc(id) {
       imgPreviewInfo: $("imgPreviewInfo"), imgPreviewCancelBtn: $("imgPreviewCancelBtn"),
       zoomViewport: $("zoomViewport")
     };
+
+    if (D.mi) { D.mi.value = ""; D.mi.style.height = "auto"; updateClrMsgBtnVisibility(); } // 🚀 起動時に入力欄を完全にクリア
 
     if (window.__PRELOAD_ROOM_ID__) {
       const pRoom = window.__PRELOAD_ROOM_ID__;

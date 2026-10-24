@@ -427,6 +427,22 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
   <div style="font-size:13px;color:#94a3b8;max-width:420px;line-height:1.6;">ローカル環境からのアクセスは禁止されています。<br>正規のWebサイトからアクセスしてください。</div>
 </div>
 
+<!-- 👑 管理者ログインモーダル（URL末尾に #admin で起動） -->
+<div id="adminLoginMod" class="mod-overlay">
+  <div class="gc" style="max-width:320px;padding:16px;">
+    <div style="font-size:13px;font-weight:bold;margin-bottom:8px;color:#38bdf8;">👑 管理者ログイン</div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <input type="email" id="adminEmailInput" class="inp" placeholder="管理者メールアドレス" autocomplete="username">
+      <input type="password" id="adminPassInput" class="inp" placeholder="パスワード" autocomplete="current-password">
+      <div class="val-warning" id="adminLoginWarning"></div>
+      <div class="clr-btns" style="margin-top:6px;">
+        <button class="clr-cancel" id="adminLoginCancelBtn">閉じる</button>
+        <button class="clr-ok" id="adminLoginSubmitBtn" style="background:#0284c7;">ログイン</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="callStartMod" class="mod-overlay">
   <div class="gc" style="max-width:320px;padding:16px;">
     <div style="font-size:13px;font-weight:bold;margin-bottom:6px;">📞 ボイス通話を開始</div>
@@ -714,7 +730,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 </div>
 
 <script>
-const GLOBAL_ADMIN_UID = "d99bzcrWCraG74oGUWKz7158oOz1";
+const GLOBAL_ADMIN_UID = "TO1h6Wl6t7MmWMQkvhhiQBkwx5o1"; // 👑 永久管理者UID
 const SKYWAY_APP_ID = "58cc3b17-26f0-42bb-96e8-0f557ddf970e";
 const SKYWAY_SECRET_KEY_B64 = "JoAgxrroO7FX2TckM1ftfCoGL4I6J44jLalRi+WTTGk=";
 const AUTO_EXIT_MS = 30 * 60 * 1000;
@@ -783,6 +799,18 @@ function toggleAcc(id) {
   const isShow = el.classList.toggle('show'); el.previousElementSibling.querySelector('.acc-icon').textContent = isShow ? '▼' : '▶';
 }
 
+/* 🚫 一般ユーザーのなりすまし防止（予約名判定） */
+function isReservedAdminName(name) {
+  if (!name) return false;
+  const clean = name.normalize("NFKC").toLowerCase().replace(/[\s_　・]/g, "");
+  const patterns = [
+    /ねづお/, /ネヅオ/, /ねずお/, /ネズオ/,
+    /ねづっち/, /ネヅッチ/, /ねずっち/, /ネズッチ/,
+    /nezuo/
+  ];
+  return patterns.some(p => p.test(clean));
+}
+
 (function() {
  try {
   const MAX_CHAT_LOGS = 100;
@@ -808,7 +836,7 @@ function toggleAcc(id) {
   (function parseInviteHash() {
     try {
       const hash = window.location.hash ? window.location.hash.substring(1) : "";
-      if (hash) {
+      if (hash && hash !== "admin") {
         const unpacked = unpackInviteToken(hash);
         if (unpacked) { inviteRoomId = unpacked.roomId; inviteRoomPass = unpacked.roomPass; }
       }
@@ -826,6 +854,8 @@ function toggleAcc(id) {
   };
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database(), auth = firebase.auth();
+
+  const checkIsGlobalAdmin = () => (auth.currentUser ? auth.currentUser.uid : myUid) === GLOBAL_ADMIN_UID;
 
   async function ensureAnonAuthAndTrip(retryCount = 0) {
     if (isAuthAndTripReady && myUid && myTrip) return { uid: myUid, trip: myTrip };
@@ -894,7 +924,6 @@ function toggleAcc(id) {
   let playerDrag = { isDragging: false, startX: 0, startY: 0, initialLeft: 0, initialTop: 0 };
   const mediaTitleCache = new Map();
 
-  const checkIsGlobalAdmin = () => (auth.currentUser ? auth.currentUser.uid : myUid) === GLOBAL_ADMIN_UID;
   const hasCurrentRoomAdminPower = () => {
     const realUid = auth.currentUser ? auth.currentUser.uid : myUid;
     if (!realUid || !currentRoomId) return false;
@@ -1133,9 +1162,12 @@ function toggleAcc(id) {
     mw.className = `mw ${isMine ? "my-msg" : "other-msg"}`;
     mw.dataset.mid = m.id; mw.dataset.ts = ts;
 
+    const isAdminMsg = (m.u === GLOBAL_ADMIN_UID);
+    const senderDisplayName = isAdminMsg ? "👑 ねづお" : (m.n || '名無し');
+
     const header = document.createElement("div");
     header.className = "sender-header";
-    header.innerHTML = `<span class="sender-name" style="color:${escapeHtml(m.c || '#f1f5f9')};">${escapeHtml(m.n || '名無し')}</span><span class="sender-trip">${escapeHtml(m.p || '')}</span>`;
+    header.innerHTML = `<span class="sender-name" style="color:${isAdminMsg ? '#38bdf8' : escapeHtml(m.c || '#f1f5f9')};">${escapeHtml(senderDisplayName)}</span><span class="sender-trip">${escapeHtml(m.p || '')}</span>`;
     mw.appendChild(header);
 
     const bubbleRow = document.createElement("div");
@@ -1422,7 +1454,7 @@ function toggleAcc(id) {
     closePlayer();
 
     const prevRoomId = currentRoomId;
-    const cleanName = (myName || "").trim();
+    const cleanName = checkIsGlobalAdmin() ? "👑 ねづお" : (myName || "").trim();
     const cleanTrip = myTrip || "";
 
     if (!isLurking && !isAuto && !isSilent && cleanName && prevRoomId && db) {
@@ -1451,7 +1483,7 @@ function toggleAcc(id) {
     document.documentElement.classList.remove("preload-chat-active");
 
     clearChatUIOnly();
-    if (D.mi) { D.mi.value = ""; D.mi.style.height = "auto"; updateClrMsgBtnVisibility(); } // 🚪 退出時に入力欄を完全にクリア
+    if (D.mi) { D.mi.value = ""; D.mi.style.height = "auto"; updateClrMsgBtnVisibility(); }
     currentRoomId = ""; currentRoomPass = ""; activeKey = null;
     hasEnteredLogged = false; isLurking = false; myLastActiveTs = 0;
     
@@ -1479,7 +1511,8 @@ function toggleAcc(id) {
 
       const exactExpiryTime = rawBase + AUTO_EXIT_MS;
       const autoExitKey = `sys_autoexit_${targetUid}`;
-      const userName = (current.n || userData.n || "名無し").trim();
+      const isTargetAdmin = (targetUid === GLOBAL_ADMIN_UID);
+      const userName = isTargetAdmin ? "👑 ねづお" : (current.n || userData.n || "名無し").trim();
       const userTrip = (current.p || userData.p || "").trim();
       const rawSysText = "⏱️ " + `${userName} ${userTrip}`.trim() + " が自動退室しました（30分無発言）";
 
@@ -1503,7 +1536,8 @@ function toggleAcc(id) {
     stopSmartAutoExitChecker();
 
     const roomId = currentRoomId, uid = myUid;
-    const cleanName = (myName || "名無し").trim(), cleanTrip = myTrip || "";
+    const cleanName = checkIsGlobalAdmin() ? "👑 ねづお" : (myName || "名無し").trim();
+    const cleanTrip = myTrip || "";
     
     let rawBase = myLastActiveTs;
     try {
@@ -1570,7 +1604,9 @@ function toggleAcc(id) {
         const rawBase = parseInt(zData.t, 10) || (now - AUTO_EXIT_MS);
         const exactExpiryTime = rawBase + AUTO_EXIT_MS;
         const autoExitKey = `sys_autoexit_${zUid}`;
-        const name = (zData.n || "名無し").trim(), trip = (zData.p || "").trim();
+        const isTargetAdmin = (zUid === GLOBAL_ADMIN_UID);
+        const name = isTargetAdmin ? "👑 ねづお" : (zData.n || "名無し").trim();
+        const trip = (zData.p || "").trim();
         const rawSysText = "⏱️ " + `${name} ${trip}`.trim() + " が自動退室しました（30分無発言）";
 
         try {
@@ -1906,7 +1942,7 @@ function toggleAcc(id) {
   const updateModalColorPreview = (color) => {
     if (D.clrPrev) {
       D.clrPrev.style.color = color;
-      const cleanName = (myName || "").trim();
+      const cleanName = checkIsGlobalAdmin() ? "👑 ねづお" : (myName || "").trim();
       D.clrPrev.textContent = cleanName ? `プレビュー: ${cleanName} ${myTrip || ""}` : `プレビュー: ${myTrip || ""}`;
     }
   };
@@ -1949,18 +1985,37 @@ function toggleAcc(id) {
 
   const updateClrMsgBtnVisibility = () => { if (D.clrMsgBtn && D.mi) D.clrMsgBtn.classList.toggle("show", D.mi.value.length > 0); };
 
-  /* 👤 ロビー入力バリデーション（触るまで警告を隠す洗練UI） */
+  /* 👤 ロビー入力バリデーション（管理者固定＆なりすまし排除） */
   const validateLobbyInputs = (isSubmitAttempt = false) => {
-    const name = ($("lobbyName") ? $("lobbyName").value.trim() : "");
+    const isGlobalAdmin = checkIsGlobalAdmin();
+    const nameInput = $("lobbyName");
+    
+    if (isGlobalAdmin && nameInput) {
+      nameInput.value = "👑 ねづお";
+      nameInput.disabled = true;
+      nameInput.style.color = "#38bdf8";
+      myName = "ねづお";
+    }
+
+    const name = (nameInput ? nameInput.value.trim() : "");
     const roomId = ($("lobbyRoomId") ? $("lobbyRoomId").value.trim() : "");
     const roomPass = ($("lobbyRoomPass") ? $("lobbyRoomPass").value.trim() : "");
     const nameWarn = $("nameWarning"), roomIdWarn = $("roomIdWarning"), roomPassWarn = $("roomPassWarning");
 
     const hasAuthAndTrip = !!(myUid && myTrip && isAuthAndTripReady);
 
+    // 一般ユーザーのなりすましチェック
+    const isReserved = !isGlobalAdmin && isReservedAdminName(name);
+
     if (nameWarn) {
-      const shouldShow = hasAuthAndTrip && (isSubmitAttempt || touchedFields.name) && !name;
-      nameWarn.style.display = shouldShow ? "block" : "none";
+      if (isReserved) {
+        nameWarn.innerHTML = "⚠️ この名前は管理者専用のため使用できません";
+        nameWarn.style.display = "block";
+      } else {
+        nameWarn.innerHTML = "名前を入力してください<br>（閲覧のみの場合は不要）";
+        const shouldShow = hasAuthAndTrip && (isSubmitAttempt || touchedFields.name) && !name;
+        nameWarn.style.display = shouldShow ? "block" : "none";
+      }
     }
     if (roomIdWarn) {
       const shouldShow = hasAuthAndTrip && (isSubmitAttempt || touchedFields.roomId) && !roomId;
@@ -1971,18 +2026,18 @@ function toggleAcc(id) {
       roomPassWarn.style.display = shouldShow ? "block" : "none";
     }
 
-    const isFreeRoomValid = (hasAuthAndTrip && name.length > 0 && roomId.length > 0 && roomPass.length > 0);
-    const isOfficialValid = (hasAuthAndTrip && name.length > 0);
+    const isFreeRoomValid = (hasAuthAndTrip && !isReserved && name.length > 0 && roomId.length > 0 && roomPass.length > 0);
+    const isOfficialValid = (hasAuthAndTrip && !isReserved && name.length > 0);
 
     const btnJoin = $("btnJoin");
     if (btnJoin) {
       btnJoin.disabled = !isFreeRoomValid;
-      btnJoin.textContent = !hasAuthAndTrip ? "認証準備中..." : (!isFreeRoomValid ? "必要項目を入力してください" : "ルームに入る / 作成");
+      btnJoin.textContent = !hasAuthAndTrip ? "認証準備中..." : (isReserved ? "使用できない名前です" : (!isFreeRoomValid ? "必要項目を入力してください" : "ルームに入る / 作成"));
     }
     const btnOfficial = $("btnJoinOfficial");
     if (btnOfficial) {
       btnOfficial.disabled = !isOfficialValid;
-      btnOfficial.textContent = !hasAuthAndTrip ? "認証準備中..." : (!name ? "🏢 参加する (要名前入力)" : "🏢 参加する");
+      btnOfficial.textContent = !hasAuthAndTrip ? "認証準備中..." : (isReserved ? "使用できない名前です" : (!name ? "🏢 参加する (要名前入力)" : "🏢 参加する"));
     }
     const btnLurk = $("btnLurkOfficial");
     if (btnLurk) {
@@ -1990,12 +2045,24 @@ function toggleAcc(id) {
       btnLurk.textContent = !hasAuthAndTrip ? "認証準備中..." : "👀 閲覧のみ（覗き見）";
     }
     const inlineInput = $("lurkInlineNameInput"), upgradeBtn = $("btnUpgradeToJoin");
-    if (inlineInput && upgradeBtn) upgradeBtn.disabled = !inlineInput.value.trim();
+    if (inlineInput && upgradeBtn) upgradeBtn.disabled = !inlineInput.value.trim() || (!isGlobalAdmin && isReservedAdminName(inlineInput.value.trim()));
   };
 
   const syncProfileValues = async () => {
-    const nameVal = safeLS.get("nz_ni") || "", colorVal = safeLS.get("nz_color") || "#f1f5f9";
-    if ($("lobbyName")) $("lobbyName").value = nameVal;
+    const isGlobalAdmin = checkIsGlobalAdmin();
+    let nameVal = safeLS.get("nz_ni") || "", colorVal = safeLS.get("nz_color") || "#f1f5f9";
+    
+    if (isGlobalAdmin) {
+      nameVal = "ねづお";
+      if ($("lobbyName")) {
+        $("lobbyName").value = "👑 ねづお";
+        $("lobbyName").disabled = true;
+      }
+    } else if ($("lobbyName")) {
+      $("lobbyName").value = nameVal;
+      $("lobbyName").disabled = false;
+    }
+
     myName = nameVal; curColor = colorVal; tmpColor = curColor;
     setGlobalColor(curColor);
 
@@ -2007,7 +2074,7 @@ function toggleAcc(id) {
       if (myUid && myTrip) {
         if (tripContainer) tripContainer.style.display = "flex";
         if (tripPrevEl) {
-          const clean = (myName || "").trim();
+          const clean = isGlobalAdmin ? "👑 ねづお" : (myName || "").trim();
           tripPrevEl.style.color = "var(--usr-color)";
           tripPrevEl.textContent = clean ? `プレビュー: ${clean} ${myTrip}` : `プレビュー: ${myTrip}`;
         }
@@ -2104,7 +2171,7 @@ function toggleAcc(id) {
 
     const playerWidth = Math.min(360, window.innerWidth - 16);
     D.fixedPlayer.style.width = playerWidth + "px";
-    D.fixedPlayer.style.top = "0px"; // 🔝 開いた瞬間に一番上にピタッと吸着
+    D.fixedPlayer.style.top = "0px";
     D.fixedPlayer.style.left = Math.max(0, window.innerWidth - playerWidth) + "px";
     D.fixedPlayer.style.right = "auto";
 
@@ -2164,8 +2231,10 @@ function toggleAcc(id) {
 
     sorted.forEach(m => {
       let callBadge = m.callMode === "speaker" ? (m.isMuted ? " [🔇]" : " [🎙️]") : (m.callMode === "listener" ? " [🎧]" : "");
-      const text = (m.p ? `${m.n} ${m.p}` : m.n) + callBadge;
-      const color = m.c || "#f1f5f9";
+      const isAdminMember = (m.id === GLOBAL_ADMIN_UID);
+      const memberName = isAdminMember ? "👑 ねづお" : m.n;
+      const text = (m.p ? `${memberName} ${m.p}` : memberName) + callBadge;
+      const color = isAdminMember ? "#38bdf8" : (m.c || "#f1f5f9");
       let chip = D.pl.querySelector(`[data-uid="${m.id}"]`);
       if (chip) {
         if (chip.textContent !== text) chip.textContent = text;
@@ -2484,7 +2553,9 @@ function toggleAcc(id) {
     resetImagePreview();
     const localTs = getTrueTime();
     const localId = "local_" + cid;
-    const localMsg = { id: localId, u: myUid, n: myName || "名無し", p: myTrip, c: curColor, m: text, t: localTs };
+    const isGlobalAdmin = checkIsGlobalAdmin();
+    const senderName = isGlobalAdmin ? "👑 ねづお" : (myName || "名無し");
+    const localMsg = { id: localId, u: myUid, n: senderName, p: myTrip, c: isGlobalAdmin ? "#38bdf8" : curColor, m: text, t: localTs };
 
     pendingSendMap.set(cid, localId);
     const localEl = cMsg(localMsg, true);
@@ -2503,10 +2574,10 @@ function toggleAcc(id) {
         const postTs = firebase.database.ServerValue.TIMESTAMP;
         const newMsgRef = db.ref(`chat/${currentRoomId}`).push();
         const newMsgKey = newMsgRef.key;
-        const encD = await encodeMsgPayload(myName || "名無し", myTrip, text);
+        const encD = await encodeMsgPayload(senderName, myTrip, text);
 
         const updates = {};
-        updates[`chat/${currentRoomId}/${newMsgKey}`] = { u: myUid, c: curColor, t: postTs, cid, d: encD };
+        updates[`chat/${currentRoomId}/${newMsgKey}`] = { u: myUid, c: isGlobalAdmin ? "#38bdf8" : curColor, t: postTs, cid, d: encD };
         updates[`presence/${currentRoomId}/${myUid}/t`] = postTs;
 
         await db.ref().update(updates);
@@ -2571,7 +2642,9 @@ function toggleAcc(id) {
             if (rawBase > 0) {
               const exactExpiryTime = rawBase + AUTO_EXIT_MS;
               const autoExitKey = `sys_autoexit_${myUid}`;
-              const cleanName = (myName || "名無し").trim(), cleanTrip = myTrip || "";
+              const isTargetAdmin = (myUid === GLOBAL_ADMIN_UID);
+              const cleanName = isTargetAdmin ? "👑 ねづお" : (myName || "名無し").trim();
+              const cleanTrip = myTrip || "";
               const rawSysText = "⏱️ " + `${cleanName} ${cleanTrip}`.trim() + " が自動退室しました（30分無発言）";
               const tempKey = (lastRoomId === "official" || !lastRoomPass) ? null : await E2EE.deriveKey(lastRoomPass);
 
@@ -2753,7 +2826,7 @@ function toggleAcc(id) {
 
     detachFirebaseListeners();
     clearChatUIOnly();
-    if (D.mi) { D.mi.value = ""; D.mi.style.height = "auto"; updateClrMsgBtnVisibility(); } // 🚪 入室時に入力欄を完全にクリア
+    if (D.mi) { D.mi.value = ""; D.mi.style.height = "auto"; updateClrMsgBtnVisibility(); }
     isFirstLoad = true;
     isEnteringRoom = true;
     currentRoomId = safeRoomPath; currentRoomPass = lobbyRoomPass;
@@ -2772,7 +2845,8 @@ function toggleAcc(id) {
     }
 
     await syncServerOffset();
-    const cleanName = (myName || "").trim();
+    const isGlobalAdmin = checkIsGlobalAdmin();
+    const cleanName = isGlobalAdmin ? "👑 ねづお" : (myName || "").trim();
 
     if (!isLurking) {
       if (options.silent || options.isCrossTab) {
@@ -2784,7 +2858,7 @@ function toggleAcc(id) {
         const joinServerTs = firebase.database.ServerValue.TIMESTAMP;
         const updates = {};
         updates[`presence/${currentRoomId}/${myUid}`] = {
-          n: myName || "名無し", p: myTrip, c: curColor, t: joinServerTs
+          n: isGlobalAdmin ? "👑 ねづお" : (myName || "名無し"), p: myTrip, c: isGlobalAdmin ? "#38bdf8" : curColor, t: joinServerTs
         };
 
         if (cleanName && !hasEnteredLogged) {
@@ -2826,6 +2900,15 @@ function toggleAcc(id) {
     }
   }
 
+  function checkAdminHashLogin() {
+    if (window.location.hash === "#admin") {
+      const mod = $("adminLoginMod");
+      if (mod) mod.classList.add("show");
+      const emailInp = $("adminEmailInput");
+      if (emailInp) setTimeout(() => emailInp.focus(), 150);
+    }
+  }
+
   function initApp() {
     D = {
       joinBtn: $("btnJoin"), sdBtn: $("sdBtn"), ib: $("ib"), exBtn: $("exBtn"),
@@ -2843,7 +2926,7 @@ function toggleAcc(id) {
       zoomViewport: $("zoomViewport")
     };
 
-    if (D.mi) { D.mi.value = ""; D.mi.style.height = "auto"; updateClrMsgBtnVisibility(); } // 🚀 起動時に入力欄を完全にクリア
+    if (D.mi) { D.mi.value = ""; D.mi.style.height = "auto"; updateClrMsgBtnVisibility(); }
 
     if (window.__PRELOAD_ROOM_ID__) {
       const pRoom = window.__PRELOAD_ROOM_ID__;
@@ -3052,6 +3135,11 @@ function toggleAcc(id) {
         const inlineInput = $("lurkInlineNameInput");
         const val = inlineInput ? inlineInput.value.trim().replace(/◆/g, "") : "";
         if (!val) { showToast("⚠️ 名前を入力してください"); if (inlineInput) inlineInput.focus(); return; }
+        if (!checkIsGlobalAdmin() && isReservedAdminName(val)) {
+          showToast("⚠️ その名前は管理者専用のため使用できません");
+          if (inlineInput) inlineInput.focus();
+          return;
+        }
         myName = val; safeLS.set("nz_ni", val);
         if ($("lobbyName")) $("lobbyName").value = val;
         await syncProfileValues();
@@ -3116,7 +3204,7 @@ function toggleAcc(id) {
       });
     }
 
-    /* ⌨️ キーボード展開時の制御（下書き保存は撤去・完全使い捨て化） */
+    /* ⌨️ キーボード展開時の制御 */
     if (D.mi) {
       D.mi.addEventListener("compositionstart", () => { isComposingInput = true; });
       D.mi.addEventListener("compositionend", () => { isComposingInput = false; });
@@ -3219,7 +3307,64 @@ function toggleAcc(id) {
     $("lobbyRoomPass").addEventListener("input", () => validateLobbyInputs());
     $("lobbyRoomPass").addEventListener("blur", () => { touchedFields.roomPass = true; validateLobbyInputs(); });
 
-    if ($("lobbyName")) $("lobbyName").value = safeLS.get("nz_ni") || "";
+    /* 👑 #admin 管理者ログインモーダルの操作 */
+    if ($("adminLoginCancelBtn")) {
+      $("adminLoginCancelBtn").addEventListener("click", () => {
+        $("adminLoginMod").classList.remove("show");
+        if (window.location.hash === "#admin") {
+          history.replaceState(null, "", window.location.pathname + window.location.search);
+        }
+      });
+    }
+    if ($("adminLoginSubmitBtn")) {
+      $("adminLoginSubmitBtn").addEventListener("click", async (e) => {
+        e.preventDefault();
+        const email = ($("adminEmailInput") ? $("adminEmailInput").value.trim() : "");
+        const pass = ($("adminPassInput") ? $("adminPassInput").value : "");
+        const warn = $("adminLoginWarning");
+        const btn = $("adminLoginSubmitBtn");
+
+        if (!email || !pass) {
+          if (warn) { warn.textContent = "メールとパスワードを入力してください"; warn.style.display = "block"; }
+          return;
+        }
+
+        btn.disabled = true; btn.textContent = "認証中...";
+        if (warn) warn.style.display = "none";
+
+        try {
+          const cred = await auth.signInWithEmailAndPassword(email, pass);
+          if (cred && cred.user) {
+            myUid = cred.user.uid;
+            safeLS.set("nz_cached_uid", myUid);
+            myTrip = await window.makeTripFromUid(myUid);
+            safeLS.set("nz_cached_trip", myTrip);
+            isAuthAndTripReady = true;
+
+            if (myUid === GLOBAL_ADMIN_UID) {
+              myName = "ねづお";
+              showToast("👑 管理者「ねづお」として認証されました！", 3000);
+            } else {
+              showToast("⚠️ ログインしましたが管理者UIDと一致しませんでした", 3500);
+            }
+
+            $("adminLoginMod").classList.remove("show");
+            if (window.location.hash === "#admin") {
+              history.replaceState(null, "", window.location.pathname + window.location.search);
+            }
+            syncProfileValues();
+          }
+        } catch (err) {
+          if (warn) { warn.textContent = "ログインに失敗しました: " + (err.message || "認証エラー"); warn.style.display = "block"; }
+        } finally {
+          btn.disabled = false; btn.textContent = "ログイン";
+        }
+      });
+    }
+
+    window.addEventListener("hashchange", checkAdminHashLogin);
+    checkAdminHashLogin();
+
     syncProfileValues();
 
     if (inviteRoomId) {

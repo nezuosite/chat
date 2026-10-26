@@ -111,6 +111,7 @@
 :root{
   --bg:#070a10;--sf:#0f172a;--s2:#0b1120;--bd:#1e293b;--tx:#f8fafc;--mu:#94a3b8;--m2:#475569;--in:#334155;--ro:#f43f5e;
   --my-bubble:#0284c7;--other-bubble:#1e293b;--usr-color:#f1f5f9;
+  --msg-font-size:14.5px;
   --sat:env(safe-area-inset-top,0px);
   --sab:env(safe-area-inset-bottom,0px);
   --sal:env(safe-area-inset-left,0px);
@@ -172,6 +173,16 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 .val-warning{font-size:9.5px;font-weight:bold;color:#fda4af;line-height:1.35;display:none;padding:3px 6px;background:rgba(244,63,94,0.12);border-radius:4px;border:1px solid rgba(244,63,94,0.25);margin-top:2px}
 #lobbyTripContainer{display:none;gap:6px;align-items:center;margin-top:4px;width:100%}
 #lobbyTripPrev{font-size:11.5px;font-weight:bold;color:var(--usr-color)!important;text-align:center;background:rgba(0,0,0,0.3);padding:8px;border-radius:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:1.5px solid var(--usr-color);word-break:break-all;flex:1}
+
+/* 🔤 文字サイズ3段階ボタングループ */
+.fsize-btn-group{display:flex;gap:6px;width:100%;margin-top:2px}
+.fsize-btn{
+  flex:1;height:28px;border-radius:6px;font-size:11px;font-weight:bold;
+  background:var(--s2);color:var(--tx);border:1px solid var(--bd);
+}
+.fsize-btn.active{
+  background:#0284c7!important;color:#fff!important;border-color:#38bdf8!important;
+}
 
 .seo-guide-box{background:rgba(15,23,42,0.75);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px;color:var(--mu);font-size:11px;line-height:1.75;display:flex;flex-direction:column;gap:14px;box-shadow:0 4px 16px rgba(0,0,0,0.35)}
 .seo-guide-box h1{color:#f8fafc;font-size:13.5px;font-weight:900;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:6px;line-height:1.4}
@@ -276,7 +287,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 }
 
 .mb-bubble{
-  position:relative;font-size:14.5px;line-height:1.55;word-break:break-all;
+  position:relative;font-size:var(--msg-font-size)!important;line-height:1.55;word-break:break-all;
   white-space:pre-wrap;opacity:1!important;visibility:visible!important;user-select:text;-webkit-user-select:text;
 }
 .mb-bubble a{color:#38bdf8;text-decoration:underline}
@@ -464,9 +475,16 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 <div id="clrmod" class="mod-overlay">
   <div class="gc" style="max-width:320px;">
     <div class="clrmc">
-      <div style="font-size:13px;font-weight:bold;margin-bottom:8px;">🎨 表示カラー設定 (16色)</div>
+      <div style="font-size:13px;font-weight:bold;margin-bottom:8px;">🎨 表示・文字設定</div>
       <div class="clr-prev" id="clrPrev">プレビュー</div>
-      <div class="clrpick-grid" id="clrPick2" style="margin:12px 0;"></div>
+      <div style="font-size:10px;font-weight:bold;color:var(--mu);margin-top:10px;margin-bottom:4px;">表示カラー (16色)</div>
+      <div class="clrpick-grid" id="clrPick2" style="margin-bottom:12px;"></div>
+      <div style="font-size:10px;font-weight:bold;color:var(--mu);margin-bottom:4px;">文字サイズ</div>
+      <div class="fsize-btn-group" id="modalFontSizeGroup">
+        <button type="button" class="btn fsize-btn" data-size="small">小</button>
+        <button type="button" class="btn fsize-btn" data-size="medium">標準</button>
+        <button type="button" class="btn fsize-btn" data-size="large">大</button>
+      </div>
       <div class="clr-btns">
         <button class="clr-cancel" id="clrCancel">キャンセル</button>
         <button class="clr-ok" id="clrOk">適用</button>
@@ -533,7 +551,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
         <div class="ib-actions-left">
           <button class="ib-act-btn" id="exBtn" style="background:rgba(244,63,94,0.15);border-color:rgba(244,63,94,0.3);color:#fda4af;display:none;">🚪 退出</button>
           <button class="ib-act-btn" id="inviteBtn" style="display:none;">🔗 招待</button>
-          <button class="bclr ib-act-btn" id="clrBtn" title="色設定"><span class="bclr-dot" id="clrDot"></span> 色</button>
+          <button class="bclr ib-act-btn" id="clrBtn" title="表示・色設定"><span class="bclr-dot" id="clrDot"></span> 設定</button>
           <div id="adminBtnMount"></div>
         </div>
         <div class="jump-btns">
@@ -586,7 +604,18 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
           <input type="text" id="lobbyName" class="inp" placeholder="名前を入力（閲覧のみの場合は不要）" maxlength="10" autocomplete="off">
           <div class="val-warning" id="nameWarning">名前を入力してください<br>（閲覧のみの場合は不要）</div>
         </div>
-        <div class="acc-item" style="border-bottom:none;padding-bottom:0;">
+
+        <!-- 🔤 文字サイズ3段階切り替え -->
+        <div style="display:flex;flex-direction:column;gap:3px;width:100%;margin-top:2px;">
+          <label style="font-size:10px;font-weight:bold;color:var(--mu);">文字サイズ</label>
+          <div class="fsize-btn-group" id="lobbyFontSizeGroup">
+            <button type="button" class="btn fsize-btn" data-size="small">小</button>
+            <button type="button" class="btn fsize-btn active" data-size="medium">標準</button>
+            <button type="button" class="btn fsize-btn" data-size="large">大</button>
+          </div>
+        </div>
+
+        <div class="acc-item" style="border-bottom:none;padding-bottom:0;margin-top:4px;">
           <div class="acc-hdr" onclick="toggleAcc('lobbyColorAcc')" style="font-size:10px;font-weight:bold;color:var(--mu);padding:0 0 4px 0;border-bottom:1px solid rgba(255,255,255,0.03);">
             🎨 表示カラー設定を開く <span class="acc-icon">▶</span>
           </div>
@@ -730,7 +759,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 </div>
 
 <script>
-const GLOBAL_ADMIN_UID = "TO1h6Wl6t7MmWMQkvhhiQBkwx5o1"; // 👑 永久管理者UID
+const GLOBAL_ADMIN_UID = "TO1h6Wl6t7MmWMQkvhhiQBkwx5o1";
 const SKYWAY_APP_ID = "58cc3b17-26f0-42bb-96e8-0f557ddf970e";
 const SKYWAY_SECRET_KEY_B64 = "JoAgxrroO7FX2TckM1ftfCoGL4I6J44jLalRi+WTTGk=";
 const AUTO_EXIT_MS = 30 * 60 * 1000;
@@ -799,14 +828,15 @@ function toggleAcc(id) {
   const isShow = el.classList.toggle('show'); el.previousElementSibling.querySelector('.acc-icon').textContent = isShow ? '▼' : '▶';
 }
 
-/* 🚫 一般ユーザーのなりすまし防止（予約名判定） */
+/* 🚫 管理者専用・予約名判定（根津・ねづ・ねず・NEZUを完全包括ブロック） */
 function isReservedAdminName(name) {
   if (!name) return false;
   const clean = name.normalize("NFKC").toLowerCase().replace(/[\s_　・]/g, "");
   const patterns = [
-    /ねづお/, /ネヅオ/, /ねずお/, /ネズオ/,
-    /ねづっち/, /ネヅッチ/, /ねずっち/, /ネズッチ/,
-    /nezuo/
+    /根津/,
+    /ねづ/, /ネヅ/,
+    /ねず/, /ネズ/,
+    /nezu/
   ];
   return patterns.some(p => p.test(clean));
 }
@@ -857,14 +887,50 @@ function isReservedAdminName(name) {
 
   const checkIsGlobalAdmin = () => (auth.currentUser ? auth.currentUser.uid : myUid) === GLOBAL_ADMIN_UID;
 
+  /* 🛡️ 認証状態の非同期初期化待機（リロード時の新規匿名UID増殖を完全防止） */
+  let initialAuthResolved = false;
+  let authResolveFunc = null;
+  const initialAuthPromise = new Promise(r => { authResolveFunc = r; });
+
+  const unsubInitialAuth = auth.onAuthStateChanged(async (user) => {
+    unsubInitialAuth();
+    initialAuthResolved = true;
+    if (user && user.uid) {
+      myUid = user.uid;
+      safeLS.set("nz_cached_uid", myUid);
+      myTrip = await window.makeTripFromUid(myUid);
+      safeLS.set("nz_cached_trip", myTrip);
+      isAuthAndTripReady = true;
+      syncProfileValues();
+      if (authResolveFunc) authResolveFunc(user);
+    } else {
+      if (authResolveFunc) authResolveFunc(null);
+    }
+  });
+
+  auth.onAuthStateChanged(async (user) => {
+    if (initialAuthResolved && user && user.uid) {
+      myUid = user.uid;
+      safeLS.set("nz_cached_uid", myUid);
+      myTrip = await window.makeTripFromUid(myUid);
+      safeLS.set("nz_cached_trip", myTrip);
+      isAuthAndTripReady = true;
+      syncProfileValues();
+    }
+  });
+
+  /* 🔄 既存アカウント再利用＆完全新規時のみ1回だけ匿名登録 */
   async function ensureAnonAuthAndTrip(retryCount = 0) {
     if (isAuthAndTripReady && myUid && myTrip) return { uid: myUid, trip: myTrip };
     try {
       db.goOnline();
-      let user = auth.currentUser;
+      let user = await initialAuthPromise;
       if (!user || !user.uid) {
-        const cred = await auth.signInAnonymously();
-        user = cred.user;
+        user = auth.currentUser;
+        if (!user || !user.uid) {
+          const cred = await auth.signInAnonymously();
+          user = cred.user;
+        }
       }
       if (user && user.uid) {
         myUid = user.uid;
@@ -885,20 +951,10 @@ function isReservedAdminName(name) {
     return { uid: myUid, trip: myTrip };
   }
 
-  auth.onAuthStateChanged(async (user) => {
-    if (user && user.uid) {
-      myUid = user.uid;
-      safeLS.set("nz_cached_uid", myUid);
-      myTrip = await window.makeTripFromUid(myUid);
-      safeLS.set("nz_cached_trip", myTrip);
-      isAuthAndTripReady = true;
-      syncProfileValues();
-    }
-  });
-
   const $ = id => document.getElementById(id);
   let D = {}, myPresenceRef = null, hasEnteredLogged = false;
   let myName = safeLS.get("nz_ni") || "", curColor = safeLS.get("nz_color") || "#f1f5f9", tmpColor = curColor;
+  let curFontSize = safeLS.get("nz_font_size") || "medium";
   let currentRoomId = "", currentRoomPass = "", isJoined = false, isLurking = false, activeKey = null;
   const unreadMsgIds = new Set();
   let serverTimeOffset = 0, isOffsetLoaded = false;
@@ -1013,6 +1069,20 @@ function isReservedAdminName(name) {
   const renderedMwNodes = new Map();
   const setGlobalColor = c => document.documentElement.style.setProperty("--usr-color", c);
   setGlobalColor(curColor);
+
+  /* 🔤 文字サイズ設定の反映 */
+  function setGlobalFontSize(size) {
+    curFontSize = size;
+    safeLS.set("nz_font_size", size);
+    let px = "14.5px";
+    if (size === "small") px = "13px";
+    else if (size === "large") px = "16.5px";
+    document.documentElement.style.setProperty("--msg-font-size", px);
+    document.querySelectorAll(".fsize-btn").forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.size === size);
+    });
+  }
+  setGlobalFontSize(curFontSize);
 
   const getTrueTime = () => { const t = Date.now() + serverTimeOffset; return isNaN(t) ? Date.now() : t; };
   const getMsgTime = (m) => (m && m.t ? (typeof m.t === "number" ? m.t : (parseInt(m.t,10) || getTrueTime())) : getTrueTime());
@@ -2004,7 +2074,6 @@ function isReservedAdminName(name) {
 
     const hasAuthAndTrip = !!(myUid && myTrip && isAuthAndTripReady);
 
-    // 一般ユーザーのなりすましチェック
     const isReserved = !isGlobalAdmin && isReservedAdminName(name);
 
     if (nameWarn) {
@@ -2681,9 +2750,8 @@ function isReservedAdminName(name) {
       });
       isConnectedBound = true;
     }
-  };
-
-  function handleCrossTabSync(data) {
+  }
+function handleCrossTabSync(data) {
     if (!data || data.senderTabId === tabSyncId) return;
     if (data.action === "REQUEST_STATE") {
       broadcastTabSync("RESPOND_STATE", { isJoined, screen: safeLS.get("nz_current_screen") || "lobby", roomId: safeLS.get("nz_last_room_id") || "", roomPass: safeLS.get("nz_last_room_pass") || "" });
@@ -3156,6 +3224,15 @@ function isReservedAdminName(name) {
     buildPicker(D.clrPick2, tmpColor, "clrc2", (v) => {
       tmpColor = v; D.clrPick2.querySelectorAll("button").forEach(b => b.classList.toggle("sel", b.dataset.color === v));
       updateModalColorPreview(v);
+    });
+
+    /* 🔤 文字サイズ切り替えイベントリスナー（ロビー＆設定モーダル） */
+    document.querySelectorAll(".fsize-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        const sz = btn.dataset.size;
+        if (sz) setGlobalFontSize(sz);
+      });
     });
 
     if (D.clrBtn) D.clrBtn.addEventListener("click", (e) => { e.preventDefault(); tmpColor = curColor; updateModalColorPreview(tmpColor); D.clrmod.classList.add("show"); });

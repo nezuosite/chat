@@ -33,11 +33,13 @@
 (function() {
   if (window.__IS_BLOCKED__) return;
   try {
-    var j = localStorage.getItem("nz_is_joined") === "true", r = localStorage.getItem("nz_last_room_id");
-    var b = Math.max(parseInt(localStorage.getItem("nz_session_start_time")||"0",10), parseInt(localStorage.getItem("nz_last_post_time")||"0",10));
-    if (j && r && (!window.location.hash || window.location.hash.length <= 1) && (Date.now() - b < 1800000)) {
+    var j = localStorage.getItem("nz_is_joined") === "true", l = localStorage.getItem("nz_is_lurking") === "true";
+    var r = localStorage.getItem("nz_last_room_id") || "official";
+    var b = Math.max(parseInt(localStorage.getItem("nz_session_start_time")||"0",10), parseInt(localStorage.getItem("nz_last_post_time")||"0",10), parseInt(localStorage.getItem("nz_last_lurk_time")||"0",10));
+    if ((j || l) && r && (!window.location.hash || window.location.hash.length <= 1) && (Date.now() - b < 1800000)) {
       document.documentElement.classList.add("preload-chat-active");
       window.__PRELOAD_ROOM_ID__ = r;
+      window.__PRELOAD_IS_LURK__ = l;
     }
   } catch (e) {}
 })();
@@ -602,7 +604,6 @@ function toggleAcc(id) {
   const isShow = el.classList.toggle('show'); el.previousElementSibling.querySelector('.acc-icon').textContent = isShow ? '▼' : '▶';
 }
 
-/* 🚫 管理者専用・予約名判定（👑マークおよび根津・ねづ・ねず・nezuのみブロック。管理・公式・運営・adminは許可） */
 function isReservedAdminName(name) {
   if (!name) return false;
   const clean = name.normalize("NFKC").toLowerCase().replace(/[\s_　・]/g, "");
@@ -686,10 +687,8 @@ function isReservedAdminName(name) {
     }
   });
 
-  /* 🛡️ ボット完全除外＆キャッシュ再利用＆人間のみUID発行 */
   async function ensureAnonAuthAndTrip(retryCount = 0) {
     if (isAuthAndTripReady && myUid && myTrip) return { uid: myUid, trip: myTrip };
-
     const isBot = /bot|googlebot|crawler|spider|robot|crawling|lighthouse/i.test(navigator.userAgent) || navigator.webdriver;
     if (isBot) return { uid: "", trip: "" };
 
@@ -841,7 +840,6 @@ function isReservedAdminName(name) {
   const setGlobalColor = c => document.documentElement.style.setProperty("--usr-color", c);
   setGlobalColor(curColor);
 
-  /* 🔤 サイト全体文字サイズの切り替え */
   function setGlobalFontSize(size) {
     curFontSize = size;
     safeLS.set("nz_font_size", size);
@@ -1280,35 +1278,41 @@ function isReservedAdminName(name) {
     }
   }
 
-  /* 🚪 どんな通信拒否・DB消去が起きても絶対にロビーへ生還する安全な退出処理 */
+  /* 🚪 覗き見ステルス完全保証＆フリーズ防止の安全な退出処理 */
   async function doExit(isAuto = false, isSilent = false) {
     if (!isJoined) { switchScreen("lobby"); return; }
+    
+    // ★最重要：覗き見だったかを即座に退避（退室ログ誤爆を完全防止）
+    const wasLurking = isLurking;
+
     isJoined = false;
+    isLurking = false;
     stopSmartAutoExitChecker();
     closePlayer();
 
-    // 1. 先に端末の記憶と画面を強制的にリセット（何があっても絶対に固まらせない）
+    // 端末の記憶と画面を最優先リセット
     safeLS.remove("nz_is_joined");
+    safeLS.remove("nz_is_lurking");
     safeLS.remove("nz_current_room_id");
     safeLS.remove("nz_session_start_time");
     safeLS.remove("nz_last_post_time");
+    safeLS.remove("nz_last_lurk_time");
     safeLS.set("nz_current_screen", "lobby");
     document.documentElement.classList.remove("preload-chat-active");
 
     const prevRoomId = currentRoomId;
     currentRoomId = ""; currentRoomPass = ""; activeKey = null;
-    hasEnteredLogged = false; isLurking = false; myLastActiveTs = 0;
+    hasEnteredLogged = false; myLastActiveTs = 0;
 
     clearChatUIOnly();
     if (D.mi) { D.mi.value = ""; D.mi.style.height = "auto"; updateClrMsgBtnVisibility(); }
     switchScreen("lobby");
     validateLobbyInputs();
 
-    // 2. 通話切断
     try { await leaveSkyWayCall(); } catch(e){}
 
-    // 3. サーバーへの通知（エラーになっても画面はすでにロビーに戻っているので安全）
-    if (!isLurking && !isAuto && !isSilent && prevRoomId && db && myUid) {
+    // ★覗き見（wasLurking）ならサーバーへの通知を100%スキップ！
+    if (!wasLurking && !isAuto && !isSilent && prevRoomId && db && myUid) {
       try {
         const exitTs = getTrueTime();
         const exitKey = `sys_exit_${myUid}_${exitTs}`;
@@ -1323,10 +1327,9 @@ function isReservedAdminName(name) {
 
     detachFirebaseListeners();
     if (!isSilent) broadcastTabSync("ROOM_EXIT", { isAuto });
-    if (isAuto) showToast("30分間無発言のため自動退室しました", 4000);
+    if (isAuto) showToast(wasLurking ? "30分間無操作のため閲覧を終了しました" : "30分間無発言のため自動退室しました", 4000);
   }
 
-  /* 📢 自動退室ログ（絵文字なし） */
   async function processAutoExitForUser(targetUid, userData, targetRoomId = currentRoomId) {
     if (!db || !targetRoomId || !userData || targetUid === myUid) return;
     const roomId = targetRoomId, now = getTrueTime();
@@ -1362,11 +1365,17 @@ function isReservedAdminName(name) {
     }
   }
 
-  /* 📢 自身の自動退室ログ（絵文字なし） */
   async function triggerSelfAutoExit() {
     if (isExecutingAutoExit || !isJoined || !db || !currentRoomId || !myUid) return;
     isExecutingAutoExit = true;
     stopSmartAutoExitChecker();
+
+    // 覗き見時の30分無操作自動退出はログを出さずに静かに抜ける
+    if (isLurking) {
+      doExit(true, false);
+      isExecutingAutoExit = false;
+      return;
+    }
 
     const roomId = currentRoomId, uid = myUid;
     const cleanName = checkIsGlobalAdmin() ? "👑 ねづお" : (myName || "名無し").trim();
@@ -1404,7 +1413,8 @@ function isReservedAdminName(name) {
     if (!isJoined || !db || !currentRoomId || isExecutingAutoExit) return;
     const nowTrue = getTrueTime();
 
-    if (!isLurking && myLastActiveTs > 0 && (nowTrue >= myLastActiveTs + AUTO_EXIT_MS)) {
+    // 覗き見中も30分間画面操作がなければ通信カットのため自動終了
+    if (myLastActiveTs > 0 && (nowTrue >= myLastActiveTs + AUTO_EXIT_MS)) {
       await triggerSelfAutoExit();
       return;
     }
@@ -1727,9 +1737,11 @@ function isReservedAdminName(name) {
     const triggerSyncAndCheck = () => {
       const savedScreen = safeLS.get("nz_current_screen") || "lobby";
       const savedRoomId = safeLS.get("nz_last_room_id");
+      const isLurkingSaved = safeLS.get("nz_is_lurking") === "true";
       const sessionStart = parseInt(safeLS.get("nz_session_start_time") || "0", 10);
       const lastPost = parseInt(safeLS.get("nz_last_post_time") || "0", 10);
-      const baselineTime = Math.max(sessionStart, lastPost);
+      const lastLurk = parseInt(safeLS.get("nz_last_lurk_time") || "0", 10);
+      const baselineTime = Math.max(sessionStart, lastPost, lastLurk);
       const nowTrue = Date.now();
 
       if (baselineTime > 0 && (nowTrue - baselineTime >= AUTO_EXIT_MS)) {
@@ -2077,7 +2089,6 @@ function isReservedAdminName(name) {
     updateJumpBtns();
   }
 
-  /* 📢 BANログ（絵文字なし） */
   const banUser = function(targetUid, targetName, targetTrip) {
     if (!db || !hasCurrentRoomAdminPower() || !currentRoomId || !targetUid) return;
     const ts = getTrueTime(), cleanTs = Math.floor(ts / 1000) * 1000;
@@ -2253,6 +2264,7 @@ function isReservedAdminName(name) {
       roomSettings.approvedUids = val.approvedUids || {};
       roomSettings.creatorUid = val.creatorUid || "";
 
+      // 管理者による覗き見禁止発動時：静かに追い出す
       if (isLurking && currentRoomId === "official" && roomSettings.lurkDisabled) {
         doExit(false, true);
         showToast("⚠️ 公式管理者により閲覧が制限されました", 3500);
@@ -2331,7 +2343,6 @@ function isReservedAdminName(name) {
     renderApprovedTripsList(roomSettings.approvedTrips);
   }
 
-  /* 📢 履歴消去ログ（絵文字なし） */
   async function clearAllMessages() {
     if (!db || !currentRoomId || !hasCurrentRoomAdminPower()) return;
     try {
@@ -2422,6 +2433,7 @@ function isReservedAdminName(name) {
     })();
   }
 
+  /* 🔄 リロード時の自動復元（通常参加＋覗き見の両方に対応） */
   const initDirectDatabaseProcess = async () => {
     try {
       if (db) db.goOnline();
@@ -2434,57 +2446,32 @@ function isReservedAdminName(name) {
       });
 
       const wasJoined = !inviteRoomId && safeLS.get("nz_is_joined") === "true";
-      const lastRoomId = safeLS.get("nz_last_room_id");
-      const lastRoomPass = safeLS.get("nz_last_room_pass");
+      const wasLurkingSaved = !inviteRoomId && safeLS.get("nz_is_lurking") === "true";
+      const lastRoomId = safeLS.get("nz_last_room_id") || "official";
+      const lastRoomPass = safeLS.get("nz_last_room_pass") || "";
       const sessionStart = parseInt(safeLS.get("nz_session_start_time") || "0", 10);
       const lastPost = parseInt(safeLS.get("nz_last_post_time") || "0", 10);
-      const baselineTime = Math.max(sessionStart, lastPost);
+      const lastLurk = parseInt(safeLS.get("nz_last_lurk_time") || "0", 10);
+      const baselineTime = Math.max(sessionStart, lastPost, lastLurk);
       const nowTrue = Date.now();
 
-      if (wasJoined && lastRoomId && baselineTime > 0 && (nowTrue - baselineTime < AUTO_EXIT_MS)) {
-        const safePath = (lastRoomId === "official") ? "official" : await window.sha256(lastRoomId);
-        const snap = await db.ref(`presence/${safePath}/${myUid}`).once("value").catch(() => null);
-        if (snap && snap.exists()) {
+      // ★30分以内ならリロード時もシームレス復元
+      if ((wasJoined || wasLurkingSaved) && lastRoomId && baselineTime > 0 && (nowTrue - baselineTime < AUTO_EXIT_MS)) {
+        if (wasLurkingSaved) {
           await offsetPromise;
-          joinRoom({ roomId: lastRoomId, roomPass: lastRoomPass || "", silent: true, isCrossTab: true });
+          joinRoom({ roomId: lastRoomId, roomPass: "", isLurk: true, silent: true });
         } else {
-          doExit(true, true);
-        }
-      } else {
-        if (wasJoined && lastRoomId) {
           const safePath = (lastRoomId === "official") ? "official" : await window.sha256(lastRoomId);
-          if (myUid) {
-            let rawBase = baselineTime;
-            try {
-              const snap = await db.ref(`presence/${safePath}/${myUid}/t`).once("value");
-              const dbT = parseInt(snap.val(), 10);
-              if (!isNaN(dbT) && dbT > 0) rawBase = dbT;
-            } catch(e){}
-
-            if (rawBase > 0) {
-              const exactExpiryTime = rawBase + AUTO_EXIT_MS;
-              const autoExitKey = `sys_autoexit_${myUid}`;
-              const isTargetAdmin = (myUid === GLOBAL_ADMIN_UID);
-              const cleanName = isTargetAdmin ? "👑 ねづお" : (myName || "名無し").trim();
-              const cleanTrip = myTrip || "";
-              const rawSysText = `${cleanName} ${cleanTrip}`.trim() + " が自動退室しました（30分無発言）";
-              const tempKey = (lastRoomId === "official" || !lastRoomPass) ? null : await E2EE.deriveKey(lastRoomPass);
-
-              try {
-                const encD = await encodeMsgPayload("システム", "", rawSysText, tempKey);
-                await db.ref(`chat/${safePath}/${autoExitKey}`).set({
-                  u: "system", c: "#f43f5e", d: encD, t: exactExpiryTime, sys: true
-                });
-              } catch(e) {}
-            }
-            db.ref(`presence/${safePath}/${myUid}`).remove().catch(()=>{});
+          const snap = await db.ref(`presence/${safePath}/${myUid}`).once("value").catch(() => null);
+          if (snap && snap.exists()) {
+            await offsetPromise;
+            joinRoom({ roomId: lastRoomId, roomPass: lastRoomPass, silent: true, isCrossTab: true });
+          } else {
+            doExit(true, true);
           }
         }
-        safeLS.remove("nz_is_joined");
-        safeLS.remove("nz_session_start_time");
-        safeLS.remove("nz_last_post_time");
-        document.documentElement.classList.remove("preload-chat-active");
-        switchScreen("lobby");
+      } else {
+        doExit(true, true);
       }
       validateLobbyInputs();
       await offsetPromise;
@@ -2505,18 +2492,28 @@ function isReservedAdminName(name) {
     }
   };
 
+  /* 🔄 複数タブ同期（覗き見フラグの完璧な伝達） */
   function handleCrossTabSync(data) {
     if (!data || data.senderTabId === tabSyncId) return;
     if (data.action === "REQUEST_STATE") {
-      broadcastTabSync("RESPOND_STATE", { isJoined, screen: safeLS.get("nz_current_screen") || "lobby", roomId: safeLS.get("nz_last_room_id") || "", roomPass: safeLS.get("nz_last_room_pass") || "" });
+      broadcastTabSync("RESPOND_STATE", {
+        isJoined, isLurking, screen: safeLS.get("nz_current_screen") || "lobby",
+        roomId: safeLS.get("nz_last_room_id") || "", roomPass: safeLS.get("nz_last_room_pass") || ""
+      });
     } else if (data.action === "RESPOND_STATE") {
-      const { isJoined: remoteJoined, screen, roomId, roomPass } = data.payload || {};
+      const { isJoined: remoteJoined, isLurking: remoteLurking, screen, roomId, roomPass } = data.payload || {};
       if (remoteJoined && roomId) {
-        if (!isJoined || safeLS.get("nz_last_room_id") !== roomId) joinRoom({ roomId, roomPass: roomPass || "", silent: true, isCrossTab: true });
-      } else if (screen === "lobby" && isJoined) { doExit(false, true); }
+        if (!isJoined || safeLS.get("nz_last_room_id") !== roomId) {
+          joinRoom({ roomId, roomPass: roomPass || "", isLurk: !!remoteLurking, silent: true, isCrossTab: true });
+        }
+      } else if (screen === "lobby" && isJoined) {
+        doExit(false, true);
+      }
     } else if (data.action === "ROOM_JOIN") {
-      const { roomId, roomPass } = data.payload || {};
-      if (roomId && (!isJoined || safeLS.get("nz_last_room_id") !== roomId)) joinRoom({ roomId, roomPass: roomPass || "", silent: true, isCrossTab: true });
+      const { roomId, roomPass, isLurking: remoteLurking } = data.payload || {};
+      if (roomId && (!isJoined || safeLS.get("nz_last_room_id") !== roomId)) {
+        joinRoom({ roomId, roomPass: roomPass || "", isLurk: !!remoteLurking, silent: true, isCrossTab: true });
+      }
     } else if (data.action === "ROOM_EXIT") {
       if (isJoined) doExit(data.payload ? data.payload.isAuto : false, true);
     } else if (data.action === "PROFILE_UPDATE") {
@@ -2530,13 +2527,14 @@ function isReservedAdminName(name) {
     if (e.key === "nz_current_screen" && e.newValue === "lobby" && isJoined) doExit(false, true);
   });
 
-  /* 📢 入室・作成ログ（絵文字なし） */
+  /* 🚪 入室処理（覗き見・通常参加） */
   async function joinRoom(options = {}) {
     if (!db) { alert("データベースが準備できていません。"); return; }
     
     validateLobbyInputs(true);
 
-    const activeBtn = options.isLurk ? $("btnLurkOfficial") : ((options.roomId === "official") ? $("btnJoinOfficial") : $("btnJoin"));
+    const isLurkTarget = !!options.isLurk;
+    const activeBtn = isLurkTarget ? $("btnLurkOfficial") : ((options.roomId === "official") ? $("btnJoinOfficial") : $("btnJoin"));
     const origText = activeBtn ? activeBtn.textContent : "";
     if (activeBtn) { activeBtn.disabled = true; activeBtn.textContent = "認証中..."; }
 
@@ -2555,7 +2553,6 @@ function isReservedAdminName(name) {
       return; 
     }
 
-    const isLurkTarget = !!options.isLurk;
     const isOfficialTarget = (lobbyRoomId === "official");
     if (!isOfficialTarget && !isLurkTarget && !lobbyRoomPass) { 
       if (activeBtn) { activeBtn.disabled = false; activeBtn.textContent = origText; }
@@ -2662,15 +2659,26 @@ function isReservedAdminName(name) {
     } catch (e) {}
 
     isJoined = true;
-    if (!isLurking) {
-      safeLS.set("nz_is_joined", "true"); safeLS.set("nz_last_room_id", lobbyRoomId);
-      safeLS.set("nz_last_room_pass", lobbyRoomPass); safeLS.set("nz_current_room_id", currentRoomId);
+    
+    // ★記憶の保存（覗き見時もリロード復元用に一時保持）
+    if (isLurking) {
+      safeLS.set("nz_is_lurking", "true");
+      safeLS.set("nz_last_room_id", lobbyRoomId);
+      safeLS.set("nz_last_lurk_time", Date.now().toString());
+      myLastActiveTs = getTrueTime();
+    } else {
+      safeLS.remove("nz_is_lurking");
+      safeLS.set("nz_is_joined", "true");
+      safeLS.set("nz_last_room_id", lobbyRoomId);
+      safeLS.set("nz_last_room_pass", lobbyRoomPass);
+      safeLS.set("nz_current_room_id", currentRoomId);
     }
 
     await syncServerOffset();
     const isGlobalAdmin = checkIsGlobalAdmin();
     const cleanName = isGlobalAdmin ? "👑 ねづお" : (myName || "").trim();
 
+    // ★通常参加者のみプレゼンス登録＆入室ログ送信
     if (!isLurking) {
       if (options.silent || options.isCrossTab) {
         const prevPost = parseInt(safeLS.get("nz_last_post_time") || "0", 10);
@@ -2753,10 +2761,15 @@ function isReservedAdminName(name) {
 
     if (window.__PRELOAD_ROOM_ID__) {
       const pRoom = window.__PRELOAD_ROOM_ID__;
+      const pIsLurk = !!window.__PRELOAD_IS_LURK__;
       const logoTitle = $("logoTitle") || document.querySelector(".logo");
-      if (logoTitle) logoTitle.innerHTML = `NEZUO CHAT<span class="sub-room">${pRoom === "official" ? "公式ラウンジ" : escapeHtml(pRoom)}</span>`;
-      if ($("exBtn")) $("exBtn").style.display = "inline-flex";
-      if ($("callToggleBtn")) $("callToggleBtn").style.display = "inline-flex";
+      if (logoTitle) {
+        logoTitle.innerHTML = pIsLurk 
+          ? `NEZUO CHAT<span class="sub-room" style="color:#38bdf8!important;border-color:rgba(56,189,248,0.3);">公式ラウンジ (閲覧中)</span>`
+          : `NEZUO CHAT<span class="sub-room">${pRoom === "official" ? "公式ラウンジ" : escapeHtml(pRoom)}</span>`;
+      }
+      if ($("exBtn")) { $("exBtn").style.display = "inline-flex"; $("exBtn").textContent = pIsLurk ? "🚪 ロビーへ" : "🚪 退出"; }
+      if ($("callToggleBtn")) { $("callToggleBtn").style.display = "inline-flex"; $("callToggleBtn").textContent = pIsLurk ? "🎧 聴くだけ通話" : "📞 通話"; }
       if ($("inviteBtn")) $("inviteBtn").style.display = (pRoom === "official") ? "none" : "inline-flex";
     }
 
@@ -2952,6 +2965,7 @@ function isReservedAdminName(name) {
       });
     }
 
+    /* ★覗き見から正規参加への安全な昇格処理 */
     if ($("btnUpgradeToJoin")) {
       $("btnUpgradeToJoin").addEventListener("click", async () => {
         const inlineInput = $("lurkInlineNameInput");
@@ -2965,6 +2979,10 @@ function isReservedAdminName(name) {
         myName = val; safeLS.set("nz_ni", val);
         if ($("lobbyName")) $("lobbyName").value = val;
         await syncProfileValues();
+        
+        // 一度安全に記憶をクリアして正規参加へ昇格
+        safeLS.remove("nz_is_lurking");
+        safeLS.remove("nz_last_lurk_time");
         joinRoom({ roomId: "official", roomPass: "", isLurk: false });
       });
     }
@@ -3210,6 +3228,18 @@ function isReservedAdminName(name) {
       window.addEventListener("keydown", triggerUserAuth, { passive: true, once: true });
       window.addEventListener("scroll", triggerUserAuth, { passive: true, once: true });
     }
+
+    // 覗き見中・チャット中の無操作監視（30分放置切断のタイマー更新）
+    const updateActiveActivity = () => {
+      if (isJoined) {
+        myLastActiveTs = getTrueTime();
+        if (isLurking) safeLS.set("nz_last_lurk_time", Date.now().toString());
+      }
+    };
+    window.addEventListener("touchstart", updateActiveActivity, { passive: true });
+    window.addEventListener("mousedown", updateActiveActivity, { passive: true });
+    window.addEventListener("keydown", updateActiveActivity, { passive: true });
+    window.addEventListener("scroll", updateActiveActivity, { passive: true });
 
     if (inviteRoomId) {
       if ($("lobbyRoomId")) $("lobbyRoomId").value = inviteRoomId;

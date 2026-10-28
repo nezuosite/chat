@@ -8,7 +8,6 @@
 <meta name="theme-color" content="#070a10">
 <meta name="color-scheme" content="dark">
 <meta name="google-site-verification" content="IP8iOO_P7xeLhYvTHosMqjzPaRqemmyNX4LYXPYUKIg" />
-
 <title>NEZUO CHAT（ねづおチャット / ネヅオチャット）| 登録不要・無料の使い捨てチャット【合言葉・トリップ認証・30分完全消去】</title>
 <meta name="description" content="NEZUO CHATは登録不要・ログインなしで即使える完全無料の匿名使い捨てチャット。合言葉で個室作成、E2EE暗号化、トリップ認証、30分無発言で物理消去。">
 <meta name="robots" content="index, follow">
@@ -51,8 +50,6 @@
 
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-
-/* 🔤 サイト全体文字サイズ最適化（小・標準・大） */
 :root {
   --bg:#070a10;--sf:#0f172a;--s2:#0b1120;--bd:#1e293b;--tx:#f8fafc;--mu:#94a3b8;--m2:#475569;--in:#334155;--ro:#f43f5e;
   --my-bubble:#0284c7;--other-bubble:#1e293b;--usr-color:#f1f5f9;
@@ -60,7 +57,6 @@
   --sal:env(safe-area-inset-left,0px);--sar:env(safe-area-inset-right,0px);
   --font-stack:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
 }
-
 html[data-font-size="small"]{--msg-font-size:13px;--f-title:12.5px;--f-h2:11px;--f-base:10.5px;--f-sub:9px;--f-btn:10.5px}
 html[data-font-size="medium"]{--msg-font-size:14.5px;--f-title:13.5px;--f-h2:12px;--f-base:11.5px;--f-sub:10px;--f-btn:12px}
 html[data-font-size="large"]{--msg-font-size:16.5px;--f-title:15px;--f-h2:13.5px;--f-base:12.5px;--f-sub:11px;--f-btn:13.5px}
@@ -1284,36 +1280,14 @@ function isReservedAdminName(name) {
     }
   }
 
-  /* 📢 退出ログ（絵文字なし） */
+  /* 🚪 どんな通信拒否・DB消去が起きても絶対にロビーへ生還する安全な退出処理 */
   async function doExit(isAuto = false, isSilent = false) {
     if (!isJoined) { switchScreen("lobby"); return; }
     isJoined = false;
     stopSmartAutoExitChecker();
-    await leaveSkyWayCall();
     closePlayer();
 
-    const prevRoomId = currentRoomId;
-    const cleanName = checkIsGlobalAdmin() ? "👑 ねづお" : (myName || "").trim();
-    const cleanTrip = myTrip || "";
-
-    if (!isLurking && !isAuto && !isSilent && cleanName && prevRoomId && db) {
-      try {
-        const exitTs = getTrueTime();
-        const exitKey = `sys_exit_${myUid}_${exitTs}`;
-        const exitText = `${cleanName} ${cleanTrip}`.trim() + " が退出しました";
-        const encExit = await encodeMsgPayload("システム", "", exitText);
-        await db.ref(`chat/${prevRoomId}/${exitKey}`).set({ u: "system", c: "#f43f5e", d: encExit, t: exitTs, sys: true });
-      } catch(e){}
-    }
-
-    if (!isLurking && prevRoomId && myUid && db) {
-      try {
-        await db.ref(`presence/${prevRoomId}/${myUid}`).remove();
-        await destroyRoomIfEmpty(prevRoomId);
-      } catch(e){}
-    }
-
-    detachFirebaseListeners();
+    // 1. 先に端末の記憶と画面を強制的にリセット（何があっても絶対に固まらせない）
     safeLS.remove("nz_is_joined");
     safeLS.remove("nz_current_room_id");
     safeLS.remove("nz_session_start_time");
@@ -1321,14 +1295,33 @@ function isReservedAdminName(name) {
     safeLS.set("nz_current_screen", "lobby");
     document.documentElement.classList.remove("preload-chat-active");
 
-    clearChatUIOnly();
-    if (D.mi) { D.mi.value = ""; D.mi.style.height = "auto"; updateClrMsgBtnVisibility(); }
+    const prevRoomId = currentRoomId;
     currentRoomId = ""; currentRoomPass = ""; activeKey = null;
     hasEnteredLogged = false; isLurking = false; myLastActiveTs = 0;
-    
+
+    clearChatUIOnly();
+    if (D.mi) { D.mi.value = ""; D.mi.style.height = "auto"; updateClrMsgBtnVisibility(); }
     switchScreen("lobby");
     validateLobbyInputs();
 
+    // 2. 通話切断
+    try { await leaveSkyWayCall(); } catch(e){}
+
+    // 3. サーバーへの通知（エラーになっても画面はすでにロビーに戻っているので安全）
+    if (!isLurking && !isAuto && !isSilent && prevRoomId && db && myUid) {
+      try {
+        const exitTs = getTrueTime();
+        const exitKey = `sys_exit_${myUid}_${exitTs}`;
+        const cleanName = checkIsGlobalAdmin() ? "👑 ねづお" : (myName || "").trim();
+        const exitText = `${cleanName} ${myTrip}`.trim() + " が退出しました";
+        const encExit = await encodeMsgPayload("システム", "", exitText);
+        await db.ref(`chat/${prevRoomId}/${exitKey}`).set({ u: "system", c: "#f43f5e", d: encExit, t: exitTs, sys: true });
+        await db.ref(`presence/${prevRoomId}/${myUid}`).remove();
+        await destroyRoomIfEmpty(prevRoomId);
+      } catch(e) {}
+    }
+
+    detachFirebaseListeners();
     if (!isSilent) broadcastTabSync("ROOM_EXIT", { isAuto });
     if (isAuto) showToast("30分間無発言のため自動退室しました", 4000);
   }

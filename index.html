@@ -8,6 +8,8 @@
 <meta name="theme-color" content="#070a10">
 <meta name="color-scheme" content="dark">
 <meta name="google-site-verification" content="IP8iOO_P7xeLhYvTHosMqjzPaRqemmyNX4LYXPYUKIg" />
+<link rel="icon" href="data:,">
+
 <title>NEZUO CHAT（ねづおチャット / ネヅオチャット）| 登録不要・無料の使い捨てチャット【合言葉・トリップ認証・30分完全消去】</title>
 <meta name="description" content="NEZUO CHATは登録不要・ログインなしで即使える完全無料の匿名使い捨てチャット。合言葉で個室作成、E2EE暗号化、トリップ認証、30分無発言で物理消去。">
 <meta name="robots" content="index, follow">
@@ -36,7 +38,19 @@
     var j = localStorage.getItem("nz_is_joined") === "true", l = localStorage.getItem("nz_is_lurking") === "true";
     var r = localStorage.getItem("nz_last_room_id") || "official";
     var b = Math.max(parseInt(localStorage.getItem("nz_session_start_time")||"0",10), parseInt(localStorage.getItem("nz_last_post_time")||"0",10), parseInt(localStorage.getItem("nz_last_lurk_time")||"0",10));
-    if ((j || l) && r && (!window.location.hash || window.location.hash.length <= 1) && (Date.now() - b < 1800000)) {
+    var now = Date.now();
+    // 30分以上経過している場合は古い記憶を即座に破棄してロビーへ
+    if (b > 0 && now - b >= 1800000) {
+      localStorage.removeItem("nz_is_joined");
+      localStorage.removeItem("nz_is_lurking");
+      localStorage.removeItem("nz_current_room_id");
+      localStorage.removeItem("nz_session_start_time");
+      localStorage.removeItem("nz_last_post_time");
+      localStorage.removeItem("nz_last_lurk_time");
+      localStorage.setItem("nz_current_screen", "lobby");
+      return;
+    }
+    if ((j || l) && r && (!window.location.hash || window.location.hash.length <= 1) && (now - b < 1800000)) {
       document.documentElement.classList.add("preload-chat-active");
       window.__PRELOAD_ROOM_ID__ = r;
       window.__PRELOAD_IS_LURK__ = l;
@@ -207,6 +221,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 #imgUploadBtn{width:40px;height:40px;border-radius:50%;background:var(--s2);border:1px solid var(--bd);color:var(--tx);font-size:17px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 
 #imgPreviewArea{display:none;align-items:center;gap:10px;padding:6px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:0!important;margin-bottom:4px;width:100%;max-width:fit-content;position:relative}
+/* 404防止：初期srcを透過GIFに */
 #imgPreviewThumb{width:44px;height:44px;object-fit:cover;border-radius:0!important;border:1px solid rgba(255,255,255,0.15)}
 #imgPreviewCancelBtn{background:rgba(244,63,94,0.15);border:1px solid rgba(244,63,94,0.3);color:#fda4af;border-radius:0!important;width:22px;height:22px;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-left:auto}
 
@@ -340,7 +355,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 
 <div id="imgViewMod" class="mod-overlay">
   <button class="modal-top-close" id="imgViewCloseBtn" aria-label="閉じる">✕</button>
-  <div id="zoomViewport"><img id="imgViewSrc" src="" alt="拡大画像"></div>
+  <div id="zoomViewport"><img id="imgViewSrc" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="拡大画像"></div>
 </div>
 
 <div id="app">
@@ -407,7 +422,7 @@ button:active,.chip:active,.btn:active,.jump-btn:active,.bsd:active,.bclrm:activ
 
       <div id="ib">
         <div id="imgPreviewArea">
-          <img id="imgPreviewThumb" src="" alt="プレビュー">
+          <img id="imgPreviewThumb" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="プレビュー">
           <div style="display:flex;flex-direction:column;gap:2px;">
             <span id="imgPreviewInfo" style="font-size:10.5px;color:var(--tx);font-weight:bold;"></span>
             <span style="font-size:9.5px;color:var(--mu);">メッセージと一緒に送信されます</span>
@@ -604,6 +619,7 @@ function toggleAcc(id) {
   const isShow = el.classList.toggle('show'); el.previousElementSibling.querySelector('.acc-icon').textContent = isShow ? '▼' : '▶';
 }
 
+/* 🚫 管理者専用・予約名判定（👑マークおよび根津・ねづ・ねず・nezuのみブロック。管理・公式・運営・adminは許可） */
 function isReservedAdminName(name) {
   if (!name) return false;
   const clean = name.normalize("NFKC").toLowerCase().replace(/[\s_　・]/g, "");
@@ -687,6 +703,7 @@ function isReservedAdminName(name) {
     }
   });
 
+  /* 🛡️ ボット完全除外＆キャッシュ再利用＆人間のみUID発行 */
   async function ensureAnonAuthAndTrip(retryCount = 0) {
     if (isAuthAndTripReady && myUid && myTrip) return { uid: myUid, trip: myTrip };
     const isBot = /bot|googlebot|crawler|spider|robot|crawling|lighthouse/i.test(navigator.userAgent) || navigator.webdriver;
@@ -1278,19 +1295,17 @@ function isReservedAdminName(name) {
     }
   }
 
-  /* 🚪 覗き見ステルス完全保証＆フリーズ防止の安全な退出処理 */
+  /* 🚪 覗き見ステルス完全保証＆ストレージ完全リセット（1時間後にロビー確実復帰） */
   async function doExit(isAuto = false, isSilent = false) {
-    if (!isJoined) { switchScreen("lobby"); return; }
-    
-    // ★最重要：覗き見だったかを即座に退避（退室ログ誤爆を完全防止）
-    const wasLurking = isLurking;
+    const wasLurking = isLurking || (safeLS.get("nz_is_lurking") === "true");
+    const hadJoined = isJoined;
 
     isJoined = false;
     isLurking = false;
     stopSmartAutoExitChecker();
     closePlayer();
 
-    // 端末の記憶と画面を最優先リセット
+    // ★最重要：接続有無にかかわらず、ローカルストレージの参加・覗き見データを無条件で完全破棄
     safeLS.remove("nz_is_joined");
     safeLS.remove("nz_is_lurking");
     safeLS.remove("nz_current_room_id");
@@ -1300,7 +1315,7 @@ function isReservedAdminName(name) {
     safeLS.set("nz_current_screen", "lobby");
     document.documentElement.classList.remove("preload-chat-active");
 
-    const prevRoomId = currentRoomId;
+    const prevRoomId = currentRoomId || safeLS.get("nz_last_room_id");
     currentRoomId = ""; currentRoomPass = ""; activeKey = null;
     hasEnteredLogged = false; myLastActiveTs = 0;
 
@@ -1312,7 +1327,7 @@ function isReservedAdminName(name) {
     try { await leaveSkyWayCall(); } catch(e){}
 
     // ★覗き見（wasLurking）ならサーバーへの通知を100%スキップ！
-    if (!wasLurking && !isAuto && !isSilent && prevRoomId && db && myUid) {
+    if (hadJoined && !wasLurking && !isAuto && !isSilent && prevRoomId && db && myUid) {
       try {
         const exitTs = getTrueTime();
         const exitKey = `sys_exit_${myUid}_${exitTs}`;
@@ -1370,7 +1385,6 @@ function isReservedAdminName(name) {
     isExecutingAutoExit = true;
     stopSmartAutoExitChecker();
 
-    // 覗き見時の30分無操作自動退出はログを出さずに静かに抜ける
     if (isLurking) {
       doExit(true, false);
       isExecutingAutoExit = false;
@@ -1413,7 +1427,6 @@ function isReservedAdminName(name) {
     if (!isJoined || !db || !currentRoomId || isExecutingAutoExit) return;
     const nowTrue = getTrueTime();
 
-    // 覗き見中も30分間画面操作がなければ通信カットのため自動終了
     if (myLastActiveTs > 0 && (nowTrue >= myLastActiveTs + AUTO_EXIT_MS)) {
       await triggerSelfAutoExit();
       return;
@@ -1737,15 +1750,15 @@ function isReservedAdminName(name) {
     const triggerSyncAndCheck = () => {
       const savedScreen = safeLS.get("nz_current_screen") || "lobby";
       const savedRoomId = safeLS.get("nz_last_room_id");
-      const isLurkingSaved = safeLS.get("nz_is_lurking") === "true";
       const sessionStart = parseInt(safeLS.get("nz_session_start_time") || "0", 10);
       const lastPost = parseInt(safeLS.get("nz_last_post_time") || "0", 10);
       const lastLurk = parseInt(safeLS.get("nz_last_lurk_time") || "0", 10);
       const baselineTime = Math.max(sessionStart, lastPost, lastLurk);
       const nowTrue = Date.now();
 
+      // ★30分以上経過していたら即刻完全退室＆ストレージクリア
       if (baselineTime > 0 && (nowTrue - baselineTime >= AUTO_EXIT_MS)) {
-        if (isJoined) triggerSelfAutoExit(); else doExit(true, true);
+        doExit(true, true);
         return;
       }
       if (isJoined && savedScreen === "chat" && savedRoomId === currentRoomId) {
@@ -2264,7 +2277,6 @@ function isReservedAdminName(name) {
       roomSettings.approvedUids = val.approvedUids || {};
       roomSettings.creatorUid = val.creatorUid || "";
 
-      // 管理者による覗き見禁止発動時：静かに追い出す
       if (isLurking && currentRoomId === "official" && roomSettings.lurkDisabled) {
         doExit(false, true);
         showToast("⚠️ 公式管理者により閲覧が制限されました", 3500);
@@ -2362,7 +2374,7 @@ function isReservedAdminName(name) {
   function resetImagePreview() {
     pendingImageBase64 = null;
     if ($("imgPreviewArea")) $("imgPreviewArea").style.display = "none";
-    if ($("imgPreviewThumb")) $("imgPreviewThumb").src = "";
+    if ($("imgPreviewThumb")) $("imgPreviewThumb").src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
     if ($("imgPreviewInfo")) $("imgPreviewInfo").textContent = "";
     if ($("imgFileInput")) $("imgFileInput").value = "";
     updateJumpBtns();
@@ -2433,7 +2445,7 @@ function isReservedAdminName(name) {
     })();
   }
 
-  /* 🔄 リロード時の自動復元（通常参加＋覗き見の両方に対応） */
+  /* 🔄 起動・リロード時の自動復元判定 */
   const initDirectDatabaseProcess = async () => {
     try {
       if (db) db.goOnline();
@@ -2455,7 +2467,7 @@ function isReservedAdminName(name) {
       const baselineTime = Math.max(sessionStart, lastPost, lastLurk);
       const nowTrue = Date.now();
 
-      // ★30分以内ならリロード時もシームレス復元
+      // ★30分以内ならリロード時もシームレス復元、30分以上経過なら確実にロビーへ完全初期化
       if ((wasJoined || wasLurkingSaved) && lastRoomId && baselineTime > 0 && (nowTrue - baselineTime < AUTO_EXIT_MS)) {
         if (wasLurkingSaved) {
           await offsetPromise;
@@ -2492,7 +2504,7 @@ function isReservedAdminName(name) {
     }
   };
 
-  /* 🔄 複数タブ同期（覗き見フラグの完璧な伝達） */
+  /* 🔄 複数タブ完全同期（通常参加・覗き見・退出すべて完璧に伝達） */
   function handleCrossTabSync(data) {
     if (!data || data.senderTabId === tabSyncId) return;
     if (data.action === "REQUEST_STATE") {
@@ -2503,7 +2515,7 @@ function isReservedAdminName(name) {
     } else if (data.action === "RESPOND_STATE") {
       const { isJoined: remoteJoined, isLurking: remoteLurking, screen, roomId, roomPass } = data.payload || {};
       if (remoteJoined && roomId) {
-        if (!isJoined || safeLS.get("nz_last_room_id") !== roomId) {
+        if (!isJoined || safeLS.get("nz_last_room_id") !== roomId || isLurking !== !!remoteLurking) {
           joinRoom({ roomId, roomPass: roomPass || "", isLurk: !!remoteLurking, silent: true, isCrossTab: true });
         }
       } else if (screen === "lobby" && isJoined) {
@@ -2511,7 +2523,7 @@ function isReservedAdminName(name) {
       }
     } else if (data.action === "ROOM_JOIN") {
       const { roomId, roomPass, isLurking: remoteLurking } = data.payload || {};
-      if (roomId && (!isJoined || safeLS.get("nz_last_room_id") !== roomId)) {
+      if (roomId && (!isJoined || safeLS.get("nz_last_room_id") !== roomId || isLurking !== !!remoteLurking)) {
         joinRoom({ roomId, roomPass: roomPass || "", isLurk: !!remoteLurking, silent: true, isCrossTab: true });
       }
     } else if (data.action === "ROOM_EXIT") {
@@ -2527,7 +2539,7 @@ function isReservedAdminName(name) {
     if (e.key === "nz_current_screen" && e.newValue === "lobby" && isJoined) doExit(false, true);
   });
 
-  /* 🚪 入室処理（覗き見・通常参加） */
+  /* 🚪 入室処理 */
   async function joinRoom(options = {}) {
     if (!db) { alert("データベースが準備できていません。"); return; }
     
@@ -2678,7 +2690,7 @@ function isReservedAdminName(name) {
     const isGlobalAdmin = checkIsGlobalAdmin();
     const cleanName = isGlobalAdmin ? "👑 ねづお" : (myName || "").trim();
 
-    // ★通常参加者のみプレゼンス登録＆入室ログ送信
+    // ★通常参加者のみ在室登録＆入室ログ送信
     if (!isLurking) {
       if (options.silent || options.isCrossTab) {
         const prevPost = parseInt(safeLS.get("nz_last_post_time") || "0", 10);
@@ -2980,7 +2992,6 @@ function isReservedAdminName(name) {
         if ($("lobbyName")) $("lobbyName").value = val;
         await syncProfileValues();
         
-        // 一度安全に記憶をクリアして正規参加へ昇格
         safeLS.remove("nz_is_lurking");
         safeLS.remove("nz_last_lurk_time");
         joinRoom({ roomId: "official", roomPass: "", isLurk: false });
